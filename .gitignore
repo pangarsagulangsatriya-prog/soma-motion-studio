@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.sites-runtime/
+*.tsbuildinfo
+releases/
+
+# Aset yang dibuat oleh setup:assets
+public/models/
+public/wasm/
+.env
+.env.*
+!.env.example

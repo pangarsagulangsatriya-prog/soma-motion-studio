@@ -1,0 +1,39 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> soma-motion-studio@1.0.0 test
+> node --experimental-strip-types --test tests/*.test.ts
+
+✔ Archive: Tillema preserves all three Dutch quotes and secondary translation status (4.386931ms)
+✔ Archive: rejects corrupt imports, duplicate IDs, invalid references and unsafe timecodes (2.340152ms)
+✔ Archive: transformations do not alter source after 100 render/restore cycles (9.852941ms)
+✔ Archive: sleep needs low + horizontal + stable pose, then dwells and rearms (0.975545ms)
+✔ Archive: lost tracking never fires inverted or stillness rules and fades safely (0.779436ms)
+✔ Archive: manual trigger is finite and does not require camera points (0.347261ms)
+✔ Archive: cue GO dedupes, HOLD retains time, NEXT prepares without autoplay (0.290597ms)
+✔ Archive: automatic cue time is opt-in and respects the final cue (0.275154ms)
+✔ Archive: actor identities survive model result order changes (1.723615ms)
+✔ Archive: crossing uncertainty stops both identities until explicit reassignment (0.761941ms)
+✔ Archive: stillness resets after missing pose and occlusion never creates velocity spikes (1.116071ms)
+✔ Archive: lying feature remains a geometric estimate and absent actor has no distance (0.260252ms)
+✔ Archive: distance never treats a missing partner as zero distance (0.188017ms)
+✔ Archive: manual-only lost policy needs an operator before camera rules resume (0.156631ms)
+✔ Archive: one occluded actor resets stillness and returns without a sweep spike (0.452025ms)
+✔ pitch covers three octaves logarithmically and clamps out-of-range input (1.961115ms)
+✔ mapping output cannot exceed safe native ranges, and duplicate output last row wins (0.668403ms)
+✔ preset round-trip preserves mapping, invalid imports are rejected (3.230691ms)
+✔ tracking loss immediately clears gate, first reacquisition emits no swipe (0.770904ms)
+✔ pinch normalization is invariant to image hand scale (2.048753ms)
+✔ velocity uses elapsed time and ignores the first frame (1.118545ms)
+✔ v1 drone preset migrates source and reverb without losing the saved mappings (0.555216ms)
+✔ v2 face preset round-trips layers, visual mapping and output; invalid visual ranges fail (0.854887ms)
+✔ sound and visual mappings share motion but retain independent responses (0.571831ms)
+✔ gesture trigger fires once per hold and tracking loss cancels the incomplete hold (0.595566ms)
+✔ face blendshapes drive mouth gate and blink; mirror reverses head tilt (0.501077ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 195.553288

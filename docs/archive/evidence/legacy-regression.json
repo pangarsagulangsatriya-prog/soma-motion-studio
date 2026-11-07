@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-10-19T03:14:35.856Z",
+  "audio": "SOMA · Engine verification\n\nDevelopment-only tests. Uses public MediaPipe fixture images, local inference models, and the actual audio graph. No camera or microphone required.\n\nRun tracking and audio checks\nUNVERIFIED · Visual hand/pose inference: this browser has no WebGL. Audio tests below use explicitly simulated motion.\nPASS · Simulated motion → mapped sound · frequency 471.6 Hz; RMS 0.02121\nPASS · Audible pitch follows mapping · spectral peak 430.7 Hz\nPASS · Generated audio recording decodes · 17565 bytes; 1.08 s; peak 0.0481\nPASS · Character clean: audible bounded output · RMS 0.0338; peak 430.7 Hz; centroid 448.6 Hz\nPASS · Character raw: audible bounded output · RMS 0.0504; peak 430.7 Hz; centroid 3410.1 Hz\nPASS · Character metal: audible bounded output · RMS 0.0983; peak 215.3 Hz; centroid 3724.9 Hz\nPASS · Character metallic: audible bounded output · RMS 0.0346; peak 430.7 Hz; centroid 1226.8 Hz\nPASS · Character dark: audible bounded output · RMS 0.0223; peak 215.3 Hz; centroid 659.9 Hz\nPASS · Raw changes spectral texture · clean 448.6 → raw 3410.1 Hz centroid\nPASS · Metal and Dark shift the fundamental lower · clean 430.7; metal 215.3; dark 215.3 Hz\nPASS · Visual-only output silences audio with live motion · RMS 0.000000; tracked=true\nPASS · Fist releases sustained audio · RMS 0.000000\nPASS · Stalled tracking watchdog · RMS 0.000004 after updates stop\nPASS · Mute-all cuts output · RMS 0.000000\nPASS · Tracking loss clears gate · tracked=false, gate=0\n\nCOMPLETE: available checks passed; review UNVERIFIED lines above",
+  "visual": "SOMA · Generative visual verification\n\nDevelopment-only: continuous simulated mouse coordinates, actual Canvas 2D renderer and actual audio recording.\n\nRun visual + audio checks\ntrail SIMULATED MOUSE INPUT\nfiber SIMULATED MOUSE INPUT\nparticles SIMULATED MOUSE INPUT\nplanes SIMULATED MOUSE INPUT\nPASS · trail renders during audio + recording · 2237 non-transparent pixels; 1 draw FPS\nPASS · fiber renders during audio + recording · 10148 non-transparent pixels; 1 draw FPS\nPASS · particles renders during audio + recording · 1703 non-transparent pixels; 1 draw FPS\nPASS · planes renders during audio + recording · 8300 non-transparent pixels; 1 draw FPS\nPASS · Visuals continue while audio is muted · All four canvases retain motion-driven geometry\nPASS · Sound-only output hides generated visuals · 0, 0, 0, 0 pixels\nPASS · Visual-only output restores geometry · 1306, 4522, 392, 3915 pixels\nPASS · Recording survives concurrent visual work · 2.88 seconds; 14193 bytes",
+  "responsive": {
+    "mobile": {
+      "content": 375,
+      "viewport": 375
+    },
+    "tablet": {
+      "content": 753,
+      "viewport": 753
+    }
+  }
+}

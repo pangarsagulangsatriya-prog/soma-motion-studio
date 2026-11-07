@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {WordScene,materialDefaults,validateMaterial} from '../src/studio/material.ts';
+import {defaults} from '../src/engine/types.ts';
+import {validatePreset} from '../src/engine/mapping.ts';
+test('material: grabbed word follows cursor and lost tracking releases without a throw',()=>{const scene=new WordScene();scene.layout('TUBUH',.1,()=>.3);const word=scene.words[0];scene.step({x:word.x,y:word.y,pinch:true},.016,'drag',.6);scene.step({x:.6,y:.6,pinch:true},.016,'drag',.6);assert.equal(word.x,.6);assert.equal(scene.owner,0);scene.step(null,.016,'drag',.6);assert.equal(scene.owner,-1);assert.ok(Math.abs(word.vx)<.01);});
+test('material: deliberate release retains motion, distant reacquisition has no sweep impulse',()=>{const scene=new WordScene();scene.layout('A',.1,()=>.1);const w=scene.words[0];scene.step({x:w.x,y:w.y,pinch:true},.016,'drag',.6);scene.step({x:.55,y:.5,pinch:true},.016,'drag',.6);scene.step({x:.55,y:.5,pinch:false},.016,'drag',.6);assert.ok(w.vx>0);scene.step(null,.016,'drag',.6);w.vx=0;w.vy=0;scene.step({x:.95,y:.95,pinch:false},.016,'scatter',1);assert.ok(Math.abs(w.vx)<.01);});
+test('material: preset keeps text, photo reference and response; corrupt settings fail',()=>{const s={...defaults(),material:{...materialDefaults(),assetId:'local-photo',text:'Satu dua',effect:'scatter' as const}};assert.deepEqual(validatePreset(JSON.parse(JSON.stringify({version:2,settings:s}))).material,s.material);assert.throws(()=>validateMaterial({...s.material,force:NaN}));assert.throws(()=>validateMaterial({...s.material,text:'a '.repeat(221)}));assert.throws(()=>validateMaterial({...s.material,effect:'bad'}));});

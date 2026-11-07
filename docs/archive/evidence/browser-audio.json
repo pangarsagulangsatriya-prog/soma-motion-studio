@@ -1,0 +1,117 @@
+{
+  "report": [
+    {
+      "name": "Satu AudioContext dan jalur rekaman SOMA",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Media lokal tersimpan dan dibaca melalui IndexedDB",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Proyek bersegmen dapat dipulihkan",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Potongan rekaman menghasilkan suara",
+      "passed": true,
+      "info": "RMS 0.02232"
+    },
+    {
+      "name": "Filter benar-benar meredam frekuensi pembacaan",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Tekstur pembacaan mengubah sinyal tanpa melewati master",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Seek menuju akhir tidak memutar ulang seluruh rekaman",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Pembacaan mundur menghasilkan suara",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Scrub menghasilkan grain terbatas",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Grain berakhir dan node dibersihkan",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Crossfade kiri meredam track Indonesia",
+      "passed": true,
+      "info": "RMS 0.000044"
+    },
+    {
+      "name": "Crossfade kanan membuka track Indonesia",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Cue spam tetap dalam batas enam suara",
+      "passed": true,
+      "info": "maksimum 6"
+    },
+    {
+      "name": "Release membersihkan seluruh suara",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Voice Archive masuk rekaman master",
+      "passed": true,
+      "info": "1.08 s; 17251 byte"
+    },
+    {
+      "name": "Teks sumber tetap sama saat transformasi",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Teks benar-benar digambar di canvas",
+      "passed": true,
+      "info": "6668 piksel terang"
+    },
+    {
+      "name": "Mute darurat memotong suara Archive",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Mute tidak mengubah teks sumber",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Watchdog audio memudar saat thread berhenti memberi heartbeat",
+      "passed": true,
+      "info": "RMS 0.000011"
+    },
+    {
+      "name": "Tidak ada node sampel tertahan setelah stop",
+      "passed": true,
+      "info": ""
+    },
+    {
+      "name": "Impor proyek baru membuang buffer lama",
+      "passed": true,
+      "info": ""
+    }
+  ],
+  "samples": [],
+  "exportedAt": "2026-10-18T16:52:45.094Z",
+  "environment": "Cloud browser; synthetic motion and debug audio. No physical camera/HDMI test."
+}
