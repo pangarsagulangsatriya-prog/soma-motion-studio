@@ -175,3 +175,6 @@
 @media(prefers-reduced-motion:reduce){.clean-dock{transition:none}.record-dot.active{animation:none}}
 
 @media(max-width:700px){.clean-view .intro{display:none}}
+
+/* Petunjuk dan status Studio */
+.start-guide,.studio-status{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 16px;margin:10px 0;background:#202624;border:1px solid #36443d;border-radius:10px;color:#cbd8cf;font-size:13px}.start-guide b{color:#e3f6a0}.studio-status span{display:flex;gap:7px}.studio-status b{color:#eff6ef}.camera-error{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;margin:10px 0;border:1px solid #b96959;border-radius:10px;background:#382522;color:#ffe0d7}.camera-error button{border:1px solid #e4a395;background:transparent;color:inherit;padding:7px 12px;border-radius:6px;cursor:pointer}.input-choices button,.segmented button,.primary-button,.outline-button{transition:background-color .18s ease,border-color .18s ease,transform .18s ease}.input-choices button:active,.primary-button:active{transform:scale(.98)}@media(prefers-reduced-motion:reduce){.input-choices button,.segmented button,.primary-button,.outline-button{transition:none}}.clean-view .start-guide,.clean-view .studio-status,.clean-view .camera-error{display:none}@media(max-width:700px){.start-guide,.studio-status{gap:8px;font-size:12px}}
