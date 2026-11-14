@@ -3,7 +3,7 @@ import type {BodyMask} from '../studio/bodyField';
 export type WorkerPose={landmarks:Landmark[][];worldLandmarks:Landmark[][];segmentation?:BodyMask;projectionMask?:BodyMask;inferenceMs:number};
 export class PoseWorkerClient{
  private worker:Worker;private pending:{resolve:(value:WorkerPose)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}|null=null;private stopped=false;
- constructor(){this.worker=new Worker('/workers/soma-pose.js');}
+ constructor(){this.worker=new Worker(`${import.meta.env.BASE_URL}workers/soma-pose.js`);}
  init():Promise<void>{return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Worker pose tidak merespons.')),15000);this.worker.onerror=()=>{clearTimeout(timer);reject(Error('Worker pose belum didukung.'));};this.worker.onmessage=e=>{clearTimeout(timer);if(e.data.type==='ready'){this.worker.onmessage=message=>this.receive(message.data);this.worker.onerror=()=>this.fail(Error('Worker pose terputus.'));resolve();}else reject(Error(e.data.message||'Worker belum siap.'));};this.worker.postMessage({type:'init'});});}
  async detect(video:HTMLVideoElement,time:number,projection:boolean):Promise<WorkerPose>{
   if(this.pending||this.stopped)throw Error('Worker pose belum tersedia.');const bitmap=await createImageBitmap(video);if(this.stopped){bitmap.close();throw Error('Worker dihentikan.');}

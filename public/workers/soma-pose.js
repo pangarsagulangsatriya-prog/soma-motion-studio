@@ -1,6 +1,6 @@
 /* Classic worker: MediaPipe's pinned WASM loader requires importScripts. */
 var exports = {};
-importScripts('/wasm/vision_bundle.cjs');
+importScripts('../wasm/vision_bundle.cjs');
 let pose = null;
 function copyMasks(masks,size){
  if(!masks?.length)return undefined;const data=new Uint8Array(size*size);
@@ -8,6 +8,6 @@ function copyMasks(masks,size){
  return {width:size,height:size,data};
 }
 self.onmessage=async ({data:m})=>{
- if(m.type==='init'){try{const files=await exports.FilesetResolver.forVisionTasks('/wasm');pose=await exports.PoseLandmarker.createFromOptions(files,{canvas:new OffscreenCanvas(256,256),baseOptions:{modelAssetPath:'/models/pose_landmarker_lite.task',delegate:'CPU'},runningMode:'VIDEO',numPoses:2,minTrackingConfidence:.6,minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,outputSegmentationMasks:true});self.postMessage({type:'ready'});}catch(e){self.postMessage({type:'error',message:String(e.message||e)});}return;}
+ if(m.type==='init'){try{const files=await exports.FilesetResolver.forVisionTasks(new URL('../wasm', self.location.href).href);pose=await exports.PoseLandmarker.createFromOptions(files,{canvas:new OffscreenCanvas(256,256),baseOptions:{modelAssetPath:new URL('../models/pose_landmarker_lite.task', self.location.href).href,delegate:'CPU'},runningMode:'VIDEO',numPoses:2,minTrackingConfidence:.6,minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,outputSegmentationMasks:true});self.postMessage({type:'ready'});}catch(e){self.postMessage({type:'error',message:String(e.message||e)});}return;}
  if(m.type==='frame'){let result;try{const begin=performance.now();result=pose.detectForVideo(m.bitmap,m.time);const inferenceMs=performance.now()-begin;const segmentation=copyMasks(result.segmentationMasks,96),projectionMask=m.projection?copyMasks(result.segmentationMasks?.slice(0,1),256):undefined;const response={type:'result',landmarks:result.landmarks,worldLandmarks:result.worldLandmarks,segmentation,projectionMask,inferenceMs};self.postMessage(response,[segmentation?.data.buffer,projectionMask?.data.buffer].filter(Boolean));}catch(e){self.postMessage({type:'error',message:String(e.message||e)});}finally{result?.close();m.bitmap.close();}}
 };

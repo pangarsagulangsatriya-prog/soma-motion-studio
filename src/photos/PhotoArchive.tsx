@@ -42,6 +42,6 @@ export function PhotoPanel({archive:a,cameraReady,cameraBusy=false,onCamera,cue}
    <p className="fine-print">Bunyi rana tidak masuk rekaman audio SOMA. Tombol Mute ikut membisukannya.</p>
   </details>
   <p className="fine-print">Foto mengikuti pilihan Cermin. Pukulan mengambil isi bingkai persegi; tombol Jepret sekarang mengambil seluruh gambar kamera. Foto tersimpan di browser ini, terpisah dari preset dan rekaman. Penghapusan data situs ikut menghapus foto. Unduh untuk membuat salinan.</p>
-  <a className="outline-button" href="/soma-manual.html#foto" target="_blank" rel="noreferrer"><BookOpen size={16}/>Panduan potret & gestur</a>
+  <a className="outline-button" href={import.meta.env.BASE_URL+"soma-manual.html#foto"} target="_blank" rel="noreferrer"><BookOpen size={16}/>Panduan potret & gestur</a>
  </div>;
 }
