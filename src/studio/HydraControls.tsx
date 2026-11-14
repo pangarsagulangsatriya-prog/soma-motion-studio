@@ -14,7 +14,7 @@ export function HydraControls({settings:s,update}:{settings:Settings;update:(p:P
  const change=(p:Partial<HydraConfig>)=>update({hydra:{...h,...p},...(p.enabled?{visual:{...s.visual,enabled:true}}:{})});
  const apply=()=>{try{parseHydraPatch(draft);change({code:draft,preset:'custom',enabled:true});setError('');}catch(e){setError((e as Error).message);}};
  return <section className="hydra-controls" aria-label="Mesin visual Hydra">
-  <div className="section-label">HYDRA / VIDEO SYNTH <button className={`pill-toggle ${h.enabled?'on':''}`} aria-pressed={h.enabled} onClick={()=>change({enabled:!h.enabled})}>{h.enabled?'Aktif':'Aktifkan'}</button></div>
+  <div className="section-label">EFEK GAMBAR <button className={`pill-toggle ${h.enabled?'on':''}`} aria-pressed={h.enabled} onClick={()=>change({enabled:!h.enabled})}>{h.enabled?'Aktif':'Aktifkan'}</button></div>
   <p className="hydra-status" role="status">{!h.enabled?'Visual dasar · Hydra nonaktif':!s.visual.enabled?'Visual dijeda · nyalakan melalui tombol Visual':s.output==='sound'?'Pilih keluaran Visual atau Keduanya':status}</p>
   {h.enabled&&<>
    {!s.visual.enabled&&<button className="outline-button small" onClick={()=>update({visual:{...s.visual,enabled:true}})}>Tampilkan visual</button>}
@@ -23,7 +23,8 @@ export function HydraControls({settings:s,update}:{settings:Settings;update:(p:P
    <label className="material-label">Palet warna<select aria-label="Palet warna" value={h.palette} onChange={e=>change({palette:e.target.value as Palette})}>{Object.entries(PALETTES).map(([id,p])=><option key={id} value={id}>{p.label}</option>)}</select></label>
    <label className="material-label">Jejak tangan<select aria-label="Cara jejak bertahan" value={h.trails} onChange={e=>change({trails:e.target.value as typeof h.trails})}><option value="stack">Menumpuk sampai dibersihkan</option><option value="fade">Memudar perlahan</option><option value="off">Mati</option></select></label>
    {h.trails==='fade'&&<Range label="Lama jejak" min={.5} max={30} step={.5} value={h.trailLife} display={`${h.trailLife} s`} onChange={v=>change({trailLife:v})}/>}
-   <div className="section-label">GERAK HURUF <span>STUDIO 07</span></div>
+   <details className="advanced-controls"><summary>Pengaturan visual lanjutan</summary>
+   <div className="section-label">GERAK HURUF</div>
    <label className="material-label">Perilaku huruf<select aria-label="Perilaku huruf" value={h.typography} onChange={e=>change({typography:e.target.value as typeof h.typography,text:true})}>{TEXT_STYLES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
    <p className="fine-print">{h.typography==='classic'?'Gerak kata versi sebelumnya tetap tersedia.':h.typography==='elastic'?'Jepit dekat huruf untuk menarik. Buka kedua tangan untuk meregangkan kalimat.':h.typography==='fragments'?'Sapuan cepat memecah huruf. Perlambat gerak agar serpihan menyatu kembali.':h.typography==='flow'?'Sapuan menciptakan pusaran lokal. Huruf terus melayang sebentar setelah tangan berhenti.':'Foto yang diunggah mengisi huruf. Belum ada foto? Huruf tetap tampil dengan warna palet.'}</p>
    <label className="material-label">Perilaku warna<select aria-label="Perilaku warna" value={h.colorMode} onChange={e=>change({colorMode:e.target.value as typeof h.colorMode})}>{COLOR_STYLES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
@@ -40,6 +41,7 @@ export function HydraControls({settings:s,update}:{settings:Settings;update:(p:P
    <p className="fine-print">Sapuan → distorsi · jepitan → campuran foto · bentangan tangan → pengulangan. Pengulangan bekerja pada Jejak berulang dan Potongan.</p>
    <button className="outline-button small" onClick={()=>change({reset:h.reset+1})}>Bersihkan jejak & feedback</button>
    <details className="hydra-editor"><summary>Editor patch Hydra {h.preset==='custom'?'· aktif':''}</summary><p className="fine-print">s0 teks · s1 foto · s2 kamera · s3 siluet · o0 feedback. Satu rangkaian fungsi visual, akhiri dengan .out(o0).</p><label className="material-label">Rangkaian visual<textarea aria-label="Patch Hydra" spellCheck={false} rows={8} maxLength={8000} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();apply();}}}/></label><button className="outline-button small" onClick={apply}>Terapkan patch</button>{error&&<p role="alert" className="inline-note">{error}</p>}<p className="fine-print">Kontrol: motion.x, y, speed, pinch, spread, mix, distortion, repeat, feedback, rotation. Gunakan motion.nama di dalam parameter. Patch kustom merespons kontrol yang ditulis di rangkaiannya. Editor menerima fungsi visual Hydra; JavaScript umum tidak dijalankan.</p></details>
+   </details>
   </>}
  </section>;
 }

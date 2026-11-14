@@ -25,8 +25,8 @@ export function StudioControls({settings:s,update,tab,setTab,openModal,audioOn,m
  </>}
  {tab==='visual'&&<>
   {photoControls}
-  <HydraControls settings={s} update={update}/>
   <MaterialControls settings={s} update={update}/>
+  <HydraControls settings={s} update={update}/>
   {!(s.hydra?.enabled??true)&&<>
   <div className="section-label">BENTUK DARI GERAK <button className={`pill-toggle ${s.visual.enabled?'on':''}`} aria-pressed={s.visual.enabled} onClick={()=>update({visual:{...s.visual,enabled:!s.visual.enabled}})}>{s.visual.enabled?'Aktif':'Nonaktif'}</button></div>
   <div className="visual-grid">{Object.entries(VISUALS).map(([key,v])=><button key={key} className={s.visual.style===key?'selected':''} aria-pressed={s.visual.style===key} onClick={()=>update({visual:{...s.visual,style:key as VisualStyle,enabled:true}})}><VisualGlyph style={key}/><span>{v.label}<small>{v.tag.split(' / ')[0]}</small></span></button>)}</div>
