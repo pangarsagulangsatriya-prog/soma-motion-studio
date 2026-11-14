@@ -1,3 +1,4 @@
+import {Footprints} from './Footprints';
 import {useProjection} from './projection/useProjection';
 import {ProjectionWorkspace} from './projection/ProjectionWorkspace';
 import {useCameraCue} from './photos/useCameraCue';
@@ -38,6 +39,7 @@ const STARTERS=[
 export default function App(){
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
+ const [footprintsActive,setFootprintsActive]=useState(false);
  const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem('soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):defaults();}catch{return defaults();}});
  useEffect(()=>{const timer=setTimeout(()=>{try{localStorage.setItem('soma-studio-session-v3',JSON.stringify({version:2,settings}));}catch{}},300);return()=>clearTimeout(timer);},[settings]);const sr=useRef(settings);sr.current=settings;
  const [source,setSource]=useState<'camera'|'mouse'>(settings.input==='mouse'?'mouse':'camera');const sourceRef=useRef(source);sourceRef.current=source;
@@ -126,7 +128,7 @@ export default function App(){
   processFrame(f);
  }else if(sourceRef.current==='camera'&&!tracker.running&&cal.current&&t>cal.current.end){cal.current=null;setCalibration(null);notify('Kalibrasi terhenti. Nyalakan kamera dan coba lagi.');}raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[processFrame,tracker,notify]);
  useEffect(()=>{const handle=(e:KeyboardEvent)=>{
-  if(projectionActive){return;}
+  if(projectionActive||footprintsActive){return;}
   if(archiveActive){if(e.type==='keydown'&&!e.repeat&&!(e.target as HTMLElement).closest('input,select,textarea,[contenteditable=true]')&&!document.querySelector('dialog[open]')){if(e.code==='KeyC')archive.setClean(v=>!v);if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')archive.setTrackingOn(v=>!v);}return;}
   if(e.code==='Tab'){revealHUD();return;}if((e.target as HTMLElement).closest('input,select,textarea,[contenteditable=true]'))return;
   mouse.current.shift=e.shiftKey;if(e.code==='KeyP')mouse.current.keyPinch=e.type==='keydown';
@@ -144,6 +146,8 @@ export default function App(){
   <div className="workspace">
    <header className="topbar"><div className="wordmark">SOMA<span>MOTION / SOUND / IMAGE</span></div><div className="topbar-right"><button className="archive-launch projection-launch" aria-label="Buka Projection" onClick={()=>{setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}><Monitor size={15}/><span>Projection</span></button><button className="archive-launch" aria-label="Buka Archive" onClick={()=>{setModal(null);setClean(false);setArchiveActive(true);}}><BookOpen size={15}/><span>Archive</span></button><div className="view-switch"><button className="active" aria-pressed={!clean} onClick={()=>setClean(false)}><SlidersHorizontal size={14}/>Studio</button><button aria-pressed={clean} onClick={()=>setClean(true)}><Monitor size={14}/>Clean</button></div><button className="tool" aria-label="Fullscreen" title="Fullscreen · F" onClick={()=>void toggleFullscreen()}>{isFullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}</button><span className="local-status"><i/>LOCAL ENGINE</span><button className="quiet-button guide-button" onClick={()=>setModal('help')}>Panduan <ArrowUpRight size={14}/></button><button className="avatar" onClick={()=>setModal('presets')} aria-label="Buka preset saya">GS</button></div></header>
    <main>
+    <button className="outline-button" onClick={()=>{setClean(false);setModal(null);cameraCue.close();panic();setFootprintsActive(true);}}>Footprints · jejak kaki</button>
+    {footprintsActive&&<Footprints frameRef={frameRef} busy={cameraBusy} status={cameraError||status} onExit={()=>setFootprintsActive(false)} onCamera={()=>void(async()=>{const wasBody=sr.current.input==='body';await chooseInput('body');if(wasBody||!tracker.running)await startCamera();})()}/>}
     <section className="intro v2-intro"><div><div className="eyebrow"><span>INSTRUMEN GERAK</span><span className="intro-rule"/> STUDIO 13.3</div><h1>Tubuh mengaduk gambar<span>.</span></h1><p>Teks, foto, dan kamera. Bercampur, berulang, meninggalkan bekas.</p></div><button className="preset-current" onClick={()=>setModal('presets')}><span>PRESET SAAT INI</span><b>{activePreset}</b><ChevronDown size={14}/></button></section>
     <div className="start-guide"><b>Mulai bermain</b><span>1. Pilih sumber gerak</span><span>2. Pilih hasil</span><span>3. Mulai kamera atau gunakan mouse</span></div><div className="input-strip"><div className="input-choices" aria-label="Sumber gerak">{([['hands','Tangan',Hand],['body','Tubuh',PersonStanding],['face','Wajah',ScanFace],['mouse','Mouse',MousePointer2]] as const).map(([id,label,Icon])=><button key={id} disabled={cameraBusy} className={settings.input===id?'selected':''} aria-pressed={settings.input===id} onClick={()=>void chooseInput(id)}><Icon size={17}/>{label}</button>)}</div><div className="output-select"><span>KELUARAN</span><div className="segmented">{([['sound','Suara'],['visual','Visual'],['both','Keduanya']] as const).map(([id,label])=><button key={id} aria-label={`Keluaran ${label}`} aria-pressed={settings.output===id} className={settings.output===id?'active':''} onClick={()=>update({output:id})}>{label}</button>)}</div></div></div>
     <div className="studio-status" role="status" aria-live="polite"><span><b>Kamera</b> {source==='mouse'?'Mode mouse':cameraBusy?status:cameraOn?'Aktif':'Belum aktif'}</span><span><b>Gerak</b> {frame.tracked?'Terdeteksi':source==='mouse'?'Gerakkan mouse':cameraOn?'Mencari gerak':'Menunggu kamera'}</span><span><b>Suara</b> {settings.output==='visual'?'Tidak dipilih':muted?'Senyap':audioOn?'Aktif':'Belum aktif'}</span></div>{cameraError&&<div className="camera-error" role="alert"><b>Kamera belum siap</b><span>{cameraError}</span><button onClick={()=>void startCamera()} disabled={cameraBusy}>Coba lagi</button></div>}<div className="instrument-grid">
