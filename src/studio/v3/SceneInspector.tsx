@@ -1,6 +1,6 @@
 import {useEffect,useId,useState,type KeyboardEvent} from 'react';
 import {nextTab} from './interaction';
-import {SlidersHorizontal} from 'lucide-react';
+import {SlidersHorizontal,X} from 'lucide-react';
 import {hydraDefaults} from '../hydraConfig';
 import {MaterialControls} from '../MaterialControls';
 import {PALETTES,TEXT_STYLES,type Palette} from '../liveVisual';
@@ -10,9 +10,9 @@ import type {Settings} from '../../engine/types';
 import type {SceneId} from './ScenePicker';
 
 type Tab='style'|'material'|'response';
-export function SceneInspector({scene,settings:s,update,footprint:c,updateFootprint,onAdvanced}:{
+export function SceneInspector({scene,settings:s,update,footprint:c,updateFootprint,onAdvanced,onClose}:{
  scene:SceneId;settings:Settings;update:(next:Partial<Settings>)=>void;
- footprint:FootprintConfig;updateFootprint:(next:Partial<FootprintConfig>)=>void;onAdvanced:()=>void;
+ footprint:FootprintConfig;updateFootprint:(next:Partial<FootprintConfig>)=>void;onAdvanced:()=>void;onClose:()=>void;
 }){
  const [tab,setTab]=useState<Tab>('style');
  const tabId=useId();
@@ -31,7 +31,7 @@ export function SceneInspector({scene,settings:s,update,footprint:c,updateFootpr
  const paletteChange=(index:number)=>{const p=palettes[index]??palettes[0];updateFootprint({palette:index,colors:{background:p[1],left:p[2],right:p[3]}});};
  const colorChange=(key:keyof FootprintConfig['colors'],value:string)=>updateFootprint({colors:{...c.colors,[key]:value}});
  return <div className="v3-scene-inspector" aria-label="Pengaturan scene">
-  <div className="v3-inspector-title"><div><span>SCENE VISUAL</span><h2>{isFoot?'Footprints':scene==='liquid'?'Teks Cair':scene==='echo'?'Jejak Berulang':scene==='cut'?'Potongan':'Siluet × Teks'}</h2></div><button type="button" aria-label="Pengaturan lanjut" title="Pengaturan lanjut" onClick={onAdvanced}><SlidersHorizontal size={18}/></button></div>
+  <div className="v3-inspector-title"><div><span>SCENE VISUAL</span><h2>{isFoot?'Footprints':scene==='liquid'?'Teks Cair':scene==='echo'?'Jejak Berulang':scene==='cut'?'Potongan':'Siluet × Teks'}</h2></div><div className="v3-inspector-actions"><button type="button" aria-label="Pengaturan lanjut" title="Pengaturan lanjut" onClick={onAdvanced}><SlidersHorizontal size={18}/></button><button type="button" className="v3-inspector-dismiss" aria-label="Tutup pengaturan visual" title="Tutup panel" onClick={onClose}><X size={18}/></button></div></div>
   <div className="v3-inspector-tabs" role="tablist" aria-label="Kategori pengaturan">
    {([['style','Gaya'],['material','Bahan'],['response','Respons']] as const).filter(([id])=>visibleTabs.includes(id)).map(([id,name])=><button key={id} type="button" id={tabId+'-'+id} role="tab" aria-controls={tabId+'-panel'} aria-selected={tab===id} tabIndex={tab===id?0:-1} onKeyDown={tabKeys} onClick={()=>setTab(id)}>{name}</button>)}
   </div>
