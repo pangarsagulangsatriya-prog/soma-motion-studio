@@ -113,6 +113,9 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
    }
    if(p.trackingRef.current&&f.tracked&&now-f.time<350){
     const links=[[23,25],[25,27],[27,29],[29,31],[24,26],[26,28],[28,30],[30,32]];
+     const cameraAspect=(p.videoRef.current?.videoWidth||640)/(p.videoRef.current?.videoHeight||480);
+     const factorX=Math.min(1,cameraAspect/(16/9)),factorY=Math.min(1,(16/9)/cameraAspect);
+
     const point=(i:number)=>f.pose[i];ctx.globalAlpha=.7;ctx.strokeStyle='#D4E7DD';ctx.lineWidth=1.5;
     for(const [a,b]of links){const x=point(a),y=point(b);if(!x||!y||(x.visibility??0)<.55||(y.visibility??0)<.55)continue;
      const one={x:(1-factorX)/2+x.x*factorX,y:(1-factorY)/2+x.y*factorY};
