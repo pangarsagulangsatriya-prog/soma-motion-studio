@@ -1,4 +1,5 @@
-import {useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
+import {patternExportReady} from './interaction';
 import {Camera,Download,Footprints,Music2,Radio} from 'lucide-react';
 import {Modal} from '../../components';
 import {download,type Take} from '../../engine/recording';
@@ -10,14 +11,23 @@ import type {RefObject} from 'react';
 
 export type CaptureTab='photo'|'recordings'|'pattern';
 export function CaptureHub({onClose,initialTab='photo',archive,cue,videoRef,cameraBusy,onCamera,onOpenBody,takes,playing,onPlay,
- onRecordAudio,audioRecording,onRecordVideo,videoRecording,patternAvailable,patternCount,onPNG,onSVG,onJSON,onImportJSON,onClearView,onNewSession}:{
+ onRecordAudio,audioRecording,onRecordVideo,videoRecording,videoAvailable,patternAvailable,getPatternCount,onPNG,onSVG,onJSON,onImportJSON,onClearView,onNewSession}:{
  onClose:()=>void;initialTab?:CaptureTab;archive:PhotoArchive;cue:CameraCue;videoRef:RefObject<HTMLVideoElement|null>;
  cameraBusy:boolean;onCamera:()=>void;onOpenBody:()=>void;
  takes:Take[];playing:string|null;onPlay:(take:Take)=>void;onRecordAudio:()=>void;audioRecording:boolean;
- onRecordVideo:()=>void;videoRecording:boolean;patternAvailable:boolean;patternCount:number;
+ onRecordVideo:()=>void;videoRecording:boolean;videoAvailable:boolean;patternAvailable:boolean;getPatternCount:()=>number;
  onPNG:()=>void;onSVG:()=>void;onJSON:()=>void;onImportJSON:(file:File)=>void;onClearView:()=>void;onNewSession:()=>void;
 }){
  const [tab,setTab]=useState<CaptureTab>(initialTab);
+ const [patternCount,setPatternCount]=useState(0);
+ const counter=useRef(getPatternCount);counter.current=getPatternCount;
+ useEffect(()=>{
+  if(tab!=='pattern')return;
+  const refresh=()=>{const n=counter.current();setPatternCount(Number.isFinite(n)?n:0);};
+  refresh();const timer=window.setInterval(refresh,450);
+  return ()=>window.clearInterval(timer);
+ },[tab]);
+ const exportReady=patternExportReady(patternAvailable,patternCount);
  return <Modal title="Capture & Sesi" onClose={onClose} wide>
   <div className="v3-capture" aria-label="Pusat penyimpanan SOMA">
    <div className="v3-capture-tabs" role="tablist" aria-label="Jenis hasil">
@@ -29,7 +39,7 @@ export function CaptureHub({onClose,initialTab='photo',archive,cue,videoRef,came
    {tab==='recordings'&&<section className="v3-capture-pane" role="tabpanel" aria-label="Rekaman audio dan video">
     <div className="v3-capture-actions">
      <button className="v3-accent" type="button" onClick={onRecordAudio}><Music2 size={17}/>{audioRecording?'Stop rekam audio':'Rekam audio'}</button>
-     <button type="button" disabled={!patternAvailable} onClick={onRecordVideo}><Radio size={17}/>{videoRecording?'Stop video Footprints':'Rekam video Footprints'}</button>
+     <button type="button" disabled={!videoAvailable&&!videoRecording} onClick={onRecordVideo}><Radio size={17}/>{videoRecording?'Stop video Footprints':'Rekam video Footprints'}</button>
     </div>
     <p>Video Footprints akan diunduh setelah perekaman dihentikan. Rekaman audio di bawah tersimpan untuk sesi browser saat ini.</p>
     <div className="v3-recording-list">{takes.length===0?<div className="v3-empty">Belum ada rekaman audio.</div>:takes.map(t=><div className="v3-take" key={t.id}>
@@ -39,18 +49,18 @@ export function CaptureHub({onClose,initialTab='photo',archive,cue,videoRef,came
     </div>)}</div>
    </section>}
    {tab==='pattern'&&<section className="v3-capture-pane" role="tabpanel" aria-label="Simpan pola Footprints">
-    <div className="v3-pattern-count"><Footprints size={20}/><div><b>Pola gerak Footprints</b><span>{patternAvailable?patternCount+' sampel sesi':'Pilih scene Footprints untuk mengekspor pola.'}</span></div></div>
+    <div className="v3-pattern-count"><Footprints size={20}/><div><b>Pola gerak Footprints</b><span>{patternAvailable?(patternCount?patternCount+' sampel · siap diekspor':'Belum ada jejak. Gerakkan kaki atau impor JSON.'):'Pilih scene Footprints atau impor pola sesi JSON.'}</span></div></div>
     <div className="v3-capture-actions">
-     <button type="button" disabled={!patternAvailable} className="v3-accent" onClick={onPNG}>Unduh PNG</button>
-     <button type="button" disabled={!patternAvailable} onClick={onSVG}>Unduh SVG</button>
-     <button type="button" disabled={!patternAvailable} onClick={onJSON}>Unduh JSON</button>
+     <button type="button" disabled={!exportReady} className="v3-accent" onClick={onPNG}>Unduh PNG</button>
+     <button type="button" disabled={!exportReady} onClick={onSVG}>Unduh SVG</button>
+     <button type="button" disabled={!exportReady} onClick={onJSON}>Unduh JSON</button>
     </div>
-    <label className="v3-control-label">Buka sesi Footprints (.json)
+    <label className="v3-control-label">Buka sesi Footprints (.json) · langsung tampil di scene Footprints
      <input type="file" accept=".json,application/json" onChange={e=>{const f=e.target.files?.[0];if(f)onImportJSON(f);e.target.value='';}}/>
     </label>
     <div className="v3-capture-actions v3-secondary-actions">
-     <button type="button" disabled={!patternAvailable} onClick={onClearView}>Bersihkan tampilan</button>
-     <button type="button" disabled={!patternAvailable} onClick={onNewSession}>Mulai sesi baru</button>
+     <button type="button" disabled={!exportReady} onClick={onClearView}>Bersihkan tampilan</button>
+     <button type="button" disabled={!exportReady} onClick={onNewSession}>Mulai sesi baru</button>
     </div>
     <p>PNG/SVG memuat hasil visual dari sampel sesi. Bersihkan tampilan menjaga data sesi; sesi baru menghapus sampel sementara setelah konfirmasi.</p>
    </section>}
