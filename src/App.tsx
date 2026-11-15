@@ -237,7 +237,14 @@ export default function App(){
         stopCamera();
        }else void startCamera();
       }} output={settings.output}
-      onOutputChange={output=>{update({output});if(footprintsActive&&output==='sound')notify('Hanya Suara aktif. Pola disembunyikan. Pilih Keduanya untuk melihat Footprints.');}}
+      onOutputChange={output=>{
+       if(footprintsActive&&output==='sound'&&footprintRecording){
+        if(!window.confirm('Keluaran Suara saja akan menghentikan rekaman video Footprints dan mengunduhnya. Lanjutkan?'))return;
+        footprintRef.current?.toggleVideo();
+       }
+       update({output});
+       if(footprintsActive&&output==='sound')notify('Hanya Suara aktif. Pola disembunyikan. Pilih Keduanya untuk melihat Footprints.');
+      }}
        audioOn={audioOn} muted={muted} onAudio={()=>void toggleAudio()} soundMode={settings.mode} onSoundMode={switchMode}
        audioRecording={recording} videoRecording={footprintRecording} onRecordAudio={()=>void toggleRecording()}
        onRecordVideo={()=>footprintRef.current?.toggleVideo()} videoAvailable={footprintsActive&&cameraOn&&settings.input==='body'}
