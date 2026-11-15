@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bodyConnectionRequired,cameraView,formatElapsed,patternExportReady,stoppingVideoRequiresConfirmation} from '../src/studio/v3/interaction.ts';
+import {bodyConnectionRequired,cameraView,formatElapsed,nextTab,patternExportReady,stoppingVideoRequiresConfirmation} from '../src/studio/v3/interaction.ts';
 
 test('camera states have clear labels and prioritize busy/error over lost tracking',()=>{
  const base={source:'camera' as const,busy:false,error:'',cameraOn:false,tracked:false,input:'body'};
@@ -9,6 +9,7 @@ test('camera states have clear labels and prioritize busy/error over lost tracki
  assert.equal(cameraView({...base,error:'Izin ditolak'}).state,'error');
  assert.match(cameraView({...base,cameraOn:true}).label,/tubuh/i);
  assert.equal(cameraView({...base,cameraOn:true,tracked:true}).state,'tracking');
+ assert.equal(cameraView({...base,cameraOn:true,hadTracking:true,tracked:false}).state,'lost');
  assert.equal(cameraView({...base,source:'mouse'}).state,'mouse');
  assert.match(cameraView({...base,cameraOn:true,input:'face'}).label,/wajah/i);
 });
@@ -34,4 +35,12 @@ test('recording timer and scene-exit confirmation keep correct behaviour',()=>{
  assert.equal(stoppingVideoRequiresConfirmation(true,'footprints','liquid'),true);
  assert.equal(stoppingVideoRequiresConfirmation(true,'footprints','footprints'),false);
  assert.equal(stoppingVideoRequiresConfirmation(false,'footprints','liquid'),false);
+});
+
+test('keyboard tab navigation wraps through available contextual inspector tabs',()=>{
+ const all=['style','material','response'] as const;
+ assert.equal(nextTab(all,'style',1),'material');
+ assert.equal(nextTab(all,'style',-1),'response');
+ assert.equal(nextTab(['style','response'] as const,'style',-1),'response');
+ assert.equal(nextTab(all,'response',1),'style');
 });
