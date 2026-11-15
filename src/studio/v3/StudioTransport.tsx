@@ -14,7 +14,7 @@ export function StudioTransport(props:{
  output:Settings['output'];onOutputChange:(value:Settings['output'])=>void;
  audioOn:boolean;muted:boolean;onAudio:()=>void;soundMode:Mode;onSoundMode:(mode:Mode)=>void;
  audioRecording:boolean;videoRecording:boolean;onRecordAudio:()=>void;onRecordVideo:()=>void;videoAvailable:boolean;
- onCapture:()=>void;hold:boolean;onHold:()=>void;onAdvanced:()=>void;
+ onCapture:()=>void;hold:boolean;onHold:()=>void;onAdvanced:()=>void;onStatusClick:()=>void;
  projectorOpen:boolean;projectorConnected:boolean;projectorMode:'live'|'hold'|'blackout';onProjectorOpen:()=>void;
  onProjectorLive:()=>void;onProjectorHold:()=>void;onProjectorBlackout:()=>void;onProjectionSettings:()=>void;
 }){
@@ -22,7 +22,7 @@ export function StudioTransport(props:{
  return <section className="v3-transport" aria-label="Kontrol pertunjukan">
   <details className="v3-transport-menu"><summary><SlidersHorizontal size={17}/><span>{SOURCES.find(s=>s.id===p.input)?.name||p.input}</span><ChevronDown size={14}/></summary>
    <div className="v3-popover" role="group" aria-label="Pilih sumber gerak"><b>SUMBER GERAK</b>
-    {SOURCES.map(s=><button type="button" key={s.id} aria-pressed={p.input===s.id} onClick={()=>p.onSource(s.id)}>{s.name}{p.input===s.id?' · aktif':''}</button>)}
+    {SOURCES.map(s=><button type="button" key={s.id} aria-pressed={p.input===s.id} onClick={e=>{p.onSource(s.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>{s.name}{p.input===s.id?' · aktif':''}</button>)}
     <small>Perubahan sumber dapat mengatur ulang pemetaan gesture.</small>
    </div>
   </details>
@@ -31,8 +31,8 @@ export function StudioTransport(props:{
   </button>
   <details className="v3-transport-menu"><summary><Volume2 size={17}/><span>Suara</span><ChevronDown size={14}/></summary>
    <div className="v3-popover v3-popover-wide"><b>INSTRUMEN SUARA</b>
-    {SOUNDS.map(s=><button type="button" key={s.id} aria-pressed={p.soundMode===s.id} onClick={()=>p.onSoundMode(s.id)}>{s.name}</button>)}
-    <b>KELUARAN</b>{([['visual','Visual'],['sound','Suara'],['both','Keduanya']] as const).map(([id,name])=><button type="button" key={id} aria-pressed={p.output===id} onClick={()=>p.onOutputChange(id)}>{name}</button>)}
+    {SOUNDS.map(s=><button type="button" key={s.id} aria-pressed={p.soundMode===s.id} onClick={e=>{p.onSoundMode(s.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>{s.name}</button>)}
+    <b>KELUARAN</b>{([['visual','Visual'],['sound','Suara'],['both','Keduanya']] as const).map(([id,name])=><button type="button" key={id} aria-pressed={p.output===id} onClick={e=>{p.onOutputChange(id);e.currentTarget.closest('details')?.removeAttribute('open');}}>{name}</button>)}
     <button type="button" className="v3-accent" onClick={p.onAudio}>{p.audioOn&&!p.muted?'Mute audio':'Aktifkan audio'}</button>
    </div>
   </details>
@@ -56,10 +56,10 @@ export function StudioTransport(props:{
     <button type="button" onClick={p.onProjectionSettings}>Kalibrasi & pengaturan</button>
    </div>
   </details>
-  <span className="v3-transport-status" role="status" title={p.status}>
+  <button type="button" className="v3-transport-status" onClick={p.onStatusClick} title="Detail kamera dan tracking">
    <span className={'v3-led'+(p.tracking?' connected':'')}/><span>{p.status}</span>
-  </span>
-  <button type="button" className="v3-transport-settings" onClick={p.onAdvanced} title="Buka pengaturan lanjut" aria-label="Pengaturan lanjut"><SlidersHorizontal size={18}/></button>
+  </button>
+  <button type="button" className="v3-transport-settings" onClick={p.onAdvanced} title="Atur visual" aria-label="Atur visual"><SlidersHorizontal size={18}/></button>
   {p.cameraError&&<div className="v3-transport-error" role="alert">{p.cameraError}</div>}
  </section>;
 }
