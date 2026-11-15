@@ -16,13 +16,14 @@ export const footprintDefaults=():FootprintConfig=>({
  colors:{background:palettes[0][1],left:palettes[0][2],right:palettes[0][3]}
 });
 export type FootprintsHandle={
- clearView:()=>void;newSession:()=>void;exportPNG:()=>Promise<void>;
+ clearView:()=>void;newSession:()=>void;exportPNG:()=>Promise<void>;toggleVideo:()=>void;
  exportSVG:()=>void;exportJSON:()=>void;count:()=>number;
 };
 type Props={
  active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  settingsRef:RefObject<Settings>;trackingRef:RefObject<boolean>;
  canvasRef:RefObject<HTMLCanvasElement|null>;config:FootprintConfig;onNotice:(s:string)=>void;
+ onRecording:(value:boolean)=>void;audioStream?:MediaStream|null;
 };
 /** Shares the single SOMA Body MotionFrame and camera. No second tracker, camera or output window. */
 export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function StudioFootprints(props,ref){
@@ -34,6 +35,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  const elapsed=useRef(0);
  const lastFrame=useRef(-1);
  const latest=useRef(props);latest.current=props;
+ const movie=useRef<MediaRecorder|null>(null),movieStream=useRef<MediaStream|null>(null);
  const recipe=():Recipe=>{
   const p=latest.current;
   return {style:p.config.style,palette:p.config.palette,mirror:p.settingsRef.current.mirror,
@@ -44,10 +46,36 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  const saveJSON=()=>{try{requireSamples();const payload={schema:'soma.footprints.session',version:2,coordinateSpace:'stage-normalized',calibrated:false,
   source:'body-pose',recipe:recipe(),samples:session.current};download(new Blob([JSON.stringify(payload)],{type:'application/json'}),'SOMA_FOOTPRINTS_SESSION.json');latest.current.onNotice('Data sesi Footprints tersimpan.');}catch(e){latest.current.onNotice((e as Error).message);}};
  const savePNG=async()=>{try{requireSamples();const svg=patternSVG(session.current,recipe());const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));try{const img=new Image();img.src=url;await img.decode();const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;canvas.getContext('2d')?.drawImage(img,0,0);const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Gagal memproses PNG.')),'image/png'));download(blob,'SOMA_FOOTPRINTS_PATTERN.png');latest.current.onNotice('PNG pola sepanjang sesi tersimpan.');}finally{URL.revokeObjectURL(url);}}catch(e){latest.current.onNotice((e as Error).message);}};
+ const toggleVideo=()=>{
+  if(movie.current?.state==='recording'){movie.current.stop();return;}
+  try{
+   const canvas=latest.current.canvasRef.current;
+   if(!latest.current.active||!canvas||typeof MediaRecorder==='undefined'||typeof canvas.captureStream!=='function')
+    throw Error('Rekam video memerlukan kamera aktif dan browser yang mendukung MediaRecorder.');
+   const stream=canvas.captureStream(30);
+   latest.current.audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track.clone()));
+   movieStream.current=stream;
+   const mime=['video/webm;codecs=vp8,opus','video/webm','video/mp4'].find(type=>MediaRecorder.isTypeSupported(type));
+   const recording=new MediaRecorder(stream,mime?{mimeType:mime}:undefined),chunks:Blob[]=[];
+   movie.current=recording;
+   recording.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+   recording.onstop=()=>{
+    stream.getTracks().forEach(track=>track.stop());movieStream.current=null;
+    latest.current.onRecording(false);
+    const data=new Blob(chunks,{type:recording.mimeType});
+    if(data.size>0){download(data,'SOMA_FOOTPRINTS_TAKE.'+(recording.mimeType.includes('mp4')?'mp4':'webm'));latest.current.onNotice('Rekaman Footprints selesai dan diunduh.');}
+    else latest.current.onNotice('Video kosong. Coba rekam ulang.');
+   };
+   recording.onerror=()=>{latest.current.onNotice('Perekaman terhenti. Coba lagi.');if(recording.state==='recording')recording.stop();};
+   recording.start(1000);latest.current.onRecording(true);latest.current.onNotice('Rekam video Footprints dimulai.');
+  }catch(e){movieStream.current?.getTracks().forEach(track=>track.stop());latest.current.onRecording(false);latest.current.onNotice((e as Error).message);}
+ };
+ useEffect(()=>()=>{if(movie.current?.state==='recording'){movie.current.onstop=null;movie.current.stop();}movieStream.current?.getTracks().forEach(t=>t.stop());},[]);
+ useEffect(()=>{if(!props.active&&movie.current?.state==='recording')movie.current.stop();},[props.active]);
  useImperativeHandle(ref,()=>({
   clearView:()=>{view.current=[];live.current=[null,null];lastPrint.current=[null,null];},
   newSession:()=>{view.current=[];session.current=[];live.current=[null,null];lastPrint.current=[null,null];elapsed.current=0;lastFrame.current=-1;latest.current.onNotice('Sesi Footprints baru dimulai.');},
-  exportPNG:savePNG,exportSVG:saveSVG,exportJSON:saveJSON,count:()=>session.current.length
+  toggleVideo,exportPNG:savePNG,exportSVG:saveSVG,exportJSON:saveJSON,count:()=>session.current.length
  }));
  useEffect(()=>{
   let raf=0,prior=performance.now(),renderAt=0;
