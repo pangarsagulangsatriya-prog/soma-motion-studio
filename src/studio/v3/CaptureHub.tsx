@@ -1,5 +1,5 @@
-import {useEffect,useRef,useState} from 'react';
-import {patternExportReady} from './interaction';
+import {useEffect,useId,useRef,useState,type KeyboardEvent} from 'react';
+import {nextTab,patternExportReady} from './interaction';
 import {Camera,Download,Footprints,Music2,Radio} from 'lucide-react';
 import {Modal} from '../../components';
 import {download,type Take} from '../../engine/recording';
@@ -19,6 +19,15 @@ export function CaptureHub({onClose,initialTab='photo',archive,cue,videoRef,came
  onPNG:()=>void;onSVG:()=>void;onJSON:()=>void;onImportJSON:(file:File)=>void;onClearView:()=>void;onNewSession:()=>void;
 }){
  const [tab,setTab]=useState<CaptureTab>(initialTab);
+ const tabId=useId();
+ const tabs:CaptureTab[]=['photo','recordings','pattern'];
+ const tabKeys=(e:KeyboardEvent<HTMLButtonElement>)=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+  e.preventDefault();
+  const next=e.key==='Home'?tabs[0]:e.key==='End'?tabs[tabs.length-1]:nextTab(tabs,tab,e.key==='ArrowRight'?1:-1);
+  setTab(next);
+  e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[tabs.indexOf(next)]?.focus();
+ };
  const [patternCount,setPatternCount]=useState(0);
  const counter=useRef(getPatternCount);counter.current=getPatternCount;
  useEffect(()=>{
@@ -31,12 +40,12 @@ export function CaptureHub({onClose,initialTab='photo',archive,cue,videoRef,came
  return <Modal title="Capture & Sesi" onClose={onClose} wide>
   <div className="v3-capture" aria-label="Pusat penyimpanan SOMA">
    <div className="v3-capture-tabs" role="tablist" aria-label="Jenis hasil">
-    {([['photo','Foto',Camera],['recordings','Rekaman',Radio],['pattern','Pola',Footprints]] as const).map(([id,label,Icon])=><button type="button" key={id} role="tab" aria-selected={tab===id} onClick={()=>setTab(id)}><Icon size={16}/>{label}</button>)}
+    {([['photo','Foto',Camera],['recordings','Rekaman',Radio],['pattern','Pola',Footprints]] as const).map(([id,label,Icon])=><button type="button" key={id} role="tab" id={tabId+'-'+id} aria-controls={tabId+'-panel'} tabIndex={tab===id?0:-1} aria-selected={tab===id} onKeyDown={tabKeys} onClick={()=>setTab(id)}><Icon size={16}/>{label}</button>)}
    </div>
-   {tab==='photo'&&<section role="tabpanel" aria-label="Capture foto">
+   {tab==='photo'&&<section id={tabId+"-panel"} role="tabpanel" aria-labelledby={tabId+"-photo"}>
     <PhotoPanel cue={cue} archive={archive} cameraBusy={cameraBusy} cameraReady={cameraAvailable(videoRef.current)} onCamera={onCamera} onOpenBody={onOpenBody}/>
    </section>}
-   {tab==='recordings'&&<section className="v3-capture-pane" role="tabpanel" aria-label="Rekaman audio dan video">
+   {tab==='recordings'&&<section id={tabId+"-panel"} className="v3-capture-pane" role="tabpanel" aria-labelledby={tabId+"-recordings"}>
     <div className="v3-capture-actions">
      <button className="v3-accent" type="button" onClick={onRecordAudio}><Music2 size={17}/>{audioRecording?'Stop rekam audio':'Rekam audio'}</button>
      <button type="button" disabled={!videoAvailable&&!videoRecording} onClick={onRecordVideo}><Radio size={17}/>{videoRecording?'Stop video Footprints':'Rekam video Footprints'}</button>
@@ -48,7 +57,7 @@ export function CaptureHub({onClose,initialTab='photo',archive,cue,videoRef,came
      <button type="button" onClick={()=>download(t.blob,'SOMA-AUDIO-'+t.id.slice(0,8)+(t.mime.includes('mp4')?'.m4a':'.webm'))}><Download size={16}/> Unduh</button>
     </div>)}</div>
    </section>}
-   {tab==='pattern'&&<section className="v3-capture-pane" role="tabpanel" aria-label="Simpan pola Footprints">
+   {tab==='pattern'&&<section id={tabId+"-panel"} className="v3-capture-pane" role="tabpanel" aria-labelledby={tabId+"-pattern"}>
     <div className="v3-pattern-count"><Footprints size={20}/><div><b>Pola gerak Footprints</b><span>{patternAvailable?(patternCount?patternCount+' sampel · siap diekspor':'Belum ada jejak. Gerakkan kaki atau impor JSON.'):'Pilih scene Footprints atau impor pola sesi JSON.'}</span></div></div>
     <div className="v3-capture-actions">
      <button type="button" disabled={!exportReady} className="v3-accent" onClick={onPNG}>Unduh PNG</button>
