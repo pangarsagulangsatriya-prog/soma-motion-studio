@@ -12,7 +12,7 @@ import {ScenePicker,type SceneId} from './studio/v3/ScenePicker';
 import {StudioTransport} from './studio/v3/StudioTransport';
 import {SceneInspector} from './studio/v3/SceneInspector';
 import {CaptureHub,type CaptureTab} from './studio/v3/CaptureHub';
-import {bodyConnectionRequired,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
+import {bodyConnectionRequired,keyboardIsInControl,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
 import './studio/v3/studio-v3.css';
 import {LIVE_MODES,switchLiveMode} from './studio/liveVisual';
 import {hydraDefaults} from './studio/hydraConfig';
@@ -171,10 +171,12 @@ export default function App(){
  }else if(sourceRef.current==='camera'&&!tracker.running&&cal.current&&t>cal.current.end){cal.current=null;setCalibration(null);notify('Kalibrasi terhenti. Nyalakan kamera dan coba lagi.');}raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[processFrame,tracker,notify]);
  useEffect(()=>{const handle=(e:KeyboardEvent)=>{
   if(projectionActive){return;}
-  if(archiveActive){if(e.type==='keydown'&&!e.repeat&&!(e.target as HTMLElement).closest('input,select,textarea,[contenteditable=true]')&&!document.querySelector('dialog[open]')){if(e.code==='KeyC')archive.setClean(v=>!v);if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')archive.setTrackingOn(v=>!v);}return;}
-  if(e.code==='Tab'){revealHUD();return;}if((e.target as HTMLElement).closest('input,select,textarea,[contenteditable=true]'))return;
+  if(archiveActive){if(e.type==='keydown'&&!e.repeat&&!(e.target as HTMLElement).closest('input,select,textarea,button,a,summary,[role=tab],[contenteditable=true]')&&!document.querySelector('dialog[open]')){if(e.code==='KeyC')archive.setClean(v=>!v);if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')archive.setTrackingOn(v=>!v);}return;}
+  if(e.code==='Tab'){revealHUD();return;}
+   const target=e.target as HTMLElement,insideControl=!!target.closest('input,select,textarea,button,a,summary,[role=tab],[role=menuitem],[contenteditable=true]');
+   if(keyboardIsInControl(target.tagName,target.isContentEditable,insideControl)||e.ctrlKey||e.metaKey||e.altKey)return;
   mouse.current.shift=e.shiftKey;if(e.code==='KeyP')mouse.current.keyPinch=e.type==='keydown';
-  if(e.type==='keydown'&&!e.repeat){if(e.code==='Space'&&!(e.target as HTMLElement).closest('button')){e.preventDefault();panic();return;}
+  if(e.type==='keydown'&&!e.repeat){if(e.code==='Space'){e.preventDefault();panic();return;}
    if(e.code==='Escape'&&controlsOpen){setControlsOpen(false);return;}if(document.querySelector('dialog[open]'))return;if(e.code==='Escape'&&cameraCue.frame.open){cameraCue.close();return;}
    if(e.code==='KeyC'){setClean(v=>!v);setControlsOpen(false);}if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')toggleTracking();if(!e.ctrlKey&&!e.metaKey&&!e.altKey){const i=Number(e.key)-1;if(Number.isInteger(i)&&i>=0&&i<LIVE_MODES.length){setFootprintsActive(false);update(switchLiveMode(sr.current,LIVE_MODES[i][0]));revealHUD();}if(e.code==='Digit5'){selectScene('footprints');revealHUD();}if(e.code==='KeyR'){if(footprintsActive)footprintRef.current?.clearView();else {const h={...hydraDefaults(),...sr.current.hydra};update({hydra:{...h,reset:h.reset+1}});}revealHUD();}}if(e.key==='?')setModal('help');}
  };const blur=()=>{mouse.current.down=false;mouse.current.shift=false;mouse.current.keyPinch=false;if(!archiveActive&&!projection.opened){engine.mute();setMuted(true);}};const visibility=()=>{if(document.hidden){blur();if(archiveActive){archive.hold();engine.mute();setMuted(true);}}};document.addEventListener('keydown',handle);document.addEventListener('keyup',handle);window.addEventListener('blur',blur);document.addEventListener('visibilitychange',visibility);return()=>{document.removeEventListener('keydown',handle);document.removeEventListener('keyup',handle);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);};});
@@ -258,8 +260,9 @@ export default function App(){
        onProjectorBlackout={()=>projection.setTransport('blackout')}
        onProjectionSettings={()=>{setClean(false);setProjectionActive(true);}}/>
      </section>
+     {inspectorOpen&&<button type="button" className="v3-inspector-backdrop" aria-label="Tutup pengaturan visual" onClick={()=>setInspectorOpen(false)}/>}
      <aside className={'sound-panel panel controls-panel '+(inspectorOpen?'v3-inspector-open':'v3-inspector-closed')} aria-label="Atur scene">
-      <SceneInspector scene={currentScene} settings={settings} update={update} footprint={footprintConfig} updateFootprint={updateFootprint} onAdvanced={()=>setAdvancedOpen(true)}/>
+      <SceneInspector scene={currentScene} settings={settings} update={update} footprint={footprintConfig} updateFootprint={updateFootprint} onAdvanced={()=>setAdvancedOpen(true)} onClose={()=>setInspectorOpen(false)}/>
      </aside>
     </div>
     <footer className="footer"><span><ShieldCheck size={13}/> Kamera diproses di perangkatmu. Video tidak diunggah.</span><span><a href="https://hydra.ojack.xyz/" target="_blank" rel="noreferrer">HYDRA</a> · <a href={import.meta.env.BASE_URL+"HYDRA-LICENSE.txt"} target="_blank">AGPL-3.0</a> · <a href="https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/archive/refs/heads/main.zip" download>KODE SUMBER</a></span></footer>
