@@ -108,3 +108,18 @@
  .v3-transport-separator{display:none}
 }
 @media(prefers-reduced-motion:reduce){.soma-v3 *{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* Perform view keeps the existing live canvas and MotionFrame mounted. */
+.soma-v3.clean-view .v3-global-nav,.soma-v3.clean-view .v3-scene-strip,.soma-v3.clean-view .v3-transport{display:none!important}
+.soma-v3.clean-view .stage{position:absolute;inset:0;width:100%;height:100dvh;min-height:0!important;max-height:none;aspect-ratio:auto;flex:none}
+.soma-v3.clean-view .sound-panel.controls-panel{display:none!important}
+.soma-v3.clean-view.controls-open .sound-panel.controls-panel{
+ display:block!important;position:fixed;right:24px;top:76px;bottom:100px;
+ width:min(340px,calc(100vw - 32px));z-index:85;max-height:none;overflow:auto;
+ border:1px solid #62745f;border-radius:10px;background:#18221beF;backdrop-filter:blur(12px)
+}
+.soma-v3.clean-view .instrument-grid,.soma-v3.clean-view .motion-panel{height:100%;min-height:0}
+@media(max-height:800px) and (min-width:801px){
+ .soma-v3:not(.clean-view) .stage{min-height:0;max-height:calc(100dvh - 224px)}
+ .soma-v3:not(.clean-view) .v3-scene{height:46px}
+}
