@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bodyConnectionRequired,cameraView,formatElapsed,nextTab,patternExportReady,stoppingVideoRequiresConfirmation} from '../src/studio/v3/interaction.ts';
+import {bodyConnectionRequired,cameraView,completionRate,formatElapsed,keyboardIsInControl,nextTab,patternExportReady,stoppingVideoRequiresConfirmation} from '../src/studio/v3/interaction.ts';
 
 test('camera states have clear labels and prioritize busy/error over lost tracking',()=>{
  const base={source:'camera' as const,busy:false,error:'',cameraOn:false,tracked:false,input:'body'};
@@ -43,4 +43,22 @@ test('keyboard tab navigation wraps through available contextual inspector tabs'
  assert.equal(nextTab(all,'style',-1),'response');
  assert.equal(nextTab(['style','response'] as const,'style',-1),'response');
  assert.equal(nextTab(all,'response',1),'style');
+});
+
+test('native keyboard actions are protected from stage-wide shortcuts',()=>{
+ assert.equal(keyboardIsInControl('SUMMARY',false,true),true); // Space must open a dropdown
+ assert.equal(keyboardIsInControl('BUTTON',false,true),true);
+ assert.equal(keyboardIsInControl('INPUT',false,true),true);
+ assert.equal(keyboardIsInControl('A',false,true),true);
+ assert.equal(keyboardIsInControl('DIV',true,false),true);
+ assert.equal(keyboardIsInControl('DIV',false,true),true); // custom tab or menu item
+ assert.equal(keyboardIsInControl('DIV',false,false),false); // live stage shortcut still works
+ assert.equal(keyboardIsInControl('BODY',false,false),false);
+});
+test('usability task pass rate reports only observed completions',()=>{
+ assert.equal(completionRate(0,5),0);
+ assert.equal(completionRate(4,5),.8);
+ assert.equal(completionRate(5,5),1);
+ assert.equal(completionRate(9,5),1);
+ assert.equal(completionRate(0,0),0);
 });
