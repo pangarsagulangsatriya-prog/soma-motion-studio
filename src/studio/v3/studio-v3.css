@@ -123,3 +123,36 @@
  .soma-v3:not(.clean-view) .stage{min-height:0;max-height:calc(100dvh - 224px)}
  .soma-v3:not(.clean-view) .v3-scene{height:46px}
 }
+
+/* S3 interaction layer: menus may rise beyond the stage panel without clipping. */
+.soma-v3 .motion-panel.panel{overflow:visible}
+.soma-v3 .v3-transport{z-index:12}
+.soma-v3 .v3-transport-menu{z-index:13}
+.soma-v3 .v3-transport-menu[open]{z-index:15}
+.soma-v3 .v3-popover{max-height:min(66dvh,390px);overflow-y:auto;overscroll-behavior:contain}
+.soma-v3 .v3-transport-menu>summary:focus-visible,.soma-v3 .v3-popover button:focus-visible{outline:2px solid #d6eda7;outline-offset:2px}
+.soma-v3 button:disabled{opacity:.55;cursor:not-allowed}
+.soma-v3 button:disabled:hover{background:inherit}
+.soma-v3 .v3-transport-status{border:1px solid transparent;background:transparent;cursor:pointer;padding:9px 10px;border-radius:7px;min-height:43px;text-align:left}
+.soma-v3 .v3-transport-status:hover{background:#28362b;border-color:#485d48}
+.soma-v3 .v3-transport-status.state-error{color:#f6b6a6;border-color:#84574f;background:#3a2927}
+.soma-v3 .v3-transport-status.state-error .v3-led,.soma-v3 .v3-transport-status.state-off .v3-led{background:#8e6a53;border-color:#ad8c77}
+.soma-v3 .v3-transport-status.state-loading .v3-led,.soma-v3 .v3-transport-status.state-searching .v3-led{background:#dcbf71;border-color:#dcbf71;animation:v3-status-pulse 1.5s ease-in-out infinite}
+.soma-v3 .v3-transport-status.state-mouse .v3-led{background:#9eb1c9;border-color:#9eb1c9}
+.soma-v3 .v3-transport-menu .v3-danger-action{background:#4d2627;color:#f7cccc;border:1px solid #aa6666}
+.soma-v3 .v3-transport-menu .v3-danger-action:hover{background:#633338}
+.soma-v3 .v3-transport-menu summary.v3-recording{box-shadow:0 0 0 1px #ad5c5c}
+.soma-v3 .v3-transport-menu summary.v3-recording svg{color:#ff9a94;animation:v3-status-pulse 1.2s ease-in-out infinite}
+.soma-v3 .v3-transport-error{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid #604237;padding:10px 5px 2px}
+.soma-v3 .v3-transport-error button{padding:8px 12px;min-height:40px;border-radius:7px;background:#49302d;border:1px solid #a26e61;color:#f5cfb8}
+.soma-v3 .v3-scene-reminder,.soma-v3 .v3-output-hint{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid #68755d;border-radius:9px;padding:11px 14px;background:#252e23;color:#d8e7c8;font-size:12px}
+.soma-v3 .v3-scene-reminder span,.soma-v3 .v3-output-hint span{flex:1;min-width:150px}
+.soma-v3 .v3-scene-reminder button,.soma-v3 .v3-output-hint button{min-height:40px;border-radius:7px;padding:10px 13px;border:1px solid #bbcf96;background:#34472c;color:#ebf5d9}
+.soma-v3 .v3-output-hint{margin-bottom:12px;border-color:#958655;background:#302a1e;color:#eedeb2}
+.soma-v3 .v3-scene-permission button:disabled{opacity:.6}
+.soma-v3 .v3-capture-actions button:disabled{opacity:.45;cursor:not-allowed}
+.soma-v3 .v3-capture-actions button:not(:disabled):active,.soma-v3 .v3-transport-action:not(:disabled):active,.soma-v3 .v3-scene:active{transform:translateY(1px)}
+.soma-v3 .v3-scene[aria-pressed=true]{outline:1px solid #d0e49e;outline-offset:-3px}
+.soma-v3 .v3-popover>button[aria-pressed=true]::after{content:'✓';margin-left:auto;font-size:14px;color:#dcf3aa}
+@keyframes v3-status-pulse{50%{opacity:.42}}
+@media(prefers-reduced-motion:reduce){.soma-v3 .v3-led,.soma-v3 .v3-transport-menu summary.v3-recording svg{animation:none!important}}
