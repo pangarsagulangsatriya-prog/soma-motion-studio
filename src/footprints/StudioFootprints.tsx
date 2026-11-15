@@ -124,5 +124,5 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
   };
   raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);
  },[]);
- return <canvas ref={canvasRef} className="tracking-overlay studio-footprints-canvas" aria-label="Footprints: jejak kaki dari gerak tubuh" style={{display:props.active?'block':'none'}}/>;
+ return <canvas ref={canvasRef} width={1280} height={720} className="tracking-overlay studio-footprints-canvas" aria-label="Footprints: jejak kaki dari gerak tubuh" style={{display:props.active?'block':'none'}}/>;
 });
