@@ -12,6 +12,7 @@ import {ScenePicker,type SceneId} from './studio/v3/ScenePicker';
 import {StudioTransport} from './studio/v3/StudioTransport';
 import {SceneInspector} from './studio/v3/SceneInspector';
 import {CaptureHub,type CaptureTab} from './studio/v3/CaptureHub';
+import {bodyConnectionRequired,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
 import './studio/v3/studio-v3.css';
 import {LIVE_MODES,switchLiveMode} from './studio/liveVisual';
 import {hydraDefaults} from './studio/hydraConfig';
@@ -116,7 +117,13 @@ export default function App(){
   }catch(e){notify('Gagal membuka kamera tubuh: '+(e instanceof Error?e.message:'coba lagi.'));}
  }
  function selectScene(scene:SceneId){
-  if(scene==='footprints'){setFootprintsActive(true);setBodyPromptDismissed(false);setTab('visual');notify(sr.current.input!=='body'?'Footprints membutuhkan kamera Body. Pilih Gunakan Body untuk mulai.':'Footprints dipilih.');return;}
+  if(scene==='footprints'){
+   setFootprintsActive(true);setBodyPromptDismissed(false);setTab('visual');
+   if(sr.current.output==='sound')update({output:'both'});
+   notify(sr.current.input!=='body'||!cameraOn?'Footprints dipilih. Hubungkan kamera Body agar gerak kaki terbaca.':'Footprints aktif. Gerakkan kaki di depan kamera.');
+   return;
+  }
+  if(stoppingVideoRequiresConfirmation(footprintRecording,'footprints',scene)&&!window.confirm('Video Footprints masih direkam. Mengganti scene akan menghentikan video dan mengunduhnya. Lanjutkan?'))return;
   setFootprintsActive(false);setBodyPromptDismissed(false);update(switchLiveMode(sr.current,scene));
  }
  async function acceptFootprintsBody(){
