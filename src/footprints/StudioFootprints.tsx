@@ -3,16 +3,17 @@ import type {MotionFrame,Settings} from '../engine/types';
 import {download} from '../engine/recording';
 import {drawFoot} from './glyph';
 import {nextImprint} from './spacing';
+import {GaitAnalyzer} from './gait-analysis/index';
 import {palettes,patternSVG,smoothSample,validateSession,type Sample,type Recipe} from './pattern';
 import './studio-footprints.css';
 
 export type FootprintStyle='Tapak'|'Garis'|'Titik'|'Campuran';
 export type FootprintConfig={
  style:FootprintStyle; palette:number; size:number; life:number; delay:number;
- showLive:boolean; showTrail:boolean; hold:boolean; colors:{background:string;left:string;right:string};
+ showLive:boolean; showTrail:boolean; hold:boolean; gaitAnalysis:boolean; colors:{background:string;left:string;right:string};
 };
 export const footprintDefaults=():FootprintConfig=>({
- style:'Campuran',palette:0,size:32,life:22,delay:0,showLive:true,showTrail:true,hold:false,
+ style:'Campuran',palette:0,size:32,life:22,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:true,
  colors:{background:palettes[0][1],left:palettes[0][2],right:palettes[0][3]}
 });
 export type FootprintsHandle={
@@ -34,6 +35,8 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  const session=useRef<Sample[]>([]);
  const elapsed=useRef(0);
  const lastFrame=useRef(-1);
+ const gait=useRef(new GaitAnalyzer());
+ useEffect(()=>{gait.current.reset();live.current=[null,null];lastPrint.current=[null,null];},[props.config.gaitAnalysis]);
  const latest=useRef(props);latest.current=props;
  const movie=useRef<MediaRecorder|null>(null),movieStream=useRef<MediaStream|null>(null);
  const recipe=():Recipe=>{
@@ -51,7 +54,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
    if(file.size>25_000_000)throw Error('JSON terlalu besar (maksimal 25 MB).');
    const data=validateSession(JSON.parse(await file.text()));
    session.current=data.samples.map(m=>({...m}));view.current=data.samples.slice(-12000).map(m=>({...m}));
-   live.current=[null,null];lastPrint.current=[null,null];
+   live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();
    elapsed.current=(session.current.at(-1)?.t??0)+1;
    lastFrame.current=-1;
    latest.current.onNotice('Sesi Footprints dimuat. Pilih warna atau gaya visual lalu simpan PNG/SVG.');
@@ -84,8 +87,8 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  useEffect(()=>()=>{if(movie.current?.state==='recording'){movie.current.onstop=null;movie.current.stop();}movieStream.current?.getTracks().forEach(t=>t.stop());},[]);
  useEffect(()=>{if(!props.active&&movie.current?.state==='recording')movie.current.stop();},[props.active]);
  useImperativeHandle(ref,()=>({
-  clearView:()=>{view.current=[];live.current=[null,null];lastPrint.current=[null,null];},
-  newSession:()=>{view.current=[];session.current=[];live.current=[null,null];lastPrint.current=[null,null];elapsed.current=0;lastFrame.current=-1;latest.current.onNotice('Sesi Footprints baru dimulai.');},
+  clearView:()=>{view.current=[];live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();},
+  newSession:()=>{view.current=[];session.current=[];live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();elapsed.current=0;lastFrame.current=-1;latest.current.onNotice('Sesi Footprints baru dimulai.');},
   toggleVideo,exportPNG:savePNG,exportSVG:saveSVG,exportJSON:saveJSON,importJSON,count:()=>session.current.length
  }));
  useEffect(()=>{
@@ -104,6 +107,14 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
     const aspect=video?.videoWidth&&video?.videoHeight?video.videoWidth/video.videoHeight:4/3;
     const factorX=Math.min(1,aspect/(16/9)),factorY=Math.min(1,(16/9)/aspect);
     for(let side=0;side<2;side++){
+     if(c.gaitAnalysis){
+      const mark=gait.current.observe({...f,tracked:valid},side as 0|1,clock,aspect);
+      if(!mark){live.current[side]=null;lastPrint.current[side]=null;continue;}
+      live.current[side]=mark;
+      view.current.push(mark);
+      if(session.current.length<100000)session.current.push({...mark});
+      continue;
+     }
      const heel=f.pose[29+side],toe=f.pose[31+side];
      if(!valid||!heel||!toe||(heel.visibility??0)<.55||(toe.visibility??0)<.55){
       live.current[side]=null;lastPrint.current[side]=null;continue;
@@ -121,7 +132,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
      if(session.current.length<100000)session.current.push({...mark});
     }
    }
-   if(!c.hold&&now-f.time>400){live.current=[null,null];lastPrint.current=[null,null];}
+   if(!c.hold&&now-f.time>400){live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();}
    view.current=view.current.filter(m=>clock-m.t<(c.life+c.delay)*1000).slice(-12000);
    if(now-renderAt<1000/30)return;renderAt=now;
    const target=p.canvasRef.current;if(!target)return;

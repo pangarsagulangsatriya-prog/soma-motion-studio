@@ -22,6 +22,8 @@ export function FootprintsPanel({config:c,update,onOpenOutput,onOpenCalibration,
    <label>Kaki kanan<input type="color" aria-label="Warna kaki kanan" value={c.colors.right} onChange={e=>setColor('right',e.target.value)}/></label>
   </div>
   <div className="section-label">RESPONS JEJAK <span>REALTIME</span></div>
+  <label className="check-field"><input type="checkbox" checked={c.gaitAnalysis} onChange={e=>update({gaitAnalysis:e.target.checked})}/> Analisis gait · perkiraan fase langkah</label>
+  <p className="fp-footnote">Gait membaca tumit, jari kaki, pergelangan, dan pinggul untuk memperkirakan fase ayun dan tumpu. Aktif: satu cetakan per kontak terduga. Nonaktif: cetakan berdasarkan jarak bergerak. Kamera biasa tidak mengukur tekanan kaki ke lantai.</p>
   <label className="fp-range"><span>Ukuran tapak <b>{c.size}px</b></span><input type="range" min="12" max="90" value={c.size} onChange={e=>update({size:+e.target.value})}/></label>
   <label className="fp-range"><span>Umur jejak <b>{c.life} detik</b></span><input type="range" min="1" max="60" value={c.life} onChange={e=>update({life:+e.target.value})}/></label>
   <label className="fp-range"><span>Jeda tampil <b>{c.delay.toFixed(1)} detik</b></span><input type="range" min="0" max="2" step=".1" value={c.delay} onChange={e=>update({delay:+e.target.value})}/></label>
