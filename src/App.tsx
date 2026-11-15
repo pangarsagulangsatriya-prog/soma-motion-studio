@@ -90,6 +90,17 @@ export default function App(){
   if(input==='mouse'){stopCamera();setSource('mouse');sourceRef.current='mouse';setStatus('Mouse siap · tahan dan geser');}
   else{setSource('camera');sourceRef.current='camera';if(wasCamera)await startCamera();else setStatus('Kamera belum aktif');}
  }
+ async function openBodyCamera(){
+  try{
+   if(sr.current.input!=='body'){
+    const wasCamera=cameraOn;
+    await chooseInput('body');
+    if(!wasCamera)await startCamera();
+   }else if(!cameraOn)await startCamera();
+   if(!tracker.running){notify('Kamera belum siap. Periksa izin dan pilih Mulai kamera.');return;}
+   cameraCue.open();
+  }catch(e){notify('Gagal membuka kamera tubuh: '+(e instanceof Error?e.message:'coba lagi.'));}
+ }
  function testMode(){void chooseInput('mouse');}
  function switchMode(mode:Mode){mouse.current.down=false;mapper.reset();update({mode,mappings:defaultMappings(mode,sr.current.input),eventMap:defaultEvents(mode)});}
  function toggleTracking(){const layer=sr.current.layers;if(layer.tracking==='trigger'){trackingLatchRef.current=!trackingLatchRef.current;setTrackingLatched(trackingLatchRef.current);trackingVisible.current=trackingLatchRef.current;}else update({layers:{...layer,tracking:layer.tracking==='off'?'detected':'off'}});}
@@ -167,7 +178,7 @@ export default function App(){
        {calibration!==null&&<div className="calibration-overlay"><b>{calibration}</b><span>Jangkau kiri, kanan, atas, dan bawah.</span></div>}
        <div className="stage-axis axis-y">PITCH <ArrowRight size={11}/></div><div className="stage-axis axis-x">VOLUME <ArrowRight size={11}/></div><span className="stage-footnote">{source==='mouse'?'SIMULASI / INPUT MANUAL':cameraOn?'VIDEO TETAP DI PERANGKAT INI':'640 × 480 / WEBCAM'}</span>
       </div>
-      <LiveVisualBar openCamera={cameraCue.open} voiceStatus={cameraCue.voice.status} photoCount={photoArchive.photos.filter(Boolean).length} openPhotos={()=>setModal('photos')} settings={settings} update={update} shown={!clean||hudVisible||controlsOpen} tracking={trackingVisible.current} toggleTracking={toggleTracking}/>
+      <LiveVisualBar openCamera={()=>void openBodyCamera()} voiceStatus={cameraCue.voice.status} photoCount={photoArchive.photos.filter(Boolean).length} openPhotos={()=>setModal('photos')} settings={settings} update={update} shown={!clean||hudVisible||controlsOpen} tracking={trackingVisible.current} toggleTracking={toggleTracking}/>
       <div className="camera-controls"><div className="camera-buttons"><button className={`outline-button small ${source==='camera'?'chosen':''}`} onClick={()=>cameraOn?stopCamera():void startCamera()} disabled={cameraBusy}>{cameraOn?<CameraOff size={15}/>:<Camera size={15}/>} {cameraOn?'Hentikan kamera':'Mulai kamera'}</button><button className={`quiet-button small ${source==='mouse'?'chosen':''}`} onClick={testMode}><MousePointer2 size={14}/> Mode mouse</button></div>{source==='camera'&&devices.length>0&&<label className="camera-device">Perangkat kamera <select aria-label="Pilih perangkat kamera" value={deviceId} onChange={e=>{stopCamera();setDeviceId(e.target.value);notify('Kamera dipilih. Tekan Mulai kamera untuk menggunakannya.');}}><option value="">Kamera default</option>{devices.map((device,i)=><option key={device.deviceId} value={device.deviceId}>{device.label||`Kamera ${i+1}`}</option>)}</select></label>}<button className="tracking-status" onClick={()=>setModal('status')}><i className={frame.tracked?'on':''}/>{statusLabel}<ChevronRight size={12}/></button></div>
       <div className="motion-stats"><div><span>POSISI X</span><b>{frame.tracked?frame.features.x.toFixed(2):'—'}<small>/ 1.00</small></b></div><div><span>POSISI Y</span><b>{frame.tracked?frame.features.y.toFixed(2):'—'}<small>/ 1.00</small></b></div><div><span>KECEPATAN</span><b>{frame.tracked?frame.features.speed.toFixed(2):'—'}<small>NORM.</small></b></div><div><span>TRACKING</span><b>{source==='camera'&&frame.tracked?Math.round(frame.fps):'—'}<small>FPS</small></b></div></div>
      </section>
