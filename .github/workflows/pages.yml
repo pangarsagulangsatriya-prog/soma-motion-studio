@@ -1,7 +1,7 @@
 name: Deploy SOMA to GitHub Pages
+# SOMA production runs on Vercel. Optional GitHub Pages deployment is manual only.
+# Enable GitHub Pages in repository settings before running this workflow.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
