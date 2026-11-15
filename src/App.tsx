@@ -218,7 +218,7 @@ export default function App(){
        onCapture={()=>{setCaptureTab(footprintsActive?'pattern':'photo');setCaptureOpen(true);}}
        hold={footprintsActive?footprintConfig.hold:!!settings.hydra?.hold}
        onHold={()=>{if(footprintsActive)updateFootprint({hold:!footprintConfig.hold});else update({hydra:{...hydraDefaults(),...sr.current.hydra,hold:!(sr.current.hydra?.hold??false)}});}}
-       onAdvanced={()=>setInspectorOpen(v=>!v)}
+       onAdvanced={()=>setInspectorOpen(v=>!v)} onStatusClick={()=>setModal('status')}
        projectorOpen={projection.opened} projectorConnected={projection.status.connected} projectorMode={projection.transport}
        onProjectorOpen={()=>{projection.setTransport('live');projection.openOutput();}}
        onProjectorLive={()=>projection.setTransport('live')} onProjectorHold={()=>projection.setTransport('hold')}
