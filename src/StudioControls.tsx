@@ -6,7 +6,7 @@ import {Range} from './components';
 import {VisualGlyph} from './VisualStage';
 import {CHARACTERS,VISUALS,characterPatch,type Settings,type Character,type VisualStyle,type Target} from './engine/types';
 export type ControlTab='sound'|'visual'|'layers';
-export function StudioControls({settings:s,update,tab,setTab,openModal,audioOn,muted,toggleAudio,clean,onClose,trackingLatched,toggleTracking,photoControls}:{photoControls?:React.ReactNode;settings:Settings;update:(p:Partial<Settings>)=>void;tab:ControlTab;setTab:(t:ControlTab)=>void;openModal:(s:'settings'|'mapping'|'visual-mapping'|'presets'|'save')=>void;audioOn:boolean;muted:boolean;toggleAudio:()=>void;clean:boolean;onClose:()=>void;trackingLatched:boolean;toggleTracking:()=>void}){
+export function StudioControls({settings:s,update,tab,setTab,openModal,audioOn,muted,toggleAudio,clean,onClose,trackingLatched,toggleTracking,photoControls,footprintsActive=false,footprintControls}:{footprintsActive?:boolean;footprintControls?:React.ReactNode;photoControls?:React.ReactNode;settings:Settings;update:(p:Partial<Settings>)=>void;tab:ControlTab;setTab:(t:ControlTab)=>void;openModal:(s:'settings'|'mapping'|'visual-mapping'|'presets'|'save')=>void;audioOn:boolean;muted:boolean;toggleAudio:()=>void;clean:boolean;onClose:()=>void;trackingLatched:boolean;toggleTracking:()=>void}){
  const macro=(name:keyof Settings['macros'],v:number)=>update({macros:{...s.macros,[name]:v},...(name==='space'?{reverb:v*.85}:{})});
  const mapped=(o:Target)=>s.mappings.some(m=>m.enabled&&m.output===o);
  const selectCharacter=(character:Character)=>{const patch=characterPatch(character);if((character==='raw'||character==='metal')&&!s.mappings.some(m=>m.output==='roughness'))patch.mappings=[...s.mappings,{id:'roughness-motion',input:'speed',output:'roughness',min:.3,max:.95,curve:'linear',invert:false,sensitivity:1,smoothing:.06,threshold:0,enabled:true}];update(patch);};
@@ -25,6 +25,7 @@ export function StudioControls({settings:s,update,tab,setTab,openModal,audioOn,m
  </>}
  {tab==='visual'&&<>
   {photoControls}
+  {footprintsActive?footprintControls:<>
   <MaterialControls settings={s} update={update}/>
   <HydraControls settings={s} update={update}/>
   {!(s.hydra?.enabled??true)&&<>
@@ -36,6 +37,7 @@ export function StudioControls({settings:s,update,tab,setTab,openModal,audioOn,m
   <div className="macro-controls"><Range label="Kepadatan" value={s.visual.density} onChange={v=>update({visual:{...s.visual,density:v}})}/><Range label="Ukuran dasar" value={s.visual.size} onChange={v=>update({visual:{...s.visual,size:v}})}/><Range label="Durasi jejak" min={.3} max={6} step={.1} value={s.visual.life} display={`${s.visual.life.toFixed(1)} s`} onChange={v=>update({visual:{...s.visual,life:v}})}/></div>
   <p className="fine-print">Pemetaan aktif mengambil alih ukuran dan bentangan saat bergerak.</p>
   <button className="settings-row" onClick={()=>openModal('visual-mapping')}><SlidersHorizontal size={15}/><span>Pemetaan visual<small>{s.visual.mappings.filter(m=>m.enabled).length} hubungan aktif</small></span><ArrowUpRight size={14}/></button>
+  </>}
   </>}
  </>}
  {tab==='layers'&&<>
