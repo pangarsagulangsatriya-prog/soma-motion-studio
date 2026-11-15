@@ -26,3 +26,12 @@ export function nextTab<T extends string>(tabs:readonly T[],current:T,direction:
  const index=tabs.indexOf(current),at=index<0?0:index;
  return tabs[(at+direction+tabs.length)%tabs.length];
 }
+
+/** Global performance shortcuts must never hijack native control behaviour. */
+export const keyboardIsInControl=(tagName:string,editable:boolean,insideControl:boolean)=>
+ editable||insideControl||['INPUT','SELECT','TEXTAREA','BUTTON','SUMMARY','A','OPTION'].includes(tagName.toUpperCase());
+
+/** Five-task usability score: do not declare completion from a successful build alone. */
+export function completionRate(passed:number,total:number):number{
+ return total>0?Math.max(0,Math.min(1,passed/total)):0;
+}
