@@ -12,7 +12,7 @@ const SOUNDS:{id:Mode;name:string}[]=[
 ];
 export function StudioTransport(props:{
  input:InputKind;onSource:(source:InputKind)=>void;
- cameraOn:boolean;cameraBusy:boolean;cameraError:string;tracking:boolean;status:string;onCamera:()=>void;
+ cameraOn:boolean;cameraBusy:boolean;cameraError:string;tracking:boolean;hadTracking:boolean;status:string;onCamera:()=>void;
  output:Settings['output'];onOutputChange:(value:Settings['output'])=>void;
  audioOn:boolean;muted:boolean;onAudio:()=>void;soundMode:Mode;onSoundMode:(mode:Mode)=>void;
  audioRecording:boolean;videoRecording:boolean;onRecordAudio:()=>void;onRecordVideo:()=>void;videoAvailable:boolean;
@@ -23,7 +23,7 @@ export function StudioTransport(props:{
  const p=props,recording=p.audioRecording||p.videoRecording;
  const root=useRef<HTMLElement|null>(null);
  const [seconds,setSeconds]=useState(0);
- const camera=cameraView({source:p.input==='mouse'?'mouse':'camera',busy:p.cameraBusy,error:p.cameraError,cameraOn:p.cameraOn,tracked:p.tracking,input:p.input});
+ const camera=cameraView({source:p.input==='mouse'?'mouse':'camera',busy:p.cameraBusy,error:p.cameraError,cameraOn:p.cameraOn,tracked:p.tracking,hadTracking:p.hadTracking,input:p.input});
  useEffect(()=>{
   if(!recording){setSeconds(0);return;}
   const started=performance.now(),interval=window.setInterval(()=>setSeconds((performance.now()-started)/1000),250);
