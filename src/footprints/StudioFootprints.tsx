@@ -3,7 +3,7 @@ import type {MotionFrame,Settings} from '../engine/types';
 import {download} from '../engine/recording';
 import {drawFoot} from './glyph';
 import {nextImprint} from './spacing';
-import {palettes,patternSVG,smoothSample,type Sample,type Recipe} from './pattern';
+import {palettes,patternSVG,smoothSample,validateSession,type Sample,type Recipe} from './pattern';
 import './studio-footprints.css';
 
 export type FootprintStyle='Tapak'|'Garis'|'Titik'|'Campuran';
@@ -17,7 +17,7 @@ export const footprintDefaults=():FootprintConfig=>({
 });
 export type FootprintsHandle={
  clearView:()=>void;newSession:()=>void;exportPNG:()=>Promise<void>;toggleVideo:()=>void;
- exportSVG:()=>void;exportJSON:()=>void;count:()=>number;
+ exportSVG:()=>void;exportJSON:()=>void;importJSON:(file:File)=>Promise<void>;count:()=>number;
 };
 type Props={
  active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
@@ -46,6 +46,17 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  const saveJSON=()=>{try{requireSamples();const payload={schema:'soma.footprints.session',version:2,coordinateSpace:'stage-normalized',calibrated:false,
   source:'body-pose',recipe:recipe(),samples:session.current};download(new Blob([JSON.stringify(payload)],{type:'application/json'}),'SOMA_FOOTPRINTS_SESSION.json');latest.current.onNotice('Data sesi Footprints tersimpan.');}catch(e){latest.current.onNotice((e as Error).message);}};
  const savePNG=async()=>{try{requireSamples();const svg=patternSVG(session.current,recipe());const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));try{const img=new Image();img.src=url;await img.decode();const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;canvas.getContext('2d')?.drawImage(img,0,0);const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Gagal memproses PNG.')),'image/png'));download(blob,'SOMA_FOOTPRINTS_PATTERN.png');latest.current.onNotice('PNG pola sepanjang sesi tersimpan.');}finally{URL.revokeObjectURL(url);}}catch(e){latest.current.onNotice((e as Error).message);}};
+ const importJSON=async(file:File)=>{
+  try{
+   if(file.size>25_000_000)throw Error('JSON terlalu besar (maksimal 25 MB).');
+   const data=validateSession(JSON.parse(await file.text()));
+   session.current=data.samples.map(m=>({...m}));view.current=data.samples.slice(-12000).map(m=>({...m}));
+   live.current=[null,null];lastPrint.current=[null,null];
+   elapsed.current=(session.current.at(-1)?.t??0)+1;
+   lastFrame.current=-1;
+   latest.current.onNotice('Sesi Footprints dimuat. Pilih warna atau gaya visual lalu simpan PNG/SVG.');
+  }catch(e){latest.current.onNotice((e as Error).message);}
+ };
  const toggleVideo=()=>{
   if(movie.current?.state==='recording'){movie.current.stop();return;}
   try{
@@ -75,7 +86,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  useImperativeHandle(ref,()=>({
   clearView:()=>{view.current=[];live.current=[null,null];lastPrint.current=[null,null];},
   newSession:()=>{view.current=[];session.current=[];live.current=[null,null];lastPrint.current=[null,null];elapsed.current=0;lastFrame.current=-1;latest.current.onNotice('Sesi Footprints baru dimulai.');},
-  toggleVideo,exportPNG:savePNG,exportSVG:saveSVG,exportJSON:saveJSON,count:()=>session.current.length
+  toggleVideo,exportPNG:savePNG,exportSVG:saveSVG,exportJSON:saveJSON,importJSON,count:()=>session.current.length
  }));
  useEffect(()=>{
   let raf=0,prior=performance.now(),renderAt=0;
