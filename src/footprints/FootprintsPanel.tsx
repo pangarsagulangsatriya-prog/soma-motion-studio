@@ -1,10 +1,10 @@
 import type {FootprintConfig,FootprintStyle} from './StudioFootprints';
 import {palettes} from './pattern';
-export function FootprintsPanel({config:c,update,onOpenOutput,onOpenCalibration,onCapture,onClear,onNewSession,onExportSVG,onExportJSON,onRecord,isRecording}:{
+export function FootprintsPanel({config:c,update,onOpenOutput,onOpenCalibration,onCapture,onClear,onNewSession,onExportSVG,onExportJSON,onImportJSON,onRecord,isRecording}:{
  config:FootprintConfig;update:(next:Partial<FootprintConfig>)=>void;
  onOpenOutput:()=>void;onOpenCalibration:()=>void;onCapture:()=>void;
  onClear:()=>void;onNewSession:()=>void;onExportSVG:()=>void;onExportJSON:()=>void;
- onRecord?:()=>void;isRecording?:boolean;
+ onRecord?:()=>void;isRecording?:boolean;onImportJSON:(file:File)=>void;
 }){
  const setPalette=(v:number)=>{const a=palettes[v]??palettes[0];update({palette:v,colors:{background:a[1],left:a[2],right:a[3]}});};
  const setColor=(key:keyof FootprintConfig['colors'],value:string)=>update({colors:{...c.colors,[key]:value}});
@@ -45,6 +45,7 @@ export function FootprintsPanel({config:c,update,onOpenOutput,onOpenCalibration,
    <button onClick={onNewSession}>Sesi baru</button>
    {onRecord&&<button onClick={onRecord}>{isRecording?'Stop video':'Rekam video'}</button>}
   </div>
+  <label className="fp-range">Buka sesi JSON<input type="file" accept=".json,application/json" aria-label="Impor data Footprints" onChange={e=>{const file=e.target.files?.[0];if(file)onImportJSON(file);e.target.value='';}}/></label>
   <p className="fp-footnote">PNG dan SVG menggambar seluruh pola gerak sesi, termasuk jejak yang sudah memudar di layar. Pemetaan kontak lantai masih berupa interpretasi jarak langkah.</p>
  </section>;
 }
