@@ -2,7 +2,7 @@ import type {ProjectionState} from './model';
 export const OUTPUT_TIMEOUT=2800;
 export type ProjectionControl=Omit<ProjectionState,'image'>;
 export class ProjectionLink{
- readonly id=Array.from(crypto.getRandomValues(new Uint32Array(4)),n=>n.toString(16).padStart(8,'0')).join('');private channel:BroadcastChannel|null=null;private child:Window|null=null;private inFlight:number|null=null;private sequence=0;private lastControl=0;
+ readonly id=Array.from(crypto.getRandomValues(new Uint32Array(4)),n=>n.toString(16).padStart(8,'0')).join('');private channel:BroadcastChannel|null=null;private child:Window|null=null;private inFlight:number|null=null;private sequence=0;private lastControl=0;private artworkBusy=false;private artworkSent=0;
  lastSeen=0;receivedFrames=0;renderer='';error='';outputInfo:{width:number;height:number;viewportWidth:number;viewportHeight:number;dpr:number;fps:number;p95Ms:number;frames:number;samples:number}|null=null;
  private ack=(event:MessageEvent)=>{if(event.origin!==location.origin||event.source!==this.child||event.data?.session!==this.id)return;if(event.data.type==='frame-ack'&&event.data.sequence===this.inFlight){this.inFlight=null;this.receivedFrames++;}};
  start(){if(this.channel)return;try{this.channel=new BroadcastChannel(`soma-body-projection-${this.id}`);this.channel.onmessage=e=>{const m=e.data;if(m?.session!==this.id)return;if(m.type==='hello'){this.inFlight=null;this.lastSeen=Date.now();}if(m.type==='heartbeat'){this.lastSeen=Date.now();this.renderer=String(m.renderer??'').slice(0,60);if(m.info&&['width','height','viewportWidth','viewportHeight','dpr','fps','p95Ms','frames','samples'].every(k=>Number.isFinite(m.info[k])&&m.info[k]>=0))this.outputInfo=m.info;}if(m.type==='closed')this.lastSeen=0;};window.addEventListener('message',this.ack);}catch{this.error='Komunikasi output belum tersedia pada browser ini.';}}
@@ -15,6 +15,21 @@ export class ProjectionLink{
   if(!this.connected||this.inFlight!==null||!state.image)return;
   const image=state.image,data=image.mask.data.slice(),sequence=++this.sequence;this.inFlight=sequence;
   try{this.child!.postMessage({type:'mask',session:this.id,sequence,width:image.mask.width,height:image.mask.height,aspect:image.aspect,time:image.time,rawBounds:image.rawBounds,bounds:image.bounds,processed:!!image.processed,buffer:data.buffer},location.origin,[data.buffer]);}catch{this.inFlight=null;this.error='Kirim siluet gagal. Buka ulang output.';}
+ }
+ /** Stream the already-rendered Footprints canvas through the existing calibrated output link.
+   * Only one frame can be in flight. Other Projection modes keep using the mask protocol.
+   */
+ sendArtwork(state:ProjectionState,source:HTMLCanvasElement,now:number){
+  this.send({...state,image:null},now);
+  if(!this.opened||!this.connected||this.inFlight!==null||this.artworkBusy||now-this.artworkSent<50||state.transport==='blackout'||state.pattern)return;
+  if(typeof createImageBitmap!=='function')return;
+  this.artworkSent=now;this.artworkBusy=true;
+  void createImageBitmap(source).then(bitmap=>{
+   if(!this.opened||!this.connected||this.inFlight!==null){bitmap.close();return;}
+   const sequence=++this.sequence;this.inFlight=sequence;
+   try{this.child!.postMessage({type:'artwork',session:this.id,sequence,bitmap},location.origin,[bitmap]);}
+   catch{bitmap.close();this.inFlight=null;this.error='Kirim komposisi Footprints gagal. Periksa output.';}
+  }).catch(()=>{this.error='Tidak bisa menyalin komposisi Footprints.';}).finally(()=>{this.artworkBusy=false;});
  }
  closeOutput(){this.channel?.postMessage({type:'shutdown',session:this.id});this.child?.close();this.child=null;this.lastSeen=0;this.inFlight=null;}
  dispose(){this.closeOutput();this.channel?.close();this.channel=null;window.removeEventListener('message',this.ack);}
