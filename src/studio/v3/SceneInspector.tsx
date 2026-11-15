@@ -1,4 +1,5 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useId,useState,type KeyboardEvent} from 'react';
+import {nextTab} from './interaction';
 import {SlidersHorizontal} from 'lucide-react';
 import {hydraDefaults} from '../hydraConfig';
 import {MaterialControls} from '../MaterialControls';
@@ -14,7 +15,17 @@ export function SceneInspector({scene,settings:s,update,footprint:c,updateFootpr
  footprint:FootprintConfig;updateFootprint:(next:Partial<FootprintConfig>)=>void;onAdvanced:()=>void;
 }){
  const [tab,setTab]=useState<Tab>('style');
+ const tabId=useId();
  const h={...hydraDefaults(),...s.hydra},isFoot=scene==='footprints';
+ const visibleTabs:Tab[]=isFoot?['style','response']:['style','material','response'];
+ const tabKeys=(e:KeyboardEvent<HTMLButtonElement>)=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+  e.preventDefault();
+  const next=e.key==='Home'?visibleTabs[0]:e.key==='End'?visibleTabs[visibleTabs.length-1]:nextTab(visibleTabs,tab,e.key==='ArrowRight'?1:-1);
+  setTab(next);
+  const index=visibleTabs.indexOf(next);
+  e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[index]?.focus();
+ };
  useEffect(()=>{if(isFoot&&tab==='material')setTab('style');},[isFoot,tab]);
  const changeHydra=(patch:Partial<typeof h>)=>update({hydra:{...h,...patch}});
  const paletteChange=(index:number)=>{const p=palettes[index]??palettes[0];updateFootprint({palette:index,colors:{background:p[1],left:p[2],right:p[3]}});};
@@ -22,9 +33,9 @@ export function SceneInspector({scene,settings:s,update,footprint:c,updateFootpr
  return <div className="v3-scene-inspector" aria-label="Pengaturan scene">
   <div className="v3-inspector-title"><div><span>SCENE VISUAL</span><h2>{isFoot?'Footprints':scene==='liquid'?'Teks Cair':scene==='echo'?'Jejak Berulang':scene==='cut'?'Potongan':'Siluet × Teks'}</h2></div><button type="button" aria-label="Pengaturan lanjut" title="Pengaturan lanjut" onClick={onAdvanced}><SlidersHorizontal size={18}/></button></div>
   <div className="v3-inspector-tabs" role="tablist" aria-label="Kategori pengaturan">
-   {([['style','Gaya'],['material','Bahan'],['response','Respons']] as const).filter(([id])=>!(isFoot&&id==='material')).map(([id,name])=><button key={id} type="button" role="tab" aria-selected={tab===id} onClick={()=>setTab(id)}>{name}</button>)}
+   {([['style','Gaya'],['material','Bahan'],['response','Respons']] as const).filter(([id])=>visibleTabs.includes(id)).map(([id,name])=><button key={id} type="button" id={tabId+'-'+id} role="tab" aria-controls={tabId+'-panel'} aria-selected={tab===id} tabIndex={tab===id?0:-1} onKeyDown={tabKeys} onClick={()=>setTab(id)}>{name}</button>)}
   </div>
-  <div className="v3-inspector-body" role="tabpanel">
+  <div id={tabId+"-panel"} className="v3-inspector-body" role="tabpanel" aria-labelledby={tabId+"-"+tab}>
    {isFoot&&tab==='material'&&<p>Footprints memakai gerak kaki sebagai sumber pola. Pilih Gaya untuk menyesuaikan tapak.</p>}
    {isFoot&&tab==='style'&&<>
     <span className="v3-setting-heading">BENTUK JEJAK</span>
