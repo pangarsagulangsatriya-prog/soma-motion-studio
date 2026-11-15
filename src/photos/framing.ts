@@ -36,11 +36,13 @@ export class CameraFraming{
  private samples:Sample[]=[];
  private readySince:number|null=null;
  private zoom:{gap:number;size:number}|null=null;
+ private pairAnchor:{left:Point;right:Point;gap:number;size:number}|null=null;
  private resizeUntil=-Infinity;
+ private zoomIdleStart=0;
  open(){if(!this.state.open){this.state={open:true,size:.6,phase:'waiting',fired:false};this.resetMotion();}return {...this.state};}
  close(){this.state={...this.state,open:false,phase:'waiting',fired:false};this.resetMotion();}
- setSize(size:number){this.state.size=clamp(size,MIN_SIZE,MAX_SIZE);this.zoom=null;return {...this.state};}
- resetMotion(){this.last=null;this.previous=null;this.samples=[];this.readySince=null;this.zoom=null;this.resizeUntil=-Infinity;}
+ setSize(size:number){this.state.size=clamp(size,MIN_SIZE,MAX_SIZE);this.zoom=null;this.pairAnchor=null;return {...this.state};}
+ resetMotion(){this.last=null;this.previous=null;this.samples=[];this.readySince=null;this.zoom=null;this.pairAnchor=null;this.zoomIdleStart=0;this.resizeUntil=-Infinity;}
  step(frame:MotionFrame,now:number,enabled:boolean){
   this.state.fired=false;
   if(!this.state.open)return {...this.state};
@@ -56,21 +58,28 @@ export class CameraFraming{
   this.last=time;this.previous=current;
   this.samples.push(current);this.samples=this.samples.filter(s=>time-s.t<=220);
   if(this.readySince===null)this.readySince=time;
-  if(prev&&body.left&&body.right&&prev.left&&prev.right){
-   const l=body.left,r=body.right,pl=prev.left,pr=prev.right;
-   const axis={x:pr.x-pl.x,y:pr.y-pl.y},length=Math.max(.01,Math.hypot(axis.x,axis.y));
-   const along=(a:Point,b:Point)=>((a.x-b.x)*axis.x+(a.y-b.y)*axis.y)/length;
-   const left=along(l,pl),right=along(r,pr);
-   // Require two independently moving wrists; a one-arm strike cannot resize.
-   const paired=(left<-.045&&right>.045)||(left>.045&&right<-.045);
-   if(paired){
-    this.zoom??={gap:distance(pl,pr),size:this.state.size};
+  if(body.left&&body.right){
+   const l=body.left,r=body.right;
+   this.pairAnchor??={left:l,right:r,gap:distance(l,r),size:this.state.size};
+   const a=this.pairAnchor,axis={x:a.right.x-a.left.x,y:a.right.y-a.left.y};
+   const axisLen=Math.max(.01,Math.hypot(axis.x,axis.y));
+   const projected=(p:Point,q:Point)=>((p.x-q.x)*axis.x+(p.y-q.y)*axis.y)/axisLen;
+   const ld=projected(l,a.left),rd=projected(r,a.right);
+   // Compare both wrist trajectories to the same anchor, not frame-by-frame jitter.
+   const paired=(ld<-.095&&rd>.095)||(ld>.095&&rd<-.095);
+   if(paired||this.zoom!==null){
+    this.zoom??={gap:a.gap,size:a.size};
     const target=clamp(this.zoom.size*distance(l,r)/Math.max(.18,this.zoom.gap),MIN_SIZE,MAX_SIZE);
-    this.state.size+=(target-this.state.size)*(1-Math.exp(-dt/.075));
-    this.resizeUntil=time+250;this.readySince=null;this.samples=[current];
+    this.state.size+=(target-this.state.size)*(1-Math.exp(-dt/.07));
+    this.resizeUntil=time+160;this.readySince=null;this.samples=[current];
+    // Once paired movement stops, a fresh strike can be armed.
+    if(prev&&prev.left&&prev.right&&Math.abs(distance(l,r)-distance(prev.left,prev.right))<.014){
+     if(!this.zoomIdleStart)this.zoomIdleStart=time;
+     if(time-this.zoomIdleStart>180){this.zoom=null;this.pairAnchor={left:l,right:r,gap:distance(l,r),size:this.state.size};this.resizeUntil=time+220;}
+    }else this.zoomIdleStart=0;
     this.state.phase='resize';return {...this.state};
    }
-  }
+  }else this.pairAnchor=null;
   if(time<this.resizeUntil){
    this.state.phase='resize';this.samples=[current];return {...this.state};
   }
