@@ -227,7 +227,7 @@ export default function App(){
        if(input!=='body'&&footprintsActive)setBodyPromptDismissed(false);
        void chooseInput(input);
       }}
-       cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError} tracking={frame.tracked} status={statusLabel}
+       cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError} tracking={frame.tracked} hadTracking={hasPlayed.current} status={statusLabel}
        onCamera={()=>{
        if(cameraOn){
         if(footprintRecording){
