@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {SlidersHorizontal} from 'lucide-react';
 import {hydraDefaults} from '../hydraConfig';
 import {MaterialControls} from '../MaterialControls';
@@ -15,6 +15,7 @@ export function SceneInspector({scene,settings:s,update,footprint:c,updateFootpr
 }){
  const [tab,setTab]=useState<Tab>('style');
  const h={...hydraDefaults(),...s.hydra},isFoot=scene==='footprints';
+ useEffect(()=>{if(isFoot&&tab==='material')setTab('style');},[isFoot,tab]);
  const changeHydra=(patch:Partial<typeof h>)=>update({hydra:{...h,...patch}});
  const paletteChange=(index:number)=>{const p=palettes[index]??palettes[0];updateFootprint({palette:index,colors:{background:p[1],left:p[2],right:p[3]}});};
  const colorChange=(key:keyof FootprintConfig['colors'],value:string)=>updateFootprint({colors:{...c.colors,[key]:value}});
