@@ -17,10 +17,11 @@ export function useCameraCue({archive,frameRef,settingsRef,videoRef,active,notif
   if(framing.current.state.open)return;
   if(!a.archive.loaded){a.notify('Arsip sedang dimuat. Coba sebentar lagi.');return;}
   if(!cameraAvailable(videoRef.current)){a.notify('Nyalakan kamera utama sebelum membuka bingkai.');return;}
-  if(settingsRef.current.input!=='hands'){a.notify('Pilih Hands untuk mengatur bingkai dan memukul.');return;}
+  if(settingsRef.current.input!=='body'){a.notify('Pilih mode Tubuh untuk mengatur bingkai dan melakukan pukulan.');return;}
   if(nextPhotoSlot(a.archive.photos,a.archive.replacement)===null){a.notify('Arsip penuh · 4/4. Pilih Ganti sebelum memanggil kamera.');return;}
-  a.archive.changeEnabled(false);setFrame({...framing.current.open()});a.onOpen();a.notify('Kamera. Rentangkan atau dekatkan dua telapak untuk mengatur bingkai.');
+  a.archive.changeEnabled(false);setFrame({...framing.current.open()});a.onOpen();a.notify('Bingkai aktif. Rentangkan atau dekatkan dua pergelangan tangan untuk mengubah ukuran. Pukul singkat ke arah mana pun untuk memotret.');
  },[videoRef,settingsRef]);
+ const setSize=useCallback((size:number)=>{setFrame({...framing.current.setSize(size)});},[]);
  const shoot=useCallback(async()=>{
   const a=latest.current,v=videoRef.current;
   if(capturing.current||!a.active||!v||a.archive.busy)return;
@@ -43,12 +44,12 @@ export function useCameraCue({archive,frameRef,settingsRef,videoRef,active,notif
  const processFrame=useCallback((motion:MotionFrame)=>{
   if(!framing.current.state.open)return;const now=performance.now();
   const a=latest.current;
-  if(!a.active||document.hidden||settingsRef.current.input!=='hands'||!cameraAvailable(videoRef.current)||nextPhotoSlot(a.archive.photos,a.archive.replacement)===null){close();return;}
+  if(!a.active||document.hidden||settingsRef.current.input!=='body'||!cameraAvailable(videoRef.current)||nextPhotoSlot(a.archive.photos,a.archive.replacement)===null){close();return;}
   const next=framing.current.step(motion,now,!a.archive.busy&&!capturing.current);
   if(next.fired){void shoot();return;}
   if(now-lastUI.current>32){lastUI.current=now;setFrame({...next});}
  },[close,shoot,settingsRef,videoRef]);
  useEffect(()=>{const timer=setInterval(()=>{if(framing.current.state.open&&performance.now()-frameRef.current.time>=300)processFrame(frameRef.current);},150);return()=>clearInterval(timer);},[frameRef,processFrame]);
- return {frame,voice,listening,open,close,shoot,processFrame,setVoiceEnabled,videoRef,settingsRef};
+ return {frame,voice,listening,open,close,setSize,shoot,processFrame,setVoiceEnabled,videoRef,settingsRef};
 }
 export type CameraCue=ReturnType<typeof useCameraCue>;

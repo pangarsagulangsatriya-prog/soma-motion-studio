@@ -3,28 +3,84 @@ import {CameraFraming,cameraCrop} from '../src/photos/framing.ts';
 import {cameraCommand,CameraVoice,type Recognition,type VoiceStatus} from '../src/photos/voice.ts';
 import {emptyFrame,type Landmark} from '../src/engine/types.ts';
 
-function hand(cx:number,y=.72,fist=false):Landmark[]{
- const h=Array.from({length:21},()=>({x:cx,y,z:0}));h[0]={x:cx,y,z:0};h[4]={x:cx-.08,y:y-.15,z:0};
- for(let k=0;k<4;k++)for(let j=0;j<4;j++)h[5+k*4+j]={x:cx+(k-1.5)*.025,y:y-.1-(fist?[0,.035,.01,-.015][j]:j*.06),z:0};
- return h;
+function frame(t:number,left:[number,number]|null,right:[number,number]|null){
+ const f=emptyFrame();f.time=t;f.tracked=true;
+ f.pose=Array.from({length:33},()=>({x:.5,y:.5,z:0,visibility:0}));
+ const place=(i:number,x:number,y:number)=>{f.pose[i]={x,y,z:0,visibility:1};};
+ place(11,.4,.4);place(12,.6,.4);place(23,.4,.76);place(24,.6,.76);
+ if(left)place(15,left[0],left[1]);
+ if(right)place(16,right[0],right[1]);
+ return f;
 }
-function frame(t:number,hands:Landmark[][]){const f=emptyFrame();f.time=t;f.tracked=!!hands.length;f.hands=hands;return f;}
-function step(g:CameraFraming,t:number,hands:Landmark[][]){return g.step(frame(t,hands),t,true);}
-function arm(g:CameraFraming,start=0){for(let t=start;t<=start+200;t+=50)step(g,t,[hand(.45,.6,true)]);}
+function step(g:CameraFraming,t:number,left:[number,number]|null,right:[number,number]|null,now=t){
+ return g.step(frame(t,left,right),now,true);
+}
 test('voice recognizes whole camera words and cancel, not word fragments',()=>{for(const s of ['Kamera!','kamera','camera','oke kamera sekarang'])assert.equal(cameraCommand(s),'camera');for(const s of ['batal kamera','Tutup kamera','batal'])assert.equal(cameraCommand(s),'cancel');for(const s of ['kameramen','kameraku','pukulan','diam'])assert.equal(cameraCommand(s),null);});
-test('frame starts closed and never shoots before a camera command',()=>{const g=new CameraFraming();arm(g);assert.equal(step(g,300,[hand(.45,.8,true)]).fired,false);assert.equal(g.state.open,false);});
-test('two open hands resize smoothly in both directions and do not fire',()=>{const g=new CameraFraming();g.open();step(g,0,[hand(.3),hand(.7)]);for(let t=50;t<=350;t+=50)assert.equal(step(g,t,[hand(.1),hand(.9)]).fired,false);assert.ok(g.state.size>.8);for(let t=400;t<=800;t+=50)step(g,t,[hand(.45),hand(.55)]);assert.ok(g.state.size<.35);assert.equal(g.state.open,true);});
-test('one held fist then fast downward strike fires exactly once and freezes size',()=>{const g=new CameraFraming();g.open();arm(g);assert.equal(g.state.phase,'ready');step(g,250,[hand(.45,.64,true)]);const result=step(g,300,[hand(.45,.73,true)]);assert.equal(result.fired,true);assert.equal(result.open,false);assert.equal(result.size,.6);for(let t=350;t<=600;t+=50)assert.equal(step(g,t,[hand(.45,.73,true)]).fired,false);});
-test('fast open hand, slow fist, pinch and horizontal movement cannot fire',()=>{
- for(const type of ['open','slow','pinch','horizontal']){const g=new CameraFraming();g.open();arm(g);for(let t=250;t<=600;t+=50){const h=hand(type==='horizontal'?.45+(t-200)*.0004:.45,type==='slow'?.6+(t-200)*.0001:.6+(t-200)*.0005,type!=='open'&&type!=='pinch');if(type==='pinch')h[4]={...h[8]};assert.equal(step(g,t,[h]).fired,false,type);}}
+test('body camera starts closed; body pose never captures until frame opens',()=>{
+ const g=new CameraFraming();
+ for(let t=0;t<=300;t+=50)assert.equal(step(g,t,[.34,.65],[.66,.65]).fired,false);
+ assert.equal(g.state.open,false);
 });
-test('lost, stale, off-screen, disabled and swapped hands do not invent a punch',()=>{
- for(const mode of ['lost','stale','offscreen','disabled']){const g=new CameraFraming();g.open();arm(g);const f=frame(250,[hand(.45,.6,true)]);if(mode==='lost')f.hands=[];if(mode==='offscreen')f.hands[0][0].x=-1;g.step(f,mode==='stale'?900:250,mode!=='disabled');assert.equal(step(g,300,[hand(.45,.75,true)]).fired,false,mode);}
- const g=new CameraFraming();g.open();for(let t=0;t<=300;t+=50)assert.equal(step(g,t,t%100?[hand(.7,.8,true),hand(.3,.5,true)]:[hand(.3,.5,true),hand(.7,.8,true)]).fired,false);
+test('frame uses body wrists and ignores hand landmark input',()=>{
+ const g=new CameraFraming();g.open();
+ const f=frame(0,null,null);f.hands=[Array.from({length:21},()=>({x:.5,y:.5,z:0}))];
+ assert.equal(g.step(f,0,true).fired,false);
+ assert.equal(g.state.phase,'waiting');
 });
-test('new command is idempotent while open, and rearming requires a fresh held fist',()=>{const g=new CameraFraming();g.open();step(g,0,[hand(.2),hand(.8)]);step(g,100,[hand(.1),hand(.9)]);const size=g.state.size;g.open();assert.equal(g.state.size,size);g.close();g.open();assert.equal(step(g,150,[hand(.4,.8,true)]).fired,false);});
-test('crop stays centered and bounded at different video ratios',()=>{for(const [w,h] of [[640,480],[480,640],[1920,1080]])for(const s of [-1,.25,.6,.9,4,NaN]){const c=cameraCrop(w,h,s);assert.equal(c.width,c.height);assert.ok(c.x>=0&&c.y>=0&&c.x+c.width<=w&&c.y+c.height<=h);assert.ok(Math.abs(c.x+c.width/2-w/2)<1);}});
-
+test('paired wrists resize smoothly and do not trigger shutter',()=>{
+ const g=new CameraFraming();g.open();
+ step(g,0,[.38,.62],[.62,.62]);
+ for(let t=50;t<=300;t+=50)assert.equal(step(g,t,[.38-t*.00034,.62],[.62+t*.00034,.62]).fired,false);
+ assert.ok(g.state.size>.6);
+});
+test('frame size control is independent and crop supports 12 to 100 percent',()=>{
+ const g=new CameraFraming();g.open();g.setSize(.12);assert.equal(g.state.size,.12);
+ g.setSize(1);assert.equal(g.state.size,1);
+ for(const [w,h] of [[640,480],[480,640],[1920,1080]])
+  for(const size of [-1,.12,.6,1,4,NaN]){
+   const crop=cameraCrop(w,h,size);
+   assert.equal(crop.width,crop.height);
+   assert.ok(crop.x>=0&&crop.y>=0&&crop.x+crop.width<=w&&crop.y+crop.height<=h);
+  }
+});
+for(const [label,dx,dy] of [['right',.16,0],['left',-.16,0],['up',0,-.16],['down',0,.16]] as const){
+ test('body wrist strike '+label+' captures once',()=>{
+  const g=new CameraFraming();g.open();
+  for(let t=0;t<=200;t+=50)step(g,t,[.34,.62],[.66,.62]);
+  const out=step(g,250,[.34+dx,.62+dy],[.66,.62]);
+  assert.equal(out.fired,true);
+  assert.equal(out.open,false);
+  assert.equal(step(g,300,[.34+dx,.62+dy],[.66,.62]).fired,false);
+ });
+}
+test('slow one-arm motion and torso translation do not trigger capture',()=>{
+ const g=new CameraFraming();g.open();
+ for(let t=0;t<550;t+=50){
+  const v=t*.00010;
+  assert.equal(step(g,t,[.34+v,.62],[.66,.62]).fired,false);
+ }
+ const h=new CameraFraming();h.open();
+ for(let t=0;t<600;t+=50){
+  const f=frame(t,[.34+t*.00015,.62],[.66+t*.00015,.62]);
+  for(const i of [11,12,23,24])f.pose[i].x+=t*.00015;
+  assert.equal(h.step(f,t,true).fired,false);
+ }
+});
+test('tracking lost and stale samples require a new sequence',()=>{
+ const g=new CameraFraming();g.open();
+ step(g,0,[.34,.62],[.66,.62]);step(g,100,[.34,.62],[.66,.62]);
+ const stale=frame(150,[.34,.62],[.66,.62]);
+ assert.equal(g.step(stale,800,true).fired,false);
+ assert.equal(step(g,850,[.5,.62],[.66,.62]).fired,false);
+ const absent=frame(900,null,null);assert.equal(g.step(absent,900,true).fired,false);
+ assert.equal(step(g,950,[.2,.62],[.66,.62]).fired,false);
+});
+test('resize does not produce a spurious photo and open command preserves size',()=>{
+ const g=new CameraFraming();g.open();step(g,0,[.38,.62],[.62,.62]);
+ for(let t=50;t<=300;t+=50)step(g,t,[.38-t*.00034,.62],[.62+t*.00034,.62]);
+ const size=g.state.size;g.open();assert.equal(g.state.size,size);
+ for(let t=350;t<=650;t+=50)assert.equal(step(g,t,[.28,.62],[.72,.62]).fired,false);
+});
 class FakeRecognition implements Recognition {
  static instances:FakeRecognition[]=[];lang='';continuous=false;interimResults=false;maxAlternatives=1;
  onstart:Recognition['onstart']=null;onend:Recognition['onend']=null;onerror:Recognition['onerror']=null;onresult:Recognition['onresult']=null;aborted=false;

@@ -16,11 +16,11 @@ export function PhotoWall({archive:a,clean}:{archive:PhotoArchive;clean:boolean}
   </div>)}
  </div>;
 }
-export function PhotoPanel({archive:a,cameraReady,cameraBusy=false,onCamera,cue}:{cue?:CameraCue;cameraBusy?:boolean;archive:PhotoArchive;cameraReady:boolean;onCamera:()=>void}){
+export function PhotoPanel({archive:a,cameraReady,cameraBusy=false,onCamera,cue,onOpenBody}:{cue?:CameraCue;cameraBusy?:boolean;archive:PhotoArchive;cameraReady:boolean;onCamera:()=>void;onOpenBody?:()=>void}){
  const count=a.photos.filter(Boolean).length,full=count===4&&a.replacement===null;
  const statusMessage=!a.loaded?'Memuat arsip foto…':a.busy?'Menyimpan foto…':!cameraReady?'Kamera belum siap.':full?'Arsip penuh · 4/4':cue?.frame.open?'Bingkai aktif. Atur dengan telapak, lalu pukul.':cue?.listening?'Ucapkan “kamera” untuk membuka bingkai.':a.message;
  return <div className="photo-panel">
-  {cue&&<CameraCueControls cue={cue} ready={cameraReady&&!full&&!a.busy}/>}
+  {cue&&<CameraCueControls cue={cue} ready={!full&&!a.busy&&!cameraBusy} onOpen={onOpenBody}/>}
   <p>Foto mengisi empat kotak di kiri kanvas. Teks, visual, dan suara tetap berjalan pada sesi yang sama.</p>
   <div className="photo-status" role="status"><span>{statusMessage}</span><b>{count}/4</b>{a.enabled&&a.progress>0&&<progress value={a.progress} max={1} aria-label="Persiapan potret"/>}</div>
   <div className="photo-main-actions"><button className="primary-button" disabled={!a.loaded||a.busy||!cameraReady||full} onClick={()=>void a.capture()}><Camera size={16}/>{a.busy?'Menyimpan…':a.replacement!==null?`Jepret pengganti ${a.replacement+1}`:'Jepret sekarang'}</button>{!cameraReady&&<button className="outline-button" disabled={cameraBusy} onClick={onCamera}>{cameraBusy?'Memuat kamera…':'Mulai kamera'}</button>}</div>
