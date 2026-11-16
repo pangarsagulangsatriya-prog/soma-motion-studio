@@ -217,7 +217,7 @@ export function LiveFloorWorkspace({
  return <dialog ref={dialog} className="live-floor-dialog" onCancel={e=>{e.preventDefault();onClose();}}
   aria-label="Footprints Live Floor Tracking">
   <header className="live-floor-header">
-   <div><small>SOMA / FOOTPRINTS · S5.6.1</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
+   <div><small>SOMA / FOOTPRINTS · S5.6.2</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
    <button type="button" onClick={onClose} aria-label="Tutup Live Floor Tracking"><X size={20}/></button>
   </header>
   <div className="live-floor-layout">
@@ -272,6 +272,16 @@ export function LiveFloorWorkspace({
       <b>{router.status.ambiguous?'Identitas belum pasti':router.status.visible.length?router.status.visible.join(' & ')+' terbaca':'Menunggu tubuh'}</b>
       <span>{router.status.reason}</span>
       <button type="button" onClick={onResetIdentity}>Reset identitas A/B</button>
+     </div>}
+     {status.footMotions.length>0&&<div className="live-floor-gait-state" aria-label="Estimasi gerak tiap kaki">
+      <strong>GAIT / ESTIMASI KAMERA</strong>
+      <div>{status.footMotions.map(m=><span key={m.performerId+':'+m.foot}
+       className={'live-floor-motion-'+m.motion}>
+       <b>{m.performerId==='performer-1'?'Solo':m.performerId} · {m.foot==='left'?'Kiri':'Kanan'}</b>
+       <em>{m.motion==='step'?'Step':m.motion==='pivot'?'Pivot':m.motion==='slide'?'Slide':
+        m.motion==='hold'?'Hold':'Belum pasti'}</em>
+      </span>)}</div>
+      <small>Label berdasarkan landmark kamera. Tekanan telapak dan kontak fisik belum diukur.</small>
      </div>}
      <div className="live-floor-svg" dangerouslySetInnerHTML={{__html:svg}} aria-label="Jejak kontak pada lantai yang dipetakan"/>
      <dl>
