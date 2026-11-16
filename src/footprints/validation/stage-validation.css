@@ -39,3 +39,12 @@
  .live-floor-validate-row{grid-template-columns:1fr}
  .live-floor-measures b{font-size:17px}
 }
+
+.live-floor-validation-drawer{background:#1b2d20;border:1px solid #516c52;border-radius:8px;overflow:hidden}
+.live-floor-validation-drawer>summary{cursor:pointer;min-height:50px;padding:13px;
+ font:700 11px/1.5 ui-monospace,monospace;letter-spacing:.08em;color:#dfedcc;
+ display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.live-floor-validation-drawer>summary::marker{color:#d3e4a6}
+.live-floor-validation-drawer>summary span{margin-left:auto;font:400 11px/1.5 system-ui,sans-serif;letter-spacing:0;color:#bbccba}
+.live-floor-validation-drawer>summary:focus-visible{outline:2px solid #d3e4a6;outline-offset:-3px}
+.live-floor-validation-drawer[open]>summary{border-bottom:1px solid #4e674e}
