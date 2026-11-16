@@ -11,6 +11,7 @@ export class DirectPuppetSession{
  engine:FootstepEventEngine;
  private serial=0;
  private clock=0;
+ private firstMotionAt:number|null=null;
  constructor(floor:FloorSpace=defaultFloorSpace()){
   this.floor=validateFloorSpace(floor);
   this.performers=initialPerformers(floor);
@@ -19,7 +20,11 @@ export class DirectPuppetSession{
  get session():FloorSession{return createFloorSession(this.floor,this.events);}
  get durationMs(){return this.events.at(-1)?.timestampMs??0;}
  getFoot(which:Selection){const p=this.performers.find(p=>p.id===which.performerId);return p?.[which.foot]??null;}
- private next(nowMs:number){this.clock=Math.max(this.clock+1,Number.isFinite(nowMs)?Math.floor(nowMs):0);return this.clock;}
+ private next(nowMs:number){
+  if(this.firstMotionAt===null)this.firstMotionAt=Number.isFinite(nowMs)?nowMs:0;
+  const relative=Number.isFinite(nowMs)?Math.floor(nowMs-this.firstMotionAt):0;
+  this.clock=Math.max(this.clock+1,relative);return this.clock;
+ }
  private add(observed:FootstepEvent[]){
   for(const ev of observed){
    this.serial+=1;
@@ -85,7 +90,7 @@ export class DirectPuppetSession{
   this.engine.loseTracking(which.performerId,which.foot);
   // The lift was observed; no contact is added after an interrupted drag.
  }
- clear(){this.engine.reset();this.serial=0;this.clock=0;this.events=[];this.performers=initialPerformers(this.floor);}
+ clear(){this.engine.reset();this.serial=0;this.clock=0;this.firstMotionAt=null;this.events=[];this.performers=initialPerformers(this.floor);}
  setFloor(floor:FloorSpace){this.floor=validateFloorSpace(floor);this.engine=new FootstepEventEngine(this.floor);this.clear();}
  importSession(raw:unknown){
   const s=validateFloorSession(raw);
@@ -93,7 +98,7 @@ export class DirectPuppetSession{
   this.floor=s.floor;this.events=clone(s.events);
   this.performers=initialPerformers(this.floor);
   this.engine=new FootstepEventEngine(this.floor);
-  this.clock=this.durationMs;
+  this.clock=this.durationMs;this.firstMotionAt=null;
   this.serial=this.events.length+100000;
  }
 }
