@@ -282,13 +282,23 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
    <aside className="puppet-side">
     <section className="puppet-floor">
      <div className="puppet-section-title"><Footprints size={17}/><b>FLOOR PREVIEW</b><span>{stats.contacts} jejak</span></div>
-     <div className="puppet-floor-svg" dangerouslySetInnerHTML={{__html:svg}} aria-label="Pratinjau dua dimensi jejak kaki di lantai"/>
+     {labActive?<div className="puppet-floor-svg"><canvas ref={labPreview} width={1280} height={720}
+     className="puppet-qa-preview" aria-label="Jejak kaki sintetis pada lantai virtual"/></div>:
+     <div className="puppet-floor-svg" dangerouslySetInnerHTML={{__html:svg}}
+      aria-label="Pratinjau dua dimensi jejak kaki di lantai"/>}
      <p>Bidang hitam = lantai virtual. Jejak muncul saat kaki turun.</p>
     </section>
-    <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
+    <SimulationLabPanel active={labActive} onActiveChange={toggleLab}
+    scenario={qaScenario} report={qaReport} playhead={labTime}
+    playing={labPlaying} onPlaying={setLabPlaying} onSeek={setLabTime}
+    rate={labRate} onRateChange={setLabRate}
+    faultsEnabled={labFaults} onFaultsEnabled={setLabFaults}
+    verified={verified} actualTransport={projection.transport}
+    onExportReport={exportLabReport} onExportSession={exportLabSession}/>
+   <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
      onVerify={onVerify} onTestPattern={onTestPattern} onOpenOutput={onOpenOutput} onCalibrate={onCalibrate}
      onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>
-    <section className="puppet-controls">
+    <section className="puppet-controls" hidden={labActive}>
      <div className="puppet-section-title"><b>DIRECT PUPPET</b><span>{selected.performerId} · {selected.foot==='left'?'Kiri':'Kanan'}</span></div>
      <div className="puppet-foot-pick">
       {model.performers.slice(0,count).flatMap(p=>(['left','right'] as const).map(foot=>
@@ -316,7 +326,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
      </div>
      <p className="puppet-key-hint">Keyboard: <kbd>1</kbd> kiri <kbd>2</kbd> kanan · <kbd>Space</kbd> angkat/turun · <kbd>WASD</kbd> geser · <kbd>Q/E</kbd> putar</p>
     </section>
-    <section className="puppet-session">
+    <section className="puppet-session" hidden={labActive}>
      <div className="puppet-section-title"><b>SESSION / REPLAY</b><span>{model.events.length} event</span></div>
      <div className="puppet-step-buttons">
       <button type="button" onClick={play} disabled={!model.events.length}>{mode==='playing'?<Pause size={16}/>:<Play size={16}/>} {mode==='playing'?'Jeda':'Putar ulang'}</button>
