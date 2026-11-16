@@ -64,7 +64,7 @@ export function LowerBodyMaskPanel({frameRef,cameraOn,performerCount,identityAmb
     setCoverage(previous=>Math.abs(previous-visible/mask.mask.data.length)<.01?
      previous:visible/mask.mask.data.length);
    }else{
-    if(coverage!==0)setCoverage(0);
+    setCoverage(previous=>previous===0?previous:0);
    }
    const label=blocked?'Identitas A/B ambigu dari tracker. Mask dipadamkan.':
     mask.status==='ready'?mask.reason:mask.reason;
