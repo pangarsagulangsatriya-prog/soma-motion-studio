@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {Download,FlaskConical,LockKeyhole,Trash2} from 'lucide-react';
 import {download} from '../../engine/recording.ts';
 import './physical-acceptance.css';
@@ -14,6 +14,7 @@ type Props={
  floor:FloorSpace;events:FootstepEvent[];performerCount:1|2;contextKey:string;
  calibrationQA:CalibrationQASummary|null;calibrationSamples:CalibrationQASample[];
  cameraConfirmed:boolean;projectorVerified:boolean;onBlackout:()=>void;
+ onUnsavedChange:(value:boolean)=>void;
 };
 const metric=(n:number|null,unit='')=>n===null?'—':n.toFixed(2)+unit;
 const MOVEMENT_LABELS:Record<MovementCase,string>={
@@ -28,8 +29,9 @@ const checkboxLabels:Record<keyof PhysicalChecklist,string>={
 };
 const performerIds=(n:1|2)=>n===1?['performer-1']:['A','B'];
 export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
- calibrationQA,calibrationSamples,cameraConfirmed,projectorVerified,onBlackout}:Props){
+ calibrationQA,calibrationSamples,cameraConfirmed,projectorVerified,onBlackout,onUnsavedChange}:Props){
  const [trial,setTrial]=useState<PhysicalTrial|null>(null);
+ useEffect(()=>{onUnsavedChange(!!trial);},[trial,onUnsavedChange]);
  const [video,setVideo]=useState(''),[duration,setDuration]=useState(''),[fps,setFps]=useState('120');
  const [who,setWho]=useState('performer-1'),[foot,setFoot]=useState<FootSide>('left');
  const [frame,setFrame]=useState(''),[x,setX]=useState(''),[y,setY]=useState('');
@@ -95,6 +97,7 @@ export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
    calibrationSamples:calibrationSamples.filter(s=>s.contextKey===contextKey)};
   download(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),
    'SOMA-S5-6-4-physical-acceptance.json');
+  onUnsavedChange(false);
   setMessage('Laporan fisik dan evaluasi ambang kerja diekspor. Simpan bersama video asli.');
  };
  const canAnnotate=!!trial&&!trial.reviewComplete;
