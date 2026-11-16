@@ -39,12 +39,12 @@ const segment=(a:Vec,b:Vec,radius:number):Vec[]=>{
  const vertices:Vec[]=[];
  // 12-sided capsule with 6 vertices on each half-round, safe for rotation.
  for(let i=0;i<=6;i++){
-  const angle=-Math.PI/2+i*Math.PI/6;
+  const angle=Math.PI/2+i*Math.PI/6;
   vertices.push({x:a.x+radius*(Math.cos(angle)*ux-Math.sin(angle)*uy),
    y:a.y+radius*(Math.sin(angle)*ux+Math.cos(angle)*uy)});
  }
  for(let i=0;i<=6;i++){
-  const angle=Math.PI/2+i*Math.PI/6;
+  const angle=-Math.PI/2+i*Math.PI/6;
   vertices.push({x:b.x+radius*(Math.cos(angle)*ux-Math.sin(angle)*uy),
    y:b.y+radius*(Math.sin(angle)*ux+Math.cos(angle)*uy)});
  }
