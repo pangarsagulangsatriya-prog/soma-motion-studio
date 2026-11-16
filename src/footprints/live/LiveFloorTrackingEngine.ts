@@ -38,6 +38,11 @@ export class LiveFloorTrackingEngine{
  private received=new Map<string,number>();
  private rejection='';
  private logicalTime=-1;
+ private revision=0;
+ private contactCount=0;
+ private cachedSession:FloorSession|null=null;
+ private cachedRevision=-1;
+ get eventRevision(){return this.revision;}
  readonly performerId='performer-1';
  get floor(){return this.calibration?.floor??null;}
  get isConfirmed(){return this.confirmed;}
@@ -45,12 +50,16 @@ export class LiveFloorTrackingEngine{
  get boundCamera(){return this.bindingKey;}
  get calibrationData(){return this.calibration;}
  get session():FloorSession|null{
-  return this.calibration?createFloorSession(this.calibration.floor,this.events):null;
+  if(!this.calibration)return null;
+  if(this.cachedRevision!==this.revision||!this.cachedSession){
+   this.cachedSession=createFloorSession(this.calibration.floor,this.events);
+   this.cachedRevision=this.revision;
+  }
+  return this.cachedSession;
  }
  get status():LiveFloorStatus{
-  const contacts=this.events.filter(e=>e.kind==='contact').length;
   return {calibrated:!!this.calibration,confirmed:this.confirmed,cameraMatched:!!this.bindingKey,
-   tracking:this.confirmed&&this.received.size>0,contacts,events:this.events.length,
+   tracking:this.confirmed&&this.received.size>0,contacts:this.contactCount,events:this.events.length,
    activePerformerIds:[...new Set([...this.received.keys()].map(k=>k.split(':')[0]))],
    lastSeenMs:this.received.size?Math.max(...this.received.values()):null,
    reason:this.rejection||(!this.calibration?'Tandai empat sudut lantai di kamera.':
@@ -73,7 +82,8 @@ export class LiveFloorTrackingEngine{
  resetSession(){
   this.events=[];this.eventEngine?.reset();this.grounded.clear();
   this.lastPoint.clear();this.seen.clear();this.received.clear();this.logicalTime=-1;
-  this.performers=new Set(['performer-1']);
+  this.performers=new Set(['performer-1']);this.contactCount=0;
+  this.cachedSession=null;this.cachedRevision=-1;this.revision++;
  }
  revoke(reason='Kalibrasi kamera perlu diperiksa ulang.'){
   this.confirmed=false;this.dropTracking();this.rejection=reason;
@@ -146,7 +156,9 @@ export class LiveFloorTrackingEngine{
    this.revoke('Sesi mencapai batas 100.000 event. Simpan dan mulai sesi baru.');
    return [];
   }
-  this.events.push(...emitted);
+  if(emitted.length){this.events.push(...emitted);
+   this.contactCount+=emitted.filter(e=>e.kind==='contact').length;
+   this.revision++;}
   return emitted;
  }
 }
