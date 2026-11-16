@@ -54,7 +54,6 @@ export class MultiPoseGaitRouter{
  }
  acceptSingle(sample:GaitSample|null,side:0|1,events:FootstepEvent[]){
   if(this.mode!==1)return;
-  this.predictor?.accept(events);
   if(!sample){this.predictor?.lose('performer-1');return;}
   this.lastTimestamp=sample.t;
   const predictor=this.ensurePredictor();
