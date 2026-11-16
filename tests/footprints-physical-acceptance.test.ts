@@ -106,7 +106,7 @@ test('stale calibration, no physical checklist, incomplete gait coverage and mis
  assert.equal(assessPhysicalAcceptance({...good,sequences:[]},signature,qa).status,'incomplete');
  assert.equal(assessPhysicalAcceptance({...good,sequences:good.sequences.filter(s=>s.performerId!=='B')},
   signature,qa).status,'incomplete');
- assert.equal(assessPhysicalAcceptance(good,signature,{...qa,status:'needs-adjustment'}),
+ assert.equal(assessPhysicalAcceptance(good,signature,{...qa,status:'needs-adjustment'}).status,
   'needs-adjustment');
  assert.equal(assessPhysicalAcceptance({...good,checklist:{...good.checklist,blackoutAndReconnectionChecked:false}},
   signature,qa).status,'incomplete');
