@@ -1,9 +1,12 @@
-import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type WheelEvent as ReactWheelEvent,type KeyboardEvent as ReactKeyboardEvent} from 'react';
+import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type WheelEvent as ReactWheelEvent,type KeyboardEvent as ReactKeyboardEvent,type RefObject} from 'react';
 import {Download,Footprints,Move3D,Pause,Play,RotateCcw,X} from 'lucide-react';
 import {defaultFloorSpace,type FloorPoint,type FloorSpace} from '../spatial/coordinates.ts';
 import {validateFloorSession,type FootSide,type FootstepEvent} from '../spatial/events.ts';
 import {drawPuppetScene} from './draw3d.ts';
 import {floorArtworkSVG,floorArtworkSummary} from './floor-artwork.ts';
+import {paintFloorCanvas} from './floorCanvas.ts';
+import {FloorProjectionPanel} from './FloorProjectionPanel.tsx';
+import type {Projection} from '../../projection/useProjection.ts';
 import {DirectPuppetSession,replayPoseAt} from './puppet-controller.ts';
 import {clamp,clampOnFloor,hitFoot,initialCamera,project3D,unprojectFloor,type OrbitCamera} from './scene3d.ts';
 import './simulator.css';
@@ -19,7 +22,11 @@ function saveBlob(content:Blob,name:string){
  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-export function PuppetSimulator({onClose}:{onClose:()=>void}){
+export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout}:{
+ onClose:()=>void;projection:Projection;projectorArtworkRef:RefObject<HTMLCanvasElement|null>;
+ verified:boolean;testPattern:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;onOpenOutput:()=>void;onCalibrate:()=>void;
+ onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
+}){
  const dialog=useRef<HTMLDialogElement>(null),canvas=useRef<HTMLCanvasElement>(null);
  const sessionRef=useRef<DirectPuppetSession>(new DirectPuppetSession(startFloor));
  const origin=useRef(0),drag=useRef<Drag|null>(null),fileInput=useRef<HTMLInputElement>(null);
@@ -38,6 +45,13 @@ export function PuppetSimulator({onClose}:{onClose:()=>void}){
   width:960,height:720,showGrid:grid
  }),[version,playhead,mode,grid]);
  const refresh=()=>{setVersion(v=>v+1);setMode('edit');setPlayhead(0);};
+ useEffect(()=>{
+  const raster=projectorArtworkRef.current;
+  if(raster)paintFloorCanvas(raster,sessionRef.current.session,{
+   maxTimeMs:mode==='edit'?undefined:playhead,
+   markersOnly:testPattern
+  });
+ },[projectorArtworkRef,version,playhead,mode,testPattern]);
  const time=()=>performance.now()-origin.current;
  useEffect(()=>{
   origin.current=performance.now();
@@ -218,6 +232,9 @@ export function PuppetSimulator({onClose}:{onClose:()=>void}){
      <div className="puppet-floor-svg" dangerouslySetInnerHTML={{__html:svg}} aria-label="Pratinjau dua dimensi jejak kaki di lantai"/>
      <p>Bidang hitam = lantai virtual. Jejak muncul saat kaki turun.</p>
     </section>
+    <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
+     onVerify={onVerify} onTestPattern={onTestPattern} onOpenOutput={onOpenOutput} onCalibrate={onCalibrate}
+     onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>
     <section className="puppet-controls">
      <div className="puppet-section-title"><b>DIRECT PUPPET</b><span>{selected.performerId} · {selected.foot==='left'?'Kiri':'Kanan'}</span></div>
      <div className="puppet-foot-pick">
@@ -270,7 +287,8 @@ export function PuppetSimulator({onClose}:{onClose:()=>void}){
     </section>
    </aside>
   </div>
+  <canvas ref={projectorArtworkRef} width={1280} height={720} hidden aria-hidden="true"/>
   <footer className="puppet-footer"><span role="status">{notice}</span>
-   <span>3D SOFTWARE RENDER · CAMERA OFF · PROJECTOR DISCONNECTED</span></footer>
+   <span>3D SOFTWARE RENDER · CAMERA OFF · SOMA SHARED PROJECTION</span></footer>
  </dialog>;
 }
