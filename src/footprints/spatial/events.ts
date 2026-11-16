@@ -97,8 +97,11 @@ export class FootstepEventEngine{
  private state=new Map<string,FootState>();
  private rearm=new Set<string>();
  private serial=0;
- constructor(readonly floor:FloorSpace,readonly moveThresholdM=.025){
-  validateFloorSpace(floor);
+ readonly floor:FloorSpace;
+ readonly moveThresholdM:number;
+ constructor(floor:FloorSpace,moveThresholdM=.025){
+  this.floor=validateFloorSpace(floor);
+  this.moveThresholdM=moveThresholdM;
   if(!finite(moveThresholdM)||moveThresholdM<=0||moveThresholdM>1)
    throw Error('Ambang pergerakan kaki harus dalam meter dan positif.');
  }
