@@ -6,7 +6,8 @@ import type {FootstepEvent} from '../src/footprints/spatial/events.ts';
 import {CALIBRATION_QA_TARGETS,measureCalibrationQATarget,summarizeCalibrationQA} from '../src/footprints/validation/CalibrationQA.ts';
 import {addMovementEvidence,addPhotonEvidence,annotatePhysicalContact,
  assessPhysicalAcceptance,capturePhysicalTrial,exportPhysicalAcceptance,markPhysicalReview,
- requiredMovementCases,summarizePhysicalTrial,type PhysicalTrial} from '../src/footprints/validation/PhysicalAcceptance.ts';
+ removePhysicalContact,removeMovementEvidence,removePhotonEvidence,
+ requiredMovementCases,summarizePhysicalTrial} from '../src/footprints/validation/PhysicalAcceptance.ts';
 
 const floor=defaultFloorSpace(8,6),signature='test:fixed-camera-quad-projector';
 const camera:CameraFloorCalibration={
@@ -129,4 +130,34 @@ test('simulated and predicted events never enter the frozen physical camera-cont
  const predicted={...camera,id:'ghost-1',kind:'prediction' as const,timestampMs:300};
  const trial=capturePhysicalTrial(floor,[camera,simulated,predicted],1,signature,'video.mp4',90,120);
  assert.equal(trial.contacts.length,1);assert.equal(trial.contacts[0].id,camera.id);
+});
+
+test('unexpected or misidentified camera contact remains in the false-positive denominator',()=>{
+ const proper=cameraEvents(24);
+ const rogue:FootstepEvent={...proper.at(-1)!,id:'wrong-identity',performerId:'performer-1',
+  timestampMs:proper.at(-1)!.timestampMs+100};
+ const frozen=capturePhysicalTrial(floor,[...proper,rogue],2,signature,'two-actors.mp4',120,120);
+ assert.equal(frozen.contacts.length,25);
+ let checked=completeTrial(proper);
+ checked={...checked,contacts:frozen.contacts};
+ assert.equal(summarizePhysicalTrial(checked).falseContacts,1);
+ assert.equal(summarizePhysicalTrial(checked).precision,.96);
+});
+
+test('reopening review permits correction; dependent photon records are removed with the physical touchdown',()=>{
+ let trial=completeTrial(cameraEvents(24));
+ trial=markPhysicalReview(trial,false,'Operator A','corrected an entry');
+ const oldId=trial.physicalContacts[0].id,oldPhotonId=trial.photons[0].id;
+ const removed=removePhysicalContact(trial,oldId);
+ assert.equal(removed.physicalContacts.length,23);
+ assert.ok(!removed.photons.some(x=>x.id===oldPhotonId));
+ assert.throws(()=>removePhysicalContact({...trial,reviewComplete:true},oldId));
+ const fixed=annotatePhysicalContact(removed,{performerId:'A',foot:'left',
+  videoFrame:500,referenceM:{xM:2,yM:2},matchedEventId:'cam-0',movement:'normal-walk'});
+ assert.equal(new Set(fixed.physicalContacts.map(x=>x.id)).size,24);
+ const afterSequence=removeMovementEvidence(fixed,0);
+ assert.equal(afterSequence.sequences.length,fixed.sequences.length-1);
+ const lightId=removed.photons[0].id;
+ const afterLight=removePhotonEvidence(removed,lightId);
+ assert.equal(afterLight.photons.length,removed.photons.length-1);
 });
