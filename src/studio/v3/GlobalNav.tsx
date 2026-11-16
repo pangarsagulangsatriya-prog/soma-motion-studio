@@ -24,11 +24,11 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     </summary>
     <div className="v3-instrument-options" role="group" aria-label="Instrumen visual">
      <span>INSTRUMEN TAMBAHAN</span>
-     {LEGACY_INSTRUMENTS.map(({id,name,description})=>{const Icon=instrumentIcons[id];return
+     {LEGACY_INSTRUMENTS.map(({id,name,description})=>{const Icon=instrumentIcons[id];return (
       <button key={id} type="button" aria-current={workspace==='studio'&&scene===id?'true':undefined}
        onClick={e=>{onInstrument(id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
        <Icon size={16}/><span><strong>{name}</strong><small>{description}</small></span>
-      </button>;})}
+      </button>);})}
     </div>
    </details>
   </nav>
