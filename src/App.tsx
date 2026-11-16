@@ -248,7 +248,8 @@ export default function App(){
        {!footprintsActive&&<VisualStage frameRef={frameRef} settingsRef={sr} paramsRef={visualParams} videoRef={video} trackingRef={trackingVisible} metricsRef={metrics}/>}
        <StudioFootprints ref={footprintRef} active={footprintsActive&&settings.output!=='sound'} frameRef={frameRef} videoRef={video} settingsRef={sr} trackingRef={trackingVisible} canvasRef={footprintCanvasRef} config={footprintConfig} onNotice={notify} onRecording={setFootprintRecording} audioStream={audioOn&&!muted?engine.recordDestination?.stream:null}
          onGaitSample={(mark,side,aspect)=>{if(!liveFloorOpen||liveFloorCount!==1)return;
-          const emitted=liveFloorEngine.ingest(mark,side,aspect,cameraBinding(video.current));
+          const emitted=liveFloorEngine.ingest(mark,side,aspect,cameraBinding(video.current),
+           'performer-1',frameRef.current.telemetry?.capturedAt??null);
           multiPoseRouter.acceptSingle(mark,side,emitted);}}
          onPoseFrame={(f,clock,aspect)=>{if(!liveFloorOpen||liveFloorCount!==2)return;
           multiPoseRouter.observe(f,clock,aspect,cameraBinding(video.current));}}/>
