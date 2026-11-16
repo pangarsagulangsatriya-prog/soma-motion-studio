@@ -1,6 +1,8 @@
 import {useEffect,useRef,useState,type ChangeEvent,type RefObject} from 'react';
 import {Download,Film,Pause,Play,Trash2} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
+import type {Projection} from '../../projection/useProjection.ts';
+import {DualSurfaceRoutingPanel,type StageRouteInput} from './DualSurfaceRoutingPanel.tsx';
 import type {MultiPoseGaitRouter} from '../live/MultiPoseGaitRouter.ts';
 import {download} from '../../engine/recording.ts';
 import {defaultFloorSpace} from '../spatial/coordinates.ts';
@@ -13,14 +15,17 @@ import {archiveSessionReport,compositeArchivalFrame,DEFAULT_ARCHIVE_PLAYBACK,
 import './archival-mapping.css';
 
 type Props={frameRef:RefObject<MotionFrame>;cameraOn:boolean;performerCount:1|2;
- router:MultiPoseGaitRouter};
+ router:MultiPoseGaitRouter;projection:Projection};
 const slots=['A','B'] as const;
 const allowedTypes=new Set(['video/mp4','video/webm','video/ogg','video/quicktime']);
 const maxBytes=300*1024*1024;
 const percentage=(x:number)=>Math.round(x*100);
-export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:Props){
+export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,projection}:Props){
  const canvas=useRef<HTMLCanvasElement>(null);
  const padCanvas=useRef<HTMLCanvasElement>(null);
+ const stageRoute=useRef<StageRouteInput|null>(null);
+ const [routeOpen,setRouteOpen]=useState(false);
+ useEffect(()=>{stageRoute.current=null;},[performerCount]);
  const contactBridge=useRef(new ContactArchiveBridge()).current;
  const thumbnails=useRef(new Map<string,HTMLCanvasElement>());
  const lastBridgeView=useRef('');
@@ -57,6 +62,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
   urls.current[key]=null;
  }},[]);
  const setVideo=(slot:ArchiveSlot,file:File|null)=>{
+  stageRoute.current=null; // kill eligibility before an old image can be sent
   const video=videoRefs.current[slot];
   if(!video)return;
   if(file&&(!allowedTypes.has(file.type)||file.size<=0||file.size>maxBytes)){
@@ -80,6 +86,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
   setVideo(slot,e.target.files?.[0]??null);e.target.value='';
  };
  const resetBridge=()=>{
+  stageRoute.current=null; // old pad must not be reused for a new take
   // Explicit reset is a user gesture: restart footage paused by a prior hold
   // when playback is still requested. Reset must not leave clips stuck paused.
   if(playing)for(const slot of slots){
@@ -171,6 +178,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
     reason:'Identitas A/B belum terkonfirmasi pada frame yang sama.'};
    const images=image();
    const composed=compositeArchivalFrame(safeMask,images,s.settings,identity,renderCount.current);
+   let bridgeSafe=false;
    if(s.bridgeEnabled){
     const floor=router.floor.floor??defaultFloorSpace(8,6);
     const simulated=makeBridgeSimulationEvents(floor,performerCount);
@@ -183,6 +191,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
     const snap=contactBridge.sync(feed,clock,context,floor,images,
      s.source==='simulation'?'simulation':'camera',trusted,s.source==='live');
     bridgeStateRef.current=snap;
+    bridgeSafe=snap.status==='ready'&&trusted&&!!padCanvas.current;
     const panel=padCanvas.current;
     if(panel)paintContactArchivePad(panel,floor,snap,trusted,thumbnails.current);
     // Pauses are intentionally per-source: A's touchdown must not freeze B.
@@ -206,6 +215,18 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
     const pad=padCanvas.current;
     if(pad){const g=pad.getContext('2d');if(g){g.fillStyle='#000';g.fillRect(0,0,pad.width,pad.height);}}
    }
+   // Single source of truth for the physically armed S5.7.4 dual-output gate.
+   // This snapshot is never constructed from synthetic poses when in Live mode.
+   const rawSafe=s.source==='live'&&cameraOn&&router.floor.isConfirmed&&
+    mask.status==='ready'&&stable&&frame?.source==='camera';
+   stageRoute.current={
+    mode:s.source,frameAtMs:frame?.time??0,computedAtMs:now,
+    cameraSafe:rawSafe,bodyMediaReady:rawSafe&&composed.status==='ready',
+    bridgeSafe:rawSafe&&bridgeSafe,mask:rawSafe?mask.mask:null,
+    cameraKey:rawSafe?router.floor.boundCamera:null,
+    floorKey:rawSafe?JSON.stringify([router.floor.calibrationData,
+     router.floor.boundCamera,performerCount]):null
+   };
    if(target.width!==composed.pixels.width)target.width=composed.pixels.width;
    if(target.height!==composed.pixels.height)target.height=composed.pixels.height;
    // Browser ImageData expects a concretely backed ArrayBuffer; copy into
@@ -218,7 +239,8 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
    setLit(prev=>Math.abs(prev-composed.litPixels)>150?composed.litPixels:prev);
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);lastTime.current=0;lastHold.current={A:false,B:false};};
+  return()=>{cancelAnimationFrame(raf);lastTime.current=0;lastHold.current={A:false,B:false};
+   stageRoute.current=null;};
  },[frameRef,cameraOn,performerCount,router]);
  const exportJson=()=>download(new Blob([JSON.stringify(
   archiveSessionReport(settings,files,performerCount),null,2)],{type:'application/json'}),
@@ -307,6 +329,12 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
    </div>
    <p>{bridgeEnabled?bridgeView.recent:'Bridge tidak aktif.'} {bridgeEnabled&&bridgeView.status}</p>
   </div>
+  <details className="stage-optics-mask-drawer" open={routeOpen}
+   onToggle={e=>setRouteOpen(e.currentTarget.open)}>
+   <summary>04 / Dual-Surface Calibration & Output Routing <span>BODY dan FLOOR · dua jendela proyektor</span></summary>
+   {routeOpen&&<DualSurfaceRoutingPanel frameRef={stageRoute}
+    bodyCanvas={canvas} floorCanvas={padCanvas} legacyProjection={projection}/>}
+  </details>
   <div className="archive-map-mask-controls">
    <label>Batas paha → perut · {percentage(torso)}% torso
     <input type="range" min="0" max=".35" step=".01" value={torso}

@@ -1,0 +1,47 @@
+/* S5.7.4 — independent body/floor projector controls, visually isolated from the archive editor. */
+.stage-dual{padding:13px;background:#14231a;color:#e0ebd9;display:flex;flex-direction:column;gap:11px}
+.stage-dual .live-floor-heading{display:flex;align-items:center;gap:8px;font-size:12px}
+.stage-dual>p,.stage-dual-output p,.stage-dual-qa p{margin:0!important;font-size:11px;line-height:1.6;color:#bbcfbd}
+.stage-dual-check{display:flex!important;flex-direction:row!important;align-items:flex-start;
+ gap:8px!important;font-size:11px!important;line-height:1.5}
+.stage-dual-check input{flex:none;width:18px;height:18px;accent-color:#cadcb0;margin-top:1px}
+.stage-dual-emergency{align-self:flex-start;background:#4c2927!important;border:1px solid #be8c80!important;
+ color:#fff4e8!important;font-weight:700!important;min-height:43px!important}
+.stage-dual-outputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.stage-dual-output{padding:11px;border:1px solid #547059;border-radius:7px;
+ display:flex;flex-direction:column;gap:6px;min-width:0;background:#1b3022}
+.stage-dual-output>b{font:700 12px ui-monospace,monospace;color:#e1ebd0}
+.stage-dual-output small{font-size:10px;color:#b7c9b5;line-height:1.5}
+.stage-dual-buttons{display:flex;flex-wrap:wrap;gap:5px}
+.stage-dual-buttons button{font-size:11px;min-height:38px}
+.stage-dual button{display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.stage-dual-calibration{padding:12px;border:1px solid #547059;border-radius:7px;
+ display:flex;flex-direction:column;gap:10px;background:#1b2f22}
+.stage-dual-calibration>label,.stage-dual-qa>label,.stage-dual-measure label{
+ display:flex;flex-direction:column;gap:5px;color:#d1e0d0;font-size:11px;min-width:0}
+.stage-dual-calibration :is(input[type=number],input[type=text],select){
+ background:#0c2116;color:#e6efe2;padding:8px;
+ border:1px solid #637a65;border-radius:4px;min-height:39px;box-sizing:border-box;width:100%;
+ font-size:12px}
+.stage-dual-calibration input[type=range]{width:100%;accent-color:#c5dba7}
+.stage-dual-calibration details{border:1px solid #4e6651;padding:10px;border-radius:5px}
+.stage-dual-calibration summary{cursor:pointer;font-size:11px;font-weight:700}
+.stage-dual-calibration details p{font-size:10px;color:#bfcebb;line-height:1.55;margin:8px 0}
+.stage-dual-quad{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:9px}
+.stage-dual-quad>div{display:flex;flex-direction:column;gap:5px}
+.stage-dual-quad>div>b{font-size:11px;color:#d2e4c8}
+.stage-dual-quad>div>div{display:flex;align-items:center;gap:4px}
+.stage-dual-quad>div>div>span{font-size:11px;min-width:17px}
+.stage-dual-quad label{display:flex;align-items:center;gap:4px;font-size:11px}
+.stage-dual-quad input{width:80px!important;max-width:100%}
+.stage-dual-qa{display:flex;flex-direction:column;gap:10px;border-top:1px solid #5c725e;padding-top:12px}
+.stage-dual-qa>b{display:flex;align-items:center;gap:7px;font-size:12px}
+.stage-dual-measure{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;align-items:end}
+.stage-dual-metrics{display:flex;flex-wrap:wrap;gap:7px}
+.stage-dual-metrics span{font-size:11px;border:1px solid #637868;border-radius:5px;padding:7px}
+.stage-dual-qa>.stage-dual-check{display:flex!important;flex-direction:row!important}
+.stage-dual-status{padding:9px;border-left:3px solid #bcd39f;background:#213527}
+.stage-dual-limit{color:#d6c3a8!important;font-size:10px!important}
+@media(max-width:720px){.stage-dual-outputs,.stage-dual-quad{grid-template-columns:1fr}
+ .stage-dual-measure{grid-template-columns:1fr 1fr}
+ .stage-dual-measure button{grid-column:1/-1}}

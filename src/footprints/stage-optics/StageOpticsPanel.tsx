@@ -2,6 +2,7 @@ import {useMemo,useState,type RefObject} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import {LowerBodyMaskPanel} from './LowerBodyMaskPanel.tsx';
 import {ArchivalMappingPanel} from './ArchivalMappingPanel.tsx';
+import type {Projection} from '../../projection/useProjection.ts';
 import type {MultiPoseGaitRouter} from '../live/MultiPoseGaitRouter.ts';
 import {Download,Eye,RotateCcw,Ruler} from 'lucide-react';
 import {download} from '../../engine/recording.ts';
@@ -102,9 +103,9 @@ function StageElevation({plan}:{plan:StageOpticsPlan}){
   </text>
  </svg>;
 }
-export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,performerCount,identityAmbiguous,router}:{
+export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,performerCount,identityAmbiguous,router,projection}:{
  floorWidthM?:number;floorDepthM?:number;frameRef:RefObject<MotionFrame>;
- cameraOn:boolean;performerCount:1|2;identityAmbiguous:boolean;router:MultiPoseGaitRouter
+ cameraOn:boolean;performerCount:1|2;identityAmbiguous:boolean;router:MultiPoseGaitRouter;projection:Projection
 }){
  const [plan,setPlan]=useState(()=>defaultStageOpticsPlan(defaultFloorSpace(floorWidthM??8,floorDepthM??6)));
  const [view,setView]=useState<'top'|'elevation'>('top');
@@ -222,7 +223,7 @@ export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,perf
    onToggle={e=>setArchiveOpen(e.currentTarget.open)}>
    <summary>02 / Archival Video Mapping <span>Arsip video A/B dalam mask pinggang–kaki</span></summary>
    {archiveOpen&&<ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
-    performerCount={performerCount} router={router}/>}
+    performerCount={performerCount} router={router} projection={projection}/>}
   </details>
  </section>;
 }
