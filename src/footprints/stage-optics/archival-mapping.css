@@ -23,3 +23,18 @@
 .archive-map-result{font-size:11px;border-left:3px solid #a5be9f;padding:9px;background:#1d3123;margin:8px 0}
 .archive-map-caution{font-size:10px!important;color:#b2c2b0!important}
 @media(max-width:700px){.archive-map-slots,.archive-map-mask-controls{grid-template-columns:1fr}}
+
+/* S5.7.3 — body archive and pad residues remain separate preview-only canvases. */
+.archive-bridge-panes{display:grid;gap:10px;margin:11px 0}
+.archive-bridge-panes>div{border:1px solid #425a47;border-radius:6px;padding:9px;background:#000}
+.archive-bridge-panes b{display:block;color:#c1cebf;font:700 10px ui-monospace,monospace;margin-bottom:6px}
+.archive-bridge-panes canvas{display:block;width:100%;max-height:320px;aspect-ratio:16/9;background:#000;border-radius:4px}
+.archive-bridge-controls{margin:13px 0;padding:12px;border:1px solid #4f6855;
+ border-radius:8px;background:#1b3022;display:flex;flex-direction:column;gap:9px}
+.archive-bridge-controls>b{font:700 12px ui-monospace,monospace;color:#e2eacf}
+.archive-bridge-controls>p{font-size:11px!important;line-height:1.55!important;color:#c4d5c5!important;margin:0!important}
+.archive-bridge-actions{display:flex;flex-wrap:wrap;gap:7px}
+.archive-bridge-actions button{min-height:38px}
+.archive-bridge-metrics{display:flex;flex-wrap:wrap;gap:6px}
+.archive-bridge-metrics span{font-size:11px;padding:8px;border:1px solid #536959;border-radius:4px;color:#cadac9}
+.archive-bridge-metrics b{font:700 12px ui-monospace,monospace}
