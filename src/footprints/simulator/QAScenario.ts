@@ -6,8 +6,8 @@ export type QAFaultKind='tracking-loss'|'identity-crossing'|'camera-change'|'hol
 export type QAFault={id:QAFaultKind;startMs:number;endMs:number;name:string;effect:string};
 export const QA_FAULTS:readonly QAFault[]=[
  {id:'tracking-loss',startMs:220000,endMs:224000,name:'Tracking terputus',effect:'Kaki keluar dari pelacakan'},
- {id:'identity-crossing',startMs:426000,endMs:432000,name:'Persilangan A/B',effect:'Identitas ambigu; pendaratan ditahan'},
- {id:'camera-change',startMs:609000,endMs:615000,name:'Kamera berganti',effect:'Rekalibrasi diperlukan sebelum kontak baru'},
+ {id:'identity-crossing',startMs:426000,endMs:438000,name:'Persilangan A/B',effect:'Pendaratan ditahan hingga reset identitas sintetis pada 07:18'},
+ {id:'camera-change',startMs:609000,endMs:625000,name:'Kamera berganti',effect:'Output gelap hingga simulasi konfirmasi ulang kamera pada 10:25'},
  {id:'hold',startMs:734000,endMs:739000,name:'Hold',effect:'Gambar proyeksi ditahan, langkah tetap direkam'},
  {id:'blackout',startMs:812000,endMs:818000,name:'Blackout',effect:'Output padam, langkah tetap direkam'}
 ];
