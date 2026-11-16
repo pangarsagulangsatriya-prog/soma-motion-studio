@@ -1,4 +1,5 @@
 import {sole} from '../pattern.ts';
+import type {CalibrationQATarget} from '../validation/CalibrationQA.ts';
 import {floorToUV,type FloorSpace} from '../spatial/coordinates.ts';
 import {validateFloorSession,type FloorSession,type FootstepEvent} from '../spatial/events.ts';
 
@@ -16,7 +17,7 @@ const solePath=()=>{
 const color=(e:FootstepEvent)=>e.performerId==='B'?
  (e.foot==='left'?'#A5D4D1':'#7FB0CB'):
  (e.foot==='left'?'#E6EBD9':'#D2DD8E');
-export type FloorCanvasOptions={maxTimeMs?:number;showGrid?:boolean;markersOnly?:boolean};
+export type FloorCanvasOptions={maxTimeMs?:number;showGrid?:boolean;markersOnly?:boolean;qaTarget?:CalibrationQATarget|null};
 export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,options:FloorCanvasOptions={}){
  const s=validateFloorSession(session),w=FLOOR_RASTER.width,h=FLOOR_RASTER.height;
  if(canvas.width!==w)canvas.width=w;
@@ -26,6 +27,17 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
  ctx.setTransform(1,0,0,1,0,0);
  ctx.fillStyle='#000000';ctx.fillRect(0,0,w,h);
  if(options.markersOnly){
+  if(options.qaTarget){
+   const target=options.qaTarget;
+   const x=target.uv.x*w,y=target.uv.y*h;
+   ctx.strokeStyle='#ffffff';ctx.fillStyle='#ffffff';ctx.lineWidth=3;
+   ctx.beginPath();ctx.moveTo(x-32,y);ctx.lineTo(x+32,y);
+   ctx.moveTo(x,y-32);ctx.lineTo(x,y+32);ctx.stroke();
+   ctx.beginPath();ctx.arc(x,y,13,0,Math.PI*2);ctx.stroke();
+   ctx.font='bold 24px monospace';ctx.textAlign='left';
+   ctx.fillText('QA '+target.id+' / '+target.label,x+28,y-27);
+   return;
+  }
   const positions=[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
   // Marker centres sit at the ACTUAL raster corners, never inset by
   // 18 px: an inset would introduce a systematic floor-alignment error.
