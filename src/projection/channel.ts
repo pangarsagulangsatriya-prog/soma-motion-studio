@@ -16,10 +16,12 @@ export class ProjectionLink{
   this.child=window.open(url.toString(),`soma-${surface??'body'}-${this.id}`,'popup,width=1280,height=720');this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=0;this.error=this.child?'':'Pop-up diblokir. Izinkan pop-up SOMA, lalu buka output lagi.';return !!this.child;}
  get opened(){return !!this.child&&!this.child.closed;}
  get connected(){return this.opened&&Date.now()-this.lastSeen<OUTPUT_TIMEOUT;}
- send(state:ProjectionState,now:number){
+ send(state:ProjectionState,now:number,urgent=false){
   this.latestTransport=state.transport;this.latestArtworkAllowed=shouldTransmitArtwork(state);
   if(!this.opened)return;
-  if(now-this.lastControl>90){const {image:_,...control}=state;this.channel?.postMessage({type:'control',session:this.id,control});this.lastControl=now;}
+  // Safety blackout bypasses the regular 90 ms control throttle. The remote
+  // renderer still depends on browser delivery and the physical power switch.
+  if(urgent||now-this.lastControl>90){const {image:_,...control}=state;this.channel?.postMessage({type:'control',session:this.id,control});this.lastControl=now;}
   if(!this.connected||this.inFlight!==null||!state.image)return;
   const image=state.image,data=image.mask.data.slice(),sequence=++this.sequence;this.inFlight=sequence;
   try{this.child!.postMessage({type:'mask',session:this.id,sequence,width:image.mask.width,height:image.mask.height,aspect:image.aspect,time:image.time,rawBounds:image.rawBounds,bounds:image.bounds,processed:!!image.processed,buffer:data.buffer},location.origin,[data.buffer]);}catch{this.inFlight=null;this.error='Kirim siluet gagal. Buka ulang output.';}
