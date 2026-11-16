@@ -80,6 +80,11 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
   setVideo(slot,e.target.files?.[0]??null);e.target.value='';
  };
  const resetBridge=()=>{
+  // Explicit reset is a user gesture: restart footage paused by a prior hold
+  // when playback is still requested. Reset must not leave clips stuck paused.
+  if(playing)for(const slot of slots){
+   if(lastHold.current[slot])void videoRefs.current[slot]?.play().catch(()=>{});
+  }
   contactBridge.reset();thumbnails.current.clear();simulationClock.current=0;
   lastHold.current={A:false,B:false};
   bridgeStateRef.current=contactBridge.snapshot(0);
@@ -88,9 +93,6 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
    recent:'',status:'Bridge dikosongkan. Arsip pad sebelumnya hilang dari preview.'});
  };
  const toggleBridge=()=>{
-  if(bridgeEnabled&&playing){
-   for(const slot of slots)videoRefs.current[slot]?.play().catch(()=>{});
-  }
   resetBridge();setBridgeEnabled(v=>!v);
  };
  const playback=async()=>{
