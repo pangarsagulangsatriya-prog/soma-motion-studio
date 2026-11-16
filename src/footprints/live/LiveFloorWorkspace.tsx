@@ -14,8 +14,9 @@ import {FloorRealtimeTimingWindow} from './FloorRealtimeDiagnostics.ts';
 import {FloorRepaintScheduler} from './FloorRepaintScheduler.ts';
 import {StageValidationPanel} from '../validation/StageValidationPanel.tsx';
 import {CalibrationQAPanel} from '../validation/CalibrationQAPanel.tsx';
+import {PhysicalAcceptancePanel} from '../validation/PhysicalAcceptancePanel.tsx';
 import {CALIBRATION_QA_TARGETS,calibrationQAContextKey,calibrationQAReport,
- measureCalibrationQATarget,type CalibrationQASample} from '../validation/CalibrationQA.ts';
+ measureCalibrationQATarget,summarizeCalibrationQA,type CalibrationQASample} from '../validation/CalibrationQA.ts';
 import {SoftwarePerformanceWindow} from '../validation/StageValidationRecorder.ts';
 import type {Point,Quad} from '../../projection/geometry.ts';
 import {download} from '../../engine/recording.ts';
@@ -76,6 +77,8 @@ export function LiveFloorWorkspace({
    projection.config.quad,projection.config.resolution);}
   catch{return '';}
  },[tracker.calibrationData,tracker.boundCamera,projection.config.quad,projection.config.resolution,version]);
+ const qaSummary=useMemo(()=>qaContextKey?summarizeCalibrationQA(qaSamples,qaContextKey):null,
+  [qaSamples,qaContextKey]);
  const qaOldContext=useRef(qaContextKey);
  useEffect(()=>{
   if(qaOldContext.current===qaContextKey)return;
@@ -279,7 +282,7 @@ export function LiveFloorWorkspace({
  return <dialog ref={dialog} className="live-floor-dialog" onCancel={e=>{e.preventDefault();onClose();}}
   aria-label="Footprints Live Floor Tracking">
   <header className="live-floor-header">
-   <div><small>SOMA / FOOTPRINTS · S5.6.3</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
+   <div><small>SOMA / FOOTPRINTS · S5.6.4</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
    <button type="button" onClick={onClose} aria-label="Tutup Live Floor Tracking"><X size={20}/></button>
   </header>
   <div className="live-floor-layout">
@@ -368,6 +371,14 @@ export function LiveFloorWorkspace({
      <StageValidationPanel key={floorActive.widthM+'x'+floorActive.depthM}
       floor={floorActive} events={tracker.session?.events??[]} software={softwareMetrics}
       realtime={realtime.metrics} outputAck={projection.status.artworkTransfer}/>
+    </details>
+    <details className="live-floor-validation-drawer">
+     <summary>04 / Physical Stage Acceptance <span>Video, pijakan nyata dan keputusan uji</span></summary>
+     <PhysicalAcceptancePanel floor={floorActive} events={tracker.session?.events??[]}
+      performerCount={performerCount} contextKey={qaContextKey}
+      calibrationQA={qaSummary} calibrationSamples={qaSamples}
+      cameraConfirmed={status.confirmed} projectorVerified={projectorVerified}
+      onBlackout={onBlackout}/>
     </details>
     <FloorProjectionPanel projection={projection} sourceLabel="live"
      verified={projectorVerified} testPattern={testPattern} qaActive={qaTargetIndex!==null}
