@@ -54,7 +54,8 @@ export class StageValidationRecorder{
  readonly latency:PhysicalLatency[]=[];
  readonly observations:StageObservation[]=[];
  private serial=0;
- constructor(readonly floor:FloorSpace){}
+ readonly floor:FloorSpace;
+ constructor(floor:FloorSpace){this.floor=floor;}
  addContact(event:FootstepEvent,referenceM:FloorPoint,note=''):MeasuredContact{
   if(event.kind!=='contact'||event.source!=='camera'||event.positionBasis!=='calibrated-estimate')
    throw Error('Pilih event kontak kamera, bukan langkah simulasi atau bayangan prediksi.');
