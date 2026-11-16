@@ -4,6 +4,7 @@ import {download} from '../../engine/recording.ts';
 import type {FootstepEvent} from '../spatial/events.ts';
 import type {FloorSpace} from '../spatial/coordinates.ts';
 import {StageValidationRecorder,type SoftwareMetrics,type StageObservation} from './StageValidationRecorder.ts';
+import './stage-validation.css';
 
 const val=(n:number|null,unit='')=>n===null?'–':(Math.round(n*100)/100).toString()+unit;
 const csvCell=(x:unknown)=>'"'+String(x??'').replace(/"/g,'""')+'"';
