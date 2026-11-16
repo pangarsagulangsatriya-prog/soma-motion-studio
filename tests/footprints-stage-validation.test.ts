@@ -6,6 +6,7 @@ import {LiveFloorTrackingEngine,type CameraBinding} from '../src/footprints/live
 import {StageValidationRecorder,SoftwarePerformanceWindow,stageValidationSummary,percentile}
  from '../src/footprints/validation/StageValidationRecorder.ts';
 import {FloorRenderGate,floorPaintKey} from '../src/footprints/live/FloorRenderGate.ts';
+import {shouldRefreshFloorArtwork,shouldTransmitArtwork} from '../src/projection/channel.ts';
 
 const floor=defaultFloorSpace(8,6);
 const contact=(id:string,performerId='A',x=2,y=3):FootstepEvent=>({
@@ -131,4 +132,16 @@ test('percentiles return null for missing values and interpolate small samples',
  assert.equal(percentile([10,20],50),15);
  assert.equal(percentile([10,20],95),19.5);
  assert.equal(percentile([Number.NaN],95),null);
+});
+
+test('shared projection sends a changed floor bitmap, then only refresh heartbeat',()=>{
+ assert.equal(shouldRefreshFloorArtwork('rev-1',null,12),true);
+ assert.equal(shouldRefreshFloorArtwork('rev-1','rev-1',100),false);
+ assert.equal(shouldRefreshFloorArtwork('rev-2','rev-1',100),true);
+ assert.equal(shouldRefreshFloorArtwork('rev-2','rev-2',901),true);
+ assert.equal(shouldRefreshFloorArtwork(undefined,'rev-2',100),true); // legacy artwork stays live
+ assert.equal(shouldTransmitArtwork({transport:'live',blank:false,pattern:false}),true);
+ assert.equal(shouldTransmitArtwork({transport:'hold',blank:false,pattern:false}),false);
+ assert.equal(shouldTransmitArtwork({transport:'blackout',blank:false,pattern:false}),false);
+ assert.equal(shouldTransmitArtwork({transport:'live',blank:true,pattern:false}),false);
 });
