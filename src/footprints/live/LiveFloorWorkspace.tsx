@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
+import {useEffect,useMemo,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {Camera,Download,Footprints,RefreshCcw,X} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
@@ -9,6 +9,9 @@ import {defaultFloorSpace,validateCameraFloorCalibration,type CameraFloorCalibra
 import {createFloorSession} from '../spatial/events.ts';
 import {cameraBinding,LiveFloorTrackingEngine,type LiveFloorStatus} from './LiveFloorTrackingEngine.ts';
 import type {MultiPoseGaitRouter} from './MultiPoseGaitRouter.ts';
+import {FloorRenderGate,floorPaintKey} from './FloorRenderGate.ts';
+import {StageValidationPanel} from '../validation/StageValidationPanel.tsx';
+import {SoftwarePerformanceWindow} from '../validation/StageValidationRecorder.ts';
 import type {Point,Quad} from '../../projection/geometry.ts';
 import {download} from '../../engine/recording.ts';
 import './live-floor.css';
@@ -48,12 +51,19 @@ export function LiveFloorWorkspace({
  const [marksAt,setMarksAt]=useState<Point[]>(()=>tracker.calibrationData?.cameraQuad.map(p=>({...p}))??[]);
  const [select,setSelect]=useState(0);
  const [version,setVersion]=useState(0);
+ const [,setMetricsTick]=useState(0);
+ const renderGate=useRef(new FloorRenderGate()).current;
+ const perfWindow=useRef(new SoftwarePerformanceWindow()).current;
+ const prevViewKey=useRef(''),prevStatusKey=useRef('');
+ const lastSoftwareUpdate=useRef(0);
  const [status,setStatus]=useState<LiveFloorStatus>(tracker.status);
  const [message,setMessage]=useState('Ambil empat sudut lantai dari gambar kamera mentah.');
  const refreshed=()=>{setVersion(v=>v+1);setStatus(tracker.status);};
  const floorActive=tracker.floor??floor;
- const session=(showPredictions?router.previewSession:tracker.session)??createFloorSession(floorActive);
- const svg=floorArtworkSVG(session,{width:960,height:720,showGrid:true,showTrail:false});
+ const session=useMemo(()=>(showPredictions?router.previewSession:tracker.session)??createFloorSession(floorActive),
+  [showPredictions,router,tracker,floorActive,version]);
+ const svg=useMemo(()=>floorArtworkSVG(session,{width:960,height:720,showGrid:true,showTrail:false}),[session]);
+ const softwareMetrics=perfWindow.metrics(projection.status.connected?projection.status.output:null);
  useEffect(()=>{
   dialog.current?.showModal();
   return()=>{dialog.current?.close();};
@@ -103,17 +113,32 @@ export function LiveFloorWorkspace({
     onDirtyRef.current();setMessage('Kamera atau resolusinya berubah. Kalibrasi perlu diulang.');
    }
    try{
-    const canvas=projectorArtworkRef.current;
-    if(canvas){
-     const current=(showPredictions?router.previewSession:tracker.session)??createFloorSession(floor);
+    const canvas=projectorArtworkRef.current,now=performance.now();
+    perfWindow.observeCamera(frameRef.current.telemetry??null);
+    const ghostIds=showPredictions?router.getGhosts(router.displayClockMs).map(g=>g.id):[];
+    const activeFloor=tracker.floor??floor;
+    const key=floorPaintKey(tracker.eventRevision,ghostIds,testPattern,
+     activeFloor.widthM,activeFloor.depthM,showPredictions);
+    if(canvas&&renderGate.shouldPaint(key,now)){
+     const current=(showPredictions?router.previewSession:tracker.session)??createFloorSession(activeFloor);
+     const start=performance.now();
      paintFloorCanvas(canvas,current,{markersOnly:testPattern,showGrid:false});
+     canvas.dataset.floorRevision=key;
+     perfWindow.observePaint(start,performance.now());
+    }
+    if(prevViewKey.current!==key){
+     prevViewKey.current=key;setVersion(v=>v+1);
+    }
+    const next=tracker.status,statusKey=JSON.stringify(next);
+    if(statusKey!==prevStatusKey.current){prevStatusKey.current=statusKey;setStatus(next);}
+    if(now-lastSoftwareUpdate.current>=600){
+     lastSoftwareUpdate.current=now;setMetricsTick(v=>v+1);
     }
    }catch(e){setMessage(e instanceof Error?e.message:'Output lantai gagal dirender.');}
-   setStatus(tracker.status);setVersion(v=>v+1);
   };
   tick();const id=setInterval(tick,170);
   return()=>clearInterval(id);
- },[tracker,router,videoRef,projectorArtworkRef,testPattern,showPredictions,floor]);
+ },[tracker,router,videoRef,frameRef,projectorArtworkRef,testPattern,showPredictions,floor,renderGate,perfWindow]);
  const choosePoint=(e:PointerEvent<HTMLCanvasElement>)=>{
   const v=videoRef.current,canvas=cameraCanvas.current;
   if(!v||!canvas||!v.videoWidth||!v.videoHeight||v.readyState<2)return;
@@ -166,7 +191,7 @@ export function LiveFloorWorkspace({
  return <dialog ref={dialog} className="live-floor-dialog" onCancel={e=>{e.preventDefault();onClose();}}
   aria-label="Footprints Live Floor Tracking">
   <header className="live-floor-header">
-   <div><small>SOMA / FOOTPRINTS · S5.3</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
+   <div><small>SOMA / FOOTPRINTS · S5.5</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
    <button type="button" onClick={onClose} aria-label="Tutup Live Floor Tracking"><X size={20}/></button>
   </header>
   <div className="live-floor-layout">
@@ -235,6 +260,11 @@ export function LiveFloorWorkspace({
       <button type="button" disabled={status.events===0} onClick={exportJSON}><Download size={15}/> JSON V3</button>
      </div>
     </section>
+    <details className="live-floor-validation-drawer">
+     <summary>03 / Validasi fisik & performa <span>Pengukuran panggung</span></summary>
+     <StageValidationPanel key={floorActive.widthM+'x'+floorActive.depthM}
+      floor={floorActive} events={tracker.session?.events??[]} software={softwareMetrics}/>
+    </details>
     <FloorProjectionPanel projection={projection} sourceLabel="live"
      verified={projectorVerified} testPattern={testPattern}
      onVerify={onProjectorVerify} onTestPattern={onTestPattern}
