@@ -11,6 +11,7 @@ import {cameraBinding,LiveFloorTrackingEngine,type LiveFloorStatus} from './Live
 import type {MultiPoseGaitRouter} from './MultiPoseGaitRouter.ts';
 import {FloorRenderGate,floorPaintKey} from './FloorRenderGate.ts';
 import {FloorRealtimeTimingWindow} from './FloorRealtimeDiagnostics.ts';
+import {FloorRepaintScheduler} from './FloorRepaintScheduler.ts';
 import {StageValidationPanel} from '../validation/StageValidationPanel.tsx';
 import {SoftwarePerformanceWindow} from '../validation/StageValidationRecorder.ts';
 import type {Point,Quad} from '../../projection/geometry.ts';
@@ -144,11 +145,12 @@ export function LiveFloorWorkspace({
   }catch(e){setMessage(e instanceof Error?e.message:'Output lantai gagal dirender.');}
  };
  useEffect(()=>{
-  let raf=0;
-  const schedule=()=>{
-   if(raf)return;
-   raf=requestAnimationFrame(()=>{raf=0;paintCurrent.current();});
-  };
+  const scheduler=new FloorRepaintScheduler(
+   callback=>requestAnimationFrame(callback),
+   id=>cancelAnimationFrame(id),
+   ()=>paintCurrent.current()
+  );
+  const schedule=()=>scheduler.invalidate();
   requestCurrent.current=schedule;
   const offEvents=tracker.subscribe(change=>{
    realtime.observe(change);schedule();
@@ -158,7 +160,7 @@ export function LiveFloorWorkspace({
   const timer=setInterval(schedule,120);
   return()=>{
    offEvents();offGhost();clearInterval(timer);
-   cancelAnimationFrame(raf);requestCurrent.current=()=>{};
+   scheduler.dispose();requestCurrent.current=()=>{};
   };
  },[tracker,router,realtime]);
  useEffect(()=>{requestCurrent.current();},[showPredictions,testPattern,floor]);
