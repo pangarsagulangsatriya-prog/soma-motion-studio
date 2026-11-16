@@ -7,6 +7,7 @@ import type {FloorSpace} from '../spatial/coordinates.ts';
 import type {CalibrationQASample,CalibrationQASummary} from './CalibrationQA.ts';
 import {addMovementEvidence,addPhotonEvidence,annotatePhysicalContact,
  assessPhysicalAcceptance,capturePhysicalTrial,exportPhysicalAcceptance,markPhysicalReview,
+ removePhysicalContact,removeMovementEvidence,removePhotonEvidence,
  requiredMovementCases,type MovementCase,type PhysicalChecklist,type PhysicalTrial} from './PhysicalAcceptance.ts';
 
 type Props={
@@ -37,6 +38,9 @@ export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
  const [seqKind,setSeqKind]=useState<MovementCase>('normal-walk'),[seqWho,setSeqWho]=useState('performer-1');
  const [seqFrame,setSeqFrame]=useState(''),[seqNote,setSeqNote]=useState('');
  const [lightContact,setLightContact]=useState(''),[lightFrames,setLightFrames]=useState('');
+ const [removeContactId,setRemoveContactId]=useState('');
+ const [removeSequenceIndex,setRemoveSequenceIndex]=useState('');
+ const [removeLightId,setRemoveLightId]=useState('');
  const [reviewer,setReviewer]=useState(''),[reviewNote,setReviewNote]=useState('');
  const [message,setMessage]=useState('Rekam satu take panggung dan bekukan event sebelum membandingkannya dengan video.');
  const assessment=useMemo(()=>assessPhysicalAcceptance(trial,contextKey,calibrationQA),
@@ -139,6 +143,16 @@ export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
      placeholder="marker F2, video jelas, kaki kiri"/></label>
     <button type="button" disabled={!canAnnotate||frame.trim()===''||x.trim()===''||y.trim()===''} onClick={addContact}>Tambah pijakan fisik</button>
     <p>{trial.physicalContacts.length} pijakan sudah ditandai; {trial.physicalContacts.filter(x=>x.matchedEventId).length} berpasangan, {trial.physicalContacts.filter(x=>!x.matchedEventId).length} tidak tercetak.</p>
+    <div className="stage-accept-fields">
+     <label>Koreksi anotasi pijakan<select disabled={!canAnnotate} value={removeContactId} onChange={e=>setRemoveContactId(e.target.value)}>
+      <option value="">Pilih anotasi untuk dihapus</option>
+      {trial.physicalContacts.map(c=><option key={c.id} value={c.id}>{c.id} · {c.performerId} {c.foot} · frame {c.videoFrame} · {c.matchedEventId??'missed'}</option>)}
+     </select></label>
+     <button type="button" disabled={!canAnnotate||!removeContactId} onClick={()=>change(()=>{
+      setTrial(removePhysicalContact(trial,removeContactId));setRemoveContactId('');
+      setMessage('Anotasi pijakan dihapus; latensi terkait ikut dibersihkan.');
+     })}><Trash2 size={14}/> Koreksi pijakan</button>
+    </div>
    </div>
    <div className="stage-accept-group">
     <b>3 · Bukti gerak dari video</b>
@@ -158,6 +172,17 @@ export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
     <button type="button" disabled={!canAnnotate||!seqFrame.trim()||!seqNote.trim()} onClick={addSeq}>Tambah kejadian video</button>
     <div className="stage-accept-chips">{requiredMovementCases(trial.performerCount).map(k=>
      <span key={k}>{MOVEMENT_LABELS[k]} · {trial.sequences.filter(s=>s.kind===k).length}</span>)}</div>
+    <div className="stage-accept-fields">
+     <label>Koreksi kejadian gerak<select disabled={!canAnnotate} value={removeSequenceIndex}
+      onChange={e=>setRemoveSequenceIndex(e.target.value)}>
+      <option value="">Pilih kejadian untuk dihapus</option>
+      {trial.sequences.map((s,i)=><option key={i} value={String(i)}>{MOVEMENT_LABELS[s.kind]} · frame {s.videoFrame}</option>)}
+     </select></label>
+     <button type="button" disabled={!canAnnotate||removeSequenceIndex===''} onClick={()=>change(()=>{
+      setTrial(removeMovementEvidence(trial,Number(removeSequenceIndex)));setRemoveSequenceIndex('');
+      setMessage('Catatan gerak dikoreksi.');
+     })}><Trash2 size={14}/> Koreksi gerak</button>
+    </div>
    </div>
    <div className="stage-accept-group">
     <b>4 · Latensi kaki → cahaya</b>
@@ -173,6 +198,15 @@ export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
     </div>
     <button type="button" disabled={!canAnnotate||!lightContact||lightFrames.trim()===''} onClick={addPhoton}>Catat latensi fisik</button>
     <p>{trial.photons.length} sampel latensi fisik.</p>
+    <div className="stage-accept-fields">
+     <label>Koreksi latensi<select disabled={!canAnnotate} value={removeLightId} onChange={e=>setRemoveLightId(e.target.value)}>
+      <option value="">Pilih pengukuran untuk dihapus</option>
+      {trial.photons.map(p=><option key={p.id} value={p.id}>{p.physicalContactId} · {p.latencyMs} ms</option>)}
+     </select></label>
+     <button type="button" disabled={!canAnnotate||!removeLightId} onClick={()=>change(()=>{
+      setTrial(removePhotonEvidence(trial,removeLightId));setRemoveLightId('');setMessage('Pengukuran latensi dikoreksi.');
+     })}><Trash2 size={14}/> Koreksi latensi</button>
+    </div>
    </div>
    <div className="stage-accept-group">
     <b>5 · Checklist dan pemeriksa</b>
@@ -193,13 +227,13 @@ export function PhysicalAcceptancePanel({floor,events,performerCount,contextKey,
     <b>6 · Hasil & keputusan sementara</b>
     <div className="stage-accept-metrics">
      <span><b>{summary?.matched??0}</b><small>True positive</small></span>
-     <span><b>{summary?.falseContacts??0}</b><small>False positive*</small></span>
+     <span><b>{trial.reviewComplete?summary?.falseContacts??0:'—'}</b><small>False positive*</small></span>
      <span><b>{summary?.missedContacts??0}</b><small>Missed contact</small></span>
-     <span><b>{metric(summary?.precision??null)}</b><small>Precision</small></span>
+     <span><b>{trial.reviewComplete?metric(summary?.precision??null):'—'}</b><small>Precision*</small></span>
      <span><b>{metric(summary?.recall??null)}</b><small>Recall</small></span>
      <span><b>{metric(summary?.errorCm.p95??null,' cm')}</b><small>Posisi P95</small></span>
      <span><b>{metric(summary?.lightMs.p95??null,' ms')}</b><small>Kaki → cahaya P95</small></span>
-     <span><b>{metric(summary?.falseContactsPerMinute??null)}</b><small>False / menit</small></span>
+     <span><b>{trial.reviewComplete?metric(summary?.falseContactsPerMinute??null):'—'}</b><small>False / menit*</small></span>
     </div>
     <p>*False positive baru layak dilaporkan setelah pemeriksa menutup review seluruh rekaman.</p>
     <p>Status: <strong>{assessment.status==='meets-provisional-gates'?'Memenuhi ambang kerja sementara':
