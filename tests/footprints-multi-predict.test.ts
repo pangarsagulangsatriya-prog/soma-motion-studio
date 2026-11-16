@@ -47,6 +47,11 @@ test('existing MediaPipe two poses retain A/B identity when detection order chan
  assert.equal(v.ambiguous,true);
  assert.equal(v.assignments.length,0);
  assert.ok(v.lost.includes('A')&&v.lost.includes('B'));
+ const after=v=ids.observe([p(.29),p(.74)],300);
+ assert.equal(after.assignments.length,0); // never auto-swap after occlusion
+ assert.match(after.reason,/reset identitas/i);
+ ids.reset();
+ assert.deepEqual(ids.observe([p(.29),p(.74)],400).assignments.map(a=>a.id),['A','B']);
 });
 
 test('one missing performer keeps other identity; distant re-entry requires explicit reset',()=>{
