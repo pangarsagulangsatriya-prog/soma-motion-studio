@@ -51,6 +51,7 @@ export default function App(){
  const [footprintsActive,setFootprintsActive]=useState(false);
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
+ const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
  const [captureOpen,setCaptureOpen]=useState(false),[captureTab,setCaptureTab]=useState<CaptureTab>('photo');
  const [advancedOpen,setAdvancedOpen]=useState(false),[bodyPromptDismissed,setBodyPromptDismissed]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(()=>typeof window==='undefined'||window.innerWidth>=1360);
@@ -81,7 +82,7 @@ export default function App(){
  const photoArchive=usePhotoArchive({frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,muted,notify});
  const cameraCue=useCameraCue({archive:photoArchive,frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,notify,onOpen:()=>{setModal(null);setControlsOpen(false);setProjectionActive(false);}});
  const projection=useProjection({active:projectionActive,frameRef,videoRef:video,input:settings.input,notify,artworkActive:footprintsActive,artworkRef:footprintCanvasRef,
-  simulatorActive:simulatorOpen,simulatorApproval,simulatorArtworkRef});
+  simulatorActive:simulatorOpen,simulatorApproval,simulatorTestPattern,simulatorArtworkRef});
  const simulatorFloorVerified=simulatorApproval!==null&&simulatorApproval===floorCalibrationSignature(projection.config);
  useEffect(()=>{tracker.setProjection(projection.running);return()=>tracker.setProjection(false);},[tracker,projection.running]);
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
@@ -280,20 +281,27 @@ export default function App(){
   {notice&&<div className="toast" role="status"><span>{notice}</span><button onClick={()=>setNotice('')} aria-label="Tutup pemberitahuan"><X size={16}/></button></div>}
   <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>void importPreset(e.target.files?.[0])}/>
   {simulatorOpen&&<PuppetSimulator projection={projection} projectorArtworkRef={simulatorArtworkRef}
-    verified={simulatorFloorVerified}
+    verified={simulatorFloorVerified} testPattern={simulatorTestPattern}
     onVerify={value=>{
+     projection.setTransport('blackout');
+     setSimulatorTestPattern(false);
      if(value)setSimulatorApproval(floorCalibrationSignature(projection.config));
-     else{setSimulatorApproval(null);projection.setTransport('blackout');}
+     else setSimulatorApproval(null);
+    }}
+    onTestPattern={value=>{
+     projection.setTransport('blackout');
+     setSimulatorApproval(null);
+     setSimulatorTestPattern(value);
     }}
     onOpenOutput={()=>{projection.setTransport('blackout');projection.openOutput();}}
-    onCalibrate={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorOpen(false);
+    onCalibrate={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorTestPattern(false);setSimulatorOpen(false);
      setClean(false);setProjectionActive(true);
      notify('Projection → Kalibrasi: tandai empat sudut lantai, terapkan, lalu kembali ke Footprints.');
     }}
-    onLive={()=>{if(!simulatorFloorVerified)return;projection.setPattern(false);projection.setTransport('live');}}
-    onHold={()=>{if(simulatorFloorVerified)projection.setTransport('hold');}}
+    onLive={()=>{if(!simulatorFloorVerified&&!simulatorTestPattern)return;projection.setPattern(false);projection.setTransport('live');}}
+    onHold={()=>{if(simulatorFloorVerified||simulatorTestPattern)projection.setTransport('hold');}}
     onBlackout={()=>projection.setTransport('blackout')}
-    onClose={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorOpen(false);}}/>}
+    onClose={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorTestPattern(false);setSimulatorOpen(false);}}/>}
   {captureOpen&&<CaptureHub onClose={()=>setCaptureOpen(false)} initialTab={captureTab}
     archive={photoArchive} cue={cameraCue} videoRef={video} cameraBusy={cameraBusy}
     onCamera={()=>void startCamera()} onOpenBody={()=>{setCaptureOpen(false);void openBodyCamera();}}
