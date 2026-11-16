@@ -39,6 +39,7 @@ export function LiveFloorWorkspace({
  onOpenOutput,onCalibrateProjector,onLive,onHold,onBlackout,onCalibrationDirty,onCameraConfirmed
 }:Props){
  const dialog=useRef<HTMLDialogElement>(null),cameraCanvas=useRef<HTMLCanvasElement>(null);
+ const onDirtyRef=useRef(onCalibrationDirty);onDirtyRef.current=onCalibrationDirty;
  const [floor,setFloor]=useState<FloorSpace>(tracker.floor??initialFloor);
  const [marksAt,setMarksAt]=useState<Point[]>(()=>tracker.calibrationData?.cameraQuad.map(p=>({...p}))??[]);
  const [select,setSelect]=useState(0);
@@ -95,7 +96,7 @@ export function LiveFloorWorkspace({
   const tick=()=>{
    const binding=cameraBinding(videoRef.current);
    if(tracker.isConfirmed&&!tracker.checkBinding(binding)){
-    onCalibrationDirty();setMessage('Kamera atau resolusinya berubah. Kalibrasi perlu diulang.');
+    onDirtyRef.current();setMessage('Kamera atau resolusinya berubah. Kalibrasi perlu diulang.');
    }
    try{
     const canvas=projectorArtworkRef.current;
@@ -108,7 +109,7 @@ export function LiveFloorWorkspace({
   };
   tick();const id=setInterval(tick,170);
   return()=>clearInterval(id);
- },[tracker,videoRef,projectorArtworkRef,onCalibrationDirty,testPattern,floor]);
+ },[tracker,videoRef,projectorArtworkRef,testPattern,floor]);
  const choosePoint=(e:PointerEvent<HTMLCanvasElement>)=>{
   const v=videoRef.current,canvas=cameraCanvas.current;
   if(!v||!canvas||!v.videoWidth||!v.videoHeight||v.readyState<2)return;
