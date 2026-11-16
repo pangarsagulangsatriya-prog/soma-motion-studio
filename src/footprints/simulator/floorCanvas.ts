@@ -31,11 +31,14 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
   // 18 px: an inset would introduce a systematic floor-alignment error.
   ctx.fillStyle='#e5eadb';ctx.strokeStyle='#e5eadb';ctx.lineWidth=2;
   positions.forEach((p,i)=>{
-   const {x,y}=p;
-   ctx.beginPath();ctx.moveTo(Math.max(0,x-20),y);ctx.lineTo(Math.min(w,x+20),y);
-   ctx.moveTo(x,Math.max(0,y-20));ctx.lineTo(x,Math.min(h,y+20));ctx.stroke();
+   // Half-pixel clipping keeps the corner on the real raster boundary
+   // without hiding the mark on the right or bottom pixel row.
+   const x=p.x===0?.5:p.x===w?w-.5:p.x;
+   const y=p.y===0?.5:p.y===h?h-.5:p.y;
+   ctx.beginPath();ctx.moveTo(Math.max(0,x-20),y);ctx.lineTo(Math.min(w-1,x+20),y);
+   ctx.moveTo(x,Math.max(0,y-20));ctx.lineTo(x,Math.min(h-1,y+20));ctx.stroke();
    ctx.font='bold 17px monospace';ctx.textAlign='left';
-   ctx.fillText(String(i+1),x===w?x-32:x+12,y===h?y-13:y+28);
+   ctx.fillText(String(i+1),p.x===w?x-32:x+12,p.y===h?y-13:y+28);
   });
   ctx.strokeRect(0,0,w-1,h-1);
   return;
