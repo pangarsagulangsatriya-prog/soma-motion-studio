@@ -2,8 +2,8 @@ import {Monitor,Pause,Play,Square,SlidersHorizontal} from 'lucide-react';
 import type {Projection} from '../../projection/useProjection.ts';
 import {identityQuad} from '../../projection/geometry.ts';
 
-export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,sourceLabel='simulator'}:{
- projection:Projection;verified:boolean;testPattern:boolean;sourceLabel?:'simulator'|'live';onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;
+export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,sourceLabel='simulator',qaActive=false}:{
+ projection:Projection;verified:boolean;testPattern:boolean;sourceLabel?:'simulator'|'live';qaActive?:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;
  onOpenOutput:()=>void;onCalibrate:()=>void;onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
 }){
  const connected=p.status.connected,hasDefaultCorners=JSON.stringify(p.config.quad)===JSON.stringify(identityQuad());
@@ -15,7 +15,8 @@ export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify
   <div className="puppet-output-actions">
    <button type="button" onClick={onOpenOutput}><Monitor size={15}/> {p.opened?'Buka ulang output':'Buka output'}</button>
    <button type="button" onClick={onCalibrate}><SlidersHorizontal size={15}/> Kalibrasi lantai</button>
-   <button type="button" aria-pressed={testPattern} className={testPattern?'active':''} onClick={()=>onTestPattern(!testPattern)}>Tanda 4 sudut {testPattern?'aktif':'uji'}</button>
+   <button type="button" aria-pressed={testPattern} className={testPattern?'active':''} disabled={qaActive}
+    onClick={()=>onTestPattern(!testPattern)}>{qaActive?'QA · silang interior aktif':'Tanda 4 sudut '+(testPattern?'aktif':'uji')}</button>
   </div>
   <div className="puppet-calibration-warning">
    <b>{hasDefaultCorners?'Kalibrasi masih memakai empat sudut default.':'Periksa empat sudut kalibrasi yang tersimpan.'}</b>
@@ -34,7 +35,7 @@ export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify
     aria-pressed={p.transport==='blackout'} onClick={onBlackout}><Square size={15}/> Blackout</button>
   </div>
   <p className="puppet-projector-status" role="status">
-   {p.status.error||(testPattern?'Mode uji: empat tanda sudut diproyeksikan. Ukur posisinya, lalu atur kalibrasi.':!verified?'Output jejak dikunci sampai kalibrasi lantai dikonfirmasi.':
+   {p.status.error||(qaActive?'Mode QA: satu silang interior diproyeksikan bergantian. Klik pusat cahaya pada gambar kamera.':testPattern?'Mode uji: empat tanda sudut diproyeksikan. Ukur posisinya, lalu atur kalibrasi.':!verified?'Output jejak dikunci sampai kalibrasi lantai dikonfirmasi.':
     !connected?'Menunggu heartbeat dari jendela output. Pastikan pop-up tidak diblokir.':
     p.transport==='blackout'?'Proyektor dipadamkan.':
     p.transport==='hold'?'Jejak terakhir ditahan pada output.':
