@@ -19,7 +19,6 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
  const videoRefs=useRef<{A:HTMLVideoElement|null;B:HTMLVideoElement|null}>({A:null,B:null});
  const urls=useRef<{A:string|null;B:string|null}>({A:null,B:null});
  const imageCanvases=useRef<{A:HTMLCanvasElement|null;B:HTMLCanvasElement|null}>({A:null,B:null});
- const lastBitmaps=useRef<ArchiveSources>({A:null,B:null});
  const phase=useRef(0),lastTime=useRef(0),renderCount=useRef(0);
  const [files,setFiles]=useState<{A:string|null;B:string|null}>({A:null,B:null});
  const [source,setSource]=useState<'simulation'|'live'>('simulation');
@@ -45,10 +44,11 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
   if(file&&(!allowedTypes.has(file.type)||file.size<=0||file.size>maxBytes)){
    setStatus('Gunakan video MP4/WebM/Ogg/MOV berukuran maksimal 300 MB.');return;
   }
-  video.pause();video.removeAttribute('src');video.load();
+  // Switching one file should not silently leave the other player's clock running.
+  slots.forEach(k=>videoRefs.current[k]?.pause());
+  video.removeAttribute('src');video.load();
   if(urls.current[slot])URL.revokeObjectURL(urls.current[slot]!);
   urls.current[slot]=null;
-  lastBitmaps.current[slot]=null;
   setFiles(prev=>({...prev,[slot]:null}));
   if(!file){setStatus('Video '+slot+' dilepas dari preview.');return;}
   const url=URL.createObjectURL(file);urls.current[slot]=url;video.src=url;
@@ -90,14 +90,17 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
     }
     let cv=imageCanvases.current[slot];
     if(!cv){cv=document.createElement('canvas');imageCanvases.current[slot]=cv;}
-    if(cv.width!==192)cv.width=192;if(cv.height!==108)cv.height=108;
+    // Preserve the actual video aspect ratio before its image is cropped against
+    // a moving person's bounding box. Portrait archival clips stay portrait.
+    const h=Math.max(48,Math.min(384,Math.round(192*video.videoHeight/video.videoWidth)));
+    if(cv.width!==192)cv.width=192;
+    if(cv.height!==h)cv.height=h;
     const g=cv.getContext('2d',{willReadFrequently:true});
     if(!g)continue;
     try{
      g.drawImage(video,0,0,cv.width,cv.height);
      const img=g.getImageData(0,0,cv.width,cv.height);
      images[slot]={width:img.width,height:img.height,data:img.data};
-     lastBitmaps.current[slot]=images[slot];
     }catch{images[slot]=null;}
    }
    return images;
