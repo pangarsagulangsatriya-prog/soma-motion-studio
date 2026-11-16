@@ -6,7 +6,7 @@ import {DirectPuppetSession,replayPoseAt} from '../src/footprints/simulator/pupp
 import {floorArtworkSVG} from '../src/footprints/simulator/floor-artwork.ts';
 import {floorRasterPoint} from '../src/footprints/simulator/floorCanvas.ts';
 import {createQAScenario,QA_DURATION_MS,QA_FAULTS,qaContactCounts,
- qaEventIndexAt,qaEventsAt,qaBodyPosition,qaOutputTransportAt,qaPhaseAt}
+ qaEventIndexAt,qaEventsAt,qaBodyPosition,qaOutputTransportAt,qaPhaseAt,qaStepIntervalAt}
  from '../src/footprints/simulator/QAScenario.ts';
 import {runSimulationQA} from '../src/footprints/simulator/SimulationQAReport.ts';
 import {qaPuppetPoseAt} from '../src/footprints/simulator/QAStagePose.ts';
@@ -154,4 +154,19 @@ test('visual puppet foot rises and interpolates between release and next contact
  assert.deepEqual(down.positionM,landing.positionM);
  const latest=qaPuppetPoseAt(scenario,QA_DURATION_MS);
  assert.equal(latest.length,2);
+});
+
+test('labour, leisure, active rest, crossing and return each change actual event pacing',()=>{
+ const labour=qaStepIntervalAt(60000,'A');
+ const leisure=qaStepIntervalAt(240000,'A');
+ const rest=qaStepIntervalAt(420000,'A');
+ const crossing=qaStepIntervalAt(600000,'A');
+ const returnPressure=qaStepIntervalAt(800000,'A');
+ assert.ok(rest>leisure&&leisure>labour);
+ assert.ok(returnPressure<crossing&&crossing<rest);
+ const activeContacts=scenario.session.events.filter(e=>e.kind==='contact'&&
+  e.performerId==='A'&&e.timestampMs>=360000&&e.timestampMs<540000).length;
+ const returnContacts=scenario.session.events.filter(e=>e.kind==='contact'&&
+  e.performerId==='A'&&e.timestampMs>=720000&&e.timestampMs<900000).length;
+ assert.ok(returnContacts>activeContacts);
 });
