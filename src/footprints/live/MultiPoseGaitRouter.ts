@@ -23,6 +23,8 @@ export class MultiPoseGaitRouter{
  private ambiguous=false;
  private reason='Menunggu dua performer.';
  private lastTimestamp=0;
+ private lastWallMs=0;
+ get displayClockMs(){return this.lastTimestamp+(this.lastWallMs?Math.max(0,performance.now()-this.lastWallMs):0);}
  readonly floor:LiveFloorTrackingEngine;
  constructor(floor:LiveFloorTrackingEngine){this.floor=floor;}
  setMode(mode:1|2){
@@ -32,7 +34,7 @@ export class MultiPoseGaitRouter{
  get activeMode(){return this.mode;}
  reset(){
   this.identity.reset();this.analyzers.clear();this.predictor=null;
-  this.visible=[];this.ambiguous=false;this.lastTimestamp=0;
+  this.visible=[];this.ambiguous=false;this.lastTimestamp=0;this.lastWallMs=0;
   this.reason='Identitas direset; tempatkan kedua tubuh dalam bingkai.';
  }
  private ensurePredictor(){
@@ -41,7 +43,7 @@ export class MultiPoseGaitRouter{
  }
  get status():MultiPoseStatus{
   return {mode:this.mode,visible:this.visible.slice(),ambiguous:this.ambiguous,
-   reason:this.reason,ghostCount:this.getGhosts(this.lastTimestamp).length};
+   reason:this.reason,ghostCount:this.getGhosts(this.displayClockMs).length};
  }
  getGhosts(timeMs:number):FootstepEvent[]{
   if(!this.floor.isConfirmed)return [];
@@ -49,14 +51,14 @@ export class MultiPoseGaitRouter{
  }
  get previewSession():FloorSession|null{
   const session=this.floor.session;if(!session)return null;
-  const events=[...session.events,...this.getGhosts(this.lastTimestamp)];
+  const events=[...session.events,...this.getGhosts(this.displayClockMs)];
   events.sort((a,b)=>a.timestampMs-b.timestampMs);
   return createFloorSession(session.floor,events);
  }
  acceptSingle(sample:GaitSample|null,side:0|1,events:FootstepEvent[]){
   if(this.mode!==1)return;
   if(!sample){this.predictor?.lose('performer-1');return;}
-  this.lastTimestamp=sample.t;
+  this.lastTimestamp=sample.t;this.lastWallMs=performance.now();
   const predictor=this.ensurePredictor();
   predictor?.accept(events);
   if(sample.phase==='swing'&&sample.confidence>=.6)
@@ -69,10 +71,10 @@ export class MultiPoseGaitRouter{
     this.floor.losePerformer(id);this.predictor?.lose(id);
     this.analyzers.get(id)?.reset();
    }
-   this.visible=[];this.reason='Tracking terputus; menunggu dua tubuh.';
+   this.visible=[];this.predictor?.reset();this.reason='Tracking terputus; menunggu dua tubuh.';
    return;
   }
-  this.lastTimestamp=clock;
+  this.lastTimestamp=clock;this.lastWallMs=performance.now();
   // Crucial: do not feed a stale MotionFrame into a 2-person GaitAnalyzer.
   if(!this.floor.isConfirmed||!this.floor.checkBinding(binding)){
    this.visible=[];this.predictor?.reset();this.reason='Konfirmasi kalibrasi kamera dahulu.';
