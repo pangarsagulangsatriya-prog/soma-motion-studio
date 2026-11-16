@@ -289,7 +289,7 @@ export function LiveFloorWorkspace({
      <summary>03 / Validasi fisik & performa <span>Pengukuran panggung</span></summary>
      <StageValidationPanel key={floorActive.widthM+'x'+floorActive.depthM}
       floor={floorActive} events={tracker.session?.events??[]} software={softwareMetrics}
-      realtime={realtime.metrics}/>
+      realtime={realtime.metrics} outputAck={projection.status.artworkTransfer}/>
     </details>
     <FloorProjectionPanel projection={projection} sourceLabel="live"
      verified={projectorVerified} testPattern={testPattern}
