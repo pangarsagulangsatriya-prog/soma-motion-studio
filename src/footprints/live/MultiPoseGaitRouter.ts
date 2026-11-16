@@ -24,6 +24,9 @@ export class MultiPoseGaitRouter{
  private reason='Menunggu dua performer.';
  private lastTimestamp=0;
  private lastWallMs=0;
+ private listeners=new Set<()=>void>();
+ subscribe(listener:()=>void):()=>void{this.listeners.add(listener);return()=>{this.listeners.delete(listener);};}
+ private invalidate(){for(const listener of this.listeners)listener();}
  get displayClockMs(){return this.lastTimestamp+(this.lastWallMs?Math.max(0,performance.now()-this.lastWallMs):0);}
  readonly floor:LiveFloorTrackingEngine;
  constructor(floor:LiveFloorTrackingEngine){this.floor=floor;}
@@ -35,7 +38,7 @@ export class MultiPoseGaitRouter{
  reset(){
   this.identity.reset();this.analyzers.clear();this.predictor=null;
   this.visible=[];this.ambiguous=false;this.lastTimestamp=0;this.lastWallMs=0;
-  this.reason='Identitas direset; tempatkan kedua tubuh dalam bingkai.';
+  this.reason='Identitas direset; tempatkan kedua tubuh dalam bingkai.';this.invalidate();
  }
  private ensurePredictor(){
   if(!this.predictor&&this.floor.floor)this.predictor=new GhostFootstepPredictor(this.floor.floor);
@@ -57,12 +60,13 @@ export class MultiPoseGaitRouter{
  }
  acceptSingle(sample:GaitSample|null,side:0|1,events:FootstepEvent[]){
   if(this.mode!==1)return;
-  if(!sample){this.predictor?.lose('performer-1');return;}
+  if(!sample){this.predictor?.lose('performer-1');this.invalidate();return;}
   this.lastTimestamp=sample.t;this.lastWallMs=performance.now();
   const predictor=this.ensurePredictor();
   predictor?.accept(events);
-  if(sample.phase==='swing'&&sample.confidence>=.6)
+  if(sample.phase==='swing'&&sample.confidence>=.6){
    predictor?.swing('performer-1',side===0?'left':'right',sample.t,sample.confidence);
+   this.invalidate();}
  }
  observe(frame:MotionFrame|null,clock:number,videoAspect:number,binding:CameraBinding|null):void{
   if(this.mode!==2)return;
@@ -71,13 +75,13 @@ export class MultiPoseGaitRouter{
     this.floor.losePerformer(id);this.predictor?.lose(id);
     this.analyzers.get(id)?.reset();
    }
-   this.visible=[];this.predictor?.reset();this.reason='Tracking terputus; menunggu dua tubuh.';
+   this.visible=[];this.predictor?.reset();this.reason='Tracking terputus; menunggu dua tubuh.';this.invalidate();
    return;
   }
   this.lastTimestamp=clock;this.lastWallMs=performance.now();
   // Crucial: do not feed a stale MotionFrame into a 2-person GaitAnalyzer.
   if(!this.floor.isConfirmed||!this.floor.checkBinding(binding)){
-   this.visible=[];this.predictor?.reset();this.reason='Konfirmasi kalibrasi kamera dahulu.';
+   this.visible=[];this.predictor?.reset();this.reason='Konfirmasi kalibrasi kamera dahulu.';this.invalidate();
    return;
   }
   const result=this.identity.observe(frame.poses,clock);
@@ -87,18 +91,19 @@ export class MultiPoseGaitRouter{
   }
   this.visible=result.assignments.map(a=>a.id);
   this.ambiguous=result.ambiguous;this.reason=result.reason;
-  if(result.ambiguous)return;
+  if(result.ambiguous){this.invalidate();return;}
   for(const {id,pose} of result.assignments){
    let analyzer=this.analyzers.get(id);
    if(!analyzer){analyzer=new GaitAnalyzer();this.analyzers.set(id,analyzer);}
    const single={...frame,pose,tracked:true};
    for(const side of [0,1] as const){
     const sample=analyzer.observe(single,side,clock,videoAspect);
-    const events=this.floor.ingest(sample,side,videoAspect,binding,id);
+    const events=this.floor.ingest(sample,side,videoAspect,binding,id,frame.telemetry?.capturedAt??null);
     const predictor=this.ensurePredictor();
     predictor?.accept(events);
-    if(sample?.phase==='swing'&&sample.confidence>=.6)
+    if(sample?.phase==='swing'&&sample.confidence>=.6){
      predictor?.swing(id,side===0?'left':'right',sample.t,sample.confidence);
+     this.invalidate();}
    }
   }
  }

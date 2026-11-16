@@ -1,4 +1,5 @@
 import type {GaitSample} from '../gait-analysis/index.ts';
+import type {FloorUpdate,FloorUpdateKind} from './FloorRealtimeDiagnostics.ts';
 import {calibratedGaitContact} from '../spatial/adapters.ts';
 import {validateCameraFloorCalibration,type CameraFloorCalibration,type FloorPoint} from '../spatial/coordinates.ts';
 import {createFloorSession,FootstepEventEngine,type FloorSession,type FootstepEvent,type FootSide} from '../spatial/events.ts';
@@ -42,6 +43,16 @@ export class LiveFloorTrackingEngine{
  private contactCount=0;
  private cachedSession:FloorSession|null=null;
  private cachedRevision=-1;
+ private listeners=new Set<(value:FloorUpdate)=>void>();
+ subscribe(listener:(value:FloorUpdate)=>void):()=>void{
+  this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};
+ }
+ private emitUpdate(kind:FloorUpdateKind,eventCount=0,contactCount=0,cameraAt:number|null=null){
+  if(this.listeners.size===0)return;
+  const update:FloorUpdate={kind,revision:this.revision,emittedAtMs:performance.now(),
+   cameraFrameSubmittedAtMs:cameraAt,eventCount,contactCount};
+  for(const listener of this.listeners)listener(update);
+ }
  get eventRevision(){return this.revision;}
  readonly performerId='performer-1';
  get floor(){return this.calibration?.floor??null;}
@@ -71,22 +82,22 @@ export class LiveFloorTrackingEngine{
   if(!key)throw Error('Kamera harus aktif dan resolusi video tersedia sebelum kalibrasi.');
   this.calibration=calibration;this.bindingKey=key;this.confirmed=false;
   this.eventEngine=new FootstepEventEngine(calibration.floor,.12);
-  this.resetSession();this.rejection='';
+  this.resetSession();this.rejection='';this.emitUpdate('calibration');
  }
  confirm(value:boolean){
   if(value&&(!this.calibration||!this.bindingKey))throw Error('Lengkapi kalibrasi kamera terlebih dahulu.');
   this.confirmed=value;
   if(!value)this.dropTracking();
-  this.rejection='';
+  this.rejection='';this.emitUpdate('approval');
  }
  resetSession(){
   this.events=[];this.eventEngine?.reset();this.grounded.clear();
   this.lastPoint.clear();this.seen.clear();this.received.clear();this.logicalTime=-1;
   this.performers=new Set(['performer-1']);this.contactCount=0;
-  this.cachedSession=null;this.cachedRevision=-1;this.revision++;
+  this.cachedSession=null;this.cachedRevision=-1;this.revision++;this.emitUpdate('session');
  }
  revoke(reason='Kalibrasi kamera perlu diperiksa ulang.'){
-  this.confirmed=false;this.dropTracking();this.rejection=reason;
+  this.confirmed=false;this.dropTracking();this.rejection=reason;this.emitUpdate('revoke');
  }
  private dropTracking(){
   this.received.clear();this.grounded.clear();this.lastPoint.clear();this.seen.clear();
@@ -107,7 +118,7 @@ export class LiveFloorTrackingEngine{
   this.lose('left',performerId);this.lose('right',performerId);
  }
  ingest(sample:GaitSample|null,sideIndex:0|1,videoAspect:number,binding:CameraBinding|null,
-  performerId=this.performerId):FootstepEvent[]{
+  performerId=this.performerId,cameraFrameSubmittedAtMs:number|null=null):FootstepEvent[]{
   const side:FootSide=sideIndex===0?'left':'right';
   if(!['performer-1','A','B'].includes(performerId))throw Error('Performer tidak dikenal.');
   this.performers.add(performerId);
@@ -158,7 +169,9 @@ export class LiveFloorTrackingEngine{
   }
   if(emitted.length){this.events.push(...emitted);
    this.contactCount+=emitted.filter(e=>e.kind==='contact').length;
-   this.revision++;}
+   this.revision++;
+   this.emitUpdate('events',emitted.length,
+    emitted.filter(e=>e.kind==='contact').length,cameraFrameSubmittedAtMs);}
   return emitted;
  }
 }
