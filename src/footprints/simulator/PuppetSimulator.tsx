@@ -144,9 +144,9 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   model.move(which,point,time());refresh();
  };
  const onPointerDown=(e:ReactPointerEvent<HTMLCanvasElement>)=>{
-  if(mode!=='edit'){setMode('edit');setPlayhead(0);}
+  if(!labActive&&mode!=='edit'){setMode('edit');setPlayhead(0);}
   const q=xy(e);
-  const chosen=hitFoot({x:q.x,y:q.y},model.performers,count,camera,floor,q.w,q.h);
+  const chosen=labActive?null:hitFoot({x:q.x,y:q.y},model.performers,count,camera,floor,q.w,q.h);
   e.currentTarget.setPointerCapture(e.pointerId);
   if(chosen){
    setSelected(chosen);
@@ -186,7 +186,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   setCamera(c=>({...c,distanceM:clamp(c.distanceM*(e.deltaY>0?1.08:.92),7,23)}));
  };
  const onKeyDown=(e:ReactKeyboardEvent<HTMLDialogElement>)=>{
-  if((e.target as HTMLElement).closest('button,input,select,textarea'))return;
+  if(labActive||(e.target as HTMLElement).closest('button,input,select,textarea'))return;
   const key=e.key.toLowerCase();
   if(key==='1'||key==='2'){e.preventDefault();setSelected(s=>({...s,foot:key==='1'?'left':'right'}));return;}
   if(key==='3'&&count===2){e.preventDefault();setSelected({performerId:'B',foot:'left'});return;}
@@ -227,6 +227,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   const s=stageSizes.find(x=>x.name===value);if(!s)return;
   if(model.events.length&&!window.confirm('Mengganti lantai akan menghapus jejak sesi saat ini. Lanjutkan?'))return;
   const f=defaultFloorSpace(s.widthM,s.depthM);
+  onVerify(false);setLabPlaying(false);setLabTime(0);
   model.setFloor(f);setFloor(f);setCamera(initialCamera());
   refresh();setNotice('Lantai simulasi diganti. Belum dikalibrasi ke proyektor fisik.');
  };
