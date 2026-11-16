@@ -1,6 +1,8 @@
 import {useMemo,useState,type RefObject} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import {LowerBodyMaskPanel} from './LowerBodyMaskPanel.tsx';
+import {ArchivalMappingPanel} from './ArchivalMappingPanel.tsx';
+import type {MultiPoseGaitRouter} from '../live/MultiPoseGaitRouter.ts';
 import {Download,Eye,RotateCcw,Ruler} from 'lucide-react';
 import {download} from '../../engine/recording.ts';
 import {defaultFloorSpace} from '../spatial/coordinates.ts';
@@ -100,13 +102,14 @@ function StageElevation({plan}:{plan:StageOpticsPlan}){
   </text>
  </svg>;
 }
-export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,performerCount,identityAmbiguous}:{
+export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,performerCount,identityAmbiguous,router}:{
  floorWidthM?:number;floorDepthM?:number;frameRef:RefObject<MotionFrame>;
- cameraOn:boolean;performerCount:1|2;identityAmbiguous:boolean
+ cameraOn:boolean;performerCount:1|2;identityAmbiguous:boolean;router:MultiPoseGaitRouter
 }){
  const [plan,setPlan]=useState(()=>defaultStageOpticsPlan(defaultFloorSpace(floorWidthM??8,floorDepthM??6)));
  const [view,setView]=useState<'top'|'elevation'>('top');
  const [maskOpen,setMaskOpen]=useState(false);
+ const [archiveOpen,setArchiveOpen]=useState(false);
  const [device,setSelectedDevice]=useState<DeviceId>('camera');
  const [message,setMessage]=useState('Desain optik sementara. Tidak mengaktifkan output atau mengubah kalibrasi Stage.');
  const estimate=useMemo(()=>{try{return assessStageOpticsPlan(plan);}catch{return null;}},[plan]);
@@ -214,6 +217,12 @@ export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,perf
    <summary>01 / Lower-Body Mask Engine <span>Mask dua pose · simulasi dan kamera SOMA</span></summary>
    {maskOpen&&<LowerBodyMaskPanel frameRef={frameRef} cameraOn={cameraOn}
     performerCount={performerCount} identityAmbiguous={identityAmbiguous}/>}
+  </details>
+  <details className="stage-optics-mask-drawer" open={archiveOpen}
+   onToggle={e=>setArchiveOpen(e.currentTarget.open)}>
+   <summary>02 / Archival Video Mapping <span>Arsip video A/B dalam mask pinggang–kaki</span></summary>
+   {archiveOpen&&<ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
+    performerCount={performerCount} router={router}/>}
   </details>
  </section>;
 }

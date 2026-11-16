@@ -8,6 +8,9 @@ import {createFloorSession,type FloorSession,type FootstepEvent} from '../spatia
 export type MultiPoseStatus={
  mode:1|2;visible:LivePerformerId[];ambiguous:boolean;reason:string;
  ghostCount:number;
+ /** Stable identity router IDs → pose index in precisely the latest observed MotionFrame. */
+ poseIndices:{A:number|null;B:number|null};
+ observedFrameTime:number|null;
 };
 /**
  * In two-person mode, reuses the 2 poses ALREADY in MotionFrame.poses.
@@ -22,6 +25,8 @@ export class MultiPoseGaitRouter{
  private visible:LivePerformerId[]=[];
  private ambiguous=false;
  private reason='Menunggu dua performer.';
+ private poseIndices:{A:number|null;B:number|null}={A:null,B:null};
+ private observedFrameTime:number|null=null;
  private lastTimestamp=0;
  private lastWallMs=0;
  private listeners=new Set<()=>void>();
@@ -37,7 +42,8 @@ export class MultiPoseGaitRouter{
  get activeMode(){return this.mode;}
  reset(){
   this.identity.reset();this.analyzers.clear();this.predictor=null;
-  this.visible=[];this.ambiguous=false;this.lastTimestamp=0;this.lastWallMs=0;
+  this.visible=[];this.ambiguous=false;this.poseIndices={A:null,B:null};
+  this.observedFrameTime=null;this.lastTimestamp=0;this.lastWallMs=0;
   this.reason='Identitas direset; tempatkan kedua tubuh dalam bingkai.';this.invalidate();
  }
  private ensurePredictor(){
@@ -46,7 +52,8 @@ export class MultiPoseGaitRouter{
  }
  get status():MultiPoseStatus{
   return {mode:this.mode,visible:this.visible.slice(),ambiguous:this.ambiguous,
-   reason:this.reason,ghostCount:this.getGhosts(this.displayClockMs).length};
+   reason:this.reason,ghostCount:this.getGhosts(this.displayClockMs).length,
+   poseIndices:{...this.poseIndices},observedFrameTime:this.observedFrameTime};
  }
  getGhosts(timeMs:number):FootstepEvent[]{
   if(!this.floor.isConfirmed)return [];
@@ -70,6 +77,8 @@ export class MultiPoseGaitRouter{
  }
  observe(frame:MotionFrame|null,clock:number,videoAspect:number,binding:CameraBinding|null):void{
   if(this.mode!==2)return;
+  // Always invalidate stale pose-index associations before examining a new frame.
+  this.poseIndices={A:null,B:null};this.observedFrameTime=null;
   if(!frame||frame.source!=='camera'||!frame.poses?.length||!Number.isFinite(clock)){
    for(const id of this.visible){
     this.floor.losePerformer(id);this.predictor?.lose(id);
@@ -92,6 +101,15 @@ export class MultiPoseGaitRouter{
   this.visible=result.assignments.map(a=>a.id);
   this.ambiguous=result.ambiguous;this.reason=result.reason;
   if(result.ambiguous){this.invalidate();return;}
+  // Source arrays may reorder A/B every frame. Only explicit accepted tracker
+  // assignments may attach a different archive clip to a person.
+  for(const {id,pose} of result.assignments){
+   const index=frame.poses.indexOf(pose);
+   if(index<0||index>=2)continue;
+   this.poseIndices[id]=index;
+  }
+  if(this.poseIndices.A!==null&&this.poseIndices.B!==null)
+   this.observedFrameTime=frame.time;
   for(const {id,pose} of result.assignments){
    let analyzer=this.analyzers.get(id);
    if(!analyzer){analyzer=new GaitAnalyzer();this.analyzers.set(id,analyzer);}
