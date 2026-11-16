@@ -244,12 +244,32 @@ export default function App(){
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
+     bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>void acceptFootprintsBody()}
      onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
       setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
      onOpenLiveFloor={openLiveFloor}
      onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
+     onToggleCamera={()=>{
+      if(cameraOn&&settings.input==='body'){
+       if(footprintRecording){
+        if(!window.confirm('Hentikan kamera sekaligus simpan video Footprints?'))return;
+        footprintRef.current?.toggleVideo();
+       }
+       requestStageBlackout(()=>projection.setTransport('blackout'));
+       liveFloorEngine.revoke('Kamera dihentikan; periksa kalibrasi sebelum melanjutkan.');
+       multiPoseRouter.reset();setLiveFloorApproval(null);
+       updateFootprint({hold:false});stopCamera();
+      }else void acceptFootprintsBody();
+     }}
+     onRecordVideo={()=>{
+      if(footprintRecording||(cameraOn&&settings.input==='body'))
+       footprintRef.current?.toggleVideo();
+     }}
+     onCapture={()=>{setCaptureTab('pattern');setCaptureOpen(true);}}
+     videoRecording={footprintRecording}
+     canRecordVideo={cameraOn&&settings.input==='body'}
      footprint={footprintConfig} updateFootprint={updateFootprint}/>}
     {footprintsActive&&settings.output==='sound'&&<div className="v3-output-hint" role="status"><span>Visual Footprints disembunyikan karena keluaran hanya Suara.</span><button type="button" onClick={()=>update({output:'both'})}>Tampilkan pola</button></div>}
     <div className={'instrument-grid'+(footprintsActive&&!clean?' v3-hidden-engine':'')}

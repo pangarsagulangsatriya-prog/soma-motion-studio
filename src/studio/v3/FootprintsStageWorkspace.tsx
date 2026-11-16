@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
-import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Monitor,Pause,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
+import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -10,6 +10,11 @@ import {ArchivalMappingPanel} from '../../footprints/stage-optics/ArchivalMappin
 import {stageBodyPreviewGate} from './footprintsUX.ts';
 import {palettes} from '../../footprints/pattern.ts';
 import type {FootprintConfig,FootprintStyle} from '../../footprints/StudioFootprints.tsx';
+import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
+import {readDualOutputStatus,watchDualOutputStatus,verifiedDualStatus} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
+import {stageHardwareAvailable} from '../../footprints/stage-optics/StageHardwareGate.ts';
+import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatus} from './unifiedStageStatus.ts';
+import {FootprintsStageTransport,UnifiedStageStatusStrip} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 
 type InspectorTab='tracking'|'visual'|'mapping'|'output';
@@ -17,10 +22,12 @@ type WorkspaceView='stage'|'archive';
 type Props={
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
- cameraOn:boolean;cameraBusy:boolean;cameraError:string;
+ cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
- onBlackout:()=>void;footprint:FootprintConfig;
+ onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
+ videoRecording:boolean;canRecordVideo:boolean;
+ footprint:FootprintConfig;
  updateFootprint:(value:Partial<FootprintConfig>)=>void;
 };
 const inspectorTabs:{id:InspectorTab;label:string}[]=[
@@ -31,14 +38,17 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,
+ frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
- onBlackout,footprint,updateFootprint
+ onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
+ footprint,updateFootprint
 }:Props){
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const [view,setView]=useState<WorkspaceView>('stage');
+ const previewHoldRef=useRef(footprint.hold);
+ previewHoldRef.current=footprint.hold;
  const [inspector,setInspector]=useState<InspectorTab>('tracking');
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
@@ -46,6 +56,10 @@ export function FootprintsStageWorkspace({
  const [bodyVisible,setBodyVisible]=useState(0);
  const [frameFresh,setFrameFresh]=useState(false);
  const [viewError,setViewError]=useState('');
+ const [dualRaw,setDualRaw]=useState(readDualOutputStatus);
+ const hardwareEnabled=stageHardwareAvailable(import.meta.env.DEV,
+  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
+ useEffect(()=>watchDualOutputStatus(()=>setDualRaw(readDualOutputStatus())),[]);
  const showArchive=()=>{
   setView('archive');setInspector('mapping');
  };
@@ -67,11 +81,11 @@ export function FootprintsStageWorkspace({
    const f=frameRef.current,v=videoRef.current;
    const identities=router.status;
    const gate=stageBodyPreviewGate({
-    cameraOn,tracked:f.tracked,source:f.source,ageMs:now-f.time,
+    cameraOn:cameraOn&&bodySelected,tracked:f.tracked,source:f.source,ageMs:now-f.time,
     performerCount,visibleCount:identities.visible.length,
     identityAmbiguous:identities.ambiguous,matchedFrame:identities.observedFrameTime===f.time
    });
-   const fresh=cameraOn&&f.source==='camera'&&f.tracked&&
+   const fresh=cameraOn&&bodySelected&&f.source==='camera'&&f.tracked&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
@@ -89,7 +103,9 @@ export function FootprintsStageWorkspace({
    const result=buildLowerBodyMask(fresh?f:null,options,now);
    const allow=result.status==='ready'&&gate==='ready';
    const b=bodyCanvas.current,g=b?.getContext('2d');
-   if(b&&g){
+   // HOLD freezes only the operator's BODY/FLOOR raster. Tracking and
+   // FloorSession event collection continue; software projector transport is separate.
+   if(b&&g&&!previewHoldRef.current){
     const image=g.createImageData(result.mask.width,result.mask.height);
     let lit=0;
     if(allow)for(let i=0;i<result.mask.data.length;i++){
@@ -112,7 +128,7 @@ export function FootprintsStageWorkspace({
     result.status==='stale'?'Frame terlambat':'Landmark kaki belum lengkap';
    if(label!==lastStatus){lastStatus=label;setMaskStatus(label);}
    const pad=floorCanvas.current;
-   if(pad&&(lastFloorRevision!==tracker.eventRevision)){
+   if(pad&&!previewHoldRef.current&&(lastFloorRevision!==tracker.eventRevision)){
     lastFloorRevision=tracker.eventRevision;
     const session=tracker.session;
     if(session){
@@ -126,12 +142,34 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[frameRef,videoRef,tracker,router,cameraOn,performerCount]);
+ },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount]);
  const projectionState=projection.status.connected?
   projection.transport==='blackout'?'Blackout aktif':projection.transport==='hold'?'Output ditahan':'Output aktif':
   'Output belum tersambung';
- const cameraLabel=cameraBusy?'Menghubungkan':cameraError?'Kamera bermasalah':frameFresh?'Tracking aktif':cameraOn?'Mencari tubuh':'Kamera mati';
+ const cameraLabel=cameraBusy?'Menghubungkan':cameraError?'Kamera bermasalah':
+  cameraOn&&!bodySelected?'Pilih sumber Body':frameFresh?'Tracking aktif':
+  cameraOn?'Mencari tubuh':'Kamera mati';
  const totalFrames=bodyVisible;
+ const dual={body:verifiedDualStatus(dualRaw.body,performance.now()),
+  floor:verifiedDualStatus(dualRaw.floor,performance.now())};
+ const cameraMatched=tracker.boundCamera!==null&&
+  tracker.boundCamera===cameraBindingKey(cameraBinding(videoRef.current));
+ const legacy:LegacyOutputStatus={opened:projection.opened,connected:projection.status.connected,
+  mode:projection.transport,approved:legacyApproved};
+ const units=deriveUnifiedStageStatus({
+  camera:{on:cameraOn,busy:cameraBusy,error:cameraError,frameFresh,bodySelected},
+  identity:{count:performerCount,visibleCount:identityStatus.visible.length,
+   ambiguous:identityStatus.ambiguous,
+   observedSameFrame:identityStatus.observedFrameTime===frameRef.current.time},
+  floor:{calibrated:floorStatus.calibrated,confirmed:floorStatus.confirmed,
+   cameraMatched,contacts:floorStatus.contacts},
+  bodyMask:{ready:totalFrames>0,reason:maskStatus},
+  dual,hardwareEnabled
+ });
+ const legacyGate=legacyStageTransportGate({
+  cameraOn,frameFresh,floorConfirmed:floorStatus.confirmed,cameraMatched,
+  dualOpened:dual.body.opened||dual.floor.opened,legacy
+ });
  const changeView=(next:WorkspaceView)=>{
   if(next==='archive')showArchive();
   else{onBlackout();setView('stage');}
@@ -143,12 +181,9 @@ export function FootprintsStageWorkspace({
     <h1><Footprints size={23}/> Footprints <small>Stage Workspace</small></h1>
     <p>Gerak kaki, arsip tubuh, dan pad lantai dalam satu ruang kerja.</p>
    </div>
-   <div className="fp-stage-state" aria-label="Status perangkat">
-    <span data-state={frameFresh?'ok':'idle'}><i/>{cameraLabel}</span>
-    <span data-state={floorStatus.confirmed?'ok':'idle'}><i/>Lantai {floorStatus.confirmed?'siap':'belum siap'}</span>
-    <span data-state={projection.transport==='blackout'?'idle':'warn'}><i/>{projectionState}</span>
-   </div>
+   <span className="fp-stage-heading-note">Studio · Live Stage</span>
   </header>
+  <UnifiedStageStatusStrip units={units} legacy={legacy}/>
   <div className="fp-stage-toolbar" role="group" aria-label="Tampilan Footprints">
    <div className="fp-stage-view-switch">
     <button type="button" aria-pressed={view==='stage'} onClick={()=>changeView('stage')}>
@@ -159,8 +194,6 @@ export function FootprintsStageWorkspace({
    <div className="fp-stage-top-actions">
     <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulasi 3D</button>
     <button type="button" onClick={onOpenLiveFloor}><SlidersHorizontal size={15}/> Kalibrasi & QA</button>
-    <button type="button" className="fp-stage-blackout" onClick={onBlackout}>
-     <Monitor size={15}/> Blackout</button>
    </div>
   </div>
   <div className="fp-stage-layout">
@@ -191,7 +224,10 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
-        {totalFrames===0&&<span className="fp-stage-canvas-empty">{maskStatus}</span>}
+        {totalFrames===0&&!footprint.hold&&
+         <span className="fp-stage-canvas-empty">{maskStatus}</span>}
+        {footprint.hold&&<span className="fp-stage-hold-label">
+         HOLD · frame BODY ditahan, tracking tetap berjalan</span>}
        </div>
        <div className="fp-stage-surface-foot"><span>{maskStatus}</span><span>Mask · preview</span></div>
       </div>
@@ -200,8 +236,10 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-canvas-area">
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
-        {!floorStatus.confirmed&&<span className="fp-stage-canvas-empty">
+        {!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
+        {footprint.hold&&<span className="fp-stage-hold-label">
+         HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
        </div>
        <div className="fp-stage-surface-foot"><span>{floorStatus.contacts} kontak</span>
         <span>{floorStatus.events} event</span></div>
@@ -291,22 +329,33 @@ export function FootprintsStageWorkspace({
       <p className="fp-stage-label">STATUS PROYEKTOR</p>
       <div className="fp-stage-inspector-kv"><span>Legacy output</span>
        <strong>{projectionState}</strong></div>
-      <div className="fp-stage-inspector-kv"><span>BODY / FLOOR</span>
-       <strong>Perlu QA fisik terpisah</strong></div>
-      <p className="fp-stage-hint">Kontrol dua output berada pada Dual-Surface Calibration, dengan penguncian khusus pada build Production.</p>
-      <button type="button" className="fp-stage-blackout fp-stage-primary-action" onClick={onBlackout}>
-       <Monitor size={15}/> Blackout output Studio</button>
+      <div className="fp-stage-inspector-kv"><span>BODY</span>
+       <strong>{units.find(u=>u.id==='body')?.detail}</strong></div>
+      <div className="fp-stage-inspector-kv"><span>FLOOR</span>
+       <strong>{units.find(u=>u.id==='floor')?.detail}</strong></div>
+      <p className="fp-stage-hint">Kontrol output fisik tetap di Dual-Surface Calibration dan membutuhkan persetujuan terpisah.</p>
+      <p className="fp-stage-hint">Output tunggal: {legacyGate.reason}</p>
+      <button type="button" className="fp-stage-primary-action" onClick={()=>{
+       setView('archive');setInspector('output');
+      }}><SlidersHorizontal size={15}/> Atur output BODY / FLOOR</button>
       <button type="button" onClick={onOpenLiveFloor}>
-       <SlidersHorizontal size={15}/> Buka kalibrasi proyektor</button>
+       <SlidersHorizontal size={15}/> Kalibrasi Footprints</button>
       <p className="fp-stage-hint"><ShieldAlert size={14}/> Blackout browser belum menggantikan pemutus daya proyektor fisik.</p>
      </>}
     </div>
    </aside>
   </div>
+  <FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
+   frameFresh={frameFresh} videoRecording={videoRecording} canRecordVideo={canRecordVideo}
+   bodySelected={bodySelected}
+   held={footprint.hold} legacy={legacy} canPreview={view==='stage'}
+   onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
+   onHold={()=>updateFootprint({hold:true})}
+   onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
+   onOutputSettings={()=>{setView('archive');setInspector('output');}}/>
   <footer className="fp-stage-footer">
-   <span><Video size={14}/> Gambar kamera diproses di perangkat ini.</span>
-   <span><ShieldAlert size={14}/> Video mapping dan proyektor fisik membutuhkan kalibrasi dan QA.</span>
-   <button type="button" onClick={onBlackout}><Pause size={13}/> Blackout Studio</button>
+   <span><Video size={14}/> Kamera dan video arsip diproses pada perangkat ini.</span>
+   <span><ShieldAlert size={14}/> Status output menunjukkan perintah software, bukan pengukuran cahaya proyektor.</span>
   </footer>
  </section>;
 }
