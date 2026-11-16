@@ -39,7 +39,15 @@ export function floorArtworkSVG(session:FloorSession,opts:FloorArtworkOptions={}
   }
   if(e.kind!=='contact'&&!(e.kind==='prediction'&&opts.showGhosts!==false))continue;
   const angle=90-e.headingRad*180/Math.PI,ghost=e.kind==='prediction';
-  shapes.push('<g fill="'+col+'" opacity="'+(ghost?.25:.94)+
+  if(ghost){
+   shapes.push('<g transform="translate('+x+' '+y+') rotate('+angle+') scale('+scale+')">'+
+    '<ellipse cx="0" cy="-0.1" rx=".23" ry=".53" fill="none" stroke="'+col+
+    '" stroke-width=".045" stroke-dasharray=".13 .12" opacity=".85"/>'+
+    '<circle cx="0" cy="-0.1" r=".12" fill="none" stroke="'+col+'" stroke-width=".035"/>'+
+    '</g>');
+   continue;
+  }
+  shapes.push('<g fill="'+col+'" opacity=".94'+
    '" transform="translate('+x+' '+y+') rotate('+angle+') scale('+scale+')">'+
    '<path d="'+sole+'"/>'+toes+'</g>');
  }
