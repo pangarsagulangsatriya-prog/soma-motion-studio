@@ -149,3 +149,55 @@
 .puppet-confirm-floor input{accent-color:#cde4a3;flex:none;width:19px;height:19px;margin-top:1px}
 .puppet-projector-status{padding-top:0!important;border-top:1px solid #405548}
 @media(max-width:780px){.puppet-projection{grid-column:1/-1}}
+
+/* S5.6 — 15-minute deterministic stage simulation lab */
+.puppet-dialog .puppet-controls[hidden],.puppet-dialog .puppet-session[hidden]{display:none!important}
+.puppet-qa-lab{border-color:#657e60!important}
+.puppet-qa-lab>p{color:#bad0b9}
+.puppet-qa-activate{display:block;width:calc(100% - 24px);margin:12px;
+ background:#cfebb0!important;color:#1a2b1d!important;border-color:#d6efb7!important;
+ font-weight:700!important;min-height:45px!important}
+.puppet-qa-activate[aria-pressed=true]{background:#344d39!important;color:#f0f6e4!important}
+.puppet-qa-preview{width:100%;height:auto;max-height:280px;display:block;object-fit:contain}
+.puppet-qa-stage-time{display:flex;align-items:center;justify-content:space-between;
+ padding:12px 12px 5px;gap:9px;color:#def0bf}
+.puppet-qa-stage-time strong{font:700 26px/1.2 ui-monospace,monospace}
+.puppet-qa-stage-time strong span{color:#a5bfa6;font-size:15px}
+.puppet-qa-stage-time small{color:#b9cdb2;font-size:11px}
+.puppet-qa-seek{display:flex;flex-direction:column;gap:6px;padding:5px 12px 11px;font-size:11px;color:#b5c8b2}
+.puppet-qa-seek input{accent-color:#cee6a6;width:100%;height:28px}
+.puppet-qa-playback{display:flex;align-items:end;flex-wrap:wrap;gap:7px;padding:0 12px 11px}
+.puppet-qa-playback button{display:flex;align-items:center;gap:6px;justify-content:center;flex:1;min-width:85px}
+.puppet-qa-playback label{display:flex;flex-direction:column;gap:5px;min-width:72px;color:#b9c9b9;font-size:11px}
+.puppet-qa-playback select{min-height:42px}
+.puppet-qa-phases,.puppet-qa-faults{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.puppet-qa-phases button,.puppet-qa-faults button{flex:1;min-width:105px;font-size:11px;
+ text-align:left;padding:8px 9px;min-height:38px}
+.puppet-qa-phases button[aria-pressed=true],.puppet-qa-faults button[aria-pressed=true]{
+ border-color:#dbedaa;background:#38573b;color:#f3f9d9}
+.puppet-qa-faults button span{font:700 11px ui-monospace,monospace;color:#d5e7bb}
+.puppet-qa-fault-switch{display:flex;align-items:center;gap:9px;margin:0 12px 11px;
+ padding:10px;background:#233429;border-radius:6px;font-size:12px;color:#dce8d7}
+.puppet-qa-fault-switch input{accent-color:#cee4aa;width:18px;height:18px;flex:none}
+.puppet-qa-transport{display:flex;flex-direction:column;gap:6px;margin:0 12px 11px;
+ padding:11px;border:1px solid #586951;border-radius:7px;background:#17271b}
+.puppet-qa-transport span{display:flex;justify-content:space-between;gap:10px;color:#afc6ad;font-size:12px}
+.puppet-qa-transport b{font:700 12px ui-monospace,monospace;color:#dbe9ba}
+.puppet-qa-transport small{font-size:11px;color:#adbca7;line-height:1.5}
+.puppet-qa-fault-note{margin:0 12px 11px!important;padding:10px!important;
+ color:#ebd7af!important;background:#362c21;border:1px solid #816e52;border-radius:6px}
+.puppet-qa-checks{border-top:1px solid #4d674c;border-bottom:1px solid #4d674c}
+.puppet-qa-checks>.puppet-section-title{border-bottom:1px solid #4d674c}
+.puppet-qa-check{display:grid;grid-template-columns:25px minmax(0,1fr);gap:8px;
+ padding:9px 12px;border-bottom:1px solid #364c39}
+.puppet-qa-check>span{color:#d8ebb3;font-weight:800;font-size:16px}
+.puppet-qa-check>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.puppet-qa-check b{color:#dceccc;font-size:11px;font-weight:650}
+.puppet-qa-check small{color:#9eb49e;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.puppet-qa-export{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:12px}
+.puppet-qa-export button{display:flex;align-items:center;justify-content:center;gap:7px}
+.puppet-qa-warning{border-top:1px solid #3b5040;color:#bbcfb6!important}
+@media(max-width:510px){
+ .puppet-qa-phases button,.puppet-qa-faults button{min-width:calc(50% - 6px)}
+ .puppet-qa-stage-time strong{font-size:22px}
+}
