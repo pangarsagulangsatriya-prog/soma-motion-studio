@@ -49,8 +49,8 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   floor:{connected:false,opened:false,viewport:null,mode:'blackout',reason:'Output belum dibuka.'}
  });
  const [operatorConfirm,setOperatorConfirm]=useState(false);
- const latest=useRef({plans,proofs,requested,armed,epoch});
- latest.current={plans,proofs,requested,armed,epoch};
+ const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm});
+ latest.current={plans,proofs,requested,armed,epoch,operatorConfirm};
  const legacyRef=useRef(legacyProjection);legacyRef.current=legacyProjection;
  const testCanvases=useRef<Record<StageSurface,HTMLCanvasElement>|null>(null);
  const context=(id:StageSurface,plan=plans[id],output=devices[id]):StageOutputContext=>{
@@ -81,7 +81,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     const fresh=!!stage&&stage.mode==='live'&&stage.frameAtMs>0&&
      stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
      now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
-    const safe=!!stage&&stage.cameraSafe&&fresh;
+    const safe=!!stage&&stage.cameraSafe&&fresh&&current.operatorConfirm;
     const sourceSafe=id==='body'?!!stage?.bodyMediaReady:!!stage?.bridgeSafe;
     const decision=outputSurfaceDecision({
      plan,signature:key,proof:current.proofs[id],requested:current.requested[id],
@@ -116,7 +116,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   };
   timer=window.setInterval(()=>send(performance.now()),75);
   return()=>{clearInterval(timer);for(const id of ids){
-   ports[id].send(stageSurfaceState(latest.current.plans[id],'blackout',false),performance.now());
+   ports[id].send(stageSurfaceState(latest.current.plans[id],'blackout',false),performance.now(),true);
    ports[id].dispose();
   }
    testCanvases.current=null;
@@ -125,6 +125,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  const targetRef=useRef(target);targetRef.current=target;
  const editPlan=(id:StageSurface,fn:(p:StageSurfacePlan)=>StageSurfacePlan)=>{
   try{
+   ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now(),true);
    setPlans(prev=>({...prev,[id]:validateStageSurfacePlan(fn(prev[id]))}));
    setRequested(prev=>({...prev,[id]:'blackout'}));
    setArmed(prev=>({...prev,[id]:false}));
@@ -145,13 +146,13 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   }else setMessage(ports[id].error||'Browser memblokir jendela proyeksi.');
  };
  const close=(id:StageSurface)=>{
-  ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now());
+  ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now(),true);
   ports[id].closeOutput();setRequested(prev=>({...prev,[id]:'blackout'}));
   setArmed(prev=>({...prev,[id]:false}));setMessage('Output '+id+' ditutup.');
  };
  const allBlackout=()=>{
   for(const id of ids){
-   ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now());
+   ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now(),true);
   }
   setRequested({body:'blackout',floor:'blackout'});
   setArmed({body:false,floor:false});
