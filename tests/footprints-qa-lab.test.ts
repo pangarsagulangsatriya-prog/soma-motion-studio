@@ -9,6 +9,7 @@ import {createQAScenario,QA_DURATION_MS,QA_FAULTS,qaContactCounts,
  qaEventIndexAt,qaEventsAt,qaBodyPosition,qaOutputTransportAt,qaPhaseAt}
  from '../src/footprints/simulator/QAScenario.ts';
 import {runSimulationQA} from '../src/footprints/simulator/SimulationQAReport.ts';
+import {qaPuppetPoseAt} from '../src/footprints/simulator/QAStagePose.ts';
 import {effectiveFloorTransport} from '../src/projection/floorBridge.ts';
 import {shouldTransmitArtwork,shouldRefreshFloorArtwork} from '../src/projection/channel.ts';
 
@@ -134,4 +135,23 @@ test('shared SVG renderer consumes synthetic event contract without confusing gh
  manual.lift(who,100);manual.land(who,230);
  assert.equal(manual.session.events.filter(e=>e.kind==='contact').length,1);
  assert.equal(manual.session.events.every(e=>e.source==='simulation'),true);
+});
+
+test('visual puppet foot rises and interpolates between release and next contact',()=>{
+ const all=scenario.session.events,release=all.find(e=>e.kind==='release'&&e.performerId==='A'&&e.foot==='left');
+ assert.ok(release);
+ const landing=all.find(e=>e.kind==='contact'&&e.performerId==='A'&&e.foot==='left'&&
+  e.timestampMs>release.timestampMs);
+ assert.ok(landing);
+ const midpoint=(release.timestampMs+landing.timestampMs)/2;
+ const raised=qaPuppetPoseAt(scenario,midpoint)[0].left;
+ assert.ok(raised.heightM>.25);
+ const a=qaPuppetPoseAt(scenario,release.timestampMs-1)[0].left;
+ assert.ok(raised.positionM.xM>=Math.min(a.positionM.xM,landing.positionM.xM)-.00001);
+ assert.ok(raised.positionM.xM<=Math.max(a.positionM.xM,landing.positionM.xM)+.00001);
+ const down=qaPuppetPoseAt(scenario,landing.timestampMs)[0].left;
+ assert.equal(down.heightM,0);
+ assert.deepEqual(down.positionM,landing.positionM);
+ const latest=qaPuppetPoseAt(scenario,QA_DURATION_MS);
+ assert.equal(latest.length,2);
 });
