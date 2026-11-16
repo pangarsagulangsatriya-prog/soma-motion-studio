@@ -43,7 +43,8 @@ export class FloorRealtimeTimingWindow{
    if(v.cameraAt!==null)this.append(this.frameToPaint,atMs-v.cameraAt);
   }
  }
- clear(){this.queue=[];this.eventToPaint=[];this.frameToPaint=[];this.totalInputs=0;}
+ dropPending(){this.queue=[];}
+ clear(){this.dropPending();this.eventToPaint=[];this.frameToPaint=[];this.totalInputs=0;}
  get metrics():FloorRealtimeTimings{
   return {eventToRasterP50Ms:percentile(this.eventToPaint,50),
    eventToRasterP95Ms:percentile(this.eventToPaint,95),
