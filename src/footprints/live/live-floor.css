@@ -93,3 +93,20 @@
 .live-floor-identity b{color:#dceca9}
 .live-floor-identity span{width:100%;color:#b9cfb4}
 .live-floor-identity button{min-height:38px;padding:6px 10px}
+
+/* S5.6.2 — compact diagnostics for independent leg motion state. */
+.live-floor-gait-state{display:flex;flex-direction:column;gap:7px;
+ margin:0 12px 10px;padding:10px 11px;background:#18291e;
+ border:1px solid #536f55;border-radius:7px}
+.live-floor-gait-state>strong{font:700 10px/1.4 ui-monospace,monospace;
+ color:#cbdcbd;letter-spacing:.06em}
+.live-floor-gait-state>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.live-floor-gait-state>div>span{display:flex;justify-content:space-between;align-items:center;
+ flex-wrap:wrap;gap:5px;min-width:0;padding:7px 8px;border:1px solid #506450;
+ border-radius:5px;color:#c2d7bb;font-size:11px}
+.live-floor-gait-state b{font:600 11px system-ui,sans-serif}
+.live-floor-gait-state em{font:700 11px ui-monospace,monospace;font-style:normal;color:#d4e6b9}
+.live-floor-gait-state .live-floor-motion-pivot em{color:#e9d4a5}
+.live-floor-gait-state .live-floor-motion-slide em{color:#b7d5f5}
+.live-floor-gait-state .live-floor-motion-step em{color:#d2efad}
+.live-floor-gait-state>small{color:#98af9a;font-size:10px;line-height:1.5}
