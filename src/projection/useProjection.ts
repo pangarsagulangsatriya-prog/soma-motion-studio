@@ -3,14 +3,14 @@ import {useCallback,useEffect,useRef,useState,type RefObject} from 'react';
 import {emptyFrame,uid,type MotionFrame} from '../engine/types';
 import {ProjectionModel,projectionDefaults,validateProjection,type ProjectionConfig,type ProjectionState,type Transport} from './model';
 import {ProjectionLink} from './channel';
-import {chooseFloorArtworkSource,simulatorArtworkState} from './floorBridge';
+import {chooseFloorArtworkSource,floorCalibrationSignature,simulatorArtworkState} from './floorBridge';
 import {makePreset,readPreset,deviceWarnings,type DeviceSnapshot,type ProjectionPreset} from './presets';
 import {download} from '../engine/recording';
 const KEY='soma-projection-calibrations-v2',OLD_KEY='soma-projection-calibrations-v1';
 export type CalibrationPreset={id:string;name:string;preset:ProjectionPreset;legacy?:boolean};
 const emptyMetrics={fps:0,p95Ms:0,frames:0,samples:0,width:480,height:270};
-export function useProjection({active,frameRef,videoRef,input,notify,artworkActive=false,artworkRef,simulatorActive=false,simulatorReady=false,simulatorArtworkRef}:{active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;input:string;notify:(text:string)=>void;artworkActive?:boolean;artworkRef?:RefObject<HTMLCanvasElement|null>;simulatorActive?:boolean;simulatorReady?:boolean;simulatorArtworkRef?:RefObject<HTMLCanvasElement|null>}){
- const model=useRef(new ProjectionModel()).current,link=useRef<ProjectionLink|null>(null),latest=useRef({active,input,artworkActive,simulatorActive,simulatorReady});latest.current={active,input,artworkActive,simulatorActive,simulatorReady};
+export function useProjection({active,frameRef,videoRef,input,notify,artworkActive=false,artworkRef,simulatorActive=false,simulatorApproval=null,simulatorArtworkRef}:{active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;input:string;notify:(text:string)=>void;artworkActive?:boolean;artworkRef?:RefObject<HTMLCanvasElement|null>;simulatorActive?:boolean;simulatorApproval?:string|null;simulatorArtworkRef?:RefObject<HTMLCanvasElement|null>}){
+ const model=useRef(new ProjectionModel()).current,link=useRef<ProjectionLink|null>(null),latest=useRef({active,input,artworkActive,simulatorActive,simulatorApproval});latest.current={active,input,artworkActive,simulatorActive,simulatorApproval};
  const [config,setConfig]=useState(projectionDefaults),[draft,setDraft]=useState(projectionDefaults),draftRef=useRef(draft);draftRef.current=draft;
  const [transport,setTransportState]=useState<Transport>('blackout'),[pattern,setPatternState]=useState(false),[opened,setOpened]=useState(false),[name,setName]=useState('Layar latihan 01'),[presets,setPresets]=useState<CalibrationPreset[]>([]),[warnings,setWarnings]=useState<string[]>([]);
  const organic=useOrganic(active,name,notify),organicRef=useRef(organic);organicRef.current=organic;
@@ -27,7 +27,8 @@ export function useProjection({active,frameRef,videoRef,input,notify,artworkActi
  const deviceSnapshot=():DeviceSnapshot=>{const v=videoRef.current,track=(v?.srcObject as MediaStream|null)?.getVideoTracks?.()[0],s=track?.getSettings(),o=link.current?.connected?link.current.outputInfo:null;return {camera:{id:s?.deviceId??'',label:track?.label??'',width:v?.videoWidth??0,height:v?.videoHeight??0},output:{width:o?.width||localMetrics.current.width,height:o?.height||localMetrics.current.height,viewportWidth:o?.viewportWidth||innerWidth,viewportHeight:o?.viewportHeight||innerHeight,dpr:o?.dpr||devicePixelRatio}};};
  useEffect(()=>{const l=new ProjectionLink();link.current=l;l.start();try{const saved=localStorage.getItem(KEY),values=JSON.parse(saved||localStorage.getItem(OLD_KEY)||'[]');if(Array.isArray(values))setPresets(values.slice(0,20).flatMap(p=>{try{const raw=saved?p.preset:{version:1,name:p.name,config:p.config},read=readPreset(raw);return [{id:String(p.id),name:read.name,legacy:read.legacy||!!p.legacy,preset:makePreset(read.name,read.config,read.devices??deviceSnapshot())}];}catch{return [];}}));}catch{}return()=>{l.dispose();link.current=null;};},[]);
  useEffect(()=>{if(!running)return;let lastUI=0;const tick=()=>{const now=performance.now(),v=videoRef.current;const raw=model.sample(frameRef.current,latest.current.input,(v?.videoWidth||640)/(v?.videoHeight||480),now);rawStateRef.current={...raw,image:model.liveImage};const s=organicRef.current.process(raw,frameRef.current,now,model.liveImage);stateRef.current=s;previewRef.current={...s,config:draftRef.current};const l=link.current;
- const choice=chooseFloorArtworkSource(latest.current.simulatorActive,latest.current.simulatorReady,
+ const floorReady=!!latest.current.simulatorApproval&&latest.current.simulatorApproval===floorCalibrationSignature(s.config);
+ const choice=chooseFloorArtworkSource(latest.current.simulatorActive,floorReady,
   !!simulatorArtworkRef?.current,latest.current.artworkActive,!!artworkRef?.current);
  if(choice.source==='simulator'){
   const art=simulatorArtworkState({...s,image:null},choice.canStream);
@@ -37,7 +38,7 @@ export function useProjection({active,frameRef,videoRef,input,notify,artworkActi
   const art={...s,image:null,blank:s.transport==='blackout'||s.pattern,
    tracking:frameRef.current.tracked,reason:'Footprints · output bersama Projection'};
   l?.sendArtwork(art,artworkRef.current,now);
- }else l?.send(s,now);if(now-lastUI>200){lastUI=now;if(opened&&!l?.opened)setOpened(false);setStatus({reason:s.reason,tracking:s.tracking,quality:s.quality,sampleAge:s.sampleAge,connected:!!l?.connected,remoteRenderer:l?.renderer??'',receivedFrames:l?.receivedFrames??0,error:l?.error??'',preview:{...localMetrics.current},output:l?.outputInfo??null});}};tick();const timer=setInterval(tick,33);return()=>clearInterval(timer);},[running,opened,frameRef,videoRef,model,artworkRef,simulatorArtworkRef]);
+ }else l?.send(s,now);if(now-lastUI>200){lastUI=now;if(opened&&!l?.opened)setOpened(false);setStatus({reason:choice.source==='simulator'?(floorReady?'Simulator Footprints · lantai siap':'Kalibrasi lantai belum dikonfirmasi'):s.reason,tracking:choice.source==='simulator'?floorReady:s.tracking,quality:choice.source==='simulator'?(floorReady?1:0):s.quality,sampleAge:s.sampleAge,connected:!!l?.connected,remoteRenderer:l?.renderer??'',receivedFrames:l?.receivedFrames??0,error:l?.error??'',preview:{...localMetrics.current},output:l?.outputInfo??null});}};tick();const timer=setInterval(tick,33);return()=>clearInterval(timer);},[running,opened,frameRef,videoRef,model,artworkRef,simulatorArtworkRef]);
  useEffect(()=>{if(!running)organicRef.current.clearMemory();},[running]);
  const openOutput=()=>{const ok=link.current?.open()??false;setOpened(ok);if(!ok)notify(link.current?.error||'Output belum tersedia.');else notify('Pindahkan output ke proyektor, lalu klik dua kali atau tekan F untuk fullscreen.');};
  const closeOutput=()=>{link.current?.closeOutput();setOpened(false);};
