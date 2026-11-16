@@ -32,8 +32,8 @@ All trajectories are deterministic mathematical paths to stress the system; none
 | Timestamp | Synthetic disturbance | QA expectation |
 | --- | --- | --- |
 | 03:40–03:44 | Tracking loss | No new contact in window; later swing rearms |
-| 07:06–07:12 | Identity crossing/ambiguity | Contact generation pauses; A/B retain separate IDs |
-| 10:09–10:15 | Camera changes | Contact generation pauses; simulated projector transport black |
+| 07:06–07:18 | Identity crossing/ambiguity | Contact generation pauses until a synthetic reset marker at 07:18; A/B retain separate IDs |
+| 10:09–10:25 | Camera changes | Contact generation pauses; output stays black until synthetic camera re-approval at 10:25 |
 | 12:14–12:19 | Hold | Contact events continue, output frame is held |
 | 13:32–13:38 | Blackout | Contact events continue, physical projection output off |
 
@@ -58,7 +58,7 @@ All trajectories are deterministic mathematical paths to stress the system; none
 | Path | Role |
 | --- | --- |
 | `src/footprints/simulator/QAScenario.ts` | Deterministic 15-minute score, two performers and timed faults |
-| `src/footprints/simulator/SimulationQAReport.ts` | Actual assertions over shared event, geometry and projection modules |
+| `src/footprints/simulator/SimulationQAReport.ts` | Actual assertions over shared event, geometry and projection modules |\n| `src/footprints/simulator/QAStagePose.ts` | Smooth, illustrative 3D foot swing between recorded release/contact events |
 | `src/footprints/simulator/SimulationLabPanel.tsx` | Play/pause, speed, time scrub, phase jump, fault jump, status and exports |
 | `src/footprints/simulator/PuppetSimulator.tsx` | Reuses 3D rigs, Floor Preview and common projector canvas in QA mode |
 | `src/projection/floorBridge.ts` | Effective transport can restrict but never override operator Blackout/Hold |
