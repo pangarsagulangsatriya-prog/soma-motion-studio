@@ -18,8 +18,9 @@ export const LOWER_BODY_MASK_DEFAULTS:LowerBodyMaskConfig={
 };
 export type LowerBodyMaskStatus='ready'|'missing'|'ambiguous'|'stale'|'invalid';
 export type LowerBodyMaskResult={
- status:LowerBodyMaskStatus;reason:string;mask:BodyMask;polygons:MaskPolygon[];
- poseCount:number;segmentationUsed:boolean;source:'camera'|'simulation';
+ status:LowerBodyMaskStatus;reason:string;mask:BodyMask;perPoseMasks:BodyMask[];
+ polygons:MaskPolygon[];poseCount:number;segmentationUsed:boolean;
+ source:'camera'|'simulation';
 };
 type Vec={x:number;y:number};
 const valid=(v:number)=>Number.isFinite(v);
@@ -150,7 +151,7 @@ export function buildLowerBodyMask(frame:MotionFrame|null,
  const config=validateLowerBodyMaskConfig(options);
  const mask=empty(config.width,config.height);
  const no=(status:LowerBodyMaskStatus,reason:string,poseCount=0):LowerBodyMaskResult=>({
-  status,reason,mask,polygons:[],poseCount,segmentationUsed:false,source});
+  status,reason,mask,perPoseMasks:[],polygons:[],poseCount,segmentationUsed:false,source});
  if(!frame||!frame.tracked||frame.source!=='camera')
   return no('missing','Kamera/pose belum aktif: mask hitam.');
  if(!valid(nowMs)||!valid(frame.time)||nowMs-frame.time>450||frame.time-nowMs>80)
@@ -170,23 +171,37 @@ export function buildLowerBodyMask(frame:MotionFrame|null,
    return no('ambiguous','Tubuh beririsan: proyeksi mask dihentikan sampai terpisah.',poses.length);
  }
  const polygons=validPoses.flatMap(r=>r.polygons);
- const raw=raster(polygons,config.width,config.height);
  const segmented=frame.segmentation;
  const usable=!!segmented&&Number.isInteger(segmented.width)&&Number.isInteger(segmented.height)&&
   segmented.width>0&&segmented.height>0&&
   segmented.data.length===segmented.width*segmented.height;
  if(config.requireSegmentation&&!usable)
   return no('missing','Segmentasi belum tersedia: mask hitam.',poses.length);
- if(usable&&segmented){
-  for(let y=0;y<config.height;y++)for(let x=0;x<config.width;x++){
-   const sx=Math.min(segmented.width-1,Math.floor(x*segmented.width/config.width));
-   const sy=Math.min(segmented.height-1,Math.floor(y*segmented.height/config.height));
-   raw[y*config.width+x]=Math.min(raw[y*config.width+x],segmented.data[sy*segmented.width+sx]);
+ // Build one independent alpha mask per pose for future A/B archive assignment.
+ // Segmentation is a UNION, so it can clip boundaries but never assign identity.
+ const perPoseMasks=validPoses.map(entry=>{
+  const raw=raster(entry.polygons,config.width,config.height);
+  if(usable&&segmented){
+   for(let y=0;y<config.height;y++)for(let x=0;x<config.width;x++){
+    const sx=Math.min(segmented.width-1,Math.floor(x*segmented.width/config.width));
+    const sy=Math.min(segmented.height-1,Math.floor(y*segmented.height/config.height));
+    raw[y*config.width+x]=Math.min(raw[y*config.width+x],
+     segmented.data[sy*segmented.width+sx]);
+   }
   }
- }
- return {status:'ready',reason:usable?'Mask pose dipotong oleh segmentasi gabungan.':
-  'Mask geometris landmark, belum terpotong segmentasi.',mask:{width:config.width,
-   height:config.height,data:softenedInside(raw,config.width,config.height,config.featherPx)},
+  return {width:config.width,height:config.height,
+   data:softenedInside(raw,config.width,config.height,config.featherPx)};
+ });
+ const combined=new Uint8Array(config.width*config.height);
+ for(const part of perPoseMasks)
+  for(let i=0;i<combined.length;i++)combined[i]=Math.max(combined[i],part.data[i]);
+ // A valid landmark geometry that is completely absent from the segmentation
+ // cannot be treated as an illuminated target.
+ if(!combined.some(alpha=>alpha>0))
+  return no('missing','Segmentasi tidak memuat tubuh bagian bawah: mask hitam.',poses.length);
+ return {status:'ready',reason:usable?'Mask tiap pose dipotong oleh segmentasi gabungan.':
+  'Mask geometris landmark per pose, belum terpotong segmentasi.',
+  mask:{width:config.width,height:config.height,data:combined},perPoseMasks,
   polygons,poseCount:poses.length,segmentationUsed:usable,source};
 }
 
