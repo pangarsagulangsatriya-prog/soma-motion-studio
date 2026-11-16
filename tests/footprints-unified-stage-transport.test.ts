@@ -10,7 +10,7 @@ const stage=(surface:'body'|'floor',mode:'blackout'|'live'|'test'='blackout'):Du
  qa:'within-provisional-target',reason:'Software channel connected',sampledAtMs:100
 });
 const ctx=():UnifiedContext=>({
- camera:{on:true,busy:false,error:'',frameFresh:true},
+ camera:{on:true,busy:false,error:'',frameFresh:true,bodySelected:true},
  identity:{count:2,visibleCount:2,ambiguous:false,observedSameFrame:true},
  floor:{calibrated:true,confirmed:true,cameraMatched:true,contacts:10},
  bodyMask:{ready:true,reason:'Mask terbaca'},
@@ -30,7 +30,9 @@ test('camera, A/B, calibration and two independent routes share a single truthfu
 test('tracking lost or identity ambiguity cannot appear as a healthy status',()=>{
  const first=ctx();first.camera.frameFresh=false;
  assert.equal(deriveUnifiedStageStatus(first)[1].level,'idle');
- first.camera.frameFresh=true;first.identity.ambiguous=true;
+ first.camera.frameFresh=true;first.camera.bodySelected=false;
+ assert.equal(deriveUnifiedStageStatus(first)[0].detail,'Pilih sumber Body');
+ first.camera.bodySelected=true;first.identity.ambiguous=true;
  assert.equal(deriveUnifiedStageStatus(first)[1].level,'warn');
  first.identity.ambiguous=false;first.identity.observedSameFrame=false;
  assert.equal(deriveUnifiedStageStatus(first)[1].level,'warn');
