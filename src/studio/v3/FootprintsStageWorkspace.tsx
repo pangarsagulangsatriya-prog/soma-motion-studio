@@ -7,6 +7,7 @@ import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/Mu
 import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {ArchivalMappingPanel} from '../../footprints/stage-optics/ArchivalMappingPanel.tsx';
+import {stageBodyPreviewGate} from './footprintsUX.ts';
 import {palettes} from '../../footprints/pattern.ts';
 import type {FootprintConfig,FootprintStyle} from '../../footprints/StudioFootprints.tsx';
 import './footprints-stage-workspace.css';
@@ -64,7 +65,14 @@ export function FootprintsStageWorkspace({
    if(now-lastDraw<1000/18)return;
    lastDraw=now;
    const f=frameRef.current,v=videoRef.current;
-   const fresh=cameraOn&&f.source==='camera'&&f.tracked&&f.time<=now&&now-f.time<450;
+   const identities=router.status;
+   const gate=stageBodyPreviewGate({
+    cameraOn,tracked:f.tracked,source:f.source,ageMs:now-f.time,
+    performerCount,visibleCount:identities.visible.length,
+    identityAmbiguous:identities.ambiguous,matchedFrame:identities.observedFrameTime===f.time
+   });
+   const fresh=cameraOn&&f.source==='camera'&&f.tracked&&
+    f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
    if(camera&&cam){
@@ -79,11 +87,7 @@ export function FootprintsStageWorkspace({
    const options={...LOWER_BODY_MASK_DEFAULTS,performers:performerCount,
     requireSegmentation:false};
    const result=buildLowerBodyMask(fresh?f:null,options,now);
-   const identities=router.status;
-   const ambiguous=performerCount===2&&
-    (identities.ambiguous||identities.visible.length<2||
-     identities.observedFrameTime!==f.time);
-   const allow=result.status==='ready'&&!ambiguous;
+   const allow=result.status==='ready'&&gate==='ready';
    const b=bodyCanvas.current,g=b?.getContext('2d');
    if(b&&g){
     const image=g.createImageData(result.mask.width,result.mask.height);
@@ -103,7 +107,7 @@ export function FootprintsStageWorkspace({
     setBodyVisible(prev=>prev===lit?prev:lit);
    }
    const label=!cameraOn?'Kamera belum aktif':
-    ambiguous?'Identitas A/B belum stabil':
+    gate==='identity-unsafe'?'Identitas A/B belum stabil':
     allow?'Mask tubuh terbaca':
     result.status==='stale'?'Frame terlambat':'Landmark kaki belum lengkap';
    if(label!==lastStatus){lastStatus=label;setMaskStatus(label);}
