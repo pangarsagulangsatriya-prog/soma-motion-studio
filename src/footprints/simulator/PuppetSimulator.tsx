@@ -62,12 +62,37 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  const refresh=()=>{setVersion(v=>v+1);setMode('edit');setPlayhead(0);};
  useEffect(()=>{
   const raster=projectorArtworkRef.current;
-  if(raster)paintFloorCanvas(raster,sessionRef.current.session,{
-   maxTimeMs:mode==='edit'?undefined:playhead,
-   markersOnly:testPattern
-  });
- },[projectorArtworkRef,version,playhead,mode,testPattern]);
+  if(raster){
+   const current=labActive?{...qaScenario.session,events:qaVisible}:sessionRef.current.session;
+   paintFloorCanvas(raster,current,{
+    maxTimeMs:labActive?undefined:mode==='edit'?undefined:playhead,
+    markersOnly:testPattern
+   });
+   raster.dataset.floorRevision=(labActive?'qa:'+qaVisible.length:'puppet:'+version+':'+mode+':'+playhead)+':'+testPattern;
+   if(labActive&&labPreview.current)paintFloorCanvas(labPreview.current,current,{showGrid:grid});
+  }
+ },[projectorArtworkRef,labActive,qaScenario,qaVisible,version,playhead,mode,testPattern,grid]);
  const time=()=>performance.now()-origin.current;
+ useEffect(()=>{
+  onQATransportChange(labActive&&!testPattern?
+   qaOutputTransportAt(labTime,verified,labFaults):null);
+ },[labActive,labTime,labFaults,verified,testPattern,onQATransportChange]);
+ useEffect(()=>()=>{
+  onQATransportChange(null);
+ },[onQATransportChange]);
+ useEffect(()=>{
+  if(!labActive||!labPlaying)return;
+  const started=performance.now(),at=labTime;
+  let raf=0,last=-Infinity;
+  const tick=(now:number)=>{
+   const next=Math.min(QA_DURATION_MS,at+(now-started)*labRate);
+   if(now-last>=80||next===QA_DURATION_MS){last=now;setLabTime(next);}
+   if(next>=QA_DURATION_MS){setLabPlaying(false);return;}
+   raf=requestAnimationFrame(tick);
+  };
+  raf=requestAnimationFrame(tick);
+  return()=>cancelAnimationFrame(raf);
+ },[labActive,labPlaying,labRate]);
  useEffect(()=>{
   origin.current=performance.now();
   dialog.current?.showModal();
@@ -95,12 +120,12 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
    el.width=Math.max(1,Math.round(w*dpr));el.height=Math.max(1,Math.round(h*dpr));
    const ctx=el.getContext('2d');if(!ctx)return;
    ctx.setTransform(dpr,0,0,dpr,0,0);
-   drawPuppetScene(ctx,w,h,floor,camera,displayRigs,count,displayEvents,selected,grid);
+   drawPuppetScene(ctx,w,h,floor,camera,displayRigs,labActive?2:count,displayEvents,labActive?null:selected,grid);
   };
   paint();
   const observer=new ResizeObserver(paint);observer.observe(el);
   return ()=>observer.disconnect();
- },[floor,camera,version,count,selected,mode,playhead,grid]);
+ },[floor,camera,version,count,selected,mode,playhead,grid,labActive,qaFrameTime]);
  const xy=(e:ReactPointerEvent<HTMLCanvasElement>)=>{
   const r=e.currentTarget.getBoundingClientRect();
   return {x:e.clientX-r.left,y:e.clientY-r.top,w:r.width,h:r.height};
