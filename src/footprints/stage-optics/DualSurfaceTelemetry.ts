@@ -44,7 +44,8 @@ export function watchDualOutputStatus(callback:()=>void):()=>void{
 }
 /** If dispatch stops, no previous Live lamp may remain labeled fresh. */
 export function verifiedDualStatus(state:DualSurfaceState,now:number,maxAgeMs=900):DualSurfaceState{
- if(!state.reported||!Number.isFinite(now)||now-state.sampledAtMs<0||
+ if(!state.reported||!Number.isFinite(now)||!Number.isFinite(state.sampledAtMs)||
+  state.sampledAtMs<0||now-state.sampledAtMs<0||
   now-state.sampledAtMs>maxAgeMs)
   return {...state,connected:false,mode:'offline',
    reason:state.reported?'Status output kedaluwarsa; periksa jendela proyektor.':'Panel output belum dibuka.'};
