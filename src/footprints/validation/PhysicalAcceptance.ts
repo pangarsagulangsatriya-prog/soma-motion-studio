@@ -190,12 +190,20 @@ export function assessPhysicalAcceptance(trial:PhysicalTrial|null,contextKey:str
  for(const p of sum.perPerformer)
   if(p.truth<gates.minTrueContactsPerPerformer)
    missing.push('Performer '+p.id+' memerlukan ≥'+gates.minTrueContactsPerPerformer+' pijakan beranotasi.');
- for(const c of sum.cases)if(c.records<1)
-  missing.push('Belum ada rekaman kasus gerak '+c.kind+'.');
+ for(const c of sum.cases){
+  if(c.kind==='crossing'){
+   if(c.records<1)missing.push('Belum ada rekaman dua performer berpapasan.');
+  }else for(const performerId of expectedPerformers(trial.performerCount)){
+   if(!trial.sequences.some(s=>s.kind===c.kind&&s.performerId===performerId))
+    missing.push('Belum ada bukti '+c.kind+' dari performer '+performerId+'.');
+  }
+ }
  if(sum.lightMs.samples<gates.minLatencySamples)
   missing.push('Ukur ≥'+gates.minLatencySamples+' selisih frame kaki–cahaya dengan video eksternal.');
- if(calibrationQA?.status!=='within-provisional-target')
-  missing.push('QA lima titik kamera–proyektor harus lengkap dan berada dalam ambang kerja.');
+ if(!calibrationQA||calibrationQA.status==='incomplete')
+  missing.push('QA lima titik kamera–proyektor harus diperiksa seluruhnya.');
+ else if(calibrationQA.status==='needs-adjustment')
+  failed.push('Galat QA lima titik kamera–proyektor melewati ambang kerja.');
  // Compare unrounded ratios against gates to avoid rounding a failing 0.896 to 0.90.
  const exactPrecision=sum.cameraContacts?sum.matched/sum.cameraContacts:null;
  const exactRecall=sum.physicalContacts?sum.matched/sum.physicalContacts:null;
