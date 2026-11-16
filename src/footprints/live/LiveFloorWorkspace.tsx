@@ -123,6 +123,7 @@ export function LiveFloorWorkspace({
      const current=(showPredictions?router.previewSession:tracker.session)??createFloorSession(activeFloor);
      const start=performance.now();
      paintFloorCanvas(canvas,current,{markersOnly:testPattern,showGrid:false});
+     canvas.dataset.floorRevision=key;
      perfWindow.observePaint(start,performance.now());
     }
     if(prevViewKey.current!==key){
