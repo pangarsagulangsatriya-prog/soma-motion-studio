@@ -4,7 +4,7 @@ export type UnifiedLevel='ok'|'warn'|'idle';
 export type UnifiedUnit={id:'camera'|'identity'|'calibration'|'body'|'floor';
  title:string;detail:string;level:UnifiedLevel};
 export type UnifiedContext={
- camera:{on:boolean;busy:boolean;error:string;frameFresh:boolean};
+ camera:{on:boolean;busy:boolean;error:string;frameFresh:boolean;bodySelected:boolean};
  identity:{count:1|2;visibleCount:number;ambiguous:boolean;observedSameFrame:boolean};
  floor:{calibrated:boolean;confirmed:boolean;cameraMatched:boolean;contacts:number};
  bodyMask:{ready:boolean;reason:string};
@@ -19,6 +19,7 @@ export function deriveUnifiedStageStatus(c:UnifiedContext):UnifiedUnit[]{
  const camera=c.camera.error?item('camera','Kamera','Gagal: '+c.camera.error,'warn'):
   c.camera.busy?item('camera','Kamera','Menghubungkan','idle'):
   !c.camera.on?item('camera','Kamera','Mati','idle'):
+  !c.camera.bodySelected?item('camera','Kamera','Pilih sumber Body','warn'):
   c.camera.frameFresh?item('camera','Kamera','Tracking aktif','ok'):
   item('camera','Kamera','Mencari tubuh / frame','warn');
  const identity=!c.camera.frameFresh?
