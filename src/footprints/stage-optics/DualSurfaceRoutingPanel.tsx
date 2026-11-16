@@ -5,6 +5,7 @@ import {ProjectionLink} from '../../projection/channel.ts';
 import type {BodyMask} from '../../studio/bodyField.ts';
 import {download} from '../../engine/recording.ts';
 import {drawSurfaceTestPattern} from './SurfaceTestPattern.ts';
+import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
@@ -171,6 +172,15 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   setArmed({body:false,floor:false});
   setMessage('Dua output diperintah Blackout. Periksa cahaya proyektor secara fisik.');
  };
+ // Keep the operator's always-visible Studio Blackout effective even while
+ // the dual-projector controls are nested below the Archive preview.
+ const allBlackoutRef=useRef(allBlackout);
+ allBlackoutRef.current=allBlackout;
+ useEffect(()=>{
+  const external=()=>allBlackoutRef.current();
+  window.addEventListener(STAGE_BLACKOUT_EVENT,external);
+  return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,external);
+ },[]);
  const changeMode=(id:StageSurface,mode:Requested)=>{
   if(!STAGE_HARDWARE_ENABLED&&mode!=='blackout'){
    urgentBlackout(id);
