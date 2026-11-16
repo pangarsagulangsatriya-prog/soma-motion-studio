@@ -18,7 +18,8 @@ export class GhostFootstepPredictor{
  private ghosts=new Map<Key,FootstepEvent>();
  private lastSeen=new Map<Key,number>();
  readonly ttlMs=450;
- constructor(private readonly floor:FloorSpace){}
+ readonly floor:FloorSpace;
+ constructor(floor:FloorSpace){this.floor=floor;}
  reset(){this.contactHistory.clear();this.ghosts.clear();this.lastSeen.clear();}
  lose(performerId:string){
   for(const k of [...this.ghosts.keys()])if(k.startsWith(performerId+':')){
