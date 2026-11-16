@@ -25,6 +25,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
  const padCanvas=useRef<HTMLCanvasElement>(null);
  const stageRoute=useRef<StageRouteInput|null>(null);
  const [routeOpen,setRouteOpen]=useState(false);
+ useEffect(()=>{stageRoute.current=null;},[performerCount]);
  const contactBridge=useRef(new ContactArchiveBridge()).current;
  const thumbnails=useRef(new Map<string,HTMLCanvasElement>());
  const lastBridgeView=useRef('');
@@ -61,6 +62,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   urls.current[key]=null;
  }},[]);
  const setVideo=(slot:ArchiveSlot,file:File|null)=>{
+  stageRoute.current=null; // kill eligibility before an old image can be sent
   const video=videoRefs.current[slot];
   if(!video)return;
   if(file&&(!allowedTypes.has(file.type)||file.size<=0||file.size>maxBytes)){
@@ -84,6 +86,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   setVideo(slot,e.target.files?.[0]??null);e.target.value='';
  };
  const resetBridge=()=>{
+  stageRoute.current=null; // old pad must not be reused for a new take
   // Explicit reset is a user gesture: restart footage paused by a prior hold
   // when playback is still requested. Reset must not leave clips stuck paused.
   if(playing)for(const slot of slots){
