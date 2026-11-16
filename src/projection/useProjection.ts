@@ -3,18 +3,20 @@ import {useCallback,useEffect,useRef,useState,type RefObject} from 'react';
 import {emptyFrame,uid,type MotionFrame} from '../engine/types';
 import {ProjectionModel,projectionDefaults,validateProjection,type ProjectionConfig,type ProjectionState,type Transport} from './model';
 import {ProjectionLink} from './channel';
+import {chooseFloorArtworkSource,effectiveFloorTransport,floorCalibrationSignature,liveFloorArtworkState,simulatorArtworkState} from './floorBridge';
+import {cameraBinding,cameraBindingKey} from '../footprints/live/LiveFloorTrackingEngine.ts';
 import {makePreset,readPreset,deviceWarnings,type DeviceSnapshot,type ProjectionPreset} from './presets';
 import {download} from '../engine/recording';
 const KEY='soma-projection-calibrations-v2',OLD_KEY='soma-projection-calibrations-v1';
 export type CalibrationPreset={id:string;name:string;preset:ProjectionPreset;legacy?:boolean};
 const emptyMetrics={fps:0,p95Ms:0,frames:0,samples:0,width:480,height:270};
-export function useProjection({active,frameRef,videoRef,input,notify,artworkActive=false,artworkRef}:{active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;input:string;notify:(text:string)=>void;artworkActive?:boolean;artworkRef?:RefObject<HTMLCanvasElement|null>}){
- const model=useRef(new ProjectionModel()).current,link=useRef<ProjectionLink|null>(null),latest=useRef({active,input,artworkActive});latest.current={active,input,artworkActive};
+export function useProjection({active,frameRef,videoRef,input,notify,artworkActive=false,artworkRef,simulatorActive=false,simulatorApproval=null,simulatorTestPattern=false,simulatorQaTransport=null,simulatorArtworkRef,liveFloorActive=false,liveFloorConfirmed=false,liveFloorBoundCamera=null,liveFloorApproval=null,liveFloorTestPattern=false,liveFloorArtworkRef}:{active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;input:string;notify:(text:string)=>void;artworkActive?:boolean;artworkRef?:RefObject<HTMLCanvasElement|null>;simulatorActive?:boolean;simulatorApproval?:string|null;simulatorTestPattern?:boolean;simulatorQaTransport?:Transport|null;simulatorArtworkRef?:RefObject<HTMLCanvasElement|null>;liveFloorActive?:boolean;liveFloorConfirmed?:boolean;liveFloorBoundCamera?:string|null;liveFloorApproval?:string|null;liveFloorTestPattern?:boolean;liveFloorArtworkRef?:RefObject<HTMLCanvasElement|null>}){
+ const model=useRef(new ProjectionModel()).current,link=useRef<ProjectionLink|null>(null),latest=useRef({active,input,artworkActive,simulatorActive,simulatorApproval,simulatorTestPattern,simulatorQaTransport,liveFloorActive,liveFloorConfirmed,liveFloorBoundCamera,liveFloorApproval,liveFloorTestPattern});latest.current={active,input,artworkActive,simulatorActive,simulatorApproval,simulatorTestPattern,simulatorQaTransport,liveFloorActive,liveFloorConfirmed,liveFloorBoundCamera,liveFloorApproval,liveFloorTestPattern};
  const [config,setConfig]=useState(projectionDefaults),[draft,setDraft]=useState(projectionDefaults),draftRef=useRef(draft);draftRef.current=draft;
  const [transport,setTransportState]=useState<Transport>('blackout'),[pattern,setPatternState]=useState(false),[opened,setOpened]=useState(false),[name,setName]=useState('Layar latihan 01'),[presets,setPresets]=useState<CalibrationPreset[]>([]),[warnings,setWarnings]=useState<string[]>([]);
  const organic=useOrganic(active,name,notify),organicRef=useRef(organic);organicRef.current=organic;
  const stateRef=useRef<ProjectionState>(model.sample(emptyFrame(),'hands',4/3,performance.now())),previewRef=useRef(stateRef.current),rawStateRef=useRef(stateRef.current),localMetrics=useRef(emptyMetrics);
- const [status,setStatus]=useState({reason:'Menunggu kamera dan tubuh',tracking:false,quality:0,sampleAge:0,connected:false,remoteRenderer:'',receivedFrames:0,error:'',preview:emptyMetrics,output:null as ProjectionLink['outputInfo']});
+ const [status,setStatus]=useState({reason:'Menunggu kamera dan tubuh',tracking:false,quality:0,sampleAge:0,connected:false,remoteRenderer:'',receivedFrames:0,error:'',preview:emptyMetrics,output:null as ProjectionLink['outputInfo'],artworkTransfer:null as ProjectionLink['artworkTransfer']['metrics']|null});
  const running=active||opened,dirty=JSON.stringify(draft)!==JSON.stringify(config);
  const setTransport=useCallback((value:Transport)=>{model.setTransport(value);setTransportState(value);},[model]);
  const update=useCallback((patch:Partial<ProjectionConfig>)=>{try{const next=validateProjection({version:2,config:{...model.config,...patch}});model.config=next;setConfig(next);setDraft(d=>({...d,...patch}));}catch(e){notify((e as Error).message);}},[model,notify]);
@@ -25,7 +27,31 @@ export function useProjection({active,frameRef,videoRef,input,notify,artworkActi
  const reset=()=>{organicRef.current.reset();model.reset();setTransportState('blackout');setPatternState(false);notify('Gambar dilepas. Output blackout; kamera dan kalibrasi tetap berjalan.');};
  const deviceSnapshot=():DeviceSnapshot=>{const v=videoRef.current,track=(v?.srcObject as MediaStream|null)?.getVideoTracks?.()[0],s=track?.getSettings(),o=link.current?.connected?link.current.outputInfo:null;return {camera:{id:s?.deviceId??'',label:track?.label??'',width:v?.videoWidth??0,height:v?.videoHeight??0},output:{width:o?.width||localMetrics.current.width,height:o?.height||localMetrics.current.height,viewportWidth:o?.viewportWidth||innerWidth,viewportHeight:o?.viewportHeight||innerHeight,dpr:o?.dpr||devicePixelRatio}};};
  useEffect(()=>{const l=new ProjectionLink();link.current=l;l.start();try{const saved=localStorage.getItem(KEY),values=JSON.parse(saved||localStorage.getItem(OLD_KEY)||'[]');if(Array.isArray(values))setPresets(values.slice(0,20).flatMap(p=>{try{const raw=saved?p.preset:{version:1,name:p.name,config:p.config},read=readPreset(raw);return [{id:String(p.id),name:read.name,legacy:read.legacy||!!p.legacy,preset:makePreset(read.name,read.config,read.devices??deviceSnapshot())}];}catch{return [];}}));}catch{}return()=>{l.dispose();link.current=null;};},[]);
- useEffect(()=>{if(!running)return;let lastUI=0;const tick=()=>{const now=performance.now(),v=videoRef.current;const raw=model.sample(frameRef.current,latest.current.input,(v?.videoWidth||640)/(v?.videoHeight||480),now);rawStateRef.current={...raw,image:model.liveImage};const s=organicRef.current.process(raw,frameRef.current,now,model.liveImage);stateRef.current=s;previewRef.current={...s,config:draftRef.current};const l=link.current;if(latest.current.artworkActive&&artworkRef?.current){const art={...s,image:null,blank:s.transport==='blackout'||s.pattern,tracking:frameRef.current.tracked,reason:'Footprints · output bersama Projection'};l?.sendArtwork(art,artworkRef.current,now);}else l?.send(s,now);if(now-lastUI>200){lastUI=now;if(opened&&!l?.opened)setOpened(false);setStatus({reason:s.reason,tracking:s.tracking,quality:s.quality,sampleAge:s.sampleAge,connected:!!l?.connected,remoteRenderer:l?.renderer??'',receivedFrames:l?.receivedFrames??0,error:l?.error??'',preview:{...localMetrics.current},output:l?.outputInfo??null});}};tick();const timer=setInterval(tick,33);return()=>clearInterval(timer);},[running,opened,frameRef,videoRef,model,artworkRef]);
+ useEffect(()=>{if(!running)return;let lastUI=0;const tick=()=>{const now=performance.now(),v=videoRef.current;const raw=model.sample(frameRef.current,latest.current.input,(v?.videoWidth||640)/(v?.videoHeight||480),now);rawStateRef.current={...raw,image:model.liveImage};const s=organicRef.current.process(raw,frameRef.current,now,model.liveImage);stateRef.current=s;previewRef.current={...s,config:draftRef.current};const l=link.current;
+ const floorVerified=!!latest.current.simulatorApproval&&latest.current.simulatorApproval===floorCalibrationSignature(s.config);
+ const floorReady=floorVerified||latest.current.simulatorTestPattern;
+ const cameraReady=latest.current.liveFloorConfirmed&&!!latest.current.liveFloorBoundCamera&&latest.current.liveFloorBoundCamera===cameraBindingKey(cameraBinding(v))&&latest.current.input==='body';
+ const liveFloorReady=cameraReady&&!!latest.current.liveFloorApproval&&latest.current.liveFloorApproval===floorCalibrationSignature(s.config);
+ const choice=chooseFloorArtworkSource(latest.current.simulatorActive,floorReady,
+  !!simulatorArtworkRef?.current,latest.current.artworkActive,!!artworkRef?.current,
+  latest.current.liveFloorActive,liveFloorReady||latest.current.liveFloorTestPattern,!!liveFloorArtworkRef?.current);
+ if(choice.source==='simulator'){
+  const art=simulatorArtworkState({...s,image:null},choice.canStream,latest.current.simulatorTestPattern);
+  const transport=effectiveFloorTransport(art.transport,latest.current.simulatorQaTransport);
+  const safe={...art,transport,blank:art.blank||transport==='blackout',
+   reason:transport==='blackout'&&latest.current.simulatorQaTransport==='blackout'?
+    'QA Lab · gangguan terjadwal, output blackout':art.reason};
+  if(choice.canStream&&simulatorArtworkRef?.current)l?.sendArtwork(safe,simulatorArtworkRef.current,now);
+  else l?.send(safe,now);
+ }else if(choice.source==='live-floor'){
+  const art=liveFloorArtworkState({...s,image:null},choice.canStream,latest.current.liveFloorTestPattern);
+  if(choice.canStream&&liveFloorArtworkRef?.current)l?.sendArtwork(art,liveFloorArtworkRef.current,now);
+  else l?.send(art,now);
+ }else if(choice.source==='live-footprints'&&artworkRef?.current){
+  const art={...s,image:null,blank:s.transport==='blackout'||s.pattern,
+   tracking:frameRef.current.tracked,reason:'Footprints · output bersama Projection'};
+  l?.sendArtwork(art,artworkRef.current,now);
+ }else l?.send(s,now);if(now-lastUI>200){lastUI=now;if(opened&&!l?.opened)setOpened(false);setStatus({reason:choice.source==='live-floor'?(latest.current.liveFloorTestPattern?'Uji empat sudut lantai':liveFloorReady?'Live Floor · kalibrasi aktif':'Kalibrasi kamera/lantai belum aktif'):choice.source==='simulator'?(latest.current.simulatorTestPattern?'Uji empat sudut lantai':floorReady?'Simulator Footprints · lantai siap':'Kalibrasi lantai belum dikonfirmasi'):s.reason,tracking:choice.source==='live-floor'?choice.canStream:choice.source==='simulator'?floorReady:s.tracking,quality:choice.source==='live-floor'?(choice.canStream?1:0):choice.source==='simulator'?(floorReady?1:0):s.quality,sampleAge:s.sampleAge,connected:!!l?.connected,remoteRenderer:l?.renderer??'',receivedFrames:l?.receivedFrames??0,error:l?.error??'',preview:{...localMetrics.current},output:l?.outputInfo??null,artworkTransfer:l?.connected?l.artworkTransfer.metrics:null});}};tick();const timer=setInterval(tick,33);return()=>clearInterval(timer);},[running,opened,frameRef,videoRef,model,artworkRef,simulatorArtworkRef,liveFloorArtworkRef]);
  useEffect(()=>{if(!running)organicRef.current.clearMemory();},[running]);
  const openOutput=()=>{const ok=link.current?.open()??false;setOpened(ok);if(!ok)notify(link.current?.error||'Output belum tersedia.');else notify('Pindahkan output ke proyektor, lalu klik dua kali atau tekan F untuk fullscreen.');};
  const closeOutput=()=>{link.current?.closeOutput();setOpened(false);};
@@ -34,7 +60,9 @@ export function useProjection({active,frameRef,videoRef,input,notify,artworkActi
  const load=(preset:CalibrationPreset)=>{restore(preset.preset);if(preset.legacy)setWarnings(deviceWarnings(null,deviceSnapshot()));};
  const exportPreset=()=>download(new Blob([JSON.stringify(makePreset(name.trim()||'Kalibrasi',draftRef.current,deviceSnapshot()),null,2)],{type:'application/json'}),'SOMA-Projection-kalibrasi-v2.json');
  const importPreset=async(file?:File)=>{if(!file)return;try{if(file.size>60000)throw Error('File kalibrasi terlalu besar.');restore(JSON.parse(await file.text()));}catch(e){notify((e as Error).message);}};
- const exportMetrics=()=>download(new Blob([JSON.stringify({recordedAt:new Date().toISOString(),camera:frameRef.current.telemetry??null,organic:organicRef.current.status,preview:localMetrics.current,output:link.current?.connected?link.current.outputInfo:null,devices:deviceSnapshot(),limits:'FPS dan P95 dari cadence render browser (jendela 600 frame). Bukan latensi gerak-ke-cahaya atau galat fisik. Frame dilewati hanya sampel yang dilewati aplikasi.'},null,2)],{type:'application/json'}),'SOMA-Projection-pengukuran-browser.json');
+ const exportMetrics=()=>download(new Blob([JSON.stringify({recordedAt:new Date().toISOString(),camera:frameRef.current.telemetry??null,organic:organicRef.current.status,preview:localMetrics.current,output:link.current?.connected?link.current.outputInfo:null,
+ artworkTransfer:link.current?.connected?link.current.artworkTransfer.metrics:null,
+ devices:deviceSnapshot(),limits:'FPS dan P95 dari cadence render browser (jendela 600 frame). Bukan latensi gerak-ke-cahaya atau galat fisik. Frame dilewati hanya sampel yang dilewati aplikasi.'},null,2)],{type:'application/json'}),'SOMA-Projection-pengukuran-browser.json');
  return {organic,rawStateRef,config,draft,edit,apply,revert,dirty,update,transport,setTransport,pattern,setPattern,reset,stateRef,previewRef,localMetrics,status,running,opened,openOutput,closeOutput,name,setName,presets,save,load,exportPreset,importPreset,warnings,exportMetrics};
 }
 export type Projection=ReturnType<typeof useProjection>;

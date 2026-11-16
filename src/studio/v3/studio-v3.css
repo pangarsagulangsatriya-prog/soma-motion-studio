@@ -202,3 +202,26 @@
  .soma-v3 .v3-transport{justify-content:flex-start}
  .soma-v3 .v3-transport-action,.soma-v3 .v3-transport-menu>summary{font-size:12px}
 }
+
+/* S5.1 — Direct Puppet entry is available regardless of camera state. */
+.soma-v3 .v3-inspector-footer .v3-open-puppet{
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+ gap:4px;min-height:62px;margin-bottom:9px;padding:12px 15px;
+ background:#35462e;border-color:#a4c480;color:#e8f4cd;text-align:left
+}
+.soma-v3 .v3-inspector-footer .v3-open-puppet span{font-size:13px;font-weight:700}
+.soma-v3 .v3-inspector-footer .v3-open-puppet small{font-size:11px;color:#c9dab8}
+.soma-v3 .v3-inspector-footer .v3-open-puppet:hover{
+ background:#455a37;border-color:#d0e8a8
+}
+
+/* S5.3 camera-based floor-space entry next to the existing 3D simulator. */
+.soma-v3 .v3-scene-foot-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+ padding:9px 12px;border:1px solid #597057;border-radius:9px;
+ background:#1b2b21;margin:9px 0 10px}
+.soma-v3 .v3-scene-foot-actions button{min-height:43px;padding:9px 13px;font-size:12px;
+ border:1px solid #77936f;border-radius:7px;background:#2a412d;color:#d9ebd2;cursor:pointer}
+.soma-v3 .v3-scene-foot-actions .v3-accent{background:#d0e6a5;color:#1d2b1e;font-weight:700}
+.soma-v3 .v3-scene-foot-actions button:hover{border-color:#d3edab}
+.soma-v3 .v3-scene-foot-actions button:focus-visible{outline:2px solid #cde6a3;outline-offset:2px}
+@media(max-width:540px){.soma-v3 .v3-scene-foot-actions button{flex:1;min-width:140px}}

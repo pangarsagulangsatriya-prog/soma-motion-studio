@@ -7,5 +7,7 @@ import './archive/archive.css';
 import ProjectionOutput from './projection/ProjectionOutput';
 import ProjectionScreen from './archive/ProjectionScreen';
 const bodyProjection=new URLSearchParams(location.search).get('bodyProjection');
+const stageSurface=new URLSearchParams(location.search).get('stageSurface');
+const role=stageSurface==='body'||stageSurface==='floor'?stageSurface:undefined;
 const projection=new URLSearchParams(location.search).get('projection');
-createRoot(document.getElementById('root')!).render(<React.StrictMode>{bodyProjection?<ProjectionOutput session={bodyProjection}/>:projection?<ProjectionScreen sessionId={projection}/>:<App/>}</React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode>{bodyProjection?<ProjectionOutput session={bodyProjection} surface={role}/>:projection?<ProjectionScreen sessionId={projection}/>:<App/>}</React.StrictMode>);

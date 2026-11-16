@@ -3,7 +3,7 @@ import type {MotionFrame,Settings} from '../engine/types';
 import {download} from '../engine/recording';
 import {drawFoot} from './glyph';
 import {nextImprint} from './spacing';
-import {GaitAnalyzer} from './gait-analysis/index';
+import {GaitAnalyzer,type GaitSample} from './gait-analysis/index';
 import {palettes,patternSVG,smoothSample,validateSession,type Sample,type Recipe} from './pattern';
 import './studio-footprints.css';
 
@@ -25,6 +25,10 @@ type Props={
  settingsRef:RefObject<Settings>;trackingRef:RefObject<boolean>;
  canvasRef:RefObject<HTMLCanvasElement|null>;config:FootprintConfig;onNotice:(s:string)=>void;
  onRecording:(value:boolean)=>void;audioStream?:MediaStream|null;
+ onGaitSample?:(mark:GaitSample|null,side:0|1,videoAspect:number)=>void;
+ onPoseFrame?:(frame:MotionFrame|null,clock:number,videoAspect:number)=>void;
+ /** Live Floor always needs gated gait samples, even if illustrative V2 Footprints uses spacing. */
+ forceGaitForLiveFloor?:boolean;
 };
 /** Shares the single SOMA Body MotionFrame and camera. No second tracker, camera or output window. */
 export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function StudioFootprints(props,ref){
@@ -36,6 +40,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
  const elapsed=useRef(0);
  const lastFrame=useRef(-1);
  const gait=useRef(new GaitAnalyzer());
+ const trackingLost=useRef(false);
  useEffect(()=>{gait.current.reset();live.current=[null,null];lastPrint.current=[null,null];},[props.config.gaitAnalysis]);
  const latest=useRef(props);latest.current=props;
  const movie=useRef<MediaRecorder|null>(null),movieStream=useRef<MediaStream|null>(null);
@@ -103,13 +108,15 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
    if(!c.hold&&f.source==='camera'&&f.time!==lastFrame.current){
     lastFrame.current=f.time;
     const valid=f.tracked&&f.pose.length>=33&&f.time<=now&&now-f.time<350;
+    if(valid)trackingLost.current=false;
     const video=p.videoRef.current;
     const aspect=video?.videoWidth&&video?.videoHeight?video.videoWidth/video.videoHeight:4/3;
     const factorX=Math.min(1,aspect/(16/9)),factorY=Math.min(1,(16/9)/aspect);
     for(let side=0;side<2;side++){
-     if(c.gaitAnalysis){
+     if(c.gaitAnalysis||p.forceGaitForLiveFloor){
       const mark=gait.current.observe({...f,tracked:valid},side as 0|1,clock,aspect);
-      if(!mark){live.current[side]=null;lastPrint.current[side]=null;continue;}
+      if(!mark){live.current[side]=null;lastPrint.current[side]=null;p.onGaitSample?.(null,side as 0|1,aspect);continue;}
+      p.onGaitSample?.(mark,side as 0|1,aspect);
       live.current[side]=mark;
       view.current.push(mark);
       if(session.current.length<100000)session.current.push({...mark});
@@ -131,8 +138,16 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
      live.current[side]=mark;view.current.push(mark);
      if(session.current.length<100000)session.current.push({...mark});
     }
+    p.onPoseFrame?.(valid?f:null,clock,aspect);
    }
-   if(!c.hold&&now-f.time>400){live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();}
+   if(!c.hold&&now-f.time>400){
+    live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();
+    if(!trackingLost.current){trackingLost.current=true;
+     const v=p.videoRef.current,aspect=v?.videoWidth&&v?.videoHeight?v.videoWidth/v.videoHeight:4/3;
+     p.onGaitSample?.(null,0,aspect);p.onGaitSample?.(null,1,aspect);
+     p.onPoseFrame?.(null,clock,aspect);
+    }
+   }
    view.current=view.current.filter(m=>clock-m.t<(c.life+c.delay)*1000).slice(-12000);
    if(now-renderAt<1000/30)return;renderAt=now;
    const target=p.canvasRef.current;if(!target)return;
