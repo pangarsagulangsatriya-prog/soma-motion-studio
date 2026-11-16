@@ -1,6 +1,7 @@
 import {useMemo,useState} from 'react';
 import {Download,FlaskConical,LockKeyhole,Trash2} from 'lucide-react';
 import {download} from '../../engine/recording.ts';
+import './physical-acceptance.css';
 import type {FootstepEvent,FootSide} from '../spatial/events.ts';
 import type {FloorSpace} from '../spatial/coordinates.ts';
 import type {CalibrationQASample,CalibrationQASummary} from './CalibrationQA.ts';
