@@ -9,6 +9,7 @@ import {FloorProjectionPanel} from './FloorProjectionPanel.tsx';
 import {SimulationLabPanel} from './SimulationLabPanel.tsx';
 import {createQAScenario,qaEventsAt,qaFormatTime,qaOutputTransportAt,QA_DURATION_MS} from './QAScenario.ts';
 import {runSimulationQA} from './SimulationQAReport.ts';
+import {qaPuppetPoseAt} from './QAStagePose.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import {DirectPuppetSession,replayPoseAt} from './puppet-controller.ts';
 import {clamp,clampOnFloor,hitFoot,initialCamera,project3D,unprojectFloor,type OrbitCamera} from './scene3d.ts';
@@ -53,7 +54,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  const duration=model.durationMs;
  const manualEvents=mode==='edit'?model.events:model.events.filter(e=>e.timestampMs<=playhead);
  const displayEvents=labActive?qaVisible:manualEvents;
- const displayRigs=labActive?replayPoseAt(floor,qaVisible,qaFrameTime):
+ const displayRigs=labActive?qaPuppetPoseAt(qaScenario,qaFrameTime):
   mode==='edit'?model.performers:replayPoseAt(floor,model.events,playhead);
  const stats=labActive?{contacts:qaVisible.filter(e=>e.kind==='contact').length}:floorArtworkSummary(session);
  const svg=useMemo(()=>labActive?'':floorArtworkSVG({...session,events:manualEvents},{
