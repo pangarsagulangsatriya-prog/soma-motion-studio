@@ -131,3 +131,12 @@ test('reset and new floor size reinitialize event engine, import rejects invalid
  assert.equal(s.events.filter(e=>e.kind==='contact').length,1);
  assert.throws(()=>s.importSession({version:99}));
 });
+
+test('first-step replay starts immediately even after a long idle period',()=>{
+ const s=new DirectPuppetSession(floor),who={performerId:'A',foot:'left'} as const;
+ s.lift(who,90000);s.move(who,{xM:2.7,yM:2.8},90050);s.land(who,90100);
+ assert.ok(s.events[0].timestampMs<50);
+ assert.ok(s.durationMs<150);
+ s.clear();s.lift(who,180000);
+ assert.ok(s.events[0].timestampMs<50);
+});
