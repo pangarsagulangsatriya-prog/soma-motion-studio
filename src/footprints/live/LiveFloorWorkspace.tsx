@@ -8,6 +8,7 @@ import {floorArtworkSVG} from '../simulator/floor-artwork.ts';
 import {defaultFloorSpace,validateCameraFloorCalibration,type CameraFloorCalibration,type FloorSpace} from '../spatial/coordinates.ts';
 import {createFloorSession} from '../spatial/events.ts';
 import {cameraBinding,LiveFloorTrackingEngine,type LiveFloorStatus} from './LiveFloorTrackingEngine.ts';
+import type {MultiPoseGaitRouter} from './MultiPoseGaitRouter.ts';
 import type {Point,Quad} from '../../projection/geometry.ts';
 import {download} from '../../engine/recording.ts';
 import './live-floor.css';
@@ -26,6 +27,8 @@ type Props={
  onTestPattern:(v:boolean)=>void;onOpenOutput:()=>void;onCalibrateProjector:()=>void;
  onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
  onCalibrationDirty:()=>void;onCameraConfirmed:()=>void;
+ router:MultiPoseGaitRouter;performerCount:1|2;onPerformerCount:(v:1|2)=>void;
+ showPredictions:boolean;onShowPredictions:(v:boolean)=>void;onResetIdentity:()=>void;
 };
 const initialFloor=defaultFloorSpace(8,6);
 function videoRect(width:number,height:number,videoWidth:number,videoHeight:number){
@@ -36,7 +39,8 @@ function videoRect(width:number,height:number,videoWidth:number,videoHeight:numb
 export function LiveFloorWorkspace({
  onClose,tracker,videoRef,frameRef,projectorArtworkRef,projection,
  cameraOn,cameraBusy,onStartBody,projectorVerified,testPattern,onProjectorVerify,onTestPattern,
- onOpenOutput,onCalibrateProjector,onLive,onHold,onBlackout,onCalibrationDirty,onCameraConfirmed
+ onOpenOutput,onCalibrateProjector,onLive,onHold,onBlackout,onCalibrationDirty,onCameraConfirmed,
+ router,performerCount,onPerformerCount,showPredictions,onShowPredictions,onResetIdentity
 }:Props){
  const dialog=useRef<HTMLDialogElement>(null),cameraCanvas=useRef<HTMLCanvasElement>(null);
  const onDirtyRef=useRef(onCalibrationDirty);onDirtyRef.current=onCalibrationDirty;
@@ -48,7 +52,7 @@ export function LiveFloorWorkspace({
  const [message,setMessage]=useState('Ambil empat sudut lantai dari gambar kamera mentah.');
  const refreshed=()=>{setVersion(v=>v+1);setStatus(tracker.status);};
  const floorActive=tracker.floor??floor;
- const session=tracker.session??createFloorSession(floorActive);
+ const session=(showPredictions?router.previewSession:tracker.session)??createFloorSession(floorActive);
  const svg=floorArtworkSVG(session,{width:960,height:720,showGrid:true,showTrail:false});
  useEffect(()=>{
   dialog.current?.showModal();
@@ -101,7 +105,7 @@ export function LiveFloorWorkspace({
    try{
     const canvas=projectorArtworkRef.current;
     if(canvas){
-     const current=tracker.session??createFloorSession(floor);
+     const current=(showPredictions?router.previewSession:tracker.session)??createFloorSession(floor);
      paintFloorCanvas(canvas,current,{markersOnly:testPattern,showGrid:false});
     }
    }catch(e){setMessage(e instanceof Error?e.message:'Output lantai gagal dirender.');}
@@ -109,7 +113,7 @@ export function LiveFloorWorkspace({
   };
   tick();const id=setInterval(tick,170);
   return()=>clearInterval(id);
- },[tracker,videoRef,projectorArtworkRef,testPattern,floor]);
+ },[tracker,router,videoRef,projectorArtworkRef,testPattern,showPredictions,floor]);
  const choosePoint=(e:PointerEvent<HTMLCanvasElement>)=>{
   const v=videoRef.current,canvas=cameraCanvas.current;
   if(!v||!canvas||!v.videoWidth||!v.videoHeight||v.readyState<2)return;
@@ -152,7 +156,7 @@ export function LiveFloorWorkspace({
  };
  const newSession=()=>{
   if(status.events>0&&!window.confirm('Hapus seluruh event live floor pada sesi ini?'))return;
-  tracker.resetSession();refreshed();setMessage('Sesi lantai baru dimulai.');
+  tracker.resetSession();router.reset();refreshed();setMessage('Sesi lantai baru dimulai.');
  };
  const exportJSON=()=>{
   const s=tracker.session;
@@ -205,11 +209,25 @@ export function LiveFloorWorkspace({
    <aside className="live-floor-sidebar">
     <section className="live-floor-preview">
      <div className="live-floor-heading">02 / FLOOR COORDINATES</div>
+     <div className="live-floor-mode" role="group" aria-label="Jumlah performer">
+      <button type="button" aria-pressed={performerCount===1} onClick={()=>onPerformerCount(1)}>1 performer</button>
+      <button type="button" aria-pressed={performerCount===2} onClick={()=>onPerformerCount(2)}>2 performer</button>
+     </div>
+     <label className="live-floor-ghost-toggle">
+      <input type="checkbox" checked={showPredictions} onChange={e=>onShowPredictions(e.target.checked)}/>
+      Jejak kemungkinan berikutnya <span>(bayangan, bukan kontak)</span>
+     </label>
+     {performerCount===2&&<div className="live-floor-identity" role="status">
+      <b>{router.status.ambiguous?'Identitas belum pasti':router.status.visible.length?router.status.visible.join(' & ')+' terbaca':'Menunggu tubuh'}</b>
+      <span>{router.status.reason}</span>
+      <button type="button" onClick={onResetIdentity}>Reset identitas A/B</button>
+     </div>}
      <div className="live-floor-svg" dangerouslySetInnerHTML={{__html:svg}} aria-label="Jejak kontak pada lantai yang dipetakan"/>
      <dl>
       <div><dt>Jejak kontak</dt><dd>{status.contacts}</dd></div>
       <div><dt>Total event</dt><dd>{status.events}</dd></div>
-      <div><dt>Body</dt><dd>{frameRef.current.tracked?'Terbaca':'Menunggu'}</dd></div>
+      <div><dt>Body</dt><dd>{performerCount===2?router.status.visible.length:frameRef.current.tracked?'1':'0'} / {performerCount}</dd></div>
+      <div><dt>Bayangan</dt><dd>{showPredictions?router.status.ghostCount:0}</dd></div>
      </dl>
      <p>{status.reason} Kamera monokular memperkirakan posisi kontak; tekanan dan titik pijakan persis belum terukur.</p>
      <div className="live-floor-tools">
