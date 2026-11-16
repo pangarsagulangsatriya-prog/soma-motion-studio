@@ -1,0 +1,26 @@
+.lower-mask{background:#122016;border:1px solid #4d6b52;border-radius:8px;padding:12px;margin-top:9px;color:#dce8d9}
+.lower-mask .live-floor-heading{display:flex;align-items:center;gap:7px}
+.lower-mask>p{font-size:12px;line-height:1.65;color:#c3d5c4;margin:7px 0!important}
+.lower-mask-view{position:relative;border-radius:6px;background:#010301;border:1px solid #435948;
+ overflow:hidden;max-width:620px;margin:0 auto 9px}
+.lower-mask-view canvas{display:block;width:100%;aspect-ratio:4/3;image-rendering:auto}
+.lower-mask-legend{position:absolute;left:7px;right:7px;bottom:6px;display:flex;gap:6px;flex-wrap:wrap;
+ align-items:center;justify-content:space-between;pointer-events:none}
+.lower-mask-legend span{background:#0b1510df;padding:3px 7px;border:1px solid #4a5e50;
+ border-radius:4px;color:#d0e4d4;font:700 10px ui-monospace,monospace}
+.lower-mask-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.lower-mask-controls label{display:flex;flex-direction:column;gap:5px;color:#d0e0cc;font-size:11px}
+.lower-mask-controls select{width:100%;min-width:0;min-height:38px;border-radius:5px;padding:6px;
+ background:#182e21;border:1px solid #527356;color:#e6f0d8;font-size:12px}
+.lower-mask-controls input[type=range]{width:100%;accent-color:#d0e8b4}
+.lower-mask-controls .lower-mask-check{display:flex;flex-direction:row;align-items:center;gap:7px;line-height:1.45}
+.lower-mask-check input{width:17px;height:17px;accent-color:#d2eeb0;flex:none}
+.lower-mask-inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lower-mask-inline button{display:flex;align-items:center;gap:6px;min-height:38px}
+.lower-mask-controls>p{font-size:11px!important;color:#b5c6b6}
+.lower-mask-metrics{margin-top:12px;display:grid;gap:6px}
+.lower-mask-metrics>div{display:flex;align-items:flex-start;gap:7px;
+ border:1px solid #47674c;border-radius:5px;padding:8px;font-size:11px;line-height:1.55}
+.lower-mask-metrics span{display:block;color:#a9baa9}
+.lower-mask .lower-mask-note{font-size:10px;color:#b5c9b9}
+@media(max-width:700px){.lower-mask-controls{grid-template-columns:1fr}}
