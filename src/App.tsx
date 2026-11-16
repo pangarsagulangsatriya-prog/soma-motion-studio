@@ -16,6 +16,7 @@ import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
 import type {SceneId} from './studio/v3/ScenePicker';
 import {FootprintsStageWorkspace} from './studio/v3/FootprintsStageWorkspace';
+import {defaultFootprintsWorkspace} from './studio/v3/footprintsUX';
 import {StudioTransport} from './studio/v3/StudioTransport';
 import {SceneInspector} from './studio/v3/SceneInspector';
 import {CaptureHub,type CaptureTab} from './studio/v3/CaptureHub';
@@ -53,7 +54,7 @@ const STARTERS=[
 export default function App(){
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
- const [footprintsActive,setFootprintsActive]=useState(true);
+ const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
