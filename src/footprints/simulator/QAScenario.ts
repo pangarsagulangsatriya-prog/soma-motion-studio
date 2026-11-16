@@ -41,7 +41,7 @@ export function qaBodyPosition(id:'A'|'B',timeMs:number,floor:FloorSpace):FloorP
  const wander=Math.sin(t/51000+(id==='A'?0:1.7))*.21+
   Math.sin(t/23500+(id==='A'?.5:2.1))*.07;
  return {xM:clamp(x*floor.widthM,.2,floor.widthM-.2),
-  yM:clamp((id==='A'?.37:.63+wander)*floor.depthM,.2,floor.depthM-.2)};
+  yM:clamp(((id==='A'?.37:.63)+wander)*floor.depthM,.2,floor.depthM-.2)};
 }
 function footPoint(id:'A'|'B',foot:FootSide,timeMs:number,floor:FloorSpace){
  const p=qaBodyPosition(id,timeMs,floor);
@@ -51,4 +51,59 @@ function footPoint(id:'A'|'B',foot:FootSide,timeMs:number,floor:FloorSpace){
  const side=foot==='left'?.135:-.135;
  return {positionM:{xM:clamp(p.xM-Math.sin(headingRad)*side,.05,floor.widthM-.05),
   yM:clamp(p.yM+Math.cos(headingRad)*side,.05,floor.depthM-.05)},headingRad};
+}
+
+/** 15-minute software rehearsal. These events are simulated, never measured. */
+export function createQAScenario(floor:FloorSpace=defaultFloorSpace(),faultsEnabled=true):QAScenario{
+ const stage=validateFloorSpace(floor),engine=new FootstepEventEngine(stage,.12);
+ const steps:{id:'A'|'B';foot:FootSide;t:number}[]=[];
+ for(const id of ['A','B'] as const){
+  const strideMs=id==='A'?1010:1130;
+  for(let n=0;;n++){
+   const t=(id==='A'?120:390)+n*strideMs;
+   if(t+270>QA_DURATION_MS)break;
+   steps.push({id,foot:n%2?'right':'left',t});
+  }
+ }
+ steps.sort((a,b)=>a.t-b.t||(a.id==='A'?-1:1));
+ const events:FootstepEvent[]=[],activated=new Set<QAFaultKind>();
+ let skippedSteps=0;
+ for(const step of steps){
+  const fault=faultsEnabled?QA_FAULTS.find(f=>
+   f.id!=='hold'&&f.id!=='blackout'&&step.t+270>f.startMs&&step.t<f.endMs):null;
+  if(fault){
+   if(!activated.has(fault.id)){
+    activated.add(fault.id);
+    for(const id of ['A','B'] as const)for(const foot of ['left','right'] as const)
+     engine.loseTracking(id,foot);
+   }
+   skippedSteps++;continue;
+  }
+  const {positionM,headingRad}=footPoint(step.id,step.foot,step.t+270,stage);
+  events.push(...engine.observe({performerId:step.id,foot:step.foot,timestampMs:step.t,
+   phase:'swing',positionM,headingRad,source:'simulation',
+   positionBasis:'simulated',confidence:1}));
+  events.push(...engine.observe({performerId:step.id,foot:step.foot,timestampMs:step.t+270,
+   phase:'stance',positionM,headingRad,source:'simulation',
+   positionBasis:'simulated',confidence:1}));
+ }
+ events.sort((a,b)=>a.timestampMs-b.timestampMs||a.id.localeCompare(b.id));
+ return {schema:'soma.footprints.qa-scenario',version:1,durationMs:QA_DURATION_MS,
+  floor:stage,faultsEnabled,faults:faultsEnabled?QA_FAULTS.map(f=>({...f})):[],
+  session:createFloorSession(stage,events),skippedSteps,source:'simulation'};
+}
+export function qaEventIndexAt(events:readonly FootstepEvent[],timeMs:number):number{
+ let low=0,high=events.length;
+ while(low<high){const mid=(low+high)>>1;
+  if(events[mid].timestampMs<=timeMs)low=mid+1;else high=mid;
+ }
+ return low;
+}
+export const qaEventsAt=(scenario:QAScenario,timeMs:number)=>scenario.session.events.slice(
+ 0,qaEventIndexAt(scenario.session.events,timeMs));
+export function qaContactCounts(scenario:QAScenario){
+ const result={A:{left:0,right:0},B:{left:0,right:0}};
+ for(const e of scenario.session.events)if(e.kind==='contact'&&
+  (e.performerId==='A'||e.performerId==='B'))result[e.performerId][e.foot]++;
+ return result;
 }
