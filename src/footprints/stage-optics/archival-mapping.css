@@ -1,0 +1,25 @@
+/* S5.7.2: preview-only monochrome archival video in independent mask channels. */
+.archive-map{margin:10px 0;padding:12px;border:1px solid #4c6551;background:#111b15;border-radius:8px;color:#e0e9d9}
+.archive-map .live-floor-heading{display:flex;gap:7px;align-items:center}
+.archive-map>p{font-size:11px;line-height:1.65;color:#b6c8ba;margin:8px 0!important}
+.archive-map-output{position:relative;background:#000;border:1px solid #59705c;border-radius:7px;overflow:hidden;max-width:660px;margin:10px auto}
+.archive-map-output canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:auto;background:#000}
+.archive-map-overlay{position:absolute;left:5px;right:5px;bottom:6px;display:flex;gap:6px;justify-content:space-between;pointer-events:none}
+.archive-map-overlay span{padding:3px 7px;background:#061109c9;color:#d1e5d3;font:700 10px ui-monospace,monospace;border-radius:4px}
+.archive-map-transport{display:flex;align-items:end;flex-wrap:wrap;gap:9px;margin:9px 0}
+.archive-map button{display:inline-flex;align-items:center;gap:7px;min-height:36px}
+.archive-map label{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#d6e5d4;min-width:0}
+.archive-map label>select{background:#173023;color:#e0e9d9;border:1px solid #59735b;border-radius:5px;min-height:38px;padding:7px;max-width:100%}
+.archive-map input[type=range]{width:100%;accent-color:#cbe3ae}
+.archive-map-check{display:flex!important;flex-direction:row!important;align-items:center;gap:6px!important}
+.archive-map-check input{width:17px;height:17px;flex:none;accent-color:#c3dda7}
+.archive-map-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.archive-map-slot{border:1px solid #527057;border-radius:7px;padding:10px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.archive-map-slot>b{font:700 12px ui-monospace,monospace;color:#d6e7c3}
+.archive-map-slot input[type=file]{font-size:11px;width:100%;padding:5px 0;color:#c4d5c0}
+.archive-map-file{display:flex;align-items:center;gap:6px;justify-content:space-between;min-width:0;color:#c0d3c0;font-size:10px}
+.archive-map-file span{min-width:0;overflow-wrap:anywhere}
+.archive-map-mask-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.archive-map-result{font-size:11px;border-left:3px solid #a5be9f;padding:9px;background:#1d3123;margin:8px 0}
+.archive-map-caution{font-size:10px!important;color:#b2c2b0!important}
+@media(max-width:700px){.archive-map-slots,.archive-map-mask-controls{grid-template-columns:1fr}}
