@@ -1,0 +1,134 @@
+/* SOMA / FOOTPRINTS — S5.1 3D Direct Puppet workspace */
+.puppet-dialog{
+ --pbg:#0c1310;--psurface:#18231c;--pborder:#405345;--pmuted:#a5bca8;--paccent:#d2e7a1;
+ position:fixed;inset:0;margin:auto;box-sizing:border-box;
+ width:min(1500px,calc(100vw - 28px));max-width:none;
+ height:min(940px,calc(100dvh - 24px));max-height:none;
+ padding:0;border:1px solid #526951;border-radius:12px;
+ color:#e8f0e6;background:var(--pbg);overflow:hidden;
+ box-shadow:0 25px 90px #000e;
+ font-family:system-ui,-apple-system,sans-serif
+}
+.puppet-dialog::backdrop{background:rgba(0,0,0,.88);backdrop-filter:blur(8px)}
+.puppet-dialog button,.puppet-dialog select{
+ color:inherit;background:#26372b;border:1px solid #526b50;
+ border-radius:7px;min-height:42px;padding:9px 13px;
+ cursor:pointer;font:inherit;font-size:13px
+}
+.puppet-dialog button:hover:not(:disabled){background:#354936;border-color:#a2c18b}
+.puppet-dialog button:disabled{opacity:.38;cursor:not-allowed}
+.puppet-dialog :is(button,input,select,canvas):focus-visible{
+ outline:2px solid #d2e7a1;outline-offset:3px
+}
+.puppet-dialog h2,.puppet-dialog p{margin:0}
+.puppet-header{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ background:#121c16;border-bottom:1px solid var(--pborder);
+ padding:14px 19px;min-height:78px;box-sizing:border-box
+}
+.puppet-header h2{display:flex;align-items:center;gap:10px;
+ font-size:24px;line-height:1.1;font-weight:650;letter-spacing:-.02em}
+.puppet-header h2 small{font-size:12px;color:#b6c9ad;
+ font-weight:450;border:1px solid #52674f;border-radius:30px;padding:6px 10px;margin-left:10px}
+.puppet-kicker{display:block;font-size:10px;letter-spacing:.22em;
+ color:#a6b99e;margin-bottom:6px;font-weight:700}
+.puppet-header .puppet-close{width:44px;height:44px;padding:8px;display:flex;align-items:center;justify-content:center}
+.puppet-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;min-height:67px;
+ padding:10px 17px;border-bottom:1px solid var(--pborder);background:#162018}
+.puppet-toolbar label{display:flex;flex-direction:column;gap:5px;font-size:10px;letter-spacing:.1em;color:#a4bba4}
+.puppet-toolbar select{min-width:135px;padding:7px 10px;min-height:37px}
+.puppet-toolbar .puppet-check{display:flex;flex-direction:row;align-items:center;gap:8px;
+ font-size:12px;letter-spacing:0;padding:10px 4px;color:#d6e6d2}
+.puppet-check input{accent-color:#cce69b;width:16px;height:16px}
+.puppet-inline-state{margin-left:auto;font-size:10px;letter-spacing:.1em;color:#97b397;
+ padding:10px 0}
+.puppet-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,365px);
+ height:calc(100% - 78px - 67px - 51px);min-height:0}
+.puppet-viewport{display:flex;min-width:0;min-height:0;flex-direction:column;position:relative;
+ overflow:hidden;background:#0b130f}
+.puppet-view-label{display:flex;justify-content:space-between;gap:10px;
+ padding:13px 18px;border-bottom:1px solid #2f4436;
+ font:700 11px/1.5 ui-monospace,SFMono-Regular,monospace;
+ letter-spacing:.13em;color:#bcd6b0;background:#121c17}
+.puppet-view-label span:last-child{color:#d7edac}
+.puppet-viewport canvas{width:100%;height:100%;min-height:260px;display:block;
+ cursor:grab;touch-action:none;flex:1;outline:none}
+.puppet-viewport canvas:active{cursor:grabbing}
+.puppet-view-footer{min-height:54px;box-sizing:border-box;display:flex;justify-content:space-between;
+ align-items:center;gap:12px;flex-wrap:wrap;padding:9px 15px;
+ color:#acc4ad;font-size:12px;border-top:1px solid #2d4235;background:#131f17}
+.puppet-view-footer button{min-height:36px!important;padding:6px 11px!important}
+.puppet-side{min-height:0;overflow-y:auto;overscroll-behavior:contain;
+ background:#151e18;border-left:1px solid var(--pborder);padding:15px;display:flex;
+ flex-direction:column;gap:16px;scrollbar-color:#5b755b transparent}
+.puppet-side section{border:1px solid #405548;border-radius:9px;overflow:hidden;background:#1b2920}
+.puppet-section-title{display:flex;align-items:center;gap:8px;
+ padding:12px 13px;border-bottom:1px solid #405547;
+ color:#dbeac9;font:700 11px/1.4 ui-monospace,monospace;letter-spacing:.08em}
+.puppet-section-title span{margin-left:auto;font-size:11px;color:#b0c6b3;letter-spacing:0;font-weight:500}
+.puppet-floor-svg{background:#0c1110;aspect-ratio:4/3;max-height:280px;
+ display:flex;align-items:center;justify-content:center;overflow:hidden}
+.puppet-floor-svg svg{width:100%;height:100%;display:block}
+.puppet-side p{padding:10px 13px;color:#a9bdab;font-size:12px;line-height:1.55}
+.puppet-controls{display:flex;flex-direction:column;gap:0}
+.puppet-foot-pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 12px 0}
+.puppet-foot-pick button{min-height:45px;font-size:12px;padding:8px}
+.puppet-foot-pick button[aria-pressed=true]{color:#172518;background:#d3e8a5;border-color:#d3e8a5;font-weight:700}
+.puppet-step-buttons{display:flex;flex-wrap:wrap;gap:7px;padding:10px 12px 0}
+.puppet-step-buttons button{display:inline-flex;align-items:center;justify-content:center;
+ gap:6px;flex:1;min-width:max-content;font-size:12px;white-space:nowrap}
+.puppet-dialog .puppet-accent{background:#ccdfa2!important;color:#1b281a!important;
+ border-color:#ccdfa2!important;font-weight:700}
+.puppet-step-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:11px 12px 0}
+.puppet-step-grid button{font-size:23px;min-height:49px;padding:5px}
+.puppet-readout{margin:12px 12px 0;border:1px solid #415744;border-radius:6px;
+ padding:9px 10px;color:#c6dfc4;background:#142016;
+ font:12px/1.5 ui-monospace,monospace}
+.puppet-key-hint{font-size:11px!important}
+.puppet-dialog kbd{display:inline-block;padding:2px 4px;background:#364738;border:1px solid #60735a;
+ font:11px ui-monospace,monospace;border-radius:4px}
+.puppet-session .puppet-step-buttons{padding-bottom:10px}
+.puppet-timeline{display:flex;flex-direction:column;gap:8px;padding:0 12px 12px;font-size:12px;color:#b5d0b3}
+.puppet-timeline input{width:100%;accent-color:#c6e093}
+.puppet-timeline output{font-family:ui-monospace,monospace;font-size:11px}
+.puppet-export{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 12px 10px}
+.puppet-export button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:43px;
+ padding:8px 4px;font-size:11px}
+.puppet-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding:10px 18px;min-height:51px;box-sizing:border-box;
+ border-top:1px solid #405344;background:#131d16;color:#b4ceaf;
+ font-size:12px}
+.puppet-footer span:last-child{font:10px ui-monospace,monospace;color:#85a089;letter-spacing:.08em}
+@media(max-width:1000px){
+ .puppet-layout{grid-template-columns:minmax(0,1fr) minmax(280px,330px)}
+ .puppet-toolbar{gap:8px}
+ .puppet-inline-state{font-size:9px}
+}
+@media(max-width:780px){
+ .puppet-dialog{width:calc(100vw - 12px);height:calc(100dvh - 12px)}
+ .puppet-header{min-height:65px;padding:10px 12px}
+ .puppet-header h2{font-size:18px}.puppet-header h2 small{margin-left:0;font-size:10px}
+ .puppet-kicker{font-size:9px}
+ .puppet-toolbar{min-height:62px;padding:8px 10px}
+ .puppet-inline-state{display:none}
+ .puppet-layout{grid-template-columns:1fr;display:flex;flex-direction:column;
+  height:calc(100% - 65px - 62px - 54px);overflow-y:auto}
+ .puppet-viewport{height:56vh;min-height:320px;flex:none}
+ .puppet-viewport canvas{min-height:240px}
+ .puppet-side{overflow:visible;border-left:0;border-top:1px solid #465b47;
+  display:grid;grid-template-columns:1fr 1fr;align-items:start}
+ .puppet-floor{grid-column:1/2}
+ .puppet-controls{grid-column:2/3}
+ .puppet-session{grid-column:1/-1}
+ .puppet-footer{min-height:54px}
+ .puppet-footer span:last-child{display:none}
+}
+@media(max-width:510px){
+ .puppet-side{display:flex;flex-direction:column;padding:10px}
+ .puppet-side section{width:100%}
+ .puppet-view-label{font-size:9px;padding:10px}
+ .puppet-viewport{height:48vh;min-height:285px}
+ .puppet-header h2 small{display:none}
+ .puppet-footer{font-size:11px;padding:9px 12px}
+}
+@media(prefers-reduced-motion:reduce){.puppet-dialog *{animation:none!important;transition:none!important}}

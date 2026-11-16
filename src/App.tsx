@@ -1,5 +1,6 @@
 import {StudioFootprints,footprintDefaults,type FootprintConfig,type FootprintsHandle} from './footprints/StudioFootprints';
 import {FootprintsPanel} from './footprints/FootprintsPanel';
+import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {useProjection} from './projection/useProjection';
 import {ProjectionWorkspace} from './projection/ProjectionWorkspace';
 import {useCameraCue} from './photos/useCameraCue';
@@ -47,6 +48,7 @@ export default function App(){
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(false);
+ const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [captureOpen,setCaptureOpen]=useState(false),[captureTab,setCaptureTab]=useState<CaptureTab>('photo');
  const [advancedOpen,setAdvancedOpen]=useState(false),[bodyPromptDismissed,setBodyPromptDismissed]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(()=>typeof window==='undefined'||window.innerWidth>=1360);
@@ -201,7 +203,8 @@ export default function App(){
      needsBody={bodyConnectionRequired(currentScene,settings.input,cameraOn)&&!bodyPromptDismissed}
      waitingBody={bodyConnectionRequired(currentScene,settings.input,cameraOn)}
      cameraBusy={cameraBusy} cameraError={cameraError}
-     onUseBody={()=>void acceptFootprintsBody()} onDismissBody={()=>setBodyPromptDismissed(true)}/>
+     onUseBody={()=>void acceptFootprintsBody()} onDismissBody={()=>setBodyPromptDismissed(true)}
+     onOpenSimulator={()=>{setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}/>
     {footprintsActive&&settings.output==='sound'&&<div className="v3-output-hint" role="status"><span>Visual Footprints disembunyikan karena keluaran hanya Suara.</span><button type="button" onClick={()=>update({output:'both'})}>Tampilkan pola</button></div>}
     <div className="instrument-grid">
      <section className="motion-panel panel"><div className="panel-top"><div className="panel-title"><ScanLine size={14}/> RUANG GERAK <span className="tag">{INPUTS[settings.input].toUpperCase()}</span></div><div className="stage-tools"><button className={settings.layers.camera?'tool active':'tool'} aria-label="Tampilkan gambar kamera" aria-pressed={settings.layers.camera} title="Gambar kamera" onClick={()=>update({layers:{...settings.layers,camera:!settings.layers.camera}})}>{settings.layers.camera?<Eye size={16}/>:<EyeOff size={16}/>}</button><button className={trackingVisible.current?'tool active':'tool'} aria-label="Garis tracking" aria-pressed={trackingVisible.current} title="Garis tracking · T" onClick={toggleTracking}><ScanLine size={16}/></button><button className="tool" onClick={()=>setClean(true)} aria-label="Buka tampilan Clean" title="Clean · C"><Maximize2 size={16}/></button></div></div>
@@ -262,7 +265,7 @@ export default function App(){
      </section>
      {inspectorOpen&&<button type="button" className="v3-inspector-backdrop" aria-label="Tutup pengaturan visual" onClick={()=>setInspectorOpen(false)}/>}
      <aside className={'sound-panel panel controls-panel '+(inspectorOpen?'v3-inspector-open':'v3-inspector-closed')} aria-label="Atur scene">
-      <SceneInspector scene={currentScene} settings={settings} update={update} footprint={footprintConfig} updateFootprint={updateFootprint} onAdvanced={()=>setAdvancedOpen(true)} onClose={()=>setInspectorOpen(false)}/>
+      <SceneInspector scene={currentScene} settings={settings} update={update} footprint={footprintConfig} updateFootprint={updateFootprint} onAdvanced={()=>setAdvancedOpen(true)} onClose={()=>setInspectorOpen(false)} onOpenSimulator={()=>{setClean(false);setSimulatorOpen(true);}}/>
      </aside>
     </div>
     <footer className="footer"><span><ShieldCheck size={13}/> Kamera diproses di perangkatmu. Video tidak diunggah.</span><span><a href="https://hydra.ojack.xyz/" target="_blank" rel="noreferrer">HYDRA</a> · <a href={import.meta.env.BASE_URL+"HYDRA-LICENSE.txt"} target="_blank">AGPL-3.0</a> · <a href="https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/archive/refs/heads/main.zip" download>KODE SUMBER</a></span></footer>
@@ -271,6 +274,7 @@ export default function App(){
   {clean&&<><div className="clean-status"><button onClick={()=>setModal('status')}><span className={`status-dot ${frame.tracked?'live':''}`}/>{statusLabel}<ChevronRight size={12}/></button>{(recording||footprintRecording)&&<span className="clean-rec"><i/>{footprintRecording?'REC VIDEO':clock(recordSeconds)+' REC AUDIO'}</span>}</div><div className="clean-label"><span>SOMA</span><small>{INPUTS[settings.input]} / {footprintsActive?'Footprints':settings.output==='sound'?CHARACTERS[settings.character].label:(settings.hydra?.enabled??true)?'Hydra':VISUALS[settings.visual.style].label}</small></div><div className={`clean-dock ${hudVisible||controlsOpen?'shown':''}`} onPointerEnter={()=>{dockHover.current=true;setHudVisible(true);}} onPointerLeave={()=>{dockHover.current=false;revealHUD();}} onFocus={revealHUD} onBlur={revealHUD}><button aria-label="Kembali ke Studio" onClick={()=>{setClean(false);setControlsOpen(false);}}><Monitor size={17}/><span>Studio</span><kbd>C</kbd></button><i className="dock-divider"/><button aria-label="Tracking" className={trackingVisible.current?'selected':''} aria-pressed={trackingVisible.current} onClick={toggleTracking}><ScanLine size={17}/><span>Tracking</span></button><button aria-label={footprintsActive?'Tampilkan atau sembunyikan Footprints':'Visual generatif'} className={(footprintsActive?settings.output!=='sound':settings.visual.enabled)?'selected':''} aria-pressed={footprintsActive?settings.output!=='sound':settings.visual.enabled} onClick={()=>footprintsActive?update({output:settings.output==='sound'?'both':'sound'}):update({visual:{...settings.visual,enabled:!settings.visual.enabled}})}><Sparkles size={17}/><span>{footprintsActive?'Pola kaki':'Visual'}</span></button><button aria-label={footprintsActive?(footprintRecording?'Stop video Footprints':'Rekam video Footprints'):(recording?'Stop rekam audio':'Rekam audio')} disabled={footprintsActive&&(!cameraOn||settings.input!=='body')&&!footprintRecording} title={footprintsActive&&(!cameraOn||settings.input!=='body')?'Aktifkan kamera Body untuk merekam video':undefined} onClick={()=>footprintsActive?footprintRef.current?.toggleVideo():void toggleRecording()} className={(footprintsActive?footprintRecording:recording)?'recording':''}>{(footprintsActive?footprintRecording:recording)?<Square size={15}/>:<Circle size={15}/>}<span>{(footprintsActive?footprintRecording:recording)?'Stop':'Rekam'}</span></button><i className="dock-divider"/><button aria-label="Pengaturan" aria-expanded={controlsOpen} onClick={()=>{setControlsOpen(v=>!v);revealHUD();}} className={controlsOpen?'selected':''}>{controlsOpen?<PanelRightClose size={17}/>:<PanelRightOpen size={17}/>}<span>Pengaturan</span></button><button onClick={()=>void toggleFullscreen()} aria-label={isFullscreen?'Keluar fullscreen':'Fullscreen'}>{isFullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}</button><button aria-label={audioOn&&!muted?'Mute audio':'Aktifkan audio'} className="dock-mute" onClick={()=>audioOn&&!muted?panic():void enableAudio()}><VolumeX size={17}/><span>{audioOn&&!muted?'Mute':'Audio'}</span></button></div>{triggerProgress>0&&<div className="trigger-progress"><span>Tahan telapak</span><progress value={triggerProgress} max={1}/></div>}</>}
   {notice&&<div className="toast" role="status"><span>{notice}</span><button onClick={()=>setNotice('')} aria-label="Tutup pemberitahuan"><X size={16}/></button></div>}
   <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>void importPreset(e.target.files?.[0])}/>
+  {simulatorOpen&&<PuppetSimulator onClose={()=>setSimulatorOpen(false)}/>}
   {captureOpen&&<CaptureHub onClose={()=>setCaptureOpen(false)} initialTab={captureTab}
     archive={photoArchive} cue={cameraCue} videoRef={video} cameraBusy={cameraBusy}
     onCamera={()=>void startCamera()} onOpenBody={()=>{setCaptureOpen(false);void openBodyCamera();}}

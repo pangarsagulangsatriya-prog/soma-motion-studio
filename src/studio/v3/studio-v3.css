@@ -202,3 +202,15 @@
  .soma-v3 .v3-transport{justify-content:flex-start}
  .soma-v3 .v3-transport-action,.soma-v3 .v3-transport-menu>summary{font-size:12px}
 }
+
+/* S5.1 — Direct Puppet entry is available regardless of camera state. */
+.soma-v3 .v3-inspector-footer .v3-open-puppet{
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+ gap:4px;min-height:62px;margin-bottom:9px;padding:12px 15px;
+ background:#35462e;border-color:#a4c480;color:#e8f4cd;text-align:left
+}
+.soma-v3 .v3-inspector-footer .v3-open-puppet span{font-size:13px;font-weight:700}
+.soma-v3 .v3-inspector-footer .v3-open-puppet small{font-size:11px;color:#c9dab8}
+.soma-v3 .v3-inspector-footer .v3-open-puppet:hover{
+ background:#455a37;border-color:#d0e8a8
+}
