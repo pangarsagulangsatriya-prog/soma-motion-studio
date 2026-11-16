@@ -19,13 +19,15 @@ export type GaitSample=Sample&{
 type Point={x:number;y:number};
 type Internal={
  lastTime:number;relative:Point|null;filtered:Point|null;
+ lastImage:Point|null;stanceImageAnchor:Point|null;
  heading:number;baselineY:number|null;phase:GaitPhase;
  stationarySince:number|null;lastStamp:number;
  stanceAnchor:Point|null;anchorHeading:number;
  stanceSince:number|null;
 };
 const blank=():Internal=>({
- lastTime:-1,relative:null,filtered:null,heading:0,baselineY:null,
+ lastTime:-1,relative:null,filtered:null,lastImage:null,stanceImageAnchor:null,
+ heading:0,baselineY:null,
  phase:'unknown',stationarySince:null,lastStamp:-1e9,
  stanceAnchor:null,anchorHeading:0,stanceSince:null
 });
@@ -70,6 +72,8 @@ export class GaitAnalyzer{
   const pelvis={x:(hip.x+otherHip.x)/2,y:(hip.y+otherHip.y)/2};
   const relative={x:center.x-pelvis.x,y:center.y-pelvis.y};
   const span=Math.max(.08,Math.min(.45,distance(hip,otherHip)));
+  const imageSpeed=state.lastImage&&dt>0&&dt<=.32?
+   Math.min(8,distance(center,state.lastImage)/dt):0;
   const speed=state.relative&&dt>0&&dt<=.32?
    Math.min(8,distance(relative,state.relative)/dt):0;
   const tau=speed>.7?.035:speed>.32?.065:.12;
@@ -86,6 +90,9 @@ export class GaitAnalyzer{
    distance(state.filtered,filtered)<.20;
   const baseline=state.baselineY??relative.y;
   const rise=Math.max(0,baseline-relative.y);
+  const referenceImage=state.stanceImageAnchor??state.lastImage??center;
+  const visualRise=Math.max(0,referenceImage.y-center.y);
+  const imageTravel=distance(referenceImage,center);
   const lowerLift=Math.max(.020,span*.12);
   const clearLift=Math.max(.050,span*.29);
   const anchor=state.stanceAnchor??relative;
@@ -98,10 +105,13 @@ export class GaitAnalyzer{
   // Sliding is a sustained change of foot position while its low elevation
   // remains indistinguishable from planted contact in the camera image.
   const slide=state.phase==='stance'&&rise<lowerLift&&
-   travel>Math.max(.026,span*.16)&&speed<.48&&!pivot;
-  const lifted=rise>clearLift||
-   (rise>lowerLift&&travel>Math.max(.012,span*.07));
-  const swungFast=speed>.58&&travel>Math.max(.028,span*.16)&&!pivot;
+   travel>Math.max(.026,span*.16)&&imageTravel>.020&&speed<.48&&!pivot;
+  // Camera/image displacement helps reject a false step when the pelvis
+  // moves or crouches over a visually stationary planted foot.
+  const lifted=(rise>clearLift&&visualRise>.010)||
+   (rise>lowerLift&&visualRise>.009&&travel>Math.max(.012,span*.07));
+  const swungFast=speed>.58&&imageSpeed>.18&&
+   travel>Math.max(.028,span*.16)&&imageTravel>.024&&!pivot;
   let phase=state.phase;
   let stamp=false;
   let motionKind:GaitMotion=state.phase==='stance'?'hold':'unknown';
@@ -124,6 +134,7 @@ export class GaitAnalyzer{
      }
      if(phase!=='stance'){
       state.stanceAnchor={...relative};
+      state.stanceImageAnchor={...center};
       state.anchorHeading=heading;
       state.stanceSince=clock;
      }
@@ -136,11 +147,12 @@ export class GaitAnalyzer{
   }
   if(phase==='stance'&&!state.stanceAnchor){
    state.stanceAnchor={...relative};
+   state.stanceImageAnchor={...center};
    state.anchorHeading=heading;
    state.stanceSince??=clock;
   }
-  if(phase==='swing')state.stanceAnchor=null;
-  state.lastTime=clock;state.relative=relative;state.filtered=filtered;
+  if(phase==='swing'){state.stanceAnchor=null;state.stanceImageAnchor=null;}
+  state.lastTime=clock;state.relative=relative;state.lastImage=center;state.filtered=filtered;
   state.heading=heading;state.phase=phase;
   const confidence=Math.min(1,Math.max(0,
    Math.min(ankle.visibility??0,heel.visibility??0,toe.visibility??0,
