@@ -65,8 +65,10 @@ export function capturePhysicalTrial(
   !finite(videoFps)||videoFps<24||videoFps>1000)
   throw Error('Isi video, durasi, FPS dan kalibrasi sebelum membekukan sesi fisik.');
  const session=validateFloorSession({schema:'soma.footprints.floor-session',version:3,floor,events:rawEvents});
+ // Keep ALL camera contacts, including unexpected performer IDs. Otherwise a
+ // mistaken solo/A/B identity could silently disappear from the false-positive denominator.
  const contacts=session.events.filter(e=>e.kind==='contact'&&e.source==='camera'&&
-  e.positionBasis==='calibrated-estimate'&&expectedPerformers(performerCount).includes(e.performerId));
+  e.positionBasis==='calibrated-estimate');
  if(contacts.length>10000)throw Error('Uji fisik dibatasi sampai 10.000 jejak kamera.');
  return {schema:'soma.footprints.physical-trial',version:1,
   capturedAt:new Date().toISOString(),contextKey,floor,performerCount,
@@ -95,8 +97,9 @@ export function annotatePhysicalContact(trial:PhysicalTrial,value:{
   if(trial.physicalContacts.some(e=>e.matchedEventId===value.matchedEventId))
    throw Error('Satu event kamera tidak boleh dipakai untuk dua pijakan nyata.');
  }
+ const next=Math.max(0,...trial.physicalContacts.map(c=>Number(c.id.slice(9))||0))+1;
  return {...trial,physicalContacts:[...trial.physicalContacts,{
-  id:'physical-'+(trial.physicalContacts.length+1),performerId:value.performerId,
+  id:'physical-'+next,performerId:value.performerId,
   foot:value.foot,videoFrame:value.videoFrame,referenceM:{...value.referenceM},
   matchedEventId:value.matchedEventId,movement:value.movement,
   note:safeNote(value.note??''),method:'annotated-side-video-and-tape'
@@ -119,9 +122,26 @@ export function addPhotonEvidence(trial:PhysicalTrial,physicalContactId:string,f
   !Number.isSafeInteger(frameDifference)||frameDifference<0||
   frameDifference>Math.ceil(trial.videoFps*10))
   throw Error('Pilih satu kontak berpasangan dan selisih frame cahaya yang valid.');
- return {...trial,photons:[...trial.photons,{id:'photon-'+(trial.photons.length+1),
+ const next=Math.max(0,...trial.photons.map(c=>Number(c.id.slice(7))||0))+1;
+ return {...trial,photons:[...trial.photons,{id:'photon-'+next,
   physicalContactId,frameDifference,latencyMs:round(frameDifference*1000/trial.videoFps),
   method:'same-shot-foot-and-light'}]};
+}
+export function removePhysicalContact(trial:PhysicalTrial,id:string):PhysicalTrial{
+ if(trial.reviewComplete)throw Error('Buka ulang review sebelum mengoreksi pijakan.');
+ if(!trial.physicalContacts.some(c=>c.id===id))throw Error('Pijakan tidak ditemukan.');
+ return {...trial,physicalContacts:trial.physicalContacts.filter(c=>c.id!==id),
+  photons:trial.photons.filter(p=>p.physicalContactId!==id)};
+}
+export function removeMovementEvidence(trial:PhysicalTrial,index:number):PhysicalTrial{
+ if(trial.reviewComplete||!Number.isInteger(index)||index<0||index>=trial.sequences.length)
+  throw Error('Buka review dan pilih catatan gerak yang valid.');
+ return {...trial,sequences:trial.sequences.filter((_,i)=>i!==index)};
+}
+export function removePhotonEvidence(trial:PhysicalTrial,id:string):PhysicalTrial{
+ if(trial.reviewComplete||!trial.photons.some(c=>c.id===id))
+  throw Error('Buka review dan pilih pengukuran cahaya yang valid.');
+ return {...trial,photons:trial.photons.filter(c=>c.id!==id)};
 }
 export function markPhysicalReview(trial:PhysicalTrial,reviewComplete:boolean,reviewer:string,note:string):PhysicalTrial{
  if(reviewComplete&&!reviewer.trim())throw Error('Isi pemeriksa rekaman sebelum menutup review.');
@@ -176,11 +196,15 @@ export function assessPhysicalAcceptance(trial:PhysicalTrial|null,contextKey:str
   missing.push('Ukur ≥'+gates.minLatencySamples+' selisih frame kaki–cahaya dengan video eksternal.');
  if(calibrationQA?.status!=='within-provisional-target')
   missing.push('QA lima titik kamera–proyektor harus lengkap dan berada dalam ambang kerja.');
- if(sum.precision!==null&&sum.precision<gates.minPrecision)
+ // Compare unrounded ratios against gates to avoid rounding a failing 0.896 to 0.90.
+ const exactPrecision=sum.cameraContacts?sum.matched/sum.cameraContacts:null;
+ const exactRecall=sum.physicalContacts?sum.matched/sum.physicalContacts:null;
+ const exactFalseRate=sum.falseContacts/trial.durationSeconds*60;
+ if(exactPrecision!==null&&exactPrecision<gates.minPrecision)
   failed.push('Precision kontak '+sum.precision+' di bawah '+gates.minPrecision+'.');
- if(sum.recall!==null&&sum.recall<gates.minRecall)
+ if(exactRecall!==null&&exactRecall<gates.minRecall)
   failed.push('Recall kontak '+sum.recall+' di bawah '+gates.minRecall+'.');
- if(sum.falseContactsPerMinute>gates.maxFalseContactsPerMinute)
+ if(exactFalseRate>gates.maxFalseContactsPerMinute)
   failed.push('Kontak palsu per menit '+sum.falseContactsPerMinute+' melebihi '+gates.maxFalseContactsPerMinute+'.');
  if(sum.errorCm.p95!==null&&sum.errorCm.p95>gates.maxContactErrorP95Cm)
   failed.push('Galat posisi P95 '+sum.errorCm.p95+' cm melebihi '+gates.maxContactErrorP95Cm+' cm.');
