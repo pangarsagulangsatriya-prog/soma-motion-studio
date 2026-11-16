@@ -26,6 +26,7 @@ type Props={
  canvasRef:RefObject<HTMLCanvasElement|null>;config:FootprintConfig;onNotice:(s:string)=>void;
  onRecording:(value:boolean)=>void;audioStream?:MediaStream|null;
  onGaitSample?:(mark:GaitSample|null,side:0|1,videoAspect:number)=>void;
+ onPoseFrame?:(frame:MotionFrame|null,clock:number,videoAspect:number)=>void;
 };
 /** Shares the single SOMA Body MotionFrame and camera. No second tracker, camera or output window. */
 export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function StudioFootprints(props,ref){
@@ -135,12 +136,14 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
      live.current[side]=mark;view.current.push(mark);
      if(session.current.length<100000)session.current.push({...mark});
     }
+    p.onPoseFrame?.(valid?f:null,clock,aspect);
    }
    if(!c.hold&&now-f.time>400){
     live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();
     if(!trackingLost.current){trackingLost.current=true;
      const v=p.videoRef.current,aspect=v?.videoWidth&&v?.videoHeight?v.videoWidth/v.videoHeight:4/3;
      p.onGaitSample?.(null,0,aspect);p.onGaitSample?.(null,1,aspect);
+     p.onPoseFrame?.(null,clock,aspect);
     }
    }
    view.current=view.current.filter(m=>clock-m.t<(c.life+c.delay)*1000).slice(-12000);

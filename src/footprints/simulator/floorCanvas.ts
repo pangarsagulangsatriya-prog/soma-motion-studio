@@ -67,6 +67,11 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
   if(e.kind!=='contact'&&e.kind!=='prediction')continue;
   ctx.save();ctx.translate(pt.x,pt.y);ctx.rotate(Math.PI/2-e.headingRad);
   ctx.scale(size,size);ctx.globalAlpha=e.kind==='prediction'?.25:.94;
+  if(e.kind==='prediction'){
+   ctx.globalAlpha=.8;ctx.strokeStyle=c;ctx.lineWidth=.045;
+   ctx.setLineDash([.14,.12]);ctx.beginPath();ctx.ellipse(0,-.1,.23,.53,0,0,Math.PI*2);ctx.stroke();
+   ctx.setLineDash([]);ctx.restore();continue;
+  }
   ctx.fillStyle=c;
   if(path)ctx.fill(path);
   for(let i=0;i<5;i++){

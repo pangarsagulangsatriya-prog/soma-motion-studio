@@ -3,6 +3,7 @@ import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
+import {MultiPoseGaitRouter} from './footprints/live/MultiPoseGaitRouter';
 import {floorCalibrationSignature} from './projection/floorBridge';
 import {useProjection} from './projection/useProjection';
 import {ProjectionWorkspace} from './projection/ProjectionWorkspace';
@@ -57,6 +58,8 @@ export default function App(){
  const [liveFloorOpen,setLiveFloorOpen]=useState(false);
  const [liveFloorApproval,setLiveFloorApproval]=useState<string|null>(null);
  const [liveFloorTestPattern,setLiveFloorTestPattern]=useState(false);
+ const [liveFloorCount,setLiveFloorCount]=useState<1|2>(1);
+ const [liveFloorGhosts,setLiveFloorGhosts]=useState(false);
  const [liveFloorRevision,setLiveFloorRevision]=useState(0);
  const [captureOpen,setCaptureOpen]=useState(false),[captureTab,setCaptureTab]=useState<CaptureTab>('photo');
  const [advancedOpen,setAdvancedOpen]=useState(false),[bodyPromptDismissed,setBodyPromptDismissed]=useState(false);
@@ -67,6 +70,7 @@ export default function App(){
  const simulatorArtworkRef=useRef<HTMLCanvasElement|null>(null);
  const liveFloorArtworkRef=useRef<HTMLCanvasElement|null>(null);
  const liveFloorEngine=useRef(new LiveFloorTrackingEngine()).current;
+ const multiPoseRouter=useRef(new MultiPoseGaitRouter(liveFloorEngine)).current;
  const updateFootprint=(patch:Partial<FootprintConfig>)=>setFootprintConfig(c=>({...c,...patch}));
  useEffect(()=>{try{localStorage.setItem('soma-footprint-visual-v1',JSON.stringify(footprintConfig));}catch{}},[footprintConfig]);
  const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem('soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):defaults();}catch{return defaults();}});
@@ -242,8 +246,11 @@ export default function App(){
        {cameraOn&&!frame.tracked&&<div className="tracking-prompt"><span className={cameraBusy?'loader':'tracking-cross'}>{!cameraBusy&&<Hand size={26}/>}</span><p>{cameraBusy?status:settings.input==='body'?'Mundur hingga tubuh masuk bingkai.':settings.input==='face'?'Hadapkan wajah ke kamera.':'Tunjukkan telapak tangan ke kamera.'}</p></div>}
        {!footprintsActive&&<VisualStage frameRef={frameRef} settingsRef={sr} paramsRef={visualParams} videoRef={video} trackingRef={trackingVisible} metricsRef={metrics}/>}
        <StudioFootprints ref={footprintRef} active={footprintsActive&&settings.output!=='sound'} frameRef={frameRef} videoRef={video} settingsRef={sr} trackingRef={trackingVisible} canvasRef={footprintCanvasRef} config={footprintConfig} onNotice={notify} onRecording={setFootprintRecording} audioStream={audioOn&&!muted?engine.recordDestination?.stream:null}
-         onGaitSample={(mark,side,aspect)=>{if(!liveFloorOpen)return;
-          liveFloorEngine.ingest(mark,side,aspect,cameraBinding(video.current));}}/>
+         onGaitSample={(mark,side,aspect)=>{if(!liveFloorOpen||liveFloorCount!==1)return;
+          const emitted=liveFloorEngine.ingest(mark,side,aspect,cameraBinding(video.current));
+          multiPoseRouter.acceptSingle(mark,side,emitted);}}
+         onPoseFrame={(f,clock,aspect)=>{if(!liveFloorOpen||liveFloorCount!==2)return;
+          multiPoseRouter.observe(f,clock,aspect,cameraBinding(video.current));}}/>
        <PhotoWall archive={photoArchive} clean={clean}/>
        <CameraFrame cue={cameraCue}/>
        {(cameraCue.listening||cameraCue.voice.status==='error')&&<button className={`camera-voice-indicator ${cameraCue.voice.status}`} onClick={()=>setModal('photos')} aria-label={cameraCue.voice.message}>{cameraCue.voice.status==='listening'?'● MIC · “kamera”':cameraCue.voice.status==='error'?'MIC · periksa suara':'MIC · menyambungkan…'}</button>}
@@ -303,13 +310,26 @@ export default function App(){
   {clean&&<><div className="clean-status"><button onClick={()=>setModal('status')}><span className={`status-dot ${frame.tracked?'live':''}`}/>{statusLabel}<ChevronRight size={12}/></button>{(recording||footprintRecording)&&<span className="clean-rec"><i/>{footprintRecording?'REC VIDEO':clock(recordSeconds)+' REC AUDIO'}</span>}</div><div className="clean-label"><span>SOMA</span><small>{INPUTS[settings.input]} / {footprintsActive?'Footprints':settings.output==='sound'?CHARACTERS[settings.character].label:(settings.hydra?.enabled??true)?'Hydra':VISUALS[settings.visual.style].label}</small></div><div className={`clean-dock ${hudVisible||controlsOpen?'shown':''}`} onPointerEnter={()=>{dockHover.current=true;setHudVisible(true);}} onPointerLeave={()=>{dockHover.current=false;revealHUD();}} onFocus={revealHUD} onBlur={revealHUD}><button aria-label="Kembali ke Studio" onClick={()=>{setClean(false);setControlsOpen(false);}}><Monitor size={17}/><span>Studio</span><kbd>C</kbd></button><i className="dock-divider"/><button aria-label="Tracking" className={trackingVisible.current?'selected':''} aria-pressed={trackingVisible.current} onClick={toggleTracking}><ScanLine size={17}/><span>Tracking</span></button><button aria-label={footprintsActive?'Tampilkan atau sembunyikan Footprints':'Visual generatif'} className={(footprintsActive?settings.output!=='sound':settings.visual.enabled)?'selected':''} aria-pressed={footprintsActive?settings.output!=='sound':settings.visual.enabled} onClick={()=>footprintsActive?update({output:settings.output==='sound'?'both':'sound'}):update({visual:{...settings.visual,enabled:!settings.visual.enabled}})}><Sparkles size={17}/><span>{footprintsActive?'Pola kaki':'Visual'}</span></button><button aria-label={footprintsActive?(footprintRecording?'Stop video Footprints':'Rekam video Footprints'):(recording?'Stop rekam audio':'Rekam audio')} disabled={footprintsActive&&(!cameraOn||settings.input!=='body')&&!footprintRecording} title={footprintsActive&&(!cameraOn||settings.input!=='body')?'Aktifkan kamera Body untuk merekam video':undefined} onClick={()=>footprintsActive?footprintRef.current?.toggleVideo():void toggleRecording()} className={(footprintsActive?footprintRecording:recording)?'recording':''}>{(footprintsActive?footprintRecording:recording)?<Square size={15}/>:<Circle size={15}/>}<span>{(footprintsActive?footprintRecording:recording)?'Stop':'Rekam'}</span></button><i className="dock-divider"/><button aria-label="Pengaturan" aria-expanded={controlsOpen} onClick={()=>{setControlsOpen(v=>!v);revealHUD();}} className={controlsOpen?'selected':''}>{controlsOpen?<PanelRightClose size={17}/>:<PanelRightOpen size={17}/>}<span>Pengaturan</span></button><button onClick={()=>void toggleFullscreen()} aria-label={isFullscreen?'Keluar fullscreen':'Fullscreen'}>{isFullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}</button><button aria-label={audioOn&&!muted?'Mute audio':'Aktifkan audio'} className="dock-mute" onClick={()=>audioOn&&!muted?panic():void enableAudio()}><VolumeX size={17}/><span>{audioOn&&!muted?'Mute':'Audio'}</span></button></div>{triggerProgress>0&&<div className="trigger-progress"><span>Tahan telapak</span><progress value={triggerProgress} max={1}/></div>}</>}
   {notice&&<div className="toast" role="status"><span>{notice}</span><button onClick={()=>setNotice('')} aria-label="Tutup pemberitahuan"><X size={16}/></button></div>}
   <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>void importPreset(e.target.files?.[0])}/>
-  {liveFloorOpen&&<LiveFloorWorkspace tracker={liveFloorEngine} videoRef={video} frameRef={frameRef}
+  {liveFloorOpen&&<LiveFloorWorkspace tracker={liveFloorEngine} router={multiPoseRouter}
+    performerCount={liveFloorCount} showPredictions={liveFloorGhosts}
+    onShowPredictions={setLiveFloorGhosts}
+    onPerformerCount={count=>{
+     if(count===liveFloorCount)return;
+     projection.setTransport('blackout');setLiveFloorApproval(null);
+     liveFloorEngine.resetSession();multiPoseRouter.setMode(count);setLiveFloorCount(count);
+     setLiveFloorRevision(v=>v+1);
+    }}
+    onResetIdentity={()=>{
+     projection.setTransport('blackout');setLiveFloorApproval(null);
+     liveFloorEngine.resetSession();multiPoseRouter.reset();setLiveFloorRevision(v=>v+1);
+    }}
+    videoRef={video} frameRef={frameRef}
    projectorArtworkRef={liveFloorArtworkRef} projection={projection} cameraOn={cameraOn} cameraBusy={cameraBusy}
    onStartBody={()=>void acceptFootprintsBody()}
    projectorVerified={liveFloorVerified} testPattern={liveFloorTestPattern}
-   onCalibrationDirty={()=>{liveFloorEngine.revoke('Periksa ulang empat titik kamera.');setLiveFloorApproval(null);
+   onCalibrationDirty={()=>{liveFloorEngine.revoke('Periksa ulang empat titik kamera.');multiPoseRouter.reset();setLiveFloorApproval(null);
     projection.setTransport('blackout');setLiveFloorRevision(v=>v+1);}}
-   onCameraConfirmed={()=>{projection.setTransport('blackout');setLiveFloorApproval(null);setLiveFloorRevision(v=>v+1);}}
+   onCameraConfirmed={()=>{projection.setTransport('blackout');multiPoseRouter.reset();setLiveFloorApproval(null);setLiveFloorRevision(v=>v+1);}}
    onProjectorVerify={value=>{
     projection.setTransport('blackout');setLiveFloorTestPattern(false);
     if(value&&liveFloorCameraMatched)setLiveFloorApproval(floorCalibrationSignature(projection.config));
@@ -324,7 +344,7 @@ export default function App(){
    onLive={()=>{if(!liveFloorVerified&&!liveFloorTestPattern)return;projection.setPattern(false);projection.setTransport('live');}}
    onHold={()=>{if(liveFloorVerified||liveFloorTestPattern)projection.setTransport('hold');}}
    onBlackout={()=>projection.setTransport('blackout')}
-   onClose={()=>{projection.setTransport('blackout');setLiveFloorApproval(null);setLiveFloorTestPattern(false);setLiveFloorOpen(false);}}/>}
+   onClose={()=>{projection.setTransport('blackout');multiPoseRouter.reset();setLiveFloorApproval(null);setLiveFloorTestPattern(false);setLiveFloorOpen(false);}}/>}
   {simulatorOpen&&<PuppetSimulator projection={projection} projectorArtworkRef={simulatorArtworkRef}
     verified={simulatorFloorVerified} testPattern={simulatorTestPattern}
     onVerify={value=>{

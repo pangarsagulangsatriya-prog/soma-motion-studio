@@ -78,3 +78,18 @@
 }
 @media(max-width:480px){.live-floor-corners{grid-template-columns:1fr}.live-floor-header h2 em{display:none}}
 @media(prefers-reduced-motion:reduce){.live-floor-dialog *{animation:none!important;transition:none!important}}
+
+/* S5.4 — independent two-person identity and optional hypothetical footsteps. */
+.live-floor-mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 12px 8px}
+.live-floor-mode button{min-height:44px;font-size:12px}
+.live-floor-mode button[aria-pressed="true"]{background:#cde7a7;color:#152518;border-color:#cde7a7;font-weight:700}
+.live-floor-ghost-toggle{display:flex;align-items:flex-start;gap:9px;
+ padding:10px 12px;color:#d8e8d0;font-size:12px;line-height:1.5}
+.live-floor-ghost-toggle input{accent-color:#cde7a7;width:18px;height:18px;flex:none;margin-top:1px}
+.live-floor-ghost-toggle span{color:#b9c8b1}
+.live-floor-identity{display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+ padding:11px;margin:0 12px 10px;border:1px solid #71815d;background:#2b382a;
+ border-radius:7px;font-size:12px;line-height:1.5}
+.live-floor-identity b{color:#dceca9}
+.live-floor-identity span{width:100%;color:#b9cfb4}
+.live-floor-identity button{min-height:38px;padding:6px 10px}
