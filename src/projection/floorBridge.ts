@@ -59,3 +59,12 @@ export function liveFloorArtworkState(state:ProjectionState,approved:boolean,tes
   approved?'Live Footprints · kontak kaki diperkirakan kamera':
    'Kalibrasi kamera dan lantai belum dikonfirmasi. Output padam.'};
 }
+
+/** QA fault transport can only RESTRICT an already-selected real projector state.
+ * A scripted Live state never activates output when the operator selected Hold
+ * or Blackout. Existing floor calibration approval still gates everything. */
+export function effectiveFloorTransport(actual:Transport,qa:Transport|null):Transport{
+ if(actual==='blackout'||qa==='blackout')return 'blackout';
+ if(actual==='hold'||qa==='hold')return 'hold';
+ return 'live';
+}

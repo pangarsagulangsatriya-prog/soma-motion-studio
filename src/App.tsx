@@ -55,6 +55,7 @@ export default function App(){
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
+ const [simulatorQaTransport,setSimulatorQaTransport]=useState<'live'|'hold'|'blackout'|null>(null);
  const [liveFloorOpen,setLiveFloorOpen]=useState(false);
  const [liveFloorApproval,setLiveFloorApproval]=useState<string|null>(null);
  const [liveFloorTestPattern,setLiveFloorTestPattern]=useState(false);
@@ -94,7 +95,7 @@ export default function App(){
  const photoArchive=usePhotoArchive({frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,muted,notify});
  const cameraCue=useCameraCue({archive:photoArchive,frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,notify,onOpen:()=>{setModal(null);setControlsOpen(false);setProjectionActive(false);}});
  const projection=useProjection({active:projectionActive,frameRef,videoRef:video,input:settings.input,notify,artworkActive:footprintsActive,artworkRef:footprintCanvasRef,
-  simulatorActive:simulatorOpen,simulatorApproval,simulatorTestPattern,simulatorArtworkRef,
+  simulatorActive:simulatorOpen,simulatorApproval,simulatorTestPattern,simulatorQaTransport,simulatorArtworkRef,
    liveFloorActive:liveFloorOpen,liveFloorConfirmed:liveFloorEngine.isConfirmed,
    liveFloorBoundCamera:liveFloorEngine.boundCamera,liveFloorApproval,liveFloorTestPattern,liveFloorArtworkRef});
  const simulatorFloorVerified=simulatorApproval!==null&&simulatorApproval===floorCalibrationSignature(projection.config);
@@ -346,6 +347,7 @@ export default function App(){
    onBlackout={()=>projection.setTransport('blackout')}
    onClose={()=>{projection.setTransport('blackout');multiPoseRouter.reset();setLiveFloorApproval(null);setLiveFloorTestPattern(false);setLiveFloorOpen(false);}}/>}
   {simulatorOpen&&<PuppetSimulator projection={projection} projectorArtworkRef={simulatorArtworkRef}
+    onQATransportChange={setSimulatorQaTransport}
     verified={simulatorFloorVerified} testPattern={simulatorTestPattern}
     onVerify={value=>{
      projection.setTransport('blackout');
@@ -359,14 +361,14 @@ export default function App(){
      setSimulatorTestPattern(value);
     }}
     onOpenOutput={()=>{projection.setTransport('blackout');projection.openOutput();}}
-    onCalibrate={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorTestPattern(false);setSimulatorOpen(false);
+    onCalibrate={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorTestPattern(false);setSimulatorQaTransport(null);setSimulatorOpen(false);
      setClean(false);setProjectionActive(true);
      notify('Projection → Kalibrasi: tandai empat sudut lantai, terapkan, lalu kembali ke Footprints.');
     }}
     onLive={()=>{if(!simulatorFloorVerified&&!simulatorTestPattern)return;projection.setPattern(false);projection.setTransport('live');}}
     onHold={()=>{if(simulatorFloorVerified||simulatorTestPattern)projection.setTransport('hold');}}
     onBlackout={()=>projection.setTransport('blackout')}
-    onClose={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorTestPattern(false);setSimulatorOpen(false);}}/>}
+    onClose={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorTestPattern(false);setSimulatorQaTransport(null);setSimulatorOpen(false);}}/>}
   {captureOpen&&<CaptureHub onClose={()=>setCaptureOpen(false)} initialTab={captureTab}
     archive={photoArchive} cue={cameraCue} videoRef={video} cameraBusy={cameraBusy}
     onCamera={()=>void startCamera()} onOpenBody={()=>{setCaptureOpen(false);void openBodyCamera();}}

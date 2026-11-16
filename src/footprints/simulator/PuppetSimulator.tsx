@@ -6,6 +6,10 @@ import {drawPuppetScene} from './draw3d.ts';
 import {floorArtworkSVG,floorArtworkSummary} from './floor-artwork.ts';
 import {paintFloorCanvas} from './floorCanvas.ts';
 import {FloorProjectionPanel} from './FloorProjectionPanel.tsx';
+import {SimulationLabPanel} from './SimulationLabPanel.tsx';
+import {createQAScenario,qaEventsAt,qaFormatTime,qaOutputTransportAt,QA_DURATION_MS} from './QAScenario.ts';
+import {runSimulationQA} from './SimulationQAReport.ts';
+import {qaPuppetPoseAt} from './QAStagePose.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import {DirectPuppetSession,replayPoseAt} from './puppet-controller.ts';
 import {clamp,clampOnFloor,hitFoot,initialCamera,project3D,unprojectFloor,type OrbitCamera} from './scene3d.ts';
@@ -22,12 +26,14 @@ function saveBlob(content:Blob,name:string){
  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout}:{
+export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,onQATransportChange}:{
  onClose:()=>void;projection:Projection;projectorArtworkRef:RefObject<HTMLCanvasElement|null>;
  verified:boolean;testPattern:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;onOpenOutput:()=>void;onCalibrate:()=>void;
  onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
+ onQATransportChange:(value:'live'|'hold'|'blackout'|null)=>void;
 }){
  const dialog=useRef<HTMLDialogElement>(null),canvas=useRef<HTMLCanvasElement>(null);
+ const labPreview=useRef<HTMLCanvasElement>(null);
  const sessionRef=useRef<DirectPuppetSession>(new DirectPuppetSession(startFloor));
  const origin=useRef(0),drag=useRef<Drag|null>(null),fileInput=useRef<HTMLInputElement>(null);
  const [floor,setFloor]=useState<FloorSpace>(startFloor);
@@ -37,22 +43,57 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  const [version,setVersion]=useState(0),[notice,setNotice]=useState('Klik dan geser kaki untuk membuat satu langkah.');
  const [mode,setMode]=useState<Playback>('edit'),[playhead,setPlayhead]=useState(0);
  const [grid,setGrid]=useState(true);
+ const [labActive,setLabActive]=useState(false),[labPlaying,setLabPlaying]=useState(false);
+ const [labTime,setLabTime]=useState(0),[labRate,setLabRate]=useState(16);
+ const [labFaults,setLabFaults]=useState(true);
+ const qaScenario=useMemo(()=>createQAScenario(floor,labFaults),[floor,labFaults]);
+ const qaReport=useMemo(()=>runSimulationQA(qaScenario),[qaScenario]);
+ const qaFrameTime=Math.round(labTime/250)*250;
+ const qaVisible=useMemo(()=>qaEventsAt(qaScenario,qaFrameTime),[qaScenario,qaFrameTime]);
  const model=sessionRef.current,session=model.session;
- const duration=model.durationMs,displayEvents=mode==='edit'?model.events:model.events.filter(e=>e.timestampMs<=playhead);
- const displayRigs=mode==='edit'?model.performers:replayPoseAt(floor,model.events,playhead);
- const stats=floorArtworkSummary(session);
- const svg=useMemo(()=>floorArtworkSVG({...session,events:displayEvents},{
+ const duration=model.durationMs;
+ const manualEvents=mode==='edit'?model.events:model.events.filter(e=>e.timestampMs<=playhead);
+ const displayEvents=labActive?qaVisible:manualEvents;
+ const displayRigs=labActive?qaPuppetPoseAt(qaScenario,qaFrameTime):
+  mode==='edit'?model.performers:replayPoseAt(floor,model.events,playhead);
+ const stats=labActive?{contacts:qaVisible.filter(e=>e.kind==='contact').length}:floorArtworkSummary(session);
+ const svg=useMemo(()=>labActive?'':floorArtworkSVG({...session,events:manualEvents},{
   width:960,height:720,showGrid:grid
- }),[version,playhead,mode,grid]);
+ }),[labActive,version,playhead,mode,grid]);
  const refresh=()=>{setVersion(v=>v+1);setMode('edit');setPlayhead(0);};
  useEffect(()=>{
   const raster=projectorArtworkRef.current;
-  if(raster)paintFloorCanvas(raster,sessionRef.current.session,{
-   maxTimeMs:mode==='edit'?undefined:playhead,
-   markersOnly:testPattern
-  });
- },[projectorArtworkRef,version,playhead,mode,testPattern]);
+  if(raster){
+   const current=labActive?{...qaScenario.session,events:qaVisible}:sessionRef.current.session;
+   paintFloorCanvas(raster,current,{
+    maxTimeMs:labActive?undefined:mode==='edit'?undefined:playhead,
+    markersOnly:testPattern
+   });
+   raster.dataset.floorRevision=(labActive?'qa:'+qaVisible.length:'puppet:'+version+':'+mode+':'+playhead)+':'+testPattern;
+   if(labActive&&labPreview.current)paintFloorCanvas(labPreview.current,current,{showGrid:grid});
+  }
+ },[projectorArtworkRef,labActive,qaScenario,qaVisible,version,playhead,mode,testPattern,grid]);
  const time=()=>performance.now()-origin.current;
+ useEffect(()=>{
+  onQATransportChange(labActive&&!testPattern?
+   qaOutputTransportAt(labTime,verified,labFaults):null);
+ },[labActive,labTime,labFaults,verified,testPattern,onQATransportChange]);
+ useEffect(()=>()=>{
+  onQATransportChange(null);
+ },[onQATransportChange]);
+ useEffect(()=>{
+  if(!labActive||!labPlaying)return;
+  const started=performance.now(),at=labTime;
+  let raf=0,last=-Infinity;
+  const tick=(now:number)=>{
+   const next=Math.min(QA_DURATION_MS,at+(now-started)*labRate);
+   if(now-last>=80||next===QA_DURATION_MS){last=now;setLabTime(next);}
+   if(next>=QA_DURATION_MS){setLabPlaying(false);return;}
+   raf=requestAnimationFrame(tick);
+  };
+  raf=requestAnimationFrame(tick);
+  return()=>cancelAnimationFrame(raf);
+ },[labActive,labPlaying,labRate]);
  useEffect(()=>{
   origin.current=performance.now();
   dialog.current?.showModal();
@@ -80,12 +121,12 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
    el.width=Math.max(1,Math.round(w*dpr));el.height=Math.max(1,Math.round(h*dpr));
    const ctx=el.getContext('2d');if(!ctx)return;
    ctx.setTransform(dpr,0,0,dpr,0,0);
-   drawPuppetScene(ctx,w,h,floor,camera,displayRigs,count,displayEvents,selected,grid);
+   drawPuppetScene(ctx,w,h,floor,camera,displayRigs,labActive?2:count,displayEvents,labActive?null:selected,grid);
   };
   paint();
   const observer=new ResizeObserver(paint);observer.observe(el);
   return ()=>observer.disconnect();
- },[floor,camera,version,count,selected,mode,playhead,grid]);
+ },[floor,camera,version,count,selected,mode,playhead,grid,labActive,qaFrameTime]);
  const xy=(e:ReactPointerEvent<HTMLCanvasElement>)=>{
   const r=e.currentTarget.getBoundingClientRect();
   return {x:e.clientX-r.left,y:e.clientY-r.top,w:r.width,h:r.height};
@@ -104,9 +145,9 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   model.move(which,point,time());refresh();
  };
  const onPointerDown=(e:ReactPointerEvent<HTMLCanvasElement>)=>{
-  if(mode!=='edit'){setMode('edit');setPlayhead(0);}
+  if(!labActive&&mode!=='edit'){setMode('edit');setPlayhead(0);}
   const q=xy(e);
-  const chosen=hitFoot({x:q.x,y:q.y},model.performers,count,camera,floor,q.w,q.h);
+  const chosen=labActive?null:hitFoot({x:q.x,y:q.y},model.performers,count,camera,floor,q.w,q.h);
   e.currentTarget.setPointerCapture(e.pointerId);
   if(chosen){
    setSelected(chosen);
@@ -146,7 +187,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   setCamera(c=>({...c,distanceM:clamp(c.distanceM*(e.deltaY>0?1.08:.92),7,23)}));
  };
  const onKeyDown=(e:ReactKeyboardEvent<HTMLDialogElement>)=>{
-  if((e.target as HTMLElement).closest('button,input,select,textarea'))return;
+  if(labActive||(e.target as HTMLElement).closest('button,input,select,textarea'))return;
   const key=e.key.toLowerCase();
   if(key==='1'||key==='2'){e.preventDefault();setSelected(s=>({...s,foot:key==='1'?'left':'right'}));return;}
   if(key==='3'&&count===2){e.preventDefault();setSelected({performerId:'B',foot:'left'});return;}
@@ -187,12 +228,25 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   const s=stageSizes.find(x=>x.name===value);if(!s)return;
   if(model.events.length&&!window.confirm('Mengganti lantai akan menghapus jejak sesi saat ini. Lanjutkan?'))return;
   const f=defaultFloorSpace(s.widthM,s.depthM);
+  onVerify(false);setLabPlaying(false);setLabTime(0);
   model.setFloor(f);setFloor(f);setCamera(initialCamera());
   refresh();setNotice('Lantai simulasi diganti. Belum dikalibrasi ke proyektor fisik.');
  };
  const reset=()=>{
   if(model.events.length&&!window.confirm('Hapus semua jejak sesi simulasi?'))return;
   model.clear();setSelected({performerId:'A',foot:'left'});refresh();setNotice('Sesi simulasi dibersihkan.');
+ };
+ const exportLabReport=()=>saveBlob(new Blob([JSON.stringify({
+  ...qaReport,exportedAt:new Date().toISOString(),faults:qaScenario.faults,
+  physicalValidation:'not-performed'
+ },null,2)],{type:'application/json'}),'SOMA-S5-6-QA-REPORT.json');
+ const exportLabSession=()=>saveBlob(new Blob([JSON.stringify(qaScenario.session,null,2)],
+  {type:'application/json'}),'SOMA-S5-6-SYNTHETIC-FLOOR-SESSION-v3.json');
+ const toggleLab=(enabled:boolean)=>{
+  projection.setTransport('blackout');setLabPlaying(false);setLabTime(0);
+  setLabActive(enabled);onQATransportChange(null);
+  setNotice(enabled?'QA Lab aktif · gerak sintetis, kamera tetap mati.':
+   'Kembali ke 3D Direct Puppet; output proyektor dipadamkan.');
  };
  const play=()=>{
   if(!model.events.length){setNotice('Buat beberapa langkah lebih dulu.');return;}
@@ -203,39 +257,49 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  return <dialog ref={dialog} className="puppet-dialog" onCancel={e=>{e.preventDefault();onClose();}}
   onKeyDown={onKeyDown} aria-label="Footprints 3D Direct Puppet Simulator">
   <header className="puppet-header">
-   <div><span className="puppet-kicker">SOMA / FOOTPRINTS · S5.1</span>
+   <div><span className="puppet-kicker">SOMA / FOOTPRINTS · {labActive?'S5.6 QA LAB':'S5.1'}</span>
     <h2><Move3D size={21}/> 3D Direct Puppet <small>Tanpa kamera</small></h2></div>
    <button type="button" className="puppet-close" onClick={onClose} aria-label="Tutup simulator"><X size={21}/></button>
   </header>
   <div className="puppet-toolbar">
    <label>AREA LANTAI<select value={stageSizes.find(s=>s.widthM===floor.widthM&&s.depthM===floor.depthM)?.name??''}
     onChange={e=>changeStage(e.target.value)}>{stageSizes.map(s=><option key={s.name}>{s.name}</option>)}</select></label>
-   <label>PERFORMER <select value={count} onChange={e=>{const n=+e.target.value as 1|2;setCount(n);if(n===1&&selected.performerId==='B')setSelected({performerId:'A',foot:'left'});}}>
+   <label>PERFORMER <select value={labActive?2:count} disabled={labActive} onChange={e=>{const n=+e.target.value as 1|2;setCount(n);if(n===1&&selected.performerId==='B')setSelected({performerId:'A',foot:'left'});}}>
     <option value={1}>1 performer</option><option value={2}>2 performer</option></select></label>
    <label className="puppet-check"><input type="checkbox" checked={grid} onChange={e=>setGrid(e.target.checked)}/> Grid lantai</label>
    <span className="puppet-inline-state">SOURCE: SIMULATION · FLOOR SPACE (METER)</span>
   </div>
   <div className="puppet-layout">
    <section className="puppet-viewport" aria-label="Kontrol tubuh virtual 3D">
-    <div className="puppet-view-label"><span>3D LOWER BODY / ORBIT VIEW</span><span>DRAG TO WALK</span></div>
+    <div className="puppet-view-label"><span>3D LOWER BODY / ORBIT VIEW</span><span>{labActive?'QA · '+qaFormatTime(labTime):'DRAG TO WALK'}</span></div>
     <canvas ref={canvas} tabIndex={0} aria-label="Kanvas simulator 3D. Klik dan geser telapak kaki untuk melangkah. Geser ruang kosong untuk memutar kamera."
      onPointerDown={onPointerDown} onPointerMove={onPointerMove}
      onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onWheel={onWheel}/>
     <div className="puppet-view-footer">
-     <span>Geser kaki = angkat → pindah → turunkan</span>
+     <span>{labActive?'Dua performer sintetis · geser area kosong untuk orbit kamera':'Geser kaki = angkat → pindah → turunkan'}</span>
      <button type="button" onClick={()=>setCamera(initialCamera())}>Reset sudut pandang</button>
     </div>
    </section>
    <aside className="puppet-side">
     <section className="puppet-floor">
      <div className="puppet-section-title"><Footprints size={17}/><b>FLOOR PREVIEW</b><span>{stats.contacts} jejak</span></div>
-     <div className="puppet-floor-svg" dangerouslySetInnerHTML={{__html:svg}} aria-label="Pratinjau dua dimensi jejak kaki di lantai"/>
+     {labActive?<div className="puppet-floor-svg"><canvas ref={labPreview} width={1280} height={720}
+     className="puppet-qa-preview" aria-label="Jejak kaki sintetis pada lantai virtual"/></div>:
+     <div className="puppet-floor-svg" dangerouslySetInnerHTML={{__html:svg}}
+      aria-label="Pratinjau dua dimensi jejak kaki di lantai"/>}
      <p>Bidang hitam = lantai virtual. Jejak muncul saat kaki turun.</p>
     </section>
-    <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
+    <SimulationLabPanel active={labActive} onActiveChange={toggleLab}
+    scenario={qaScenario} report={qaReport} playhead={labTime}
+    playing={labPlaying} onPlaying={setLabPlaying} onSeek={setLabTime}
+    rate={labRate} onRateChange={setLabRate}
+    faultsEnabled={labFaults} onFaultsEnabled={setLabFaults}
+    verified={verified} actualTransport={projection.transport}
+    onExportReport={exportLabReport} onExportSession={exportLabSession}/>
+   <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
      onVerify={onVerify} onTestPattern={onTestPattern} onOpenOutput={onOpenOutput} onCalibrate={onCalibrate}
      onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>
-    <section className="puppet-controls">
+    <section className="puppet-controls" hidden={labActive}>
      <div className="puppet-section-title"><b>DIRECT PUPPET</b><span>{selected.performerId} · {selected.foot==='left'?'Kiri':'Kanan'}</span></div>
      <div className="puppet-foot-pick">
       {model.performers.slice(0,count).flatMap(p=>(['left','right'] as const).map(foot=>
@@ -263,7 +327,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
      </div>
      <p className="puppet-key-hint">Keyboard: <kbd>1</kbd> kiri <kbd>2</kbd> kanan · <kbd>Space</kbd> angkat/turun · <kbd>WASD</kbd> geser · <kbd>Q/E</kbd> putar</p>
     </section>
-    <section className="puppet-session">
+    <section className="puppet-session" hidden={labActive}>
      <div className="puppet-section-title"><b>SESSION / REPLAY</b><span>{model.events.length} event</span></div>
      <div className="puppet-step-buttons">
       <button type="button" onClick={play} disabled={!model.events.length}>{mode==='playing'?<Pause size={16}/>:<Play size={16}/>} {mode==='playing'?'Jeda':'Putar ulang'}</button>
