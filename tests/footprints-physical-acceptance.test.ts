@@ -33,8 +33,11 @@ function completeTrial(events:FootstepEvent[],matchCount=events.length,performer
    note:'annotated touchdown '+i
   });
  }
- for(const k of requiredMovementCases(performerCount))
-  trial=addMovementEvidence(trial,k,200,k==='crossing'?'both':performerCount===1?'performer-1':'A','frame video checked');
+ for(const k of requiredMovementCases(performerCount)){
+  if(k==='crossing')trial=addMovementEvidence(trial,k,200,'both','actual crossing filmed');
+  else for(const performerId of performerCount===1?['performer-1']:['A','B'])
+   trial=addMovementEvidence(trial,k,200,performerId,'frame video checked');
+ }
  for(let i=0;i<Math.min(5,matchCount);i++)
   trial=addPhotonEvidence(trial,trial.physicalContacts[i].id,8);
  trial={...trial,checklist:{floorMarkersMeasured:true,fixedCameraAndProjector:true,
@@ -101,6 +104,10 @@ test('stale calibration, no physical checklist, incomplete gait coverage and mis
  assert.equal(assessPhysicalAcceptance(good,signature,null).status,'incomplete');
  assert.equal(assessPhysicalAcceptance({...good,reviewComplete:false},signature,qa).status,'incomplete');
  assert.equal(assessPhysicalAcceptance({...good,sequences:[]},signature,qa).status,'incomplete');
+ assert.equal(assessPhysicalAcceptance({...good,sequences:good.sequences.filter(s=>s.performerId!=='B')},
+  signature,qa).status,'incomplete');
+ assert.equal(assessPhysicalAcceptance(good,signature,{...qa,status:'needs-adjustment'}),
+  'needs-adjustment');
  assert.equal(assessPhysicalAcceptance({...good,checklist:{...good.checklist,blackoutAndReconnectionChecked:false}},
   signature,qa).status,'incomplete');
 });
