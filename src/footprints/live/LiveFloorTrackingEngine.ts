@@ -105,7 +105,11 @@ export class LiveFloorTrackingEngine{
   if(!this.checkBinding(binding)||!this.confirmed||!this.calibration||!this.eventEngine)return [];
   if(!sample||!Number.isFinite(sample.t)||sample.t<0||sample.confidence<.55||
    sample.phase==='unknown'||!Number.isFinite(videoAspect)||videoAspect<=0){
-   this.lose(side,performerId);return [];
+   // Initial gait frames are UNKNOWN while stance debounce settles.
+   // Only REARM a foot that has actually been observed before.
+   // Otherwise the very first landing is silently suppressed.
+   if(this.seen.has(key))this.lose(side,performerId);
+   return [];
   }
   if((this.seen.get(key)??-1)>=sample.t)return [];
   const previous=this.seen.get(key);
