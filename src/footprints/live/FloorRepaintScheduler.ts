@@ -6,11 +6,12 @@
 export class FloorRepaintScheduler{
  private scheduled:number|null=null;
  private disposed=false;
- constructor(
-  private readonly request:(callback:()=>void)=>number,
-  private readonly cancel:(id:number)=>void,
-  private readonly paint:()=>void
- ){}
+ private readonly request:(callback:()=>void)=>number;
+ private readonly cancel:(id:number)=>void;
+ private readonly paint:()=>void;
+ constructor(request:(callback:()=>void)=>number,cancel:(id:number)=>void,paint:()=>void){
+  this.request=request;this.cancel=cancel;this.paint=paint;
+ }
  invalidate(){
   if(this.disposed||this.scheduled!==null)return;
   this.scheduled=this.request(()=>{
