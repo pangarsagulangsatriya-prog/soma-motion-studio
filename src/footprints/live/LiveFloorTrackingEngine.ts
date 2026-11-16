@@ -1,4 +1,4 @@
-import type {GaitSample} from '../gait-analysis/index.ts';
+import type {GaitSample,GaitMotion} from '../gait-analysis/index.ts';
 import type {FloorUpdate,FloorUpdateKind} from './FloorRealtimeDiagnostics.ts';
 import {calibratedGaitContact} from '../spatial/adapters.ts';
 import {validateCameraFloorCalibration,type CameraFloorCalibration,type FloorPoint} from '../spatial/coordinates.ts';
@@ -20,6 +20,7 @@ export const cameraBindingKey=(binding:CameraBinding|null):string|null=>{
 export type LiveFloorStatus={
  calibrated:boolean;confirmed:boolean;cameraMatched:boolean;tracking:boolean;
  contacts:number;events:number;lastSeenMs:number|null;activePerformerIds:string[];reason:string;
+ footMotions:{performerId:string;foot:FootSide;motion:GaitMotion;confidence:number}[];
 };
 /**
  * The single existing SOMA GaitAnalyzer supplies phase/stamp samples here.
@@ -35,6 +36,7 @@ export class LiveFloorTrackingEngine{
  private grounded=new Set<string>();
  private performers=new Set<string>(['performer-1']);
  private lastPoint=new Map<string,FloorPoint>();
+ private motion=new Map<string,{performerId:string;foot:FootSide;motion:GaitMotion;confidence:number}>();
  private seen=new Map<string,number>();
  private received=new Map<string,number>();
  private rejection='';
@@ -72,6 +74,7 @@ export class LiveFloorTrackingEngine{
   return {calibrated:!!this.calibration,confirmed:this.confirmed,cameraMatched:!!this.bindingKey,
    tracking:this.confirmed&&this.received.size>0,contacts:this.contactCount,events:this.events.length,
    activePerformerIds:[...new Set([...this.received.keys()].map(k=>k.split(':')[0]))],
+   footMotions:[...this.motion.values()],
    lastSeenMs:this.received.size?Math.max(...this.received.values()):null,
    reason:this.rejection||(!this.calibration?'Tandai empat sudut lantai di kamera.':
     !this.confirmed?'Periksa susunan empat sudut, lalu aktifkan pelacakan.':
@@ -92,7 +95,7 @@ export class LiveFloorTrackingEngine{
  }
  resetSession(){
   this.events=[];this.eventEngine?.reset();this.grounded.clear();
-  this.lastPoint.clear();this.seen.clear();this.received.clear();this.logicalTime=-1;
+  this.lastPoint.clear();this.seen.clear();this.received.clear();this.motion.clear();this.logicalTime=-1;
   this.performers=new Set(['performer-1']);this.contactCount=0;
   this.cachedSession=null;this.cachedRevision=-1;this.revision++;this.emitUpdate('session');
  }
@@ -100,7 +103,7 @@ export class LiveFloorTrackingEngine{
   this.confirmed=false;this.dropTracking();this.rejection=reason;this.emitUpdate('revoke');
  }
  private dropTracking(){
-  this.received.clear();this.grounded.clear();this.lastPoint.clear();this.seen.clear();
+  this.received.clear();this.grounded.clear();this.lastPoint.clear();this.seen.clear();this.motion.clear();
   for(const performerId of this.performers)for(const side of ['left','right'] as const)
    this.eventEngine?.loseTracking(performerId,side);
  }
@@ -111,7 +114,7 @@ export class LiveFloorTrackingEngine{
  }
  lose(side:FootSide,performerId=this.performerId){
   const key=performerId+':'+side;
-  this.received.delete(key);this.grounded.delete(key);this.lastPoint.delete(key);
+  this.received.delete(key);this.grounded.delete(key);this.lastPoint.delete(key);this.motion.delete(key);
   this.eventEngine?.loseTracking(performerId,side);
  }
  losePerformer(performerId:string){
@@ -136,6 +139,7 @@ export class LiveFloorTrackingEngine{
   const previous=this.seen.get(key);
   if(previous!==undefined&&sample.t-previous>450)this.lose(side,performerId);
   this.seen.set(key,sample.t);this.received.set(key,sample.t);
+  this.motion.set(key,{performerId,foot:side,motion:sample.motionKind??'unknown',confidence:sample.confidence});
   const now=Math.max(this.logicalTime+1,Math.round(sample.t));
   this.logicalTime=now;
   const observe=(phase:'swing'|'stance',p:FloorPoint|null,heading:number)=>
@@ -157,11 +161,15 @@ export class LiveFloorTrackingEngine{
    this.rejection='';
    const last=this.lastPoint.get(key);
    const distance=last?Math.hypot(last.xM-grounded.positionM.xM,last.yM-grounded.positionM.yM):0;
-   // During stance, slight camera jitter must not move printed contacts.
-   const position=this.grounded.has(key)&&last&&distance<.12?last:grounded.positionM;
+   // Keep the previously PRINTED ground location fixed until a new
+   // meaningful floor movement is confirmed. Updating the anchor on every
+   // tiny camera change would prevent accumulated slides from ever reaching
+   // FootstepEventEngine's 0.12m move threshold.
+   const position=this.grounded.has(key)&&last&&distance<.12?
+    last:grounded.positionM;
    emitted=observe('stance',position,grounded.headingRad);
    if(emitted.some(e=>e.kind==='contact'))this.grounded.add(key);
-   if(this.grounded.has(key))this.lastPoint.set(key,position);
+   if(emitted.some(e=>e.kind==='contact'||e.kind==='move'))this.lastPoint.set(key,position);
   }
   if(this.events.length+emitted.length>100000){
    this.revoke('Sesi mencapai batas 100.000 event. Simpan dan mulai sesi baru.');
