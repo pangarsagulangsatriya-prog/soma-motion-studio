@@ -1,0 +1,35 @@
+/* S5.7.0: engineering stage-plan only; never drives physical projection. */
+.stage-optics{padding:13px;background:#16251b;color:#e0eada}
+.stage-optics .live-floor-heading{display:flex;gap:8px;align-items:center}
+.stage-optics>p{font-size:12px;line-height:1.6;color:#c0d4c2;margin:6px 0 12px!important}
+.stage-optics-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:11px}
+.stage-optics-map{background:#0e1a14;border:1px solid #405d48;border-radius:8px;overflow:hidden}
+.stage-optics-map svg{display:block;width:100%;max-height:450px}
+.stage-optics-switch{display:flex;gap:7px;padding:8px}
+.stage-optics-switch button{flex:1;padding:6px;min-height:36px!important;font-size:11px!important}
+.stage-optics-switch button[aria-pressed="true"]{background:#cce3b3;color:#192d20}
+.stage-optics-legend{display:flex;flex-wrap:wrap;gap:6px;padding:10px;font-size:10px;color:#b6cebb}
+.stage-optics-legend span{padding:3px 7px;border:1px solid #405f4b;border-radius:5px}
+.stage-optics-controls{display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage-optics-controls label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11px;color:#c6d9c7}
+.stage-optics-controls :is(input:not([type=range]),select){
+ background:#10241a;color:#f0f2e9;border:1px solid #5a765d;border-radius:6px;
+ padding:7px 8px;min-height:39px;box-sizing:border-box;width:100%;font:12px system-ui,sans-serif
+}
+.stage-optics-controls input[type=range]{width:100%;accent-color:#b8d59b}
+.stage-optics-controls details{border:1px solid #4c634f;border-radius:5px;padding:8px}
+.stage-optics-controls summary{cursor:pointer;font-size:11px;font-weight:600}
+.stage-optics-controls details p{font-size:11px;color:#a9baa9;margin:8px 0!important}
+.stage-optics-xyz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:7px}
+.stage-optics-controls details .stage-optics-xyz{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stage-optics-actions{display:flex;gap:7px;flex-wrap:wrap}
+.stage-optics-actions button{display:flex;align-items:center;gap:6px;min-height:40px}
+.stage-optics-estimates{border-top:1px solid #516b54;padding-top:12px;margin-top:13px}
+.stage-optics-estimates>b{display:flex;gap:7px;align-items:center;font-size:12px}
+.stage-optics-estimates>div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #3d5644;font-size:11px}
+.stage-optics-estimates strong{font:700 13px monospace}
+.stage-optics-estimates ul{padding-left:19px;color:#e3d5ab;font-size:11px;line-height:1.55}
+.stage-optics-estimates li{margin:5px 0}
+.stage-optics-estimates small{font-size:10px;color:#b5c9b7;line-height:1.5}
+.stage-optics .stage-optics-note{border-left:2px solid #b8d5aa;padding:8px;font-size:11px;margin-top:10px!important}
+@media(max-width:720px){.stage-optics-layout{grid-template-columns:1fr}}

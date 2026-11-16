@@ -15,6 +15,7 @@ import {FloorRepaintScheduler} from './FloorRepaintScheduler.ts';
 import {StageValidationPanel} from '../validation/StageValidationPanel.tsx';
 import {CalibrationQAPanel} from '../validation/CalibrationQAPanel.tsx';
 import {PhysicalAcceptancePanel} from '../validation/PhysicalAcceptancePanel.tsx';
+import {StageOpticsPanel} from '../stage-optics/StageOpticsPanel.tsx';
 import {CALIBRATION_QA_TARGETS,calibrationQAContextKey,calibrationQAReport,
  measureCalibrationQATarget,summarizeCalibrationQA,type CalibrationQASample} from '../validation/CalibrationQA.ts';
 import {SoftwarePerformanceWindow} from '../validation/StageValidationRecorder.ts';
@@ -287,11 +288,16 @@ export function LiveFloorWorkspace({
  return <dialog ref={dialog} className="live-floor-dialog" onCancel={e=>{e.preventDefault();requestClose();}}
   aria-label="Footprints Live Floor Tracking">
   <header className="live-floor-header">
-   <div><small>SOMA / FOOTPRINTS · S5.6.4</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
+   <div><small>SOMA / FOOTPRINTS · S5.7.0</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
    <button type="button" onClick={requestClose} aria-label="Tutup Live Floor Tracking"><X size={20}/></button>
   </header>
   <div className="live-floor-layout">
    <section className="live-floor-camera">
+    <details className="live-floor-validation-drawer">
+     <summary>00 / Stage Optics & Spatial Design <span>Denah, dua tubuh, pad, kamera dan proyektor</span></summary>
+     <StageOpticsPanel key={floorActive.widthM+'x'+floorActive.depthM}
+      floorWidthM={floorActive.widthM} floorDepthM={floorActive.depthM}/>
+    </details>
     <div className="live-floor-heading">01 / KALIBRASI KAMERA → LANTAI</div>
     <div className="live-floor-view">
      <canvas ref={cameraCanvas} width={800} height={450} onPointerDown={choosePoint}
