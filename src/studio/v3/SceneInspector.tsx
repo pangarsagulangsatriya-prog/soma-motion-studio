@@ -10,9 +10,9 @@ import type {Settings} from '../../engine/types';
 import type {SceneId} from './ScenePicker';
 
 type Tab='style'|'material'|'response';
-export function SceneInspector({scene,settings:s,update,footprint:c,updateFootprint,onAdvanced,onClose,onOpenSimulator}:{
+export function SceneInspector({scene,settings:s,update,footprint:c,updateFootprint,onAdvanced,onClose,onOpenSimulator,onOpenLiveFloor}:{
  scene:SceneId;settings:Settings;update:(next:Partial<Settings>)=>void;
- footprint:FootprintConfig;updateFootprint:(next:Partial<FootprintConfig>)=>void;onAdvanced:()=>void;onClose:()=>void;onOpenSimulator:()=>void;
+ footprint:FootprintConfig;updateFootprint:(next:Partial<FootprintConfig>)=>void;onAdvanced:()=>void;onClose:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
 }){
  const [tab,setTab]=useState<Tab>('style');
  const tabId=useId();
@@ -67,6 +67,7 @@ export function SceneInspector({scene,settings:s,update,footprint:c,updateFootpr
    </>}
   </div>
   <div className="v3-inspector-footer">
+   {isFoot&&<button type="button" className="v3-open-puppet" onClick={onOpenLiveFloor}><span>Live Floor Tracking</span><small>Kalibrasi kamera · proyeksi lantai</small></button>}
    {isFoot&&<button type="button" className="v3-open-puppet" onClick={onOpenSimulator}><span>3D Direct Puppet</span><small>Gerakkan kaki virtual · tanpa kamera</small></button>}
    <button type="button" onClick={onAdvanced}><SlidersHorizontal size={16}/> Pengaturan lengkap</button>
   </div>
