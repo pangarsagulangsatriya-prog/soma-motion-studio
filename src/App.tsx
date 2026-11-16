@@ -2,6 +2,7 @@ import {StudioFootprints,footprintDefaults,type FootprintConfig,type FootprintsH
 import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
+import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
 import {MultiPoseGaitRouter} from './footprints/live/MultiPoseGaitRouter';
 import {floorCalibrationSignature} from './projection/floorBridge';
@@ -247,7 +248,7 @@ export default function App(){
      onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
       setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
      onOpenLiveFloor={openLiveFloor}
-     onBlackout={()=>projection.setTransport('blackout')}
+     onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
      footprint={footprintConfig} updateFootprint={updateFootprint}/>}
     {footprintsActive&&settings.output==='sound'&&<div className="v3-output-hint" role="status"><span>Visual Footprints disembunyikan karena keluaran hanya Suara.</span><button type="button" onClick={()=>update({output:'both'})}>Tampilkan pola</button></div>}
     <div className={'instrument-grid'+(footprintsActive&&!clean?' v3-hidden-engine':'')}
