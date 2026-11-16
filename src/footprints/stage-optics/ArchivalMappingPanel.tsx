@@ -128,7 +128,11 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router}:P
    const composed=compositeArchivalFrame(safeMask,image(),s.settings,identity,renderCount.current);
    if(target.width!==composed.pixels.width)target.width=composed.pixels.width;
    if(target.height!==composed.pixels.height)target.height=composed.pixels.height;
-   ctx.putImageData(new ImageData(composed.pixels.data,composed.pixels.width,composed.pixels.height),0,0);
+   // Browser ImageData expects a concretely backed ArrayBuffer; copy into
+   // canvas-allocated storage rather than passing Uint8ClampedArray<ArrayBufferLike>.
+   const outputImage=ctx.createImageData(composed.pixels.width,composed.pixels.height);
+   outputImage.data.set(composed.pixels.data);
+   ctx.putImageData(outputImage,0,0);
    const state=composed.status+':'+composed.reason;
    if(state!==lastState){lastState=state;setStatus(composed.reason);setRenderStatus(composed.status);}
    setLit(prev=>Math.abs(prev-composed.litPixels)>150?composed.litPixels:prev);
