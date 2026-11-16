@@ -6,6 +6,9 @@ import {drawPuppetScene} from './draw3d.ts';
 import {floorArtworkSVG,floorArtworkSummary} from './floor-artwork.ts';
 import {paintFloorCanvas} from './floorCanvas.ts';
 import {FloorProjectionPanel} from './FloorProjectionPanel.tsx';
+import {SimulationLabPanel} from './SimulationLabPanel.tsx';
+import {createQAScenario,qaEventsAt,qaFormatTime,qaOutputTransportAt,QA_DURATION_MS} from './QAScenario.ts';
+import {runSimulationQA} from './SimulationQAReport.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import {DirectPuppetSession,replayPoseAt} from './puppet-controller.ts';
 import {clamp,clampOnFloor,hitFoot,initialCamera,project3D,unprojectFloor,type OrbitCamera} from './scene3d.ts';
@@ -22,12 +25,14 @@ function saveBlob(content:Blob,name:string){
  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout}:{
+export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,onQATransportChange}:{
  onClose:()=>void;projection:Projection;projectorArtworkRef:RefObject<HTMLCanvasElement|null>;
  verified:boolean;testPattern:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;onOpenOutput:()=>void;onCalibrate:()=>void;
  onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
+ onQATransportChange:(value:'live'|'hold'|'blackout'|null)=>void;
 }){
  const dialog=useRef<HTMLDialogElement>(null),canvas=useRef<HTMLCanvasElement>(null);
+ const labPreview=useRef<HTMLCanvasElement>(null);
  const sessionRef=useRef<DirectPuppetSession>(new DirectPuppetSession(startFloor));
  const origin=useRef(0),drag=useRef<Drag|null>(null),fileInput=useRef<HTMLInputElement>(null);
  const [floor,setFloor]=useState<FloorSpace>(startFloor);
@@ -37,13 +42,23 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  const [version,setVersion]=useState(0),[notice,setNotice]=useState('Klik dan geser kaki untuk membuat satu langkah.');
  const [mode,setMode]=useState<Playback>('edit'),[playhead,setPlayhead]=useState(0);
  const [grid,setGrid]=useState(true);
+ const [labActive,setLabActive]=useState(false),[labPlaying,setLabPlaying]=useState(false);
+ const [labTime,setLabTime]=useState(0),[labRate,setLabRate]=useState(16);
+ const [labFaults,setLabFaults]=useState(true);
+ const qaScenario=useMemo(()=>createQAScenario(floor,labFaults),[floor,labFaults]);
+ const qaReport=useMemo(()=>runSimulationQA(qaScenario),[qaScenario]);
+ const qaFrameTime=Math.round(labTime/250)*250;
+ const qaVisible=useMemo(()=>qaEventsAt(qaScenario,qaFrameTime),[qaScenario,qaFrameTime]);
  const model=sessionRef.current,session=model.session;
- const duration=model.durationMs,displayEvents=mode==='edit'?model.events:model.events.filter(e=>e.timestampMs<=playhead);
- const displayRigs=mode==='edit'?model.performers:replayPoseAt(floor,model.events,playhead);
- const stats=floorArtworkSummary(session);
- const svg=useMemo(()=>floorArtworkSVG({...session,events:displayEvents},{
+ const duration=model.durationMs;
+ const manualEvents=mode==='edit'?model.events:model.events.filter(e=>e.timestampMs<=playhead);
+ const displayEvents=labActive?qaVisible:manualEvents;
+ const displayRigs=labActive?replayPoseAt(floor,qaVisible,qaFrameTime):
+  mode==='edit'?model.performers:replayPoseAt(floor,model.events,playhead);
+ const stats=labActive?{contacts:qaVisible.filter(e=>e.kind==='contact').length}:floorArtworkSummary(session);
+ const svg=useMemo(()=>labActive?'':floorArtworkSVG({...session,events:manualEvents},{
   width:960,height:720,showGrid:grid
- }),[version,playhead,mode,grid]);
+ }),[labActive,version,playhead,mode,grid]);
  const refresh=()=>{setVersion(v=>v+1);setMode('edit');setPlayhead(0);};
  useEffect(()=>{
   const raster=projectorArtworkRef.current;
