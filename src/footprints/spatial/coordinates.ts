@@ -23,6 +23,9 @@ const unitPoint=(p:unknown):p is Point=>{
  const v=p as Point|null;
  return !!v&&finite(v.x)&&finite(v.y)&&v.x>=0&&v.x<=1&&v.y>=0&&v.y<=1;
 };
+// Homography inversion can return -1e-15 for a physical corner: absorb only rounding error.
+const nearUnit=(p:Point,eps=1e-8)=>finite(p.x)&&finite(p.y)&&p.x>=-eps&&p.x<=1+eps&&p.y>=-eps&&p.y<=1+eps;
+const clampUV=(p:Point):Point=>({x:Math.min(1,Math.max(0,p.x)),y:Math.min(1,Math.max(0,p.y))});
 export const defaultFloorSpace=(widthM=8,depthM=6):FloorSpace=>validateFloorSpace({
  schema:'soma.footprints.floor-space',version:1,unit:'m',
  origin:'downstage-left',xAxis:'stage-right',yAxis:'upstage',widthM,depthM
@@ -60,8 +63,8 @@ export function floorToProjectorUV(floor:FloorSpace,point:FloorPoint,projectorQu
 export function projectorUVToFloor(floor:FloorSpace,point:Point,projectorQuad:Quad):FloorPoint{
  if(!unitPoint(point)||!validQuad(projectorQuad))throw Error('Titik proyektor atau kalibrasi tidak valid.');
  const uv=transform(inverse3(homography(projectorQuad)),point);
- if(!unitPoint(uv))throw Error('Titik proyektor berada di luar bidang lantai.');
- return uvToFloor(floor,uv);
+ if(!nearUnit(uv))throw Error('Titik proyektor berada di luar bidang lantai.');
+ return uvToFloor(floor,clampUV(uv));
 }
 export function validateCameraFloorCalibration(value:unknown):CameraFloorCalibration{
  const c=value as CameraFloorCalibration|null;
@@ -82,8 +85,8 @@ export function cameraGroundToFloor(calibration:CameraFloorCalibration,
     !finite(observation.confidence)||observation.confidence<minConfidence||observation.confidence>1)
   return null;
  const uv=transform(correspondence(c.cameraQuad,identityQuad()),observation.cameraUV);
- if(!unitPoint(uv))return null;
- return uvToFloor(c.floor,uv);
+ if(!nearUnit(uv))return null;
+ return uvToFloor(c.floor,clampUV(uv));
 }
 /**
  * MediaPipe stage coordinates are aspect-fitted into SOMA's 16:9 canvas.
