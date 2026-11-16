@@ -26,13 +26,19 @@ const locate=(pose:Landmark[]):{center:Center;confidence:number;pose:Landmark[]}
 export class TwoPersonIdentityTracker{
  private known=new Map<LivePerformerId,Track>();
  private detected=new Set<LivePerformerId>();
+ private identityLocked=false;
  readonly gate=.23;
  readonly separation=.115;
  readonly ambiguityMargin=.055;
  readonly staleMs=420;
- reset(){this.known.clear();this.detected.clear();}
+ reset(){this.known.clear();this.detected.clear();this.identityLocked=false;}
  observe(poses:Landmark[][],time:number):IdentityFrame{
   if(!Number.isFinite(time)||time<0)throw Error('Waktu frame tidak valid.');
+  if(this.identityLocked){
+   const lost=[...this.detected];this.detected.clear();
+   return {assignments:[],lost,ambiguous:true,
+    reason:'Persilangan tubuh belum dapat dipisahkan dengan aman. Reset identitas A/B untuk lanjut.'};
+  }
   const found=poses.map(locate).filter((x):x is NonNullable<typeof x>=>!!x)
    .sort((a,b)=>a.center.x-b.center.x).slice(0,2);
   const previous=this.detected;
@@ -89,11 +95,12 @@ export class TwoPersonIdentityTracker{
     }
    }
   }
-  this.detected=current;
+  if(ambiguous)this.identityLocked=true;
+  this.detected=ambiguous?new Set<LivePerformerId>():current;
   return {assignments:ambiguous?[]:chosen,
    lost:ids.filter(id=>previous.has(id)&&(!current.has(id)||ambiguous)),
    ambiguous,
-   reason:ambiguous?'Tubuh berdekatan atau saling menutup. Identitas ditahan.':
+   reason:ambiguous?'Tubuh berdekatan atau saling menutup. Reset identitas A/B untuk lanjut.':
     chosen.length?'Tubuh '+chosen.map(x=>x.id).join(' & ')+' terbaca.':
     found.length?'Identitas belum pasti. Kembalikan tubuh ke posisi terakhir atau reset identitas.':
     'Menunggu performer memasuki gambar.'};
