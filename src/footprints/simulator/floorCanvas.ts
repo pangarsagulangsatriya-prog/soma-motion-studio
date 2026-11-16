@@ -27,16 +27,17 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
  ctx.fillStyle='#000000';ctx.fillRect(0,0,w,h);
  if(options.markersOnly){
   const positions=[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
-  const pad=18;
+  // Marker centres sit at the ACTUAL raster corners, never inset by
+  // 18 px: an inset would introduce a systematic floor-alignment error.
   ctx.fillStyle='#e5eadb';ctx.strokeStyle='#e5eadb';ctx.lineWidth=2;
   positions.forEach((p,i)=>{
-   const x=Math.min(w-pad,Math.max(pad,p.x)),y=Math.min(h-pad,Math.max(pad,p.y));
-   ctx.beginPath();ctx.moveTo(x-13,y);ctx.lineTo(x+13,y);
-   ctx.moveTo(x,y-13);ctx.lineTo(x,y+13);ctx.stroke();
+   const {x,y}=p;
+   ctx.beginPath();ctx.moveTo(Math.max(0,x-20),y);ctx.lineTo(Math.min(w,x+20),y);
+   ctx.moveTo(x,Math.max(0,y-20));ctx.lineTo(x,Math.min(h,y+20));ctx.stroke();
    ctx.font='bold 17px monospace';ctx.textAlign='left';
-   ctx.fillText(String(i+1),x+10,y-9);
+   ctx.fillText(String(i+1),x===w?x-32:x+12,y===h?y-13:y+28);
   });
-  ctx.strokeRect(2,2,w-4,h-4);
+  ctx.strokeRect(0,0,w-1,h-1);
   return;
  }
  if(options.showGrid){
