@@ -41,7 +41,7 @@ test('all software assertions pass, and report makes no physical cm or camera-ph
  assert.ok(report.total>=9);
  assert.equal(report.physicalAccuracyCm,null);
  assert.equal(report.physicalLatencyMs,null);
- assert.match(report.note,/syntetis|synthetic/i);
+ assert.match(report.note,/sintetis|synthetic/i);
  assert.equal(report.contactCount,scenario.session.events.filter(e=>e.kind==='contact').length);
  assert.ok(report.skippedSteps>0);
 });
