@@ -21,7 +21,7 @@ export class ProjectionLink{
    */
  sendArtwork(state:ProjectionState,source:HTMLCanvasElement,now:number){
   this.send({...state,image:null},now);
-  if(!this.opened||!this.connected||this.inFlight!==null||this.artworkBusy||now-this.artworkSent<50||state.transport==='blackout'||state.pattern)return;
+  if(!this.opened||!this.connected||this.inFlight!==null||this.artworkBusy||now-this.artworkSent<50||state.transport!=='live'||state.pattern||state.blank)return;
   if(typeof createImageBitmap!=='function')return;
   this.artworkSent=now;this.artworkBusy=true;
   void createImageBitmap(source).then(bitmap=>{
