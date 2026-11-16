@@ -226,7 +226,7 @@ export function LiveFloorWorkspace({
     setQaSamples(old=>[...old.filter(s=>s.targetIndex!==qaTargetIndex),sample]);
     const next=qaTargetIndex+1;
     if(next===CALIBRATION_QA_TARGETS.length){
-     setQaTargetIndex(null);onBlackout();
+     setQaTargetIndex(null);onTestPattern(false);onBlackout();
      setQaMessage('Lima titik selesai. Output di-Blackout. Periksa galat dan ekspor JSON.');
     }else{
      setQaTargetIndex(next);
@@ -370,7 +370,7 @@ export function LiveFloorWorkspace({
       realtime={realtime.metrics} outputAck={projection.status.artworkTransfer}/>
     </details>
     <FloorProjectionPanel projection={projection} sourceLabel="live"
-     verified={projectorVerified} testPattern={testPattern}
+     verified={projectorVerified} testPattern={testPattern} qaActive={qaTargetIndex!==null}
      onVerify={onProjectorVerify} onTestPattern={onTestPattern}
      onOpenOutput={onOpenOutput} onCalibrate={onCalibrateProjector}
      onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>
