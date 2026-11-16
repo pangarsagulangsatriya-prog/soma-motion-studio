@@ -36,12 +36,13 @@ export function chooseFloorArtworkSource(simulatorVisible:boolean,simulatorReady
  * Camera frame quality does not control the SIMULATOR output. The same
  * calibration, Live/Hold/Blackout and blackout fail-safe still apply.
  */
-export function simulatorArtworkState(state:ProjectionState,verified:boolean):ProjectionState{
+export function simulatorArtworkState(state:ProjectionState,verified:boolean,testing=false):ProjectionState{
  const config=floorArtworkProjectionConfig(state.config);
  return {...state,config,image:null,
   blank:!verified||state.transport==='blackout'||state.pattern,
   tracking:verified,quality:verified?1:0,sampleAge:0,opacity:1,
-  reason:verified?'Simulasi Footprints · lantai terkalibrasi secara manual':
+  reason:testing?'Tanda empat sudut lantai · uji, belum terkalibrasi':
+   verified?'Simulasi Footprints · kalibrasi telah dikonfirmasi operator':
    'Lantai belum dikonfirmasi. Output dipadamkan.'};
 }
 /** Direct visual output is permitted only with explicit floor verification and live transport. */
