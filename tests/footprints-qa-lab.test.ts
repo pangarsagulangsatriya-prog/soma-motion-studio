@@ -104,6 +104,16 @@ test('scripted transport faults NEVER override a manual projector blackout or ho
  assert.equal(shouldRefreshFloorArtwork('same','same',200),false);
  assert.equal(shouldRefreshFloorArtwork('changed','same',200),true);
 });
+test('camera and identity faults stay dark until explicit synthetic recovery milestones',()=>{
+ assert.equal(qaOutputTransportAt(433000,true,true),'blackout');
+ assert.equal(qaOutputTransportAt(437900,true,true),'blackout');
+ assert.equal(qaOutputTransportAt(438000,true,true),'live');
+ assert.equal(qaOutputTransportAt(617000,true,true),'blackout');
+ assert.equal(qaOutputTransportAt(624900,true,true),'blackout');
+ assert.equal(qaOutputTransportAt(625000,true,true),'live');
+ assert.ok(!scenario.session.events.some(e=>e.kind==='contact'&&e.timestampMs>=426000&&e.timestampMs<438000));
+ assert.ok(!scenario.session.events.some(e=>e.kind==='contact'&&e.timestampMs>=609000&&e.timestampMs<625000));
+});
 test('fault toggle leaves full 15 minutes running and restores continuous live transport',()=>{
  const plain=createQAScenario(floor,false),summary=runSimulationQA(plain);
  assert.equal(plain.faults.length,0);
