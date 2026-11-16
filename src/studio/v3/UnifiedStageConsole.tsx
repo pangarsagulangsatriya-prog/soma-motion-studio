@@ -21,9 +21,9 @@ export function UnifiedStageStatusStrip({units,legacy}:{
  </div>;
 }
 export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRecording,
- canRecordVideo,held,bodySelected,legacy,onCamera,onRecordVideo,onCapture,onHold,onLivePreview,onBlackout,onOutputSettings}:{
+ canRecordVideo,held,bodySelected,canPreview,legacy,onCamera,onRecordVideo,onCapture,onHold,onLivePreview,onBlackout,onOutputSettings}:{
  cameraOn:boolean;cameraBusy:boolean;frameFresh:boolean;videoRecording:boolean;
- canRecordVideo:boolean;held:boolean;bodySelected:boolean;legacy:LegacyOutputStatus;
+ canRecordVideo:boolean;held:boolean;bodySelected:boolean;canPreview:boolean;legacy:LegacyOutputStatus;
  onCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  onHold:()=>void;onLivePreview:()=>void;onBlackout:()=>void;onOutputSettings:()=>void;
 }){
@@ -48,14 +48,14 @@ export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRe
   </div>
   <div className="fp-transport-group" role="group" aria-label="Kontrol preview lokal">
    <span className="fp-transport-caption">VISUAL PREVIEW</span>
-   <button type="button" disabled={!cameraOn||!frameFresh||!held}
-    aria-pressed={!held&&cameraOn&&frameFresh} onClick={onLivePreview}
-    title="Lanjutkan visual Footprints; tidak menyalakan proyektor">
+   <button type="button" disabled={!canPreview||!held}
+    aria-pressed={!held&&canPreview&&cameraOn&&frameFresh} onClick={onLivePreview}
+    title="Lanjutkan preview BODY/FLOOR ke frame terbaru; tidak menyalakan proyektor">
     <Play size={15}/><span>Live</span>
    </button>
-   <button type="button" disabled={!cameraOn||held}
+   <button type="button" disabled={!canPreview||!cameraOn||!frameFresh||held}
     aria-pressed={held} onClick={onHold}
-    title="Tahan visual jejak Studio; tidak membekukan kamera atau arsip BODY">
+    title="Tahan raster BODY/FLOOR di Live Stage; tracking dan event kaki tetap berjalan">
     <Pause size={15}/><span>Hold</span>
    </button>
   </div>
