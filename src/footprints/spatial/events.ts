@@ -12,6 +12,8 @@ export type FootstepEvent={
  id:string;performerId:string;foot:FootSide;kind:FootEventKind;
  timestampMs:number;positionM:FloorPoint;headingRad:number;
  source:FootSource;positionBasis:PositionBasis;confidence:number;
+ /** If false, a visual trail must start a new segment here. */
+ joinPrevious?:boolean;
 };
 export type FloorSession={
  schema:'soma.footprints.floor-session';version:3;
@@ -29,13 +31,14 @@ export function validateFootstepEvent(raw:unknown,floor:FloorSpace):FootstepEven
  const v=asObject(raw);
  if(!v||typeof v.id!=='string'||!v.id||v.id.length>128||
     typeof v.performerId!=='string'||!v.performerId.trim()||v.performerId.length>64||
-    !['left','right'].includes(String(v.foot))||
+    !(v.foot==='left'||v.foot==='right')||
     !['contact','release','swing','move','prediction'].includes(String(v.kind))||
     !['camera','simulation','replay','legacy'].includes(String(v.source))||
     !['simulated','calibrated-estimate','illustrative'].includes(String(v.positionBasis))||
     !sourceBasisAllowed(v.source as FootSource,v.positionBasis as PositionBasis)||
     !finite(v.timestampMs)||v.timestampMs<0||
     !finite(v.headingRad)||!finite(v.confidence)||v.confidence<0||v.confidence>1||
+    (v.joinPrevious!==undefined&&typeof v.joinPrevious!=='boolean')||
     !validFloorPoint(v.positionM)||!insideFloor(floor,v.positionM))
   throw Error('Event Footprints tidak valid atau berada di luar lantai.');
  return {
@@ -43,7 +46,8 @@ export function validateFootstepEvent(raw:unknown,floor:FloorSpace):FootstepEven
   kind:v.kind as FootEventKind,timestampMs:v.timestampMs as number,
   positionM:{...v.positionM},headingRad:v.headingRad as number,
   source:v.source as FootSource,positionBasis:v.positionBasis as PositionBasis,
-  confidence:v.confidence as number
+  confidence:v.confidence as number,
+  ...(v.joinPrevious===undefined?{}:{joinPrevious:v.joinPrevious as boolean})
  };
 }
 export function createFloorSession(floor:FloorSpace,events:FootstepEvent[]=[]):FloorSession{
