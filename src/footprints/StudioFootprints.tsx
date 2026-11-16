@@ -27,6 +27,8 @@ type Props={
  onRecording:(value:boolean)=>void;audioStream?:MediaStream|null;
  onGaitSample?:(mark:GaitSample|null,side:0|1,videoAspect:number)=>void;
  onPoseFrame?:(frame:MotionFrame|null,clock:number,videoAspect:number)=>void;
+ /** Live Floor always needs gated gait samples, even if illustrative V2 Footprints uses spacing. */
+ forceGaitForLiveFloor?:boolean;
 };
 /** Shares the single SOMA Body MotionFrame and camera. No second tracker, camera or output window. */
 export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function StudioFootprints(props,ref){
@@ -111,7 +113,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
     const aspect=video?.videoWidth&&video?.videoHeight?video.videoWidth/video.videoHeight:4/3;
     const factorX=Math.min(1,aspect/(16/9)),factorY=Math.min(1,(16/9)/aspect);
     for(let side=0;side<2;side++){
-     if(c.gaitAnalysis){
+     if(c.gaitAnalysis||p.forceGaitForLiveFloor){
       const mark=gait.current.observe({...f,tracked:valid},side as 0|1,clock,aspect);
       if(!mark){live.current[side]=null;lastPrint.current[side]=null;p.onGaitSample?.(null,side as 0|1,aspect);continue;}
       p.onGaitSample?.(mark,side as 0|1,aspect);

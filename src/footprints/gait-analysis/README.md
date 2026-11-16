@@ -19,9 +19,12 @@ Referensi landmark resmi: https://developers.google.com/edge/mediapipe/solutions
 
 - Normalisasi gerak kaki terhadap pusat pinggul membantu meredam perpindahan seluruh tubuh.
 - Smoothing adaptif mengikuti perubahan kecepatan: gerak cepat memakai respons lebih pendek; gerak lambat lebih halus.
-- **Swing (perkiraan):** posisi kaki terangkat relatif terhadap baseline atau kecepatan relatif cukup tinggi.
-- **Stance (perkiraan):** gerak relatif melambat dan posisi kembali dekat baseline selama sekurangnya 110 ms.
-- **Contact stamp:** satu cetakan saat beralih menuju fase tumpu, dengan cooldown minimum 320 ms.
+- **Swing / Step (perkiraan):** kenaikan kaki terhadap baseline posisi tumpuan disertai perpindahan kaki yang terlihat pada gambar kamera. Perpindahan cepat diperiksa terhadap posisi pinggul dan gambar mentah agar gerakan badan di atas telapak diam tidak otomatis dihitung sebagai langkah.
+- **Stance / Hold (perkiraan):** kaki kembali rendah dan gerak relatif melambat selama sekurangnya 110 ms. Baseline pijakan disesuaikan perlahan saat kaki stabil.
+- **Pivot (perkiraan):** orientasi telapak berubah sekitar titik tumpuan dengan perpindahan pusat kaki kecil. Tidak membuat jejak kontak kedua.
+- **Slide (perkiraan):** posisi telapak perlahan bergeser pada tinggi rendah; tetap fase stance. Di Live Floor, pergeseran kumulatif yang melewati ambang 0,12 meter dapat menghasilkan event `move`, bukan `contact`.
+- **Contact stamp:** satu cetakan setelah ayun diikuti pijakan stabil, dengan cooldown minimum 320 ms.
+- Klasifikasi `motionKind` (`hold`, `step`, `pivot`, `slide`) tersimpan sebagai metadata sampel visual dan tampil dalam Live Floor; belum label hasil pengukuran biomekanik.
 - Landmark hilang, kepercayaan rendah, atau jarak frame terlalu panjang mereset riwayat kaki agar tidak menghubungkan dua posisi yang berjauhan.
 - Informasi `phase`, `confidence`, dan `relativeSpeed` ikut ke JSON sesi sebagai metadata visual.
 
@@ -42,3 +45,11 @@ Ini **interpretasi gerak kamera tunggal**, belum gait analysis klinis. Kamera 2D
 Untuk pengujian panggung: tampilkan seluruh tubuh, letakkan kamera stabil, berjalan pelan dan cepat, uji langkah di tempat serta kaki berputar. Bandingkan jumlah jejak dengan video rekaman sebelum mengganti nilai ambang.
 
 Jangan memakai nilai `contact` atau `stance` sebagai diagnosis medis ataupun pengukuran biomekanik presisi.
+
+## S5.6.2 — Pengujian gerak adaptif
+
+- `tests/footprints-adaptive-gait.test.ts` menguji kontak awal, pijakan tetap saat tubuh membungkuk/bergeser, putaran telapak, geseran pelan, angkatan kaki kecil, kehilangan landmark, dan event `move` kumulatif.
+- Ketika Live Floor dibuka, analisis gait tetap berjalan walau tombol analisis gait untuk pola Footprints V2 sebelumnya dimatikan. Ini menjaga kontak lantai hasil kalibrasi dari mode spacing ilustratif.
+- Kriteria lulus otomatis hanya berlaku untuk pose sintetis terkontrol. Kamera frontal yang rendah, pakaian longgar, kaki tertutup, shadow proyektor, dan pivot dengan gerak lateral cepat dapat menghasilkan label keliru.
+- Dua jenis gerak sering sulit dipisahkan dengan kamera tunggal: **telapak yang menyeret lantai** dan **langkah mendatar sangat rendah**. Koreksi selanjutnya membutuhkan rekaman video nyata, anotasi telapak mendarat/terangkat, dan perbandingan false/missed contact.
+- Landmark MediaPipe yang dipakai: `https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker`. Koordinat yang dipakai tetap estimasi kamera dan belum otomatis mengukur kontak fisik.
