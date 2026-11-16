@@ -5,6 +5,7 @@ import type {FootstepEvent} from '../spatial/events.ts';
 import type {FloorSpace} from '../spatial/coordinates.ts';
 import {StageValidationRecorder,type SoftwareMetrics,type StageObservation} from './StageValidationRecorder.ts';
 import type {FloorRealtimeTimings} from '../live/FloorRealtimeDiagnostics.ts';
+import type {ArtworkTransferWindow} from '../../projection/ArtworkTransferWindow.ts';
 import './stage-validation.css';
 
 const val=(n:number|null,unit='')=>n===null?'–':(Math.round(n*100)/100).toString()+unit;
@@ -16,9 +17,9 @@ function downloadCSV(recorder:StageValidationRecorder){
  download(new Blob([[header,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),
   'SOMA-S5-5-physical-contact-errors.csv');
 }
-export function StageValidationPanel({floor,events,software,realtime}:{
+export function StageValidationPanel({floor,events,software,realtime,outputAck}:{
  floor:FloorSpace;events:FootstepEvent[];software:SoftwareMetrics;
- realtime:FloorRealtimeTimings;
+ realtime:FloorRealtimeTimings;outputAck:ArtworkTransferWindow['metrics']|null;
 }){
  const recorder=useRef(new StageValidationRecorder(floor)).current;
  const [revision,setRevision]=useState(0),[selection,setSelection]=useState('');
@@ -56,7 +57,8 @@ export function StageValidationPanel({floor,events,software,realtime}:{
  };
  const exportReport=()=>{
   const report=recorder.report({cameraSetup,projectorSetup,lighting,remarks});
-  download(new Blob([JSON.stringify({report,softwareAtExport:software,realtimeSoftwareAtExport:realtime},null,2)],{type:'application/json'}),
+  download(new Blob([JSON.stringify({report,softwareAtExport:software,realtimeSoftwareAtExport:realtime,
+   outputAckAtExport:outputAck},null,2)],{type:'application/json'}),
    'SOMA-S5-5-stage-validation-report.json');
  };
  const reset=()=>{
@@ -128,8 +130,11 @@ export function StageValidationPanel({floor,events,software,realtime}:{
     <span>Camera pipeline P95</span><strong>{val(software.pipelineP95Ms,' ms')}</strong>
     <span>Output heartbeat FPS</span><strong>{val(software.outputFps,' FPS')}</strong>
     <span>Output render P95</span><strong>{val(software.outputP95Ms,' ms')}</strong>
+    <span>Transfer bitmap → ACK P95</span>
+    <strong>{val(outputAck?.bitmapAckP95Ms??null,' ms')}</strong>
+    <span>Bitmap diterima</span><strong>{outputAck?.samples??0}</strong>
    </div>
-   <p>Waktu mulai frame dihitung saat kamera menyerahkan gambar ke MediaPipe, bukan saat sensor mengekspos cahaya. Event → raster belum termasuk transfer browser/output, scanout, dan nyala proyektor. Ukur gerak-ke-cahaya memakai video eksternal.</p>
+   <p>Waktu mulai frame dihitung saat kamera menyerahkan gambar ke MediaPipe, bukan saat sensor mengekspos cahaya. Event → raster belum termasuk transfer browser/output, scanout, dan nyala proyektor. ACK hanya menunjukkan bitmap telah diterima dan ditangani jendela output; belum menjamin cahaya terlihat. Ukur gerak-ke-cahaya memakai video eksternal.</p>
   </div>
   <div className="live-floor-validate-group">
    <b>4 · Konteks alat dan ekspor</b>
