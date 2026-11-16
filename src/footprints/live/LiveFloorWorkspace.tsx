@@ -13,6 +13,9 @@ import {FloorRenderGate,floorPaintKey} from './FloorRenderGate.ts';
 import {FloorRealtimeTimingWindow} from './FloorRealtimeDiagnostics.ts';
 import {FloorRepaintScheduler} from './FloorRepaintScheduler.ts';
 import {StageValidationPanel} from '../validation/StageValidationPanel.tsx';
+import {CalibrationQAPanel} from '../validation/CalibrationQAPanel.tsx';
+import {CALIBRATION_QA_TARGETS,calibrationQAContextKey,calibrationQAReport,
+ measureCalibrationQATarget,type CalibrationQASample} from '../validation/CalibrationQA.ts';
 import {SoftwarePerformanceWindow} from '../validation/StageValidationRecorder.ts';
 import type {Point,Quad} from '../../projection/geometry.ts';
 import {download} from '../../engine/recording.ts';
@@ -52,6 +55,9 @@ export function LiveFloorWorkspace({
  const [floor,setFloor]=useState<FloorSpace>(tracker.floor??initialFloor);
  const [marksAt,setMarksAt]=useState<Point[]>(()=>tracker.calibrationData?.cameraQuad.map(p=>({...p}))??[]);
  const [select,setSelect]=useState(0);
+ const [qaTargetIndex,setQaTargetIndex]=useState<number|null>(null);
+ const [qaSamples,setQaSamples]=useState<CalibrationQASample[]>([]);
+ const [qaMessage,setQaMessage]=useState('Lima titik QA menunggu kalibrasi dan output fisik.');
  const [version,setVersion]=useState(0);
  const [,setMetricsTick]=useState(0);
  const renderGate=useRef(new FloorRenderGate()).current;
@@ -65,6 +71,39 @@ export function LiveFloorWorkspace({
  const [message,setMessage]=useState('Ambil empat sudut lantai dari gambar kamera mentah.');
  const refreshed=()=>{setVersion(v=>v+1);setStatus(tracker.status);};
  const floorActive=tracker.floor??floor;
+ const qaContextKey=useMemo(()=>{
+  try{return calibrationQAContextKey(tracker.calibrationData,tracker.boundCamera,
+   projection.config.quad,projection.config.resolution);}
+  catch{return '';}
+ },[tracker.calibrationData,tracker.boundCamera,projection.config.quad,projection.config.resolution,version]);
+ const qaOldContext=useRef(qaContextKey);
+ useEffect(()=>{
+  if(qaOldContext.current===qaContextKey)return;
+  qaOldContext.current=qaContextKey;setQaSamples([]);setQaTargetIndex(null);
+  setQaMessage('Kalibrasi atau perangkat berubah. Lima titik QA harus diukur ulang.');
+  onTestPattern(false);onBlackout();
+ },[qaContextKey]);
+ const qaReady=!!qaContextKey&&cameraOn&&status.confirmed&&projection.status.connected;
+ const qaOutputLive=testPattern&&projection.status.connected&&projection.transport==='live';
+ const beginQA=()=>{
+  if(!qaReady){setQaMessage('Kalibrasi kamera harus dikonfirmasi dan proyektor tersambung.');return;}
+  setQaSamples([]);setQaTargetIndex(0);setQaMessage('Aktifkan Live pada panel proyektor, lalu klik silang Q1 pada kamera.');
+  onTestPattern(true);
+ };
+ const cancelQA=()=>{
+  setQaTargetIndex(null);onTestPattern(false);onBlackout();
+  setQaMessage('Uji dibatalkan dan proyektor di-Blackout. Hasil parsial dapat diekspor.');
+ };
+ const exportQA=()=>{
+  try{
+   if(!tracker.calibrationData||!tracker.boundCamera)throw Error('Kalibrasi belum lengkap.');
+   const report=calibrationQAReport(tracker.calibrationData,projection.config.quad,
+    tracker.boundCamera,projection.config.resolution,qaSamples);
+   download(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),
+    'SOMA-S5-6-3-camera-projector-QA.json');
+   setQaMessage('Laporan QA disimpan sebagai JSON; status berdasarkan titik yang diukur.');
+  }catch(e){setQaMessage(e instanceof Error?e.message:'Laporan QA gagal diekspor.');}
+ };
  const session=useMemo(()=>(showPredictions?router.previewSession:tracker.session)??createFloorSession(floorActive),
   [showPredictions,router,tracker,floorActive,version]);
  const svg=useMemo(()=>floorArtworkSVG(session,{width:960,height:720,showGrid:true,showTrail:false}),[session]);
@@ -110,7 +149,7 @@ export function LiveFloorWorkspace({
    }
   };
   raf=requestAnimationFrame(draw);return()=>cancelAnimationFrame(raf);
- },[videoRef,cameraOn,marksAt,select]);
+ },[videoRef,cameraOn,marksAt,select,qaTargetIndex,qaSamples]);
  // Floor contacts notify the workspace directly and schedule the NEXT animation
  // frame. A 120ms watchdog covers camera changes, ghost expiry and telemetry.
  paintCurrent.current=()=>{
@@ -124,11 +163,12 @@ export function LiveFloorWorkspace({
    const ghostIds=showPredictions?router.getGhosts(router.displayClockMs).map(g=>g.id):[];
    const activeFloor=tracker.floor??floor;
    const key=floorPaintKey(tracker.eventRevision,ghostIds,testPattern,
-    activeFloor.widthM,activeFloor.depthM,showPredictions);
+    activeFloor.widthM,activeFloor.depthM,showPredictions)+':qa:'+String(qaTargetIndex);
    if(canvas&&renderGate.shouldPaint(key,now)){
     const current=(showPredictions?router.previewSession:tracker.session)??createFloorSession(activeFloor);
     const start=performance.now();
-    paintFloorCanvas(canvas,current,{markersOnly:testPattern,showGrid:false});
+    paintFloorCanvas(canvas,current,{markersOnly:testPattern,showGrid:false,
+     qaTarget:testPattern&&qaTargetIndex!==null?CALIBRATION_QA_TARGETS[qaTargetIndex]:null});
     canvas.dataset.floorRevision=key;
     const paintedAt=performance.now();
     perfWindow.observePaint(start,paintedAt);
@@ -164,7 +204,7 @@ export function LiveFloorWorkspace({
    scheduler.dispose();requestCurrent.current=()=>{};
   };
  },[tracker,router,realtime]);
- useEffect(()=>{requestCurrent.current();},[showPredictions,testPattern,floor]);
+ useEffect(()=>{requestCurrent.current();},[showPredictions,testPattern,floor,qaTargetIndex]);
  const choosePoint=(e:PointerEvent<HTMLCanvasElement>)=>{
   const v=videoRef.current,canvas=cameraCanvas.current;
   if(!v||!canvas||!v.videoWidth||!v.videoHeight||v.readyState<2)return;
@@ -175,8 +215,28 @@ export function LiveFloorWorkspace({
   const box=videoRect(canvas.width,canvas.height,v.videoWidth,v.videoHeight);
   const x=(pixel.x-box.x)/box.width,y=(pixel.y-box.y)/box.height;
   if(x<0||x>1||y<0||y>1){setMessage('Pilih titik di dalam gambar kamera.');return;}
+  if(qaTargetIndex!==null){
+   if(!qaOutputLive){setQaMessage('Pastikan mode Live aktif dan silang proyeksi terlihat sebelum mengambil titik.');return;}
+   if(!tracker.isConfirmed||!tracker.checkBinding(cameraBinding(videoRef.current))){
+    setQaMessage('Kamera berubah atau kalibrasi perlu disahkan ulang.');cancelQA();return;
+   }
+   try{
+    if(!tracker.calibrationData)throw Error('Kalibrasi kamera belum tersedia.');
+    const sample=measureCalibrationQATarget(tracker.calibrationData,qaTargetIndex,{x,y},qaContextKey);
+    setQaSamples(old=>[...old.filter(s=>s.targetIndex!==qaTargetIndex),sample]);
+    const next=qaTargetIndex+1;
+    if(next===CALIBRATION_QA_TARGETS.length){
+     setQaTargetIndex(null);onBlackout();
+     setQaMessage('Lima titik selesai. Output di-Blackout. Periksa galat dan ekspor JSON.');
+    }else{
+     setQaTargetIndex(next);
+     setQaMessage(sample.targetId+' tercatat: galat '+sample.errorCm+' cm. Lanjutkan ke Q'+(next+1)+'.');
+    }
+   }catch(e){setQaMessage(e instanceof Error?e.message:'Titik QA gagal dibaca.');}
+   return;
+  }
   // Any change of physical marker must revoke the old approved projection.
-  onCalibrationDirty();
+  onCalibrationDirty();setQaSamples([]);setQaTargetIndex(null);
   setMarksAt(old=>{
    const copy=old.slice(0,4);copy[select]={x,y};
    // Selecting a later point is allowed; the Apply button still requires all 4.
@@ -195,6 +255,7 @@ export function LiveFloorWorkspace({
     cameraQuad:marksAt as Quad
    };
    tracker.configure(validateCameraFloorCalibration(calibration),binding);
+   setQaSamples([]);setQaTargetIndex(null);
    refreshed();onCalibrationDirty();
    setMessage('Kalibrasi valid secara geometri. Cocokkan posisi empat sudut lalu konfirmasi kamera.');
   }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi kamera gagal.');}
@@ -202,6 +263,7 @@ export function LiveFloorWorkspace({
  const confirmCamera=(yes:boolean)=>{
   try{
    tracker.confirm(yes);refreshed();onCameraConfirmed();
+   if(!yes){setQaSamples([]);setQaTargetIndex(null);}
    setMessage(yes?'Pelacakan lantai diaktifkan. Pendaratan dihitung sebagai estimasi kamera.':'Pelacakan lantai dihentikan.');
   }catch(e){setMessage(e instanceof Error?e.message:'Belum bisa mengaktifkan pelacakan.');}
  };
@@ -217,7 +279,7 @@ export function LiveFloorWorkspace({
  return <dialog ref={dialog} className="live-floor-dialog" onCancel={e=>{e.preventDefault();onClose();}}
   aria-label="Footprints Live Floor Tracking">
   <header className="live-floor-header">
-   <div><small>SOMA / FOOTPRINTS · S5.6.2</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
+   <div><small>SOMA / FOOTPRINTS · S5.6.3</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
    <button type="button" onClick={onClose} aria-label="Tutup Live Floor Tracking"><X size={20}/></button>
   </header>
   <div className="live-floor-layout">
@@ -256,6 +318,11 @@ export function LiveFloorWorkspace({
      <b>{!cameraOn?'Kamera mati':status.confirmed?'Kamera lantai aktif':status.calibrated?'Perlu konfirmasi':'Belum dikalibrasi'}</b>
      <span>{message}</span>
     </div>
+    <CalibrationQAPanel activeIndex={qaTargetIndex} contextKey={qaContextKey}
+     samples={qaSamples} ready={qaReady} outputLive={qaOutputLive} message={qaMessage}
+     onBegin={beginQA} onCancel={cancelQA}
+     onClear={()=>{setQaSamples([]);setQaMessage('Titik QA lama dihapus.');}}
+     onExport={exportQA}/>
    </section>
    <aside className="live-floor-sidebar">
     <section className="live-floor-preview">
