@@ -1,4 +1,6 @@
-import {useMemo,useState} from 'react';
+import {useMemo,useState,type RefObject} from 'react';
+import type {MotionFrame} from '../../engine/types.ts';
+import {LowerBodyMaskPanel} from './LowerBodyMaskPanel.tsx';
 import {Download,Eye,RotateCcw,Ruler} from 'lucide-react';
 import {download} from '../../engine/recording.ts';
 import {defaultFloorSpace} from '../spatial/coordinates.ts';
@@ -98,11 +100,13 @@ function StageElevation({plan}:{plan:StageOpticsPlan}){
   </text>
  </svg>;
 }
-export function StageOpticsPanel({floorWidthM,floorDepthM}:{
- floorWidthM?:number;floorDepthM?:number
+export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,performerCount,identityAmbiguous}:{
+ floorWidthM?:number;floorDepthM?:number;frameRef:RefObject<MotionFrame>;
+ cameraOn:boolean;performerCount:1|2;identityAmbiguous:boolean
 }){
  const [plan,setPlan]=useState(()=>defaultStageOpticsPlan(defaultFloorSpace(floorWidthM??8,floorDepthM??6)));
  const [view,setView]=useState<'top'|'elevation'>('top');
+ const [maskOpen,setMaskOpen]=useState(false);
  const [device,setSelectedDevice]=useState<DeviceId>('camera');
  const [message,setMessage]=useState('Desain optik sementara. Tidak mengaktifkan output atau mengubah kalibrasi Stage.');
  const estimate=useMemo(()=>{try{return assessStageOpticsPlan(plan);}catch{return null;}},[plan]);
@@ -205,5 +209,11 @@ export function StageOpticsPanel({floorWidthM,floorDepthM}:{
    </>:<p>Koordinat tidak valid. Periksa angka XYZ dan rentang lensa.</p>}
   </div>
   <p className="stage-optics-note" role="status">{message}</p>
+  <details className="stage-optics-mask-drawer" open={maskOpen}
+   onToggle={e=>setMaskOpen(e.currentTarget.open)}>
+   <summary>01 / Lower-Body Mask Engine <span>Mask dua pose · simulasi dan kamera SOMA</span></summary>
+   {maskOpen&&<LowerBodyMaskPanel frameRef={frameRef} cameraOn={cameraOn}
+    performerCount={performerCount} identityAmbiguous={identityAmbiguous}/>}
+  </details>
  </section>;
 }

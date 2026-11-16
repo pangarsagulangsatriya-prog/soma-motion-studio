@@ -288,7 +288,7 @@ export function LiveFloorWorkspace({
  return <dialog ref={dialog} className="live-floor-dialog" onCancel={e=>{e.preventDefault();requestClose();}}
   aria-label="Footprints Live Floor Tracking">
   <header className="live-floor-header">
-   <div><small>SOMA / FOOTPRINTS · S5.7.0</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
+   <div><small>SOMA / FOOTPRINTS · S5.7.1</small><h2><Footprints size={20}/> Live Floor Tracking <em>Kamera Body</em></h2></div>
    <button type="button" onClick={requestClose} aria-label="Tutup Live Floor Tracking"><X size={20}/></button>
   </header>
   <div className="live-floor-layout">
@@ -296,7 +296,9 @@ export function LiveFloorWorkspace({
     <details className="live-floor-validation-drawer">
      <summary>00 / Stage Optics & Spatial Design <span>Denah, dua tubuh, pad, kamera dan proyektor</span></summary>
      <StageOpticsPanel key={floorActive.widthM+'x'+floorActive.depthM}
-      floorWidthM={floorActive.widthM} floorDepthM={floorActive.depthM}/>
+      floorWidthM={floorActive.widthM} floorDepthM={floorActive.depthM}
+      frameRef={frameRef} cameraOn={cameraOn} performerCount={performerCount}
+      identityAmbiguous={router.status.ambiguous}/>
     </details>
     <div className="live-floor-heading">01 / KALIBRASI KAMERA → LANTAI</div>
     <div className="live-floor-view">
