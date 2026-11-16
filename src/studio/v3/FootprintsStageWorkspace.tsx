@@ -13,7 +13,7 @@ import type {FootprintConfig,FootprintStyle} from '../../footprints/StudioFootpr
 import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {readDualOutputStatus,watchDualOutputStatus,verifiedDualStatus} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from '../../footprints/stage-optics/StageHardwareGate.ts';
-import {deriveUnifiedStageStatus,type LegacyOutputStatus} from './unifiedStageStatus.ts';
+import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatus} from './unifiedStageStatus.ts';
 import {FootprintsStageTransport,UnifiedStageStatusStrip} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 
@@ -22,7 +22,7 @@ type WorkspaceView='stage'|'archive';
 type Props={
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
- cameraOn:boolean;cameraBusy:boolean;cameraError:string;
+ cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
@@ -38,7 +38,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,
+ frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  footprint,updateFootprint
@@ -79,11 +79,11 @@ export function FootprintsStageWorkspace({
    const f=frameRef.current,v=videoRef.current;
    const identities=router.status;
    const gate=stageBodyPreviewGate({
-    cameraOn,tracked:f.tracked,source:f.source,ageMs:now-f.time,
+    cameraOn:cameraOn&&bodySelected,tracked:f.tracked,source:f.source,ageMs:now-f.time,
     performerCount,visibleCount:identities.visible.length,
     identityAmbiguous:identities.ambiguous,matchedFrame:identities.observedFrameTime===f.time
    });
-   const fresh=cameraOn&&f.source==='camera'&&f.tracked&&
+   const fresh=cameraOn&&bodySelected&&f.source==='camera'&&f.tracked&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
@@ -138,20 +138,22 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[frameRef,videoRef,tracker,router,cameraOn,performerCount]);
+ },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount]);
  const projectionState=projection.status.connected?
   projection.transport==='blackout'?'Blackout aktif':projection.transport==='hold'?'Output ditahan':'Output aktif':
   'Output belum tersambung';
- const cameraLabel=cameraBusy?'Menghubungkan':cameraError?'Kamera bermasalah':frameFresh?'Tracking aktif':cameraOn?'Mencari tubuh':'Kamera mati';
+ const cameraLabel=cameraBusy?'Menghubungkan':cameraError?'Kamera bermasalah':
+  cameraOn&&!bodySelected?'Pilih sumber Body':frameFresh?'Tracking aktif':
+  cameraOn?'Mencari tubuh':'Kamera mati';
  const totalFrames=bodyVisible;
  const dual={body:verifiedDualStatus(dualRaw.body,performance.now()),
   floor:verifiedDualStatus(dualRaw.floor,performance.now())};
  const cameraMatched=tracker.boundCamera!==null&&
   tracker.boundCamera===cameraBindingKey(cameraBinding(videoRef.current));
  const legacy:LegacyOutputStatus={opened:projection.opened,connected:projection.status.connected,
-  mode:projection.transport,approved:false};
+  mode:projection.transport,approved:legacyApproved};
  const units=deriveUnifiedStageStatus({
-  camera:{on:cameraOn,busy:cameraBusy,error:cameraError,frameFresh},
+  camera:{on:cameraOn,busy:cameraBusy,error:cameraError,frameFresh,bodySelected},
   identity:{count:performerCount,visibleCount:identityStatus.visible.length,
    ambiguous:identityStatus.ambiguous,
    observedSameFrame:identityStatus.observedFrameTime===frameRef.current.time},
@@ -159,6 +161,10 @@ export function FootprintsStageWorkspace({
    cameraMatched,contacts:floorStatus.contacts},
   bodyMask:{ready:totalFrames>0,reason:maskStatus},
   dual,hardwareEnabled
+ });
+ const legacyGate=legacyStageTransportGate({
+  cameraOn,frameFresh,floorConfirmed:floorStatus.confirmed,cameraMatched,
+  dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
  const changeView=(next:WorkspaceView)=>{
   if(next==='archive')showArchive();
@@ -318,7 +324,8 @@ export function FootprintsStageWorkspace({
        <strong>{units.find(u=>u.id==='body')?.detail}</strong></div>
       <div className="fp-stage-inspector-kv"><span>FLOOR</span>
        <strong>{units.find(u=>u.id==='floor')?.detail}</strong></div>
-      <p className="fp-stage-hint">Kontrol dua output berada pada Dual-Surface Calibration, dengan penguncian khusus pada build Production.</p>
+      <p className="fp-stage-hint">Kontrol output fisik tetap di Dual-Surface Calibration dan membutuhkan persetujuan terpisah.</p>
+      <p className="fp-stage-hint">Output tunggal: {legacyGate.reason}</p>
       <button type="button" className="fp-stage-primary-action" onClick={()=>{
        setView('archive');setInspector('output');
       }}><SlidersHorizontal size={15}/> Atur output BODY / FLOOR</button>
@@ -331,6 +338,7 @@ export function FootprintsStageWorkspace({
   </div>
   <FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
    frameFresh={frameFresh} videoRecording={videoRecording} canRecordVideo={canRecordVideo}
+   bodySelected={bodySelected}
    held={footprint.hold} legacy={legacy}
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
