@@ -101,10 +101,10 @@ export function StageOpticsPanel({floorWidthM,floorDepthM}:{
 }){
  const [plan,setPlan]=useState(()=>defaultStageOpticsPlan(defaultFloorSpace(floorWidthM??8,floorDepthM??6)));
  const [view,setView]=useState<'top'|'elevation'>('top');
- const [device,setDevice]=useState<DeviceId>('camera');
+ const [device,setSelectedDevice]=useState<DeviceId>('camera');
  const [message,setMessage]=useState('Desain optik sementara. Tidak mengaktifkan output atau mengubah kalibrasi Stage.');
  const estimate=useMemo(()=>{try{return assessStageOpticsPlan(plan);}catch{return null;}},[plan]);
- const setDevice=(key:DeviceId,axis:keyof Point3,value:number)=>{
+ const updateDevicePosition=(key:DeviceId,axis:keyof Point3,value:number)=>{
   setPlan(p=>({...p,devices:{...p.devices,[key]:{...p.devices[key],[axis]:value}}}));
  };
  const setRatio=(key:keyof StageOpticsPlan['equipment'],input:string)=>{
@@ -157,7 +157,7 @@ export function StageOpticsPanel({floorWidthM,floorDepthM}:{
       onChange={e=>setPlan(p=>({...p,body:{...p.body,edgeFeatherM:Number(e.target.value)}}))}/>
     </label>
     <label>Pilih perangkat untuk mengubah koordinat
-     <select value={device} onChange={e=>setDevice(e.target.value as DeviceId)}>
+     <select value={device} onChange={e=>setSelectedDevice(e.target.value as DeviceId)}>
       {(Object.keys(DEVICE_LABELS) as DeviceId[]).filter(id=>id!=='bodyB'||plan.layout==='three-projector').map(id=>
        <option key={id} value={id}>{DEVICE_LABELS[id]}</option>)}
      </select>
@@ -166,7 +166,7 @@ export function StageOpticsPanel({floorWidthM,floorDepthM}:{
      {(['xM','yM','zM'] as const).map(axis=>
       <label key={axis}>{axis[0].toUpperCase()} (m)
        <input type="number" step=".1" value={plan.devices[device][axis]}
-        onChange={e=>setDevice(device,axis,Number(e.target.value))}/>
+        onChange={e=>updateDevicePosition(device,axis,Number(e.target.value))}/>
       </label>)}
     </div>
     <details>
