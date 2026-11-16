@@ -53,16 +53,30 @@ function footPoint(id:'A'|'B',foot:FootSide,timeMs:number,floor:FloorSpace){
   yM:clamp(p.yM+Math.cos(headingRad)*side,.05,floor.depthM-.05)},headingRad};
 }
 
+export function qaStepIntervalAt(t:number,id:'A'|'B'):number{
+ switch(qaPhaseAt(t).name){
+  case 'Labour':return id==='A'?1010:1130;
+  case 'Leisure':return id==='A'?1240:1350;
+  case 'Active Rest':return id==='A'?1730:1870;
+  case 'Crossing':return id==='A'?1030:1090;
+  case 'Return Pressure':return id==='A'?850:930;
+ }
+}
 /** 15-minute software rehearsal. These events are simulated, never measured. */
 export function createQAScenario(floor:FloorSpace=defaultFloorSpace(),faultsEnabled=true):QAScenario{
  const stage=validateFloorSpace(floor),engine=new FootstepEventEngine(stage,.12);
  const steps:{id:'A'|'B';foot:FootSide;t:number}[]=[];
  for(const id of ['A','B'] as const){
-  const strideMs=id==='A'?1010:1130;
-  for(let n=0;;n++){
-   const t=(id==='A'?120:390)+n*strideMs;
-   if(t+270>QA_DURATION_MS)break;
+  let t=id==='A'?120:390;
+  let n=0;
+  while(t+270<=QA_DURATION_MS){
+   // Active Rest includes deliberate pauses. The return phase compresses
+   // the stride interval; each label changes the actual event cadence.
+   if(qaPhaseAt(t).name==='Active Rest'&&Math.floor(t/30000)%2===1&&t%30000<3000){
+    t+=3000;continue;
+   }
    steps.push({id,foot:n%2?'right':'left',t});
+   n++;t+=qaStepIntervalAt(t,id);
   }
  }
  steps.sort((a,b)=>a.t-b.t||(a.id==='A'?-1:1));
