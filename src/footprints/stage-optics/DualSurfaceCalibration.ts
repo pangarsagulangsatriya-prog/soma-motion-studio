@@ -40,7 +40,7 @@ export type SurfaceAssessment={
  count:number;required:number;missing:string[];
 };
 export type StageOutputContext={
- cameraBinding:string|null;floorContext:string|null;
+ cameraBinding:string|null;floorContext:string|null;windowSession:string;
  viewport:{width:number;height:number;dpr:number}|null;
 };
 const finite=(v:number)=>typeof v==='number'&&Number.isFinite(v);
@@ -68,12 +68,12 @@ export function validateStageSurfacePlan(value:StageSurfacePlan):StageSurfacePla
 }
 export function stageSurfaceSignature(plan:StageSurfacePlan,context:StageOutputContext){
  const p=validateStageSurfacePlan(plan),v=context?.viewport;
- if(!context?.cameraBinding||!context.floorContext||!v||
+ if(!context?.cameraBinding||!context.floorContext||!context.windowSession||!v||
   !finite(v.width)||!finite(v.height)||!finite(v.dpr)||
   v.width<320||v.height<180||v.dpr<=0)
   return null;
  return JSON.stringify([p,context.cameraBinding,context.floorContext,
-  Math.round(v.width),Math.round(v.height),round(v.dpr)]);
+  context.windowSession,Math.round(v.width),Math.round(v.height),round(v.dpr)]);
 }
 export function emptySurfaceProof(plan:StageSurfacePlan,signature:string):SurfaceProof{
  if(!signature)throw Error('Output harus terhubung untuk membuat identitas kalibrasi.');
