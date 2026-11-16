@@ -8,8 +8,8 @@ export const SCENES:{id:SceneId;name:string;short:string;description:string;icon
  {id:'body',name:'Siluet × Teks',short:'Siluet',description:'Tubuh membuka gambar',icon:ScanFace},
  {id:'footprints',name:'Footprints',short:'Kaki',description:'Tapak dari gerak kaki',icon:Footprints}
 ];
-export function ScenePicker({scene,onSelect,needsBody,waitingBody,cameraBusy,cameraError,onUseBody,onDismissBody,onOpenSimulator}:{
- scene:SceneId;onSelect:(id:SceneId)=>void;needsBody:boolean;waitingBody:boolean;cameraBusy:boolean;cameraError:string;onUseBody:()=>void;onDismissBody:()=>void;onOpenSimulator:()=>void;
+export function ScenePicker({scene,onSelect,needsBody,waitingBody,cameraBusy,cameraError,onUseBody,onDismissBody,onOpenSimulator,onOpenLiveFloor}:{
+ scene:SceneId;onSelect:(id:SceneId)=>void;needsBody:boolean;waitingBody:boolean;cameraBusy:boolean;cameraError:string;onUseBody:()=>void;onDismissBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
 }){
  return <section className="v3-scene-strip" aria-label="Pilih scene visual">
   <div className="v3-scene-scroll" role="group" aria-label="Scene visual">
@@ -21,6 +21,10 @@ export function ScenePicker({scene,onSelect,needsBody,waitingBody,cameraBusy,cam
    <button type="button" onClick={onOpenSimulator}>Simulasi 3D · tanpa kamera</button>
    <button type="button" className="v3-accent" disabled={cameraBusy} onClick={onUseBody}>{cameraBusy?'Menghubungkan…':cameraError?'Coba kamera lagi':'Gunakan Body & kamera'}</button>
    <button type="button" disabled={cameraBusy} onClick={onDismissBody}>Nanti</button>
+  </div>}
+  {scene==='footprints'&&<div className="v3-scene-foot-actions">
+   <button type="button" className="v3-accent" onClick={onOpenLiveFloor}>Live Floor Tracking · Kamera</button>
+   {!needsBody&&!waitingBody&&<button type="button" onClick={onOpenSimulator}>3D Direct Puppet · tanpa kamera</button>}
   </div>}
   {waitingBody&&!needsBody&&<div className="v3-scene-reminder" role="status"><span>Footprints belum menerima gerak kaki.</span><button type="button" onClick={onOpenSimulator}>Simulasi 3D</button><button type="button" disabled={cameraBusy} onClick={onUseBody}>{cameraBusy?'Menghubungkan…':'Hubungkan kamera Body'}</button></div>}
  </section>;
