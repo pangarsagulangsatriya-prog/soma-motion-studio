@@ -260,8 +260,11 @@ export function LiveFloorWorkspace({
       <button type="button" disabled={status.events===0} onClick={exportJSON}><Download size={15}/> JSON V3</button>
      </div>
     </section>
-    <StageValidationPanel key={floorActive.widthM+'x'+floorActive.depthM}
-     floor={floorActive} events={tracker.session?.events??[]} software={softwareMetrics}/>
+    <details className="live-floor-validation-drawer">
+     <summary>03 / Validasi fisik & performa <span>Pengukuran panggung</span></summary>
+     <StageValidationPanel key={floorActive.widthM+'x'+floorActive.depthM}
+      floor={floorActive} events={tracker.session?.events??[]} software={softwareMetrics}/>
+    </details>
     <FloorProjectionPanel projection={projection} sourceLabel="live"
      verified={projectorVerified} testPattern={testPattern}
      onVerify={onProjectorVerify} onTestPattern={onTestPattern}
