@@ -3,15 +3,15 @@ import {useCallback,useEffect,useRef,useState,type RefObject} from 'react';
 import {emptyFrame,uid,type MotionFrame} from '../engine/types';
 import {ProjectionModel,projectionDefaults,validateProjection,type ProjectionConfig,type ProjectionState,type Transport} from './model';
 import {ProjectionLink} from './channel';
-import {chooseFloorArtworkSource,floorCalibrationSignature,liveFloorArtworkState,simulatorArtworkState} from './floorBridge';
+import {chooseFloorArtworkSource,effectiveFloorTransport,floorCalibrationSignature,liveFloorArtworkState,simulatorArtworkState} from './floorBridge';
 import {cameraBinding,cameraBindingKey} from '../footprints/live/LiveFloorTrackingEngine.ts';
 import {makePreset,readPreset,deviceWarnings,type DeviceSnapshot,type ProjectionPreset} from './presets';
 import {download} from '../engine/recording';
 const KEY='soma-projection-calibrations-v2',OLD_KEY='soma-projection-calibrations-v1';
 export type CalibrationPreset={id:string;name:string;preset:ProjectionPreset;legacy?:boolean};
 const emptyMetrics={fps:0,p95Ms:0,frames:0,samples:0,width:480,height:270};
-export function useProjection({active,frameRef,videoRef,input,notify,artworkActive=false,artworkRef,simulatorActive=false,simulatorApproval=null,simulatorTestPattern=false,simulatorArtworkRef,liveFloorActive=false,liveFloorConfirmed=false,liveFloorBoundCamera=null,liveFloorApproval=null,liveFloorTestPattern=false,liveFloorArtworkRef}:{active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;input:string;notify:(text:string)=>void;artworkActive?:boolean;artworkRef?:RefObject<HTMLCanvasElement|null>;simulatorActive?:boolean;simulatorApproval?:string|null;simulatorTestPattern?:boolean;simulatorArtworkRef?:RefObject<HTMLCanvasElement|null>;liveFloorActive?:boolean;liveFloorConfirmed?:boolean;liveFloorBoundCamera?:string|null;liveFloorApproval?:string|null;liveFloorTestPattern?:boolean;liveFloorArtworkRef?:RefObject<HTMLCanvasElement|null>}){
- const model=useRef(new ProjectionModel()).current,link=useRef<ProjectionLink|null>(null),latest=useRef({active,input,artworkActive,simulatorActive,simulatorApproval,simulatorTestPattern,liveFloorActive,liveFloorConfirmed,liveFloorBoundCamera,liveFloorApproval,liveFloorTestPattern});latest.current={active,input,artworkActive,simulatorActive,simulatorApproval,simulatorTestPattern,liveFloorActive,liveFloorConfirmed,liveFloorBoundCamera,liveFloorApproval,liveFloorTestPattern};
+export function useProjection({active,frameRef,videoRef,input,notify,artworkActive=false,artworkRef,simulatorActive=false,simulatorApproval=null,simulatorTestPattern=false,simulatorQaTransport=null,simulatorArtworkRef,liveFloorActive=false,liveFloorConfirmed=false,liveFloorBoundCamera=null,liveFloorApproval=null,liveFloorTestPattern=false,liveFloorArtworkRef}:{active:boolean;frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;input:string;notify:(text:string)=>void;artworkActive?:boolean;artworkRef?:RefObject<HTMLCanvasElement|null>;simulatorActive?:boolean;simulatorApproval?:string|null;simulatorTestPattern?:boolean;simulatorQaTransport?:Transport|null;simulatorArtworkRef?:RefObject<HTMLCanvasElement|null>;liveFloorActive?:boolean;liveFloorConfirmed?:boolean;liveFloorBoundCamera?:string|null;liveFloorApproval?:string|null;liveFloorTestPattern?:boolean;liveFloorArtworkRef?:RefObject<HTMLCanvasElement|null>}){
+ const model=useRef(new ProjectionModel()).current,link=useRef<ProjectionLink|null>(null),latest=useRef({active,input,artworkActive,simulatorActive,simulatorApproval,simulatorTestPattern,simulatorQaTransport,liveFloorActive,liveFloorConfirmed,liveFloorBoundCamera,liveFloorApproval,liveFloorTestPattern});latest.current={active,input,artworkActive,simulatorActive,simulatorApproval,simulatorTestPattern,simulatorQaTransport,liveFloorActive,liveFloorConfirmed,liveFloorBoundCamera,liveFloorApproval,liveFloorTestPattern};
  const [config,setConfig]=useState(projectionDefaults),[draft,setDraft]=useState(projectionDefaults),draftRef=useRef(draft);draftRef.current=draft;
  const [transport,setTransportState]=useState<Transport>('blackout'),[pattern,setPatternState]=useState(false),[opened,setOpened]=useState(false),[name,setName]=useState('Layar latihan 01'),[presets,setPresets]=useState<CalibrationPreset[]>([]),[warnings,setWarnings]=useState<string[]>([]);
  const organic=useOrganic(active,name,notify),organicRef=useRef(organic);organicRef.current=organic;
@@ -37,8 +37,12 @@ export function useProjection({active,frameRef,videoRef,input,notify,artworkActi
   latest.current.liveFloorActive,liveFloorReady||latest.current.liveFloorTestPattern,!!liveFloorArtworkRef?.current);
  if(choice.source==='simulator'){
   const art=simulatorArtworkState({...s,image:null},choice.canStream,latest.current.simulatorTestPattern);
-  if(choice.canStream&&simulatorArtworkRef?.current)l?.sendArtwork(art,simulatorArtworkRef.current,now);
-  else l?.send(art,now);
+  const transport=effectiveFloorTransport(art.transport,latest.current.simulatorQaTransport);
+  const safe={...art,transport,blank:art.blank||transport==='blackout',
+   reason:transport==='blackout'&&latest.current.simulatorQaTransport==='blackout'?
+    'QA Lab · gangguan terjadwal, output blackout':art.reason};
+  if(choice.canStream&&simulatorArtworkRef?.current)l?.sendArtwork(safe,simulatorArtworkRef.current,now);
+  else l?.send(safe,now);
  }else if(choice.source==='live-floor'){
   const art=liveFloorArtworkState({...s,image:null},choice.canStream,latest.current.liveFloorTestPattern);
   if(choice.canStream&&liveFloorArtworkRef?.current)l?.sendArtwork(art,liveFloorArtworkRef.current,now);
