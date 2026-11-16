@@ -1,5 +1,5 @@
 import type {MotionFrame} from '../../engine/types.ts';
-import {GaitAnalyzer} from '../gait-analysis/index.ts';
+import {GaitAnalyzer,type GaitSample} from '../gait-analysis/index.ts';
 import {LiveFloorTrackingEngine,type CameraBinding} from './LiveFloorTrackingEngine.ts';
 import {TwoPersonIdentityTracker,type LivePerformerId} from './TwoPersonIdentityTracker.ts';
 import {GhostFootstepPredictor} from './GhostFootstepPredictor.ts';
@@ -43,7 +43,7 @@ export class MultiPoseGaitRouter{
    reason:this.reason,ghostCount:this.getGhosts(this.lastTimestamp).length};
  }
  getGhosts(timeMs:number):FootstepEvent[]{
-  if(!this.floor.isConfirmed||this.mode!==2)return [];
+  if(!this.floor.isConfirmed)return [];
   return this.predictor?.get(timeMs)??[];
  }
  get previewSession():FloorSession|null{
@@ -52,9 +52,19 @@ export class MultiPoseGaitRouter{
   events.sort((a,b)=>a.timestampMs-b.timestampMs);
   return createFloorSession(session.floor,events);
  }
- observe(frame:MotionFrame|null,videoAspect:number,binding:CameraBinding|null):void{
+ acceptSingle(sample:GaitSample|null,side:0|1,events:FootstepEvent[]){
+  if(this.mode!==1)return;
+  this.predictor?.accept(events);
+  if(!sample){this.predictor?.lose('performer-1');return;}
+  this.lastTimestamp=sample.t;
+  const predictor=this.ensurePredictor();
+  predictor?.accept(events);
+  if(sample.phase==='swing'&&sample.confidence>=.6)
+   predictor?.swing('performer-1',side===0?'left':'right',sample.t,sample.confidence);
+ }
+ observe(frame:MotionFrame|null,clock:number,videoAspect:number,binding:CameraBinding|null):void{
   if(this.mode!==2)return;
-  if(!frame||frame.source!=='camera'||!frame.poses?.length||!Number.isFinite(frame.time)){
+  if(!frame||frame.source!=='camera'||!frame.poses?.length||!Number.isFinite(clock)){
    for(const id of this.visible){
     this.floor.losePerformer(id);this.predictor?.lose(id);
     this.analyzers.get(id)?.reset();
@@ -62,13 +72,13 @@ export class MultiPoseGaitRouter{
    this.visible=[];this.reason='Tracking terputus; menunggu dua tubuh.';
    return;
   }
-  this.lastTimestamp=frame.time;
+  this.lastTimestamp=clock;
   // Crucial: do not feed a stale MotionFrame into a 2-person GaitAnalyzer.
   if(!this.floor.isConfirmed||!this.floor.checkBinding(binding)){
    this.visible=[];this.predictor?.reset();this.reason='Konfirmasi kalibrasi kamera dahulu.';
    return;
   }
-  const result=this.identity.observe(frame.poses,frame.time);
+  const result=this.identity.observe(frame.poses,clock);
   for(const id of result.lost){
    this.floor.losePerformer(id);this.predictor?.lose(id);
    this.analyzers.get(id)?.reset();
@@ -81,7 +91,7 @@ export class MultiPoseGaitRouter{
    if(!analyzer){analyzer=new GaitAnalyzer();this.analyzers.set(id,analyzer);}
    const single={...frame,pose,tracked:true};
    for(const side of [0,1] as const){
-    const sample=analyzer.observe(single,side,frame.time,videoAspect);
+    const sample=analyzer.observe(single,side,clock,videoAspect);
     const events=this.floor.ingest(sample,side,videoAspect,binding,id);
     const predictor=this.ensurePredictor();
     predictor?.accept(events);
