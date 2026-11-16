@@ -23,7 +23,8 @@ export class MultiPoseGaitRouter{
  private ambiguous=false;
  private reason='Menunggu dua performer.';
  private lastTimestamp=0;
- constructor(readonly floor:LiveFloorTrackingEngine){}
+ readonly floor:LiveFloorTrackingEngine;
+ constructor(floor:LiveFloorTrackingEngine){this.floor=floor;}
  setMode(mode:1|2){
   if(this.mode===mode)return;
   this.mode=mode;this.reset();
