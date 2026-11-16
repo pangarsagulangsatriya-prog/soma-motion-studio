@@ -259,7 +259,8 @@ export default function App(){
        }
        requestStageBlackout(()=>projection.setTransport('blackout'));
        liveFloorEngine.revoke('Kamera dihentikan; periksa kalibrasi sebelum melanjutkan.');
-       multiPoseRouter.reset();setLiveFloorApproval(null);stopCamera();
+       multiPoseRouter.reset();setLiveFloorApproval(null);
+       updateFootprint({hold:false});stopCamera();
       }else void acceptFootprintsBody();
      }}
      onRecordVideo={()=>{
