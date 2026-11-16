@@ -15,6 +15,14 @@ const bridge=()=>new ContactArchiveBridge();
 const snapshot=(b:ContactArchiveBridge,events:FootstepEvent[],t:number,
  mode:BridgeMode='simulation',trusted=true,source:ArchiveSources=media,prime=false,context='take1')=>
  b.sync(events,t,context,floor,source,mode,trusted,prime);
+// Rehearsal playback advances at regular frame intervals. Jumping straight to
+// t=6000 intentionally skips old contacts under the anti-catch-up safety gate.
+function drive(b:ContactArchiveBridge,events:FootstepEvent[],endMs:number){
+ let result=b.snapshot(0);
+ for(let t=0;t<=endMs;t+=100)result=snapshot(b,events,t);
+ if(endMs%100!==0)result=snapshot(b,events,endMs);
+ return result;
+}
 const cameraEvent=(id:string,who='A',at=1000,kind:FootstepEvent['kind']='contact'):FootstepEvent=>({
  id,performerId:who,foot:'left',kind,timestampMs:at,
  positionM:{xM:2,yM:3},headingRad:0,source:'camera',positionBasis:'calibrated-estimate',confidence:.94
@@ -42,14 +50,17 @@ test('two performers freeze their own footage, and A contact does not freeze B',
  assert.equal(a.holdActive.B,false);
  const both=snapshot(b,events,920);
  assert.equal(both.residueCount,2);
- assert.equal(both.holdActive.A,false); // A at 500+420 expires by 920
+ assert.equal(both.holdActive.A,true); // A arrived to preview at t=600, expires t=1020
  assert.equal(both.holdActive.B,true);
+ const afterA=snapshot(b,events,1030);
+ assert.equal(afterA.holdActive.A,false);
+ assert.equal(afterA.holdActive.B,true);
  const aa=both.residues.find(e=>e.slot==='A')!,bb=both.residues.find(e=>e.slot==='B')!;
  assert.equal(aa.texture.gray[0],90);assert.equal(bb.texture.gray[0],210);
 });
 test('slide/move extends a grounded path but creates no extra frozen footprint',()=>{
  const b=bridge(),events=makeBridgeSimulationEvents(floor,1);
- const before=snapshot(b,events,3000);
+ const before=drive(b,events,3000);
  assert.equal(before.residueCount,3);
  const after=snapshot(b,events,3120);
  assert.equal(after.residueCount,3);
@@ -116,7 +127,7 @@ test('same event ids with altered event time reset historical residue; changing 
 test('bounded fragments, deterministic texture capture and physically oriented normalized pad positions',()=>{
  const b=new ContactArchiveBridge({...BRIDGE_DEFAULTS,maxResidues:2});
  const events=makeBridgeSimulationEvents(floor,1);
- const result=snapshot(b,events,6000);
+ const result=drive(b,events,6000);
  assert.equal(result.residueCount,2);
  assert.equal(result.contactCount,5);
  const loc=padPreviewPoint(floor,{xM:2,yM:4.5},640,360);
