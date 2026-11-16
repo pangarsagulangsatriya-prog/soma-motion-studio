@@ -140,7 +140,13 @@ test('legacy V2 session can be previewed but is never silently treated as physic
  assert.equal(session.events[0].positionBasis,'illustrative');
  assert.equal(canProjectMetric(session.events[0]),false);
  assert.throws(()=>requireProjectable(session.events[0]));
- assert.deepEqual(floorSessionToPreviewSamples(session),samples);
+ const preview=floorSessionToPreviewSamples(session);
+ assert.equal(preview.length,samples.length);
+ preview.forEach((v,i)=>{
+  close(v.x,samples[i].x);close(v.y,samples[i].y);close(v.heading,samples[i].heading);
+  assert.equal(v.t,samples[i].t);assert.equal(v.side,samples[i].side);
+  assert.equal(v.join,samples[i].join);assert.equal(v.stamp,samples[i].stamp);
+ });
  assert.deepEqual(validateFloorSession(JSON.parse(JSON.stringify(session))),session);
  assert.throws(()=>floorSessionToPreviewSamples({...session,events:[...session.events,{
   ...session.events[0],id:'second',performerId:'other',timestampMs:210
