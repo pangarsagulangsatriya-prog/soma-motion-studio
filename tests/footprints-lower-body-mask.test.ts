@@ -15,6 +15,11 @@ test('two simulated legs per person yield isolated lower-body mask, black face a
  const result=buildLowerBodyMask(frame,settings,1000,'simulation');
  assert.equal(result.status,'ready');assert.equal(result.poseCount,2);
  assert.ok(pixels(result)>100);
+ assert.equal(result.perPoseMasks.length,2);
+ // Independent pose masks must reconstruct the stage mask without blending identities.
+ for(let i=0;i<result.mask.data.length;i++)
+  assert.equal(result.mask.data[i],Math.max(result.perPoseMasks[0].data[i],
+   result.perPoseMasks[1].data[i]));
  assert.equal(at(result,.29,.12),0);
  assert.equal(at(result,.72,.12),0);
  assert.equal(at(result,.5,.57),0); // initial separated performers stay isolated
@@ -28,6 +33,7 @@ test('a single performer uses one pose without new camera, no second performer i
  const result=buildLowerBodyMask(frame,{...settings,performers:1},1000);
  assert.equal(result.status,'ready');
  assert.equal(result.polygons.length,9);
+ assert.equal(result.perPoseMasks.length,1);
  assert.equal(buildLowerBodyMask(frame,settings,1000).status,'missing');
 });
 test('two bodies crossing/overlapping fail closed; no mask is emitted',()=>{
@@ -36,6 +42,7 @@ test('two bodies crossing/overlapping fail closed; no mask is emitted',()=>{
  assert.equal(result.status,'ambiguous');
  assert.equal(pixels(result),0);
  assert.equal(result.polygons.length,0);
+ assert.equal(result.perPoseMasks.length,0);
 });
 test('tracking lost, stale frame, wrong source or one missing toe all produce black output',()=>{
  const frame=sampleLowerBodyFrame(1000,2);
@@ -94,4 +101,13 @@ test('unsafe mask settings are rejected; frame model and original segmentation s
  const frame=sampleLowerBodyFrame(1000,2),serialized=JSON.stringify(frame);
  buildLowerBodyMask(frame,settings,1000);
  assert.equal(JSON.stringify(frame),serialized);
+});
+
+test('full-zero segmentation cannot pass as a valid illuminated subject',()=>{
+ const frame=sampleLowerBodyFrame(1000,2);
+ const segmented:MotionFrame={...frame,segmentation:{width:32,height:32,data:new Uint8Array(32*32)}};
+ const result=buildLowerBodyMask(segmented,settings,1000);
+ assert.equal(result.status,'missing');
+ assert.equal(pixels(result),0);
+ assert.equal(result.perPoseMasks.length,0);
 });
