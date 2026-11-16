@@ -22,13 +22,15 @@ export function floorCalibrationSignature(config:ProjectionConfig):string{
  if(!validQuad(config.quad))throw Error('Kalibrasi Projection belum valid.');
  return JSON.stringify([config.quad,config.resolution]);
 }
-export type FloorArtworkSource='simulator'|'live-footprints'|'none';
+export type FloorArtworkSource='simulator'|'live-floor'|'live-footprints'|'none';
 export function chooseFloorArtworkSource(simulatorVisible:boolean,simulatorReady:boolean,
- simulatorCanvasPresent:boolean,liveFootprintsActive:boolean,liveCanvasPresent:boolean):
+ simulatorCanvasPresent:boolean,liveFootprintsActive:boolean,liveCanvasPresent:boolean,
+ liveFloorVisible=false,liveFloorReady=false,liveFloorCanvasPresent=false):
  {source:FloorArtworkSource;canStream:boolean}{
  // Never fall back to live camera artwork while the simulator is open:
  // it could reveal body footage or stale performance content unexpectedly.
  if(simulatorVisible)return {source:'simulator',canStream:simulatorReady&&simulatorCanvasPresent};
+ if(liveFloorVisible)return {source:'live-floor',canStream:liveFloorReady&&liveFloorCanvasPresent};
  if(liveFootprintsActive)return {source:'live-footprints',canStream:liveCanvasPresent};
  return {source:'none',canStream:false};
 }
@@ -48,4 +50,12 @@ export function simulatorArtworkState(state:ProjectionState,verified:boolean,tes
 /** Direct visual output is permitted only with explicit floor verification and live transport. */
 export function canShowFloorArtwork(verified:boolean,transport:Transport,pattern:boolean):boolean{
  return verified&&transport!=='blackout'&&!pattern;
+}
+
+/** Identical floor-only mapping for camera-based contacts; no body mask layer. */
+export function liveFloorArtworkState(state:ProjectionState,approved:boolean,testing=false):ProjectionState{
+ const prepared=simulatorArtworkState(state,approved,testing);
+ return {...prepared,reason:testing?'Tanda empat sudut kamera/lantai · mode uji':
+  approved?'Live Footprints · kontak kaki diperkirakan kamera':
+   'Kalibrasi kamera dan lantai belum dikonfirmasi. Output padam.'};
 }
