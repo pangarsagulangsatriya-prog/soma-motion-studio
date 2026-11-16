@@ -132,7 +132,8 @@ export function LiveFloorWorkspace({
     canvas.dataset.floorRevision=key;
     const paintedAt=performance.now();
     perfWindow.observePaint(start,paintedAt);
-    realtime.painted(paintedAt);
+    if(testPattern||!tracker.isConfirmed)realtime.dropPending();
+    else realtime.painted(paintedAt);
    }
    if(prevViewKey.current!==key){
     prevViewKey.current=key;setVersion(v=>v+1);
