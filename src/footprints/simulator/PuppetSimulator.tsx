@@ -22,9 +22,9 @@ function saveBlob(content:Blob,name:string){
  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,onVerify,onOpenOutput,onCalibrate,onLive,onHold,onBlackout}:{
+export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout}:{
  onClose:()=>void;projection:Projection;projectorArtworkRef:RefObject<HTMLCanvasElement|null>;
- verified:boolean;onVerify:(value:boolean)=>void;onOpenOutput:()=>void;onCalibrate:()=>void;
+ verified:boolean;testPattern:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;onOpenOutput:()=>void;onCalibrate:()=>void;
  onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
 }){
  const dialog=useRef<HTMLDialogElement>(null),canvas=useRef<HTMLCanvasElement>(null);
@@ -48,9 +48,10 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  useEffect(()=>{
   const raster=projectorArtworkRef.current;
   if(raster)paintFloorCanvas(raster,sessionRef.current.session,{
-   maxTimeMs:mode==='edit'?undefined:playhead
+   maxTimeMs:mode==='edit'?undefined:playhead,
+   markersOnly:testPattern
   });
- },[projectorArtworkRef,version,playhead,mode]);
+ },[projectorArtworkRef,version,playhead,mode,testPattern]);
  const time=()=>performance.now()-origin.current;
  useEffect(()=>{
   origin.current=performance.now();
@@ -231,8 +232,8 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
      <div className="puppet-floor-svg" dangerouslySetInnerHTML={{__html:svg}} aria-label="Pratinjau dua dimensi jejak kaki di lantai"/>
      <p>Bidang hitam = lantai virtual. Jejak muncul saat kaki turun.</p>
     </section>
-    <FloorProjectionPanel projection={projection} verified={verified}
-     onVerify={onVerify} onOpenOutput={onOpenOutput} onCalibrate={onCalibrate}
+    <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
+     onVerify={onVerify} onTestPattern={onTestPattern} onOpenOutput={onOpenOutput} onCalibrate={onCalibrate}
      onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>
     <section className="puppet-controls">
      <div className="puppet-section-title"><b>DIRECT PUPPET</b><span>{selected.performerId} · {selected.foot==='left'?'Kiri':'Kanan'}</span></div>
