@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
-import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Maximize2,Monitor,Pause,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
+import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Monitor,Pause,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -22,7 +22,6 @@ type Props={
  onBlackout:()=>void;footprint:FootprintConfig;
  updateFootprint:(value:Partial<FootprintConfig>)=>void;
 };
-const visible=<T,>(v:T):T=>v;
 const inspectorTabs:{id:InspectorTab;label:string}[]=[
  {id:'tracking',label:'Tracking'},{id:'visual',label:'Visual'},
  {id:'mapping',label:'Mapping'},{id:'output',label:'Output'}
@@ -39,7 +38,6 @@ export function FootprintsStageWorkspace({
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const [view,setView]=useState<WorkspaceView>('stage');
- const [archiveVisited,setArchiveVisited]=useState(false);
  const [inspector,setInspector]=useState<InspectorTab>('tracking');
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
@@ -48,7 +46,7 @@ export function FootprintsStageWorkspace({
  const [frameFresh,setFrameFresh]=useState(false);
  const [viewError,setViewError]=useState('');
  const showArchive=()=>{
-  setArchiveVisited(true);setView('archive');setInspector('mapping');
+  setView('archive');setInspector('mapping');
  };
  useEffect(()=>{
   const sync=()=>{setFloorStatus(tracker.status);setIdentityStatus(router.status);};
@@ -114,7 +112,7 @@ export function FootprintsStageWorkspace({
     lastFloorRevision=tracker.eventRevision;
     const session=tracker.session;
     if(session){
-     try{paintFloorCanvas(pad,session,{showGrid:false,showTrail:false} as Parameters<typeof paintFloorCanvas>[2]);setViewError('');}
+     try{paintFloorCanvas(pad,session,{showGrid:false});setViewError('');}
      catch(e){setViewError(e instanceof Error?e.message:'Pad tidak dapat dirender.');}
     }else{
      const ctx=pad.getContext('2d');
@@ -132,7 +130,7 @@ export function FootprintsStageWorkspace({
  const totalFrames=bodyVisible;
  const changeView=(next:WorkspaceView)=>{
   if(next==='archive')showArchive();
-  else setView('stage');
+  else{onBlackout();setView('stage');}
  };
  return <section className="fp-stage-workspace" aria-label="Workspace utama SOMA Footprints">
   <header className="fp-stage-heading">
@@ -207,9 +205,9 @@ export function FootprintsStageWorkspace({
      </div>
     </div>
     {viewError&&<p className="fp-stage-error" role="alert">{viewError}</p>}
-    {archiveVisited&&<div className="fp-stage-archive-view" hidden={view!=='archive'}>
+    {view==='archive'&&<div className="fp-stage-archive-view">
      <div className="fp-stage-view-note"><Film size={15}/>
-      <span>Arsip BODY A/B dan residu FLOOR memakai engine S5.7 yang sama. Video tetap di browser.</span></div>
+      <span>Arsip BODY A/B dan residu FLOOR memakai engine S5.7 yang sama. Video tetap di browser. Kembali ke Live Stage menutup pemutar dan memadamkan output dual-surface.</span></div>
      <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
       performerCount={performerCount} router={router} projection={projection}/>
     </div>}
