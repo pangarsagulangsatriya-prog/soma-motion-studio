@@ -21,9 +21,9 @@ export function UnifiedStageStatusStrip({units,legacy}:{
  </div>;
 }
 export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRecording,
- canRecordVideo,held,legacy,onCamera,onRecordVideo,onCapture,onHold,onLivePreview,onBlackout,onOutputSettings}:{
+ canRecordVideo,held,bodySelected,legacy,onCamera,onRecordVideo,onCapture,onHold,onLivePreview,onBlackout,onOutputSettings}:{
  cameraOn:boolean;cameraBusy:boolean;frameFresh:boolean;videoRecording:boolean;
- canRecordVideo:boolean;held:boolean;legacy:LegacyOutputStatus;
+ canRecordVideo:boolean;held:boolean;bodySelected:boolean;legacy:LegacyOutputStatus;
  onCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  onHold:()=>void;onLivePreview:()=>void;onBlackout:()=>void;onOutputSettings:()=>void;
 }){
@@ -31,9 +31,10 @@ export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRe
   <div className="fp-transport-group" role="group" aria-label="Sumber dan rekaman">
    <span className="fp-transport-caption">INPUT / CAPTURE</span>
    <button type="button" onClick={onCamera} disabled={cameraBusy}
-    title={cameraOn?'Hentikan kamera; konfirmasi saat sedang merekam':'Hubungkan kamera Body'}>
-    {cameraOn?<CameraOff size={16}/>:<Camera size={16}/>}
-    <span>{cameraBusy?'Menghubungkan…':cameraOn?'Stop Kamera':'Kamera'}</span>
+    title={cameraOn&&bodySelected?'Hentikan kamera; konfirmasi saat sedang merekam':'Hubungkan sumber kamera Body'}>
+    {cameraOn&&bodySelected?<CameraOff size={16}/>:<Camera size={16}/>}
+    <span>{cameraBusy?'Menghubungkan…':cameraOn&&bodySelected?'Stop Kamera':
+     cameraOn?'Pakai Body':'Kamera'}</span>
    </button>
    <button type="button" className={videoRecording?'fp-transport-recording':''}
     onClick={onRecordVideo} disabled={!videoRecording&&!canRecordVideo}
