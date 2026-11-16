@@ -2,8 +2,8 @@ import {Monitor,Pause,Play,Square,SlidersHorizontal} from 'lucide-react';
 import type {Projection} from '../../projection/useProjection.ts';
 import {identityQuad} from '../../projection/geometry.ts';
 
-export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout}:{
- projection:Projection;verified:boolean;testPattern:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;
+export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,sourceLabel='simulator'}:{
+ projection:Projection;verified:boolean;testPattern:boolean;sourceLabel?:'simulator'|'live';onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;
  onOpenOutput:()=>void;onCalibrate:()=>void;onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
 }){
  const connected=p.status.connected,hasDefaultCorners=JSON.stringify(p.config.quad)===JSON.stringify(identityQuad());
@@ -11,7 +11,7 @@ export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify
   <div className="puppet-section-title"><Monitor size={16}/><b>FLOOR → PROJECTION</b>
    <span>{connected?'Output tersambung':p.opened?'Menghubungkan…':'Output tertutup'}</span>
   </div>
-  <p>Jejak simulator dikirim lewat jendela SOMA Projection yang sama. Titik 1–4 harus sesuai dengan keempat sudut lantai fisik.</p>
+  <p>{sourceLabel==='live'?'Jejak kaki dari kamera Body':'Jejak simulator'} dikirim lewat jendela SOMA Projection yang sama. Titik 1–4 harus sesuai keempat sudut lantai fisik.</p>
   <div className="puppet-output-actions">
    <button type="button" onClick={onOpenOutput}><Monitor size={15}/> {p.opened?'Buka ulang output':'Buka output'}</button>
    <button type="button" onClick={onCalibrate}><SlidersHorizontal size={15}/> Kalibrasi lantai</button>
@@ -38,7 +38,7 @@ export function FloorProjectionPanel({projection:p,verified,testPattern,onVerify
     !connected?'Menunggu heartbeat dari jendela output. Pastikan pop-up tidak diblokir.':
     p.transport==='blackout'?'Proyektor dipadamkan.':
     p.transport==='hold'?'Jejak terakhir ditahan pada output.':
-    'Live: jejak virtual mengikuti sesi Footprints.')}
+    sourceLabel==='live'?'Live: jejak kontak perkiraan kamera diteruskan ke proyektor.':'Live: jejak virtual mengikuti sesi Footprints.')}
   </p>
  </section>;
 }
