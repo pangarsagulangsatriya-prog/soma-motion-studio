@@ -123,9 +123,16 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   };
  },[ports,frameRef,bodyCanvas,floorCanvas]);
  const targetRef=useRef(target);targetRef.current=target;
+ const urgentBlackout=(id:StageSurface)=>{
+  // Invalidate the request synchronously, before the next 75 ms send tick.
+  // React state updates alone could otherwise resend one obsolete live frame.
+  latest.current.requested={...latest.current.requested,[id]:'blackout'};
+  latest.current.armed={...latest.current.armed,[id]:false};
+  ports[id].send(stageSurfaceState(latest.current.plans[id],'blackout',false),performance.now(),true);
+ };
  const editPlan=(id:StageSurface,fn:(p:StageSurfacePlan)=>StageSurfacePlan)=>{
   try{
-   ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now(),true);
+   urgentBlackout(id);
    setPlans(prev=>({...prev,[id]:validateStageSurfacePlan(fn(prev[id]))}));
    setRequested(prev=>({...prev,[id]:'blackout'}));
    setArmed(prev=>({...prev,[id]:false}));
@@ -136,6 +143,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   if(!operatorConfirm){setMessage('Konfirmasi terlebih dahulu bahwa area cahaya aman dan diawasi.');return;}
   legacyRef.current.setTransport('blackout');
   legacyRef.current.closeOutput(); // prevent a third, legacy floor output from competing
+  ids.forEach(urgentBlackout);
   setRequested({body:'blackout',floor:'blackout'});
   setArmed({body:false,floor:false});
   const opened=ports[id].open(id);
@@ -146,19 +154,18 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   }else setMessage(ports[id].error||'Browser memblokir jendela proyeksi.');
  };
  const close=(id:StageSurface)=>{
-  ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now(),true);
+  urgentBlackout(id);
   ports[id].closeOutput();setRequested(prev=>({...prev,[id]:'blackout'}));
   setArmed(prev=>({...prev,[id]:false}));setMessage('Output '+id+' ditutup.');
  };
  const allBlackout=()=>{
-  for(const id of ids){
-   ports[id].send(stageSurfaceState(plans[id],'blackout',false),performance.now(),true);
-  }
+  ids.forEach(urgentBlackout);
   setRequested({body:'blackout',floor:'blackout'});
   setArmed({body:false,floor:false});
   setMessage('Dua output diperintah Blackout. Periksa cahaya proyektor secara fisik.');
  };
  const changeMode=(id:StageSurface,mode:Requested)=>{
+  if(mode==='blackout')urgentBlackout(id);
   if(mode==='live'){
    if(!operatorConfirm||assessment(id).status!=='within-provisional-target'){
     setMessage('Live memerlukan kelima pengukuran, uji Blackout, pemeriksa, dan izin manual.');
@@ -181,6 +188,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   const base=ensureProof();if(!base)return;
   try{
    const updated=fn(base);
+   urgentBlackout(selected);
    setProofs(prev=>({...prev,[selected]:updated}));
    setRequested(prev=>({...prev,[selected]:'blackout'}));
    setArmed(prev=>({...prev,[selected]:false}));
