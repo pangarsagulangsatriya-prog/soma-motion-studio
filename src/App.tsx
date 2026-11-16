@@ -18,7 +18,7 @@ import {FootprintsStageWorkspace} from './studio/v3/FootprintsStageWorkspace';
 import {StudioTransport} from './studio/v3/StudioTransport';
 import {SceneInspector} from './studio/v3/SceneInspector';
 import {CaptureHub,type CaptureTab} from './studio/v3/CaptureHub';
-import {bodyConnectionRequired,keyboardIsInControl,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
+import {keyboardIsInControl,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
 import './studio/v3/studio-v3.css';
 import {LIVE_MODES,switchLiveMode} from './studio/liveVisual';
 import {hydraDefaults} from './studio/hydraConfig';
@@ -64,7 +64,7 @@ export default function App(){
  const [liveFloorGhosts,setLiveFloorGhosts]=useState(false);
  const [liveFloorRevision,setLiveFloorRevision]=useState(0);
  const [captureOpen,setCaptureOpen]=useState(false),[captureTab,setCaptureTab]=useState<CaptureTab>('photo');
- const [advancedOpen,setAdvancedOpen]=useState(false),[bodyPromptDismissed,setBodyPromptDismissed]=useState(false);
+ const [advancedOpen,setAdvancedOpen]=useState(false),[,setBodyPromptDismissed]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(()=>typeof window==='undefined'||window.innerWidth>=1360);
  const [footprintRecording,setFootprintRecording]=useState(false);
  const [footprintConfig,setFootprintConfig]=useState<FootprintConfig>(()=>{try{const v=JSON.parse(localStorage.getItem('soma-footprint-visual-v1')||'null');const d=footprintDefaults();return v&&typeof v==='object'?{...d,...v,colors:{...d.colors,...v.colors}}:d;}catch{return footprintDefaults();}});
@@ -230,7 +230,7 @@ export default function App(){
  return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
    {!archiveActive&&!projectionActive&&<GlobalNav workspace="studio" scene={currentScene} perform={clean}
-    onFootprints={()=>{setArchiveActive(false);setProjectionActive(false);setClean(false);selectScene('footprints');}}
+    onFootprints={()=>{projection.setTransport('blackout');setArchiveActive(false);setProjectionActive(false);setClean(false);selectScene('footprints');}}
     onInstrument={selectScene}
     onArchive={()=>{setModal(null);setClean(false);setArchiveActive(true);}}
     onProjection={()=>{setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
