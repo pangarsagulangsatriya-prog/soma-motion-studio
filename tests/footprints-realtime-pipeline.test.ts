@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {defaultFloorSpace,type CameraFloorCalibration} from '../src/footprints/spatial/coordinates.ts';
 import {LiveFloorTrackingEngine,type CameraBinding} from '../src/footprints/live/LiveFloorTrackingEngine.ts';
 import {FloorRepaintScheduler} from '../src/footprints/live/FloorRepaintScheduler.ts';
+import {ArtworkTransferWindow} from '../src/projection/ArtworkTransferWindow.ts';
 import {FloorRealtimeTimingWindow,type FloorUpdate} from '../src/footprints/live/FloorRealtimeDiagnostics.ts';
 import {liveFloorArtworkState} from '../src/projection/floorBridge.ts';
 import {ProjectionModel} from '../src/projection/model.ts';
@@ -126,4 +127,38 @@ test('missing camera approval, Hold and Blackout still prohibit transfers after 
  assert.equal(engine.ingest(gait(310,'stance'),0,16/9,binding).length,0);
  assert.equal(engine.status.contacts,old);
  assert.equal(updates.at(-1)?.kind,'revoke');
+});
+
+test('projector bitmap acknowledgement measures transfer processing only, with bounded samples',()=>{
+ const a=new ArtworkTransferWindow();
+ assert.equal(a.metrics.bitmapAckP95Ms,null);
+ assert.equal(a.metrics.samples,0);
+ a.markSent(5,100);a.markAck(5,109);
+ a.markSent(6,200);a.markAck(6,229);
+ assert.equal(a.metrics.bitmapAckMedianMs,19);
+ assert.equal(a.metrics.bitmapAckP95Ms,28);
+ assert.equal(a.metrics.samples,2);
+ assert.match(a.metrics.note,/NOT projector-photon latency/);
+ a.markAck(6,400);assert.equal(a.metrics.samples,2,'duplicate ACK must be ignored');
+ a.markSent(7,500);a.markFailed(7);a.markAck(7,510);
+ assert.equal(a.metrics.samples,2);
+ a.markSent(8,610);a.markAck(8,601);
+ assert.equal(a.metrics.samples,2,'negative interval must be ignored');
+ for(let i=0;i<250;i++){a.markSent(100+i,1000+i*30);a.markAck(100+i,1003+i*30);}
+ assert.equal(a.metrics.samples,180);
+ a.reset();assert.equal(a.metrics.samples,0);
+});
+test('the measurement queue discards events shown only in test-marker or revoked calibration mode',()=>{
+ const a=new FloorRealtimeTimingWindow();
+ a.observe({kind:'events',revision:2,emittedAtMs:100,
+  cameraFrameSubmittedAtMs:80,eventCount:1,contactCount:1});
+ a.dropPending();
+ a.painted(500);
+ assert.equal(a.metrics.paintSamples,0);
+ assert.equal(a.metrics.eventToRasterP95Ms,null);
+ a.observe({kind:'events',revision:3,emittedAtMs:600,
+  cameraFrameSubmittedAtMs:585,eventCount:1,contactCount:1});
+ a.painted(611);
+ assert.equal(a.metrics.eventToRasterP95Ms,11);
+ assert.equal(a.metrics.frameSubmitToRasterP95Ms,26);
 });
