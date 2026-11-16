@@ -47,7 +47,9 @@ function StageTopView({plan}:{plan:StageOpticsPlan}){
    stroke="#d7c19a" strokeDasharray="3 5" rx="6"/>
   <text x={l+w/2} y={t+17} textAnchor="middle" fill="#d6e1d3" fontSize="14">UPSTAGE</text>
   <text x={l+w/2} y={t+h-10} textAnchor="middle" fill="#d6e1d3" fontSize="14">DOWNSTAGE</text>
-  <path d={`M${body.x} ${body.y}L${a.x} ${a.y} M${body.x} ${body.y}L${b.x} ${b.y}`}
+  <path d={plan.layout==='two-projector'?
+   `M${body.x} ${body.y}L${a.x} ${a.y} M${body.x} ${body.y}L${b.x} ${b.y}`:
+   `M${body.x} ${body.y}L${a.x} ${a.y}`}
    stroke="#d1b997" strokeWidth="2" strokeDasharray="7 6"/>
   {plan.layout==='three-projector'&&<path d={`M${bodyB.x} ${bodyB.y}L${b.x} ${b.y}`}
    stroke="#d1b997" strokeWidth="2" strokeDasharray="7 6"/>}
