@@ -33,3 +33,11 @@
 .stage-optics-estimates small{font-size:10px;color:#b5c9b7;line-height:1.5}
 .stage-optics .stage-optics-note{border-left:2px solid #b8d5aa;padding:8px;font-size:11px;margin-top:10px!important}
 @media(max-width:720px){.stage-optics-layout{grid-template-columns:1fr}}
+
+
+/* S5.7.1 mask preview is explicitly isolated from physical projector transport. */
+.stage-optics-mask-drawer{margin-top:13px;border:1px solid #56745b;border-radius:7px;overflow:hidden}
+.stage-optics-mask-drawer>summary{cursor:pointer;padding:12px 13px;background:#243a29;
+ font-size:12px;font-weight:700;color:#e3efda}
+.stage-optics-mask-drawer>summary span{margin-left:6px;font-size:11px;font-weight:400;color:#bbcfb8}
+.stage-optics-mask-drawer[open]>summary{border-bottom:1px solid #516c54}
