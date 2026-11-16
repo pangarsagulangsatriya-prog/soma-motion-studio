@@ -16,7 +16,12 @@ const makeMask=(n:1|2=2,phase=0,overlap=false)=>
  buildLowerBodyMask(sampleLowerBodyFrame(1000,n,phase,overlap),{
   ...LOWER_BODY_MASK_DEFAULTS,performers:n},1000);
 const brightness=(p:ArchivePixels,i:number)=>p.data[4*i];
-const first=(data:Uint8Array)=>data.findIndex(v=>v>100);
+// Use a high-confidence interior pixel; the first nonzero pixel is a feathered edge.
+const first=(data:Uint8Array)=>{
+ let best=-1,max=-1;
+ for(let i=0;i<data.length;i++)if(data[i]>max){max=data[i];best=i;}
+ return max>100?best:-1;
+};
 test('A/B uploaded sources render independently in their original masks, monochrome with black upper frame',()=>{
  const mask=makeMask(),a=clips(40),b=clips(220);
  const result=compositeArchivalFrame(mask,{A:a,B:b},config,{A:0,B:1});
