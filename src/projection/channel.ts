@@ -1,15 +1,17 @@
 import type {ProjectionState,Transport} from './model';
+import {ArtworkTransferWindow} from './ArtworkTransferWindow.ts';
 export const shouldTransmitArtwork=(s:Pick<ProjectionState,'transport'|'blank'|'pattern'>)=>s.transport==='live'&&!s.pattern&&!s.blank;
 export const shouldRefreshFloorArtwork=(current:string|undefined,previous:string|null,elapsedMs:number)=>
  !current||current!==previous||elapsedMs>=900;
 export const OUTPUT_TIMEOUT=2800;
 export type ProjectionControl=Omit<ProjectionState,'image'>;
 export class ProjectionLink{
+ readonly artworkTransfer=new ArtworkTransferWindow();
  readonly id=Array.from(crypto.getRandomValues(new Uint32Array(4)),n=>n.toString(16).padStart(8,'0')).join('');private channel:BroadcastChannel|null=null;private child:Window|null=null;private inFlight:number|null=null;private sequence=0;private lastControl=0;private artworkBusy=false;private artworkSent=0;private latestTransport:Transport='blackout';private latestArtworkAllowed=false;private lastArtworkRevision:string|null=null;
  lastSeen=0;receivedFrames=0;renderer='';error='';outputInfo:{width:number;height:number;viewportWidth:number;viewportHeight:number;dpr:number;fps:number;p95Ms:number;frames:number;samples:number}|null=null;
- private ack=(event:MessageEvent)=>{if(event.origin!==location.origin||event.source!==this.child||event.data?.session!==this.id)return;if(event.data.type==='frame-ack'&&event.data.sequence===this.inFlight){this.inFlight=null;this.receivedFrames++;}};
- start(){if(this.channel)return;try{this.channel=new BroadcastChannel(`soma-body-projection-${this.id}`);this.channel.onmessage=e=>{const m=e.data;if(m?.session!==this.id)return;if(m.type==='hello'){this.inFlight=null;this.lastArtworkRevision=null;this.lastSeen=Date.now();}if(m.type==='heartbeat'){this.lastSeen=Date.now();this.renderer=String(m.renderer??'').slice(0,60);if(m.info&&['width','height','viewportWidth','viewportHeight','dpr','fps','p95Ms','frames','samples'].every(k=>Number.isFinite(m.info[k])&&m.info[k]>=0))this.outputInfo=m.info;}if(m.type==='closed')this.lastSeen=0;};window.addEventListener('message',this.ack);}catch{this.error='Komunikasi output belum tersedia pada browser ini.';}}
- open(){this.start();if(!this.channel)return false;const url=new URL('/',location.origin);url.searchParams.set('bodyProjection',this.id);this.child=window.open(url.toString(),`soma-body-${this.id}`,'popup,width=1280,height=720');this.inFlight=null;this.lastArtworkRevision=null;this.lastSeen=0;this.error=this.child?'':'Pop-up diblokir. Izinkan pop-up SOMA, lalu buka output lagi.';return !!this.child;}
+ private ack=(event:MessageEvent)=>{if(event.origin!==location.origin||event.source!==this.child||event.data?.session!==this.id)return;if(event.data.type==='frame-ack'&&event.data.sequence===this.inFlight){this.artworkTransfer.markAck(event.data.sequence,performance.now());this.inFlight=null;this.receivedFrames++;}};
+ start(){if(this.channel)return;try{this.channel=new BroadcastChannel(`soma-body-projection-${this.id}`);this.channel.onmessage=e=>{const m=e.data;if(m?.session!==this.id)return;if(m.type==='hello'){this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=Date.now();}if(m.type==='heartbeat'){this.lastSeen=Date.now();this.renderer=String(m.renderer??'').slice(0,60);if(m.info&&['width','height','viewportWidth','viewportHeight','dpr','fps','p95Ms','frames','samples'].every(k=>Number.isFinite(m.info[k])&&m.info[k]>=0))this.outputInfo=m.info;}if(m.type==='closed')this.lastSeen=0;};window.addEventListener('message',this.ack);}catch{this.error='Komunikasi output belum tersedia pada browser ini.';}}
+ open(){this.start();if(!this.channel)return false;const url=new URL('/',location.origin);url.searchParams.set('bodyProjection',this.id);this.child=window.open(url.toString(),`soma-body-${this.id}`,'popup,width=1280,height=720');this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=0;this.error=this.child?'':'Pop-up diblokir. Izinkan pop-up SOMA, lalu buka output lagi.';return !!this.child;}
  get opened(){return !!this.child&&!this.child.closed;}
  get connected(){return this.opened&&Date.now()-this.lastSeen<OUTPUT_TIMEOUT;}
  send(state:ProjectionState,now:number){
@@ -34,10 +36,12 @@ export class ProjectionLink{
    if(!this.opened||!this.connected||this.inFlight!==null||!this.latestArtworkAllowed||
       (revision&&revision!==source.dataset.floorRevision)){bitmap.close();return;}
    const sequence=++this.sequence;this.inFlight=sequence;
+   this.artworkTransfer.markSent(sequence,performance.now());
    try{this.child!.postMessage({type:'artwork',session:this.id,sequence,bitmap},location.origin,[bitmap]);}
-   catch{bitmap.close();this.inFlight=null;this.error='Kirim komposisi Footprints gagal. Periksa output.';}
+   catch{bitmap.close();this.inFlight=null;this.artworkTransfer.markFailed(sequence);
+    this.error='Kirim komposisi Footprints gagal. Periksa output.';}
   }).catch(()=>{this.error='Tidak bisa menyalin komposisi Footprints.';}).finally(()=>{this.artworkBusy=false;});
  }
- closeOutput(){this.channel?.postMessage({type:'shutdown',session:this.id});this.child?.close();this.child=null;this.lastSeen=0;this.inFlight=null;this.lastArtworkRevision=null;this.latestArtworkAllowed=false;}
+ closeOutput(){this.channel?.postMessage({type:'shutdown',session:this.id});this.child?.close();this.child=null;this.lastSeen=0;this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.latestArtworkAllowed=false;}
  dispose(){this.closeOutput();this.channel?.close();this.channel=null;window.removeEventListener('message',this.ack);}
 }
