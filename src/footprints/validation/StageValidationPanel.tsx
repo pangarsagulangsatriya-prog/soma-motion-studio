@@ -115,7 +115,7 @@ export function StageValidationPanel({floor,events,software}:{
   <div className="live-floor-validate-group">
    <b><Activity size={15}/> Telemetri browser — diagnostik software</b>
    <div className="live-floor-software">
-    <span>Interval render</span><strong>{val(software.fps,' FPS')}</strong>
+    <span>Raster lantai diperbarui</span><strong>{val(software.fps,' FPS')}</strong>
     <span>Paint P95</span><strong>{val(software.renderP95Ms,' ms')}</strong>
     <span>Pose inference P95</span><strong>{val(software.inferenceP95Ms,' ms')}</strong>
     <span>Camera pipeline P95</span><strong>{val(software.pipelineP95Ms,' ms')}</strong>
