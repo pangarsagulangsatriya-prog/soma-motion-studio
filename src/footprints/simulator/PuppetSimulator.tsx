@@ -235,6 +235,18 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
   if(model.events.length&&!window.confirm('Hapus semua jejak sesi simulasi?'))return;
   model.clear();setSelected({performerId:'A',foot:'left'});refresh();setNotice('Sesi simulasi dibersihkan.');
  };
+ const exportLabReport=()=>saveBlob(new Blob([JSON.stringify({
+  ...qaReport,exportedAt:new Date().toISOString(),faults:qaScenario.faults,
+  physicalValidation:'not-performed'
+ },null,2)],{type:'application/json'}),'SOMA-S5-6-QA-REPORT.json');
+ const exportLabSession=()=>saveBlob(new Blob([JSON.stringify(qaScenario.session,null,2)],
+  {type:'application/json'}),'SOMA-S5-6-SYNTHETIC-FLOOR-SESSION-v3.json');
+ const toggleLab=(enabled:boolean)=>{
+  projection.setTransport('blackout');setLabPlaying(false);setLabTime(0);
+  setLabActive(enabled);onQATransportChange(null);
+  setNotice(enabled?'QA Lab aktif · gerak sintetis, kamera tetap mati.':
+   'Kembali ke 3D Direct Puppet; output proyektor dipadamkan.');
+ };
  const play=()=>{
   if(!model.events.length){setNotice('Buat beberapa langkah lebih dulu.');return;}
   if(mode==='playing'){setMode('paused');return;}
@@ -244,26 +256,26 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  return <dialog ref={dialog} className="puppet-dialog" onCancel={e=>{e.preventDefault();onClose();}}
   onKeyDown={onKeyDown} aria-label="Footprints 3D Direct Puppet Simulator">
   <header className="puppet-header">
-   <div><span className="puppet-kicker">SOMA / FOOTPRINTS · S5.1</span>
+   <div><span className="puppet-kicker">SOMA / FOOTPRINTS · {labActive?'S5.6 QA LAB':'S5.1'}</span>
     <h2><Move3D size={21}/> 3D Direct Puppet <small>Tanpa kamera</small></h2></div>
    <button type="button" className="puppet-close" onClick={onClose} aria-label="Tutup simulator"><X size={21}/></button>
   </header>
   <div className="puppet-toolbar">
    <label>AREA LANTAI<select value={stageSizes.find(s=>s.widthM===floor.widthM&&s.depthM===floor.depthM)?.name??''}
     onChange={e=>changeStage(e.target.value)}>{stageSizes.map(s=><option key={s.name}>{s.name}</option>)}</select></label>
-   <label>PERFORMER <select value={count} onChange={e=>{const n=+e.target.value as 1|2;setCount(n);if(n===1&&selected.performerId==='B')setSelected({performerId:'A',foot:'left'});}}>
+   <label>PERFORMER <select value={labActive?2:count} disabled={labActive} onChange={e=>{const n=+e.target.value as 1|2;setCount(n);if(n===1&&selected.performerId==='B')setSelected({performerId:'A',foot:'left'});}}>
     <option value={1}>1 performer</option><option value={2}>2 performer</option></select></label>
    <label className="puppet-check"><input type="checkbox" checked={grid} onChange={e=>setGrid(e.target.checked)}/> Grid lantai</label>
    <span className="puppet-inline-state">SOURCE: SIMULATION · FLOOR SPACE (METER)</span>
   </div>
   <div className="puppet-layout">
    <section className="puppet-viewport" aria-label="Kontrol tubuh virtual 3D">
-    <div className="puppet-view-label"><span>3D LOWER BODY / ORBIT VIEW</span><span>DRAG TO WALK</span></div>
+    <div className="puppet-view-label"><span>3D LOWER BODY / ORBIT VIEW</span><span>{labActive?'QA · '+qaFormatTime(labTime):'DRAG TO WALK'}</span></div>
     <canvas ref={canvas} tabIndex={0} aria-label="Kanvas simulator 3D. Klik dan geser telapak kaki untuk melangkah. Geser ruang kosong untuk memutar kamera."
      onPointerDown={onPointerDown} onPointerMove={onPointerMove}
      onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onWheel={onWheel}/>
     <div className="puppet-view-footer">
-     <span>Geser kaki = angkat → pindah → turunkan</span>
+     <span>{labActive?'Dua performer sintetis · geser area kosong untuk orbit kamera':'Geser kaki = angkat → pindah → turunkan'}</span>
      <button type="button" onClick={()=>setCamera(initialCamera())}>Reset sudut pandang</button>
     </div>
    </section>
