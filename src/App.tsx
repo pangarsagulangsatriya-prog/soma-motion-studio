@@ -1,6 +1,7 @@
 import {StudioFootprints,footprintDefaults,type FootprintConfig,type FootprintsHandle} from './footprints/StudioFootprints';
 import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
+import {floorCalibrationSignature} from './projection/floorBridge';
 import {useProjection} from './projection/useProjection';
 import {ProjectionWorkspace} from './projection/ProjectionWorkspace';
 import {useCameraCue} from './photos/useCameraCue';
@@ -49,12 +50,14 @@ export default function App(){
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(false);
  const [simulatorOpen,setSimulatorOpen]=useState(false);
+ const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [captureOpen,setCaptureOpen]=useState(false),[captureTab,setCaptureTab]=useState<CaptureTab>('photo');
  const [advancedOpen,setAdvancedOpen]=useState(false),[bodyPromptDismissed,setBodyPromptDismissed]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(()=>typeof window==='undefined'||window.innerWidth>=1360);
  const [footprintRecording,setFootprintRecording]=useState(false);
  const [footprintConfig,setFootprintConfig]=useState<FootprintConfig>(()=>{try{const v=JSON.parse(localStorage.getItem('soma-footprint-visual-v1')||'null');const d=footprintDefaults();return v&&typeof v==='object'?{...d,...v,colors:{...d.colors,...v.colors}}:d;}catch{return footprintDefaults();}});
  const footprintRef=useRef<FootprintsHandle|null>(null),footprintCanvasRef=useRef<HTMLCanvasElement|null>(null);
+ const simulatorArtworkRef=useRef<HTMLCanvasElement|null>(null);
  const updateFootprint=(patch:Partial<FootprintConfig>)=>setFootprintConfig(c=>({...c,...patch}));
  useEffect(()=>{try{localStorage.setItem('soma-footprint-visual-v1',JSON.stringify(footprintConfig));}catch{}},[footprintConfig]);
  const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem('soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):defaults();}catch{return defaults();}});
@@ -77,7 +80,9 @@ export default function App(){
  const notify=useCallback((message:string)=>setNotice(message),[]);
  const photoArchive=usePhotoArchive({frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,muted,notify});
  const cameraCue=useCameraCue({archive:photoArchive,frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,notify,onOpen:()=>{setModal(null);setControlsOpen(false);setProjectionActive(false);}});
- const projection=useProjection({active:projectionActive,frameRef,videoRef:video,input:settings.input,notify,artworkActive:footprintsActive,artworkRef:footprintCanvasRef});
+ const projection=useProjection({active:projectionActive,frameRef,videoRef:video,input:settings.input,notify,artworkActive:footprintsActive,artworkRef:footprintCanvasRef,
+  simulatorActive:simulatorOpen,simulatorApproval,simulatorArtworkRef});
+ const simulatorFloorVerified=simulatorApproval!==null&&simulatorApproval===floorCalibrationSignature(projection.config);
  useEffect(()=>{tracker.setProjection(projection.running);return()=>tracker.setProjection(false);},[tracker,projection.running]);
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
@@ -274,7 +279,21 @@ export default function App(){
   {clean&&<><div className="clean-status"><button onClick={()=>setModal('status')}><span className={`status-dot ${frame.tracked?'live':''}`}/>{statusLabel}<ChevronRight size={12}/></button>{(recording||footprintRecording)&&<span className="clean-rec"><i/>{footprintRecording?'REC VIDEO':clock(recordSeconds)+' REC AUDIO'}</span>}</div><div className="clean-label"><span>SOMA</span><small>{INPUTS[settings.input]} / {footprintsActive?'Footprints':settings.output==='sound'?CHARACTERS[settings.character].label:(settings.hydra?.enabled??true)?'Hydra':VISUALS[settings.visual.style].label}</small></div><div className={`clean-dock ${hudVisible||controlsOpen?'shown':''}`} onPointerEnter={()=>{dockHover.current=true;setHudVisible(true);}} onPointerLeave={()=>{dockHover.current=false;revealHUD();}} onFocus={revealHUD} onBlur={revealHUD}><button aria-label="Kembali ke Studio" onClick={()=>{setClean(false);setControlsOpen(false);}}><Monitor size={17}/><span>Studio</span><kbd>C</kbd></button><i className="dock-divider"/><button aria-label="Tracking" className={trackingVisible.current?'selected':''} aria-pressed={trackingVisible.current} onClick={toggleTracking}><ScanLine size={17}/><span>Tracking</span></button><button aria-label={footprintsActive?'Tampilkan atau sembunyikan Footprints':'Visual generatif'} className={(footprintsActive?settings.output!=='sound':settings.visual.enabled)?'selected':''} aria-pressed={footprintsActive?settings.output!=='sound':settings.visual.enabled} onClick={()=>footprintsActive?update({output:settings.output==='sound'?'both':'sound'}):update({visual:{...settings.visual,enabled:!settings.visual.enabled}})}><Sparkles size={17}/><span>{footprintsActive?'Pola kaki':'Visual'}</span></button><button aria-label={footprintsActive?(footprintRecording?'Stop video Footprints':'Rekam video Footprints'):(recording?'Stop rekam audio':'Rekam audio')} disabled={footprintsActive&&(!cameraOn||settings.input!=='body')&&!footprintRecording} title={footprintsActive&&(!cameraOn||settings.input!=='body')?'Aktifkan kamera Body untuk merekam video':undefined} onClick={()=>footprintsActive?footprintRef.current?.toggleVideo():void toggleRecording()} className={(footprintsActive?footprintRecording:recording)?'recording':''}>{(footprintsActive?footprintRecording:recording)?<Square size={15}/>:<Circle size={15}/>}<span>{(footprintsActive?footprintRecording:recording)?'Stop':'Rekam'}</span></button><i className="dock-divider"/><button aria-label="Pengaturan" aria-expanded={controlsOpen} onClick={()=>{setControlsOpen(v=>!v);revealHUD();}} className={controlsOpen?'selected':''}>{controlsOpen?<PanelRightClose size={17}/>:<PanelRightOpen size={17}/>}<span>Pengaturan</span></button><button onClick={()=>void toggleFullscreen()} aria-label={isFullscreen?'Keluar fullscreen':'Fullscreen'}>{isFullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}</button><button aria-label={audioOn&&!muted?'Mute audio':'Aktifkan audio'} className="dock-mute" onClick={()=>audioOn&&!muted?panic():void enableAudio()}><VolumeX size={17}/><span>{audioOn&&!muted?'Mute':'Audio'}</span></button></div>{triggerProgress>0&&<div className="trigger-progress"><span>Tahan telapak</span><progress value={triggerProgress} max={1}/></div>}</>}
   {notice&&<div className="toast" role="status"><span>{notice}</span><button onClick={()=>setNotice('')} aria-label="Tutup pemberitahuan"><X size={16}/></button></div>}
   <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>void importPreset(e.target.files?.[0])}/>
-  {simulatorOpen&&<PuppetSimulator onClose={()=>setSimulatorOpen(false)}/>}
+  {simulatorOpen&&<PuppetSimulator projection={projection} projectorArtworkRef={simulatorArtworkRef}
+    verified={simulatorFloorVerified}
+    onVerify={value=>{
+     if(value)setSimulatorApproval(floorCalibrationSignature(projection.config));
+     else{setSimulatorApproval(null);projection.setTransport('blackout');}
+    }}
+    onOpenOutput={()=>{projection.setTransport('blackout');projection.openOutput();}}
+    onCalibrate={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorOpen(false);
+     setClean(false);setProjectionActive(true);
+     notify('Projection → Kalibrasi: tandai empat sudut lantai, terapkan, lalu kembali ke Footprints.');
+    }}
+    onLive={()=>{if(!simulatorFloorVerified)return;projection.setPattern(false);projection.setTransport('live');}}
+    onHold={()=>{if(simulatorFloorVerified)projection.setTransport('hold');}}
+    onBlackout={()=>projection.setTransport('blackout')}
+    onClose={()=>{projection.setTransport('blackout');setSimulatorApproval(null);setSimulatorOpen(false);}}/>}
   {captureOpen&&<CaptureHub onClose={()=>setCaptureOpen(false)} initialTab={captureTab}
     archive={photoArchive} cue={cameraCue} videoRef={video} cameraBusy={cameraBusy}
     onCamera={()=>void startCamera()} onOpenBody={()=>{setCaptureOpen(false);void openBodyCamera();}}
