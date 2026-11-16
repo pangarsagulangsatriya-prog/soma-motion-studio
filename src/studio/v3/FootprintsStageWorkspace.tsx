@@ -47,6 +47,8 @@ export function FootprintsStageWorkspace({
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const [view,setView]=useState<WorkspaceView>('stage');
+ const previewHoldRef=useRef(footprint.hold);
+ previewHoldRef.current=footprint.hold;
  const [inspector,setInspector]=useState<InspectorTab>('tracking');
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
@@ -101,7 +103,9 @@ export function FootprintsStageWorkspace({
    const result=buildLowerBodyMask(fresh?f:null,options,now);
    const allow=result.status==='ready'&&gate==='ready';
    const b=bodyCanvas.current,g=b?.getContext('2d');
-   if(b&&g){
+   // HOLD freezes only the operator's BODY/FLOOR raster. Tracking and
+   // FloorSession event collection continue; software projector transport is separate.
+   if(b&&g&&!previewHoldRef.current){
     const image=g.createImageData(result.mask.width,result.mask.height);
     let lit=0;
     if(allow)for(let i=0;i<result.mask.data.length;i++){
@@ -124,7 +128,7 @@ export function FootprintsStageWorkspace({
     result.status==='stale'?'Frame terlambat':'Landmark kaki belum lengkap';
    if(label!==lastStatus){lastStatus=label;setMaskStatus(label);}
    const pad=floorCanvas.current;
-   if(pad&&(lastFloorRevision!==tracker.eventRevision)){
+   if(pad&&!previewHoldRef.current&&(lastFloorRevision!==tracker.eventRevision)){
     lastFloorRevision=tracker.eventRevision;
     const session=tracker.session;
     if(session){
@@ -220,7 +224,10 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
-        {totalFrames===0&&<span className="fp-stage-canvas-empty">{maskStatus}</span>}
+        {totalFrames===0&&!footprint.hold&&
+         <span className="fp-stage-canvas-empty">{maskStatus}</span>}
+        {footprint.hold&&<span className="fp-stage-hold-label">
+         HOLD · frame BODY ditahan, tracking tetap berjalan</span>}
        </div>
        <div className="fp-stage-surface-foot"><span>{maskStatus}</span><span>Mask · preview</span></div>
       </div>
@@ -229,8 +236,10 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-canvas-area">
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
-        {!floorStatus.confirmed&&<span className="fp-stage-canvas-empty">
+        {!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
+        {footprint.hold&&<span className="fp-stage-hold-label">
+         HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
        </div>
        <div className="fp-stage-surface-foot"><span>{floorStatus.contacts} kontak</span>
         <span>{floorStatus.events} event</span></div>
@@ -339,7 +348,7 @@ export function FootprintsStageWorkspace({
   <FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
    frameFresh={frameFresh} videoRecording={videoRecording} canRecordVideo={canRecordVideo}
    bodySelected={bodySelected}
-   held={footprint.hold} legacy={legacy}
+   held={footprint.hold} legacy={legacy} canPreview={view==='stage'}
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
