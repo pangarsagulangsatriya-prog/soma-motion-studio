@@ -244,6 +244,7 @@ export default function App(){
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
+     bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>void acceptFootprintsBody()}
      onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
@@ -251,7 +252,7 @@ export default function App(){
      onOpenLiveFloor={openLiveFloor}
      onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
      onToggleCamera={()=>{
-      if(cameraOn){
+      if(cameraOn&&settings.input==='body'){
        if(footprintRecording){
         if(!window.confirm('Hentikan kamera sekaligus simpan video Footprints?'))return;
         footprintRef.current?.toggleVideo();
