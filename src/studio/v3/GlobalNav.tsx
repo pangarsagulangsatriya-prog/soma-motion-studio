@@ -1,13 +1,9 @@
 import {BookOpen,ChevronDown,Footprints,Monitor,Play,Save,SlidersHorizontal,HelpCircle,Type,Layers3,Sparkles,ScanFace} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
+import {LEGACY_INSTRUMENTS} from './footprintsUX.ts';
 
 export type Workspace='studio'|'archive'|'projection';
-export const LEGACY_INSTRUMENTS:{id:Exclude<SceneId,'footprints'>;name:string;description:string;icon:typeof Type}[]=[
- {id:'liquid',name:'Teks Cair',description:'Huruf dan gerakan',icon:Type},
- {id:'echo',name:'Jejak Berulang',description:'Lapisan yang kembali',icon:Layers3},
- {id:'cut',name:'Potongan',description:'Fragmen ritmis',icon:Sparkles},
- {id:'body',name:'Siluet × Teks',description:'Siluet dan teks',icon:ScanFace}
-];
+const instrumentIcons={liquid:Type,echo:Layers3,cut:Sparkles,body:ScanFace} as const;
 export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onArchive,onProjection,onPreset,onPerform,onHelp,preset}:{
  workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;
  onInstrument:(scene:Exclude<SceneId,'footprints'>)=>void;
@@ -28,11 +24,11 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     </summary>
     <div className="v3-instrument-options" role="group" aria-label="Instrumen visual">
      <span>INSTRUMEN TAMBAHAN</span>
-     {LEGACY_INSTRUMENTS.map(({id,name,description,icon:Icon})=>
+     {LEGACY_INSTRUMENTS.map(({id,name,description})=>{const Icon=instrumentIcons[id];return
       <button key={id} type="button" aria-current={workspace==='studio'&&scene===id?'true':undefined}
        onClick={e=>{onInstrument(id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
        <Icon size={16}/><span><strong>{name}</strong><small>{description}</small></span>
-      </button>)}
+      </button>;})}
     </div>
    </details>
   </nav>
