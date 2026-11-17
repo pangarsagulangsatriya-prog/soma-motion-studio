@@ -241,7 +241,7 @@ export function FootprintsStageWorkspace({
  const closeSetup=()=>{
   setSetupOpen(false);
   window.requestAnimationFrame(()=>{
-   document.querySelector<HTMLButtonElement>('.soma-rail-item[data-soma-tool="setup"]')
+   document.querySelector<HTMLButtonElement>('.fp-flow-nav button[aria-current="step"]')
     ?.focus({preventScroll:true});
   });
  };
@@ -337,7 +337,7 @@ export function FootprintsStageWorkspace({
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
      <div className="fp-stage-video">
-      <div className="fp-stage-surface-head"><span>01 / TRACKING CAMERA</span>
+      <div className="fp-stage-surface-head"><span>KAMERA · LIVE INPUT</span>
        <small>{cameraOn?'Kamera lokal':'Offline'}</small></div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
@@ -365,8 +365,8 @@ export function FootprintsStageWorkspace({
         <p>Hubungkan kamera Body untuk membaca langkah dan kontak.</p>
         <button type="button" disabled={cameraBusy} onClick={onStartBody}>
          <Camera size={15}/>{cameraBusy?'Menghubungkan…':'Mulai kamera Body'}</button>
-        <button type="button" className="fp-stage-ghost-button" onClick={onOpenSimulator}>
-         Coba simulasi tanpa kamera</button>
+        <button type="button" className="fp-stage-ghost-button" onClick={()=>selectFlowStep('input')}>
+         Pilih sumber lain · HP / MP4 / Simulasi</button>
        </div>}
       </div>
       <div className="fp-stage-surface-foot"><span>{frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
@@ -374,7 +374,7 @@ export function FootprintsStageWorkspace({
      </div>
      <div className="fp-stage-side-previews">
       <div className="fp-stage-surface">
-       <div className="fp-stage-surface-head"><span>02 / BODY MASK</span><small>Lower body</small></div>
+       <div className="fp-stage-surface-head"><span>BODY · MASK PREVIEW</span><small>Lower body</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
@@ -386,7 +386,7 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-surface-foot"><span>{maskStatus}</span><span>Mask · preview</span></div>
       </div>
       <div className="fp-stage-surface">
-       <div className="fp-stage-surface-head"><span>03 / FLOOR PAD</span><small>Metric floor</small></div>
+       <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>Metric floor</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
