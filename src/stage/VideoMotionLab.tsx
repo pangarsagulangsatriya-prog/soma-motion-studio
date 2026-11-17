@@ -1,8 +1,9 @@
-import {useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
+import {useCallback,useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
 import {drawSkeletonBodies,replaySkeletonPresentation} from './fullBodySkeleton.ts';
-import {videoActorPresenceLabel} from './videoAutoActorTracker.ts';
+import {videoActorPresenceLabel,type VideoActorId} from './videoAutoActorTracker.ts';
+import {TemporalJointInspector} from './TemporalJointInspector.tsx';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
@@ -38,6 +39,10 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
  const [replayPeople,setReplayPeople]=useState<'auto'|1|2>('auto');
  const [analysisSnapshot,setAnalysisSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const engineRef=useRef<VideoPoseGaitEngine|null>(null);
+ const getTemporalTrace=useCallback((actor:VideoActorId,joint:number)=>
+  engineRef.current?.getTemporalTrace(actor,joint)??[],[]);
+ const getTemporalWindow=useCallback(()=>
+  engineRef.current?.getTemporalWindow()??[],[]);
  const generationRef=useRef(0);
  const pendingSeekReason=useRef('Pemutaran berpindah ke waktu lain.');
  const overlayRef=useRef<HTMLCanvasElement|null>(null);
@@ -382,6 +387,10 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
         <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
        </span>)}
       </div>}
+      {analysisOn&&<TemporalJointInspector
+       getTrace={getTemporalTrace} getWindow={getTemporalWindow}
+       revision={analysisSnapshot?.sampledFrames??0}
+       segment={analysisSnapshot?.segment??0}/>}
       {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
       <div className="vml-qa-top"><strong>Identity QA · {(analysisSnapshot?.performers??1)===2?'BODY A/B':'BODY A'}</strong>
        <span>{qa?.state==='stable'?'STABLE':qa?.state==='locked'?'LOCKED':qa?.state==='warming'?'WARMING':'HOLD'}</span></div>
