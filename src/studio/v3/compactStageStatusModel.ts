@@ -11,6 +11,7 @@ export type ReadinessItem={
 export function compactFootprintsReadiness(input:{
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;
  frameFresh:boolean;visibleCount:number;performerCount:1|2;identityAmbiguous:boolean;
+ identityMatchedFrame:boolean;
  floorCalibrated:boolean;floorConfirmed:boolean;cameraMatched:boolean;
 }):ReadinessItem[]{
  const source:ReadinessItem=input.cameraBusy?{
@@ -32,9 +33,9 @@ export function compactFootprintsReadiness(input:{
  const tracking:ReadinessItem=!input.frameFresh?{
   id:'tracking',label:'Tracking',value:'Menunggu gerak',level:'warn',
   detail:'Belum ada frame Body yang segar dan valid.'
- }:input.identityAmbiguous?{
-  id:'tracking',label:'Tracking',value:'Identitas ambigu',level:'warn',
-  detail:'Performer A/B belum aman untuk dipakai pada output.'
+ }:input.identityAmbiguous||!input.identityMatchedFrame?{
+  id:'tracking',label:'Tracking',value:'Periksa identitas',level:'warn',
+  detail:'Identitas performer belum aman atau belum cocok dengan frame Body terbaru.'
  }:input.visibleCount<input.performerCount?{
   id:'tracking',label:'Tracking',value:'Performer kurang',level:'warn',
   detail:`Terbaca ${input.visibleCount} dari ${input.performerCount} performer.`
