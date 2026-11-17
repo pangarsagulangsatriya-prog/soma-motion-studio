@@ -54,8 +54,11 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  // On mobile, the navigation rail behaves as a modal drawer with a focus loop.
  useEffect(()=>{
   if(!mobile||!expanded||labsOpen)return;
-  const previous=document.activeElement;
-  const raf=requestAnimationFrame(()=>railRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true}));
+  const raf=requestAnimationFrame(()=>{
+   const active=document.activeElement;
+   if(!(active instanceof HTMLElement)||!railRef.current?.contains(active))
+    railRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});
+  });
   const keydown=(e:KeyboardEvent)=>{
    if(e.key==='Escape'){e.preventDefault();setExpanded(false);toggleRef.current?.focus({preventScroll:true});return;}
    if(e.key!=='Tab'||!railRef.current)return;
@@ -67,8 +70,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
   };
   document.addEventListener('keydown',keydown);
-  return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',keydown);
-   if(previous instanceof HTMLElement&&document.contains(previous))previous.focus({preventScroll:true});};
+  return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',keydown);};
  },[mobile,expanded,labsOpen]);
  // Labs is a lightweight non-modal sidecar on desktop, a focused sheet on mobile.
  useEffect(()=>{
@@ -109,7 +111,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   setTip({label,top:Math.max(69,Math.min(window.innerHeight-52,rect.top+rect.height/2))});
  };
  const navigate=(target:'footprints'|'projector')=>{
-  setLabsOpen(false);setTip(null);if(mobile)setExpanded(false);
+  setLabsOpen(false);setTip(null);
+  if(mobile){setExpanded(false);requestAnimationFrame(()=>toggleRef.current?.focus({preventScroll:true}));}
   if(target==='footprints')onFootprints();else onProjection();
  };
  const action:Record<LabsId,()=>void>={
@@ -123,6 +126,10 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   setActiveLab(id);setLabsOpen(false);setTip(null);
   if(mobile)setExpanded(false);
   action[id]();
+  requestAnimationFrame(()=>{
+   const target=mobile?toggleRef.current:labsRef.current;
+   target?.focus({preventScroll:true});
+  });
  };
  const toggleLabs=()=>{
   setLabsQuery('');setTip(null);setLabsOpen(value=>!value);
@@ -155,7 +162,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    </div>
   </header>
   {mobile&&expanded&&!labsOpen&&<button className="soma-rail-scrim" type="button"
-   aria-label="Tutup navigasi" onClick={()=>setExpanded(false)}/>}
+   aria-label="Tutup navigasi" onClick={()=>{setExpanded(false);toggleRef.current?.focus({preventScroll:true});}}/>}
   <nav ref={railRef} className="soma-app-sidebar soma-primary-sidebar" id="soma-workspace-rail"
    aria-label="Sistem SOMA" data-expanded={expanded} data-mobile={mobile}
    data-labs-open={labsOpen}>
