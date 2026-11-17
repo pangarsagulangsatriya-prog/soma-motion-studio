@@ -10,7 +10,11 @@ test('Video Lab profiler stays available without hand inference controls',async(
  await expect(panel.locator('summary')).toContainText('Performance Profiler');
  await panel.locator('summary').click();
  await expect(page.getByRole('combobox',{name:'Frekuensi deteksi tangan'})).toHaveCount(0);
- await expect(panel.locator('.vml-perf-metrics>span')).toHaveCount(7);
+ await expect(panel.locator('.vml-perf-metrics>span')).toHaveCount(12);
+ await expect(panel).toContainText('Pipeline p50');
+ await expect(panel).toContainText('Pipeline p95');
+ await expect(panel).toContainText('Lag video → AI');
+ await expect(panel).toContainText('Hasil AI terlambat');
  await expect(panel).toContainText('Frame dilewati');
  await expect(panel).toContainText('Pose AI');
  await expect(panel).not.toContainText('Hands AI');
