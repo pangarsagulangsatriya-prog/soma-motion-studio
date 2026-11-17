@@ -27,3 +27,24 @@ test('D1-D4 diagnostic UI cannot open MP4 physical projector outputs',async({pag
  await expect(outputs).toHaveCount(2);
  for(const output of await outputs.all())await expect(output).toBeDisabled();
 });
+
+test('D1 smoke: MoveNet WASM initializes and benchmarks both sizes on a short decoded local video',async({page})=>{
+ test.setTimeout(180000);
+ await page.goto('/');
+ await page.locator('.fp-source-switch-trigger').click();
+ await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await page.locator('.fp-experiment-advanced-details summary').click();
+ await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
+ await page.locator('.soma-video-lab input[type="file"]').setInputFiles(
+  'e2e/generated-v2-smoke.webm');
+ const panel=page.locator('.duet-v2-lab');
+ await panel.locator('summary').click();
+ await expect(panel.getByRole('button',{name:/D1.*192 frame/})).toBeEnabled({timeout:15000});
+ // Smoke detector initialization first. Cropped 33-point integration is
+ // exercised separately by D3 when an actual human video is supplied.
+ await panel.locator('input[type=checkbox]').uncheck();
+ await panel.getByRole('button',{name:/D1.*192 frame/}).click();
+ await expect(panel).toContainText('Benchmark selesai',{timeout:165000});
+ await expect(panel.locator('.duet-v2-results>div')).toHaveCount(2);
+ await expect(panel).not.toContainText('Worker belum dimuat');
+});
