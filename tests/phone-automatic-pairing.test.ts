@@ -39,8 +39,12 @@ test('server rejects cross-site requests without reading storage',async()=>{
 test('server reports missing Redis explicitly and does not invent a usable QR room',async()=>{
  const oldUrl=process.env.UPSTASH_REDIS_REST_URL;
  const oldToken=process.env.UPSTASH_REDIS_REST_TOKEN;
+ const oldKvUrl=process.env.KV_REST_API_URL;
+ const oldKvToken=process.env.KV_REST_API_TOKEN;
  delete process.env.UPSTASH_REDIS_REST_URL;
  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+ delete process.env.KV_REST_API_URL;
+ delete process.env.KV_REST_API_TOKEN;
  try{
   const response=await send({action:'create'});
   assert.equal(response.status,503);
@@ -51,14 +55,23 @@ test('server reports missing Redis explicitly and does not invent a usable QR ro
   else process.env.UPSTASH_REDIS_REST_URL=oldUrl;
   if(oldToken===undefined)delete process.env.UPSTASH_REDIS_REST_TOKEN;
   else process.env.UPSTASH_REDIS_REST_TOKEN=oldToken;
+  if(oldKvUrl===undefined)delete process.env.KV_REST_API_URL;
+  else process.env.KV_REST_API_URL=oldKvUrl;
+  if(oldKvToken===undefined)delete process.env.KV_REST_API_TOKEN;
+  else process.env.KV_REST_API_TOKEN=oldKvToken;
  }
 });
 test('Redis-backed QR rooms enforce same-origin, single-use join, SDP roles and one-time close',async()=>{
  const oldUrl=process.env.UPSTASH_REDIS_REST_URL;
  const oldToken=process.env.UPSTASH_REDIS_REST_TOKEN;
+ const oldKvUrl=process.env.KV_REST_API_URL;
+ const oldKvToken=process.env.KV_REST_API_TOKEN;
  const originalFetch=globalThis.fetch;
- process.env.UPSTASH_REDIS_REST_URL='https://redis.test.invalid';
- process.env.UPSTASH_REDIS_REST_TOKEN='test-secret';
+ // Exercise the env names provisioned by Vercel Upstash.
+ delete process.env.UPSTASH_REDIS_REST_URL;
+ delete process.env.UPSTASH_REDIS_REST_TOKEN;
+ process.env.KV_REST_API_URL='https://redis.test.invalid';
+ process.env.KV_REST_API_TOKEN='test-secret';
  type Room={desktop:string;invite:string;phone:string;state:string;offer:string;answer:string};
  const rooms=new Map<string,Room>();
  const counts=new Map<string,number>();
@@ -135,5 +148,9 @@ test('Redis-backed QR rooms enforce same-origin, single-use join, SDP roles and 
   else process.env.UPSTASH_REDIS_REST_URL=oldUrl;
   if(oldToken===undefined)delete process.env.UPSTASH_REDIS_REST_TOKEN;
   else process.env.UPSTASH_REDIS_REST_TOKEN=oldToken;
+  if(oldKvUrl===undefined)delete process.env.KV_REST_API_URL;
+  else process.env.KV_REST_API_URL=oldKvUrl;
+  if(oldKvToken===undefined)delete process.env.KV_REST_API_TOKEN;
+  else process.env.KV_REST_API_TOKEN=oldKvToken;
  }
 });
