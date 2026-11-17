@@ -7,7 +7,8 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Camera,Film} from 'lucide-react';
+import {Camera,Film,Layers3,MonitorPlay} from 'lucide-react';
+import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
 import {CompactFootprintsStatus} from './CompactFootprintsStatus.tsx';
 import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
 import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
@@ -39,6 +40,7 @@ import './source-screen.css';
 import './compact-stage.css';
 import './interaction-refinement.css';
 import './source-switcher-layout.css';
+import './persistent-stage-workspace.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -78,8 +80,13 @@ export function FootprintsStageWorkspace({
  const [setupOpen,setSetupOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
  useEffect(()=>{if(sourceStatus.selection!=='phone')setPhonePanelOpen(false);},[sourceStatus.selection]);
- const [flowStep,setFlowStep]=useState<FootprintsStep>('input');
- const [inspectorOpen,setInspectorOpen]=useState(false);
+ const [flowStep,setFlowStep]=useState<FootprintsStep>('compose');
+ const [inspectorOpen,setInspectorOpen]=useState(true);
+ const [previewMode,setPreviewMode]=useState<StagePreviewMode>(()=>{
+  try{return parseStagePreviewMode(localStorage.getItem('soma-stage-preview-mode-v1'));}
+  catch{return 'split';}
+ });
+ useEffect(()=>{try{localStorage.setItem('soma-stage-preview-mode-v1',previewMode);}catch{}},[previewMode]);
  const [calibrationOverlay,setCalibrationOverlay]=useState<{marks:Array<Point|null>;editing:number}|null>(null);
  const calibrationTap=useRef<((x:number,y:number)=>void)|null>(null);
  useEffect(()=>{if(!setupOpen)setCalibrationOverlay(null);},[setupOpen]);
@@ -356,10 +363,10 @@ export function FootprintsStageWorkspace({
  const gaitPreviewVisible=showsGaitPreviews(sourceMode);
  const screenMode=operatorMode?'operator':setupOpen?'setup':sourcePickerVisible?'source':
   gaitPreviewVisible?'live':'preparing';
- return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
+ return <section className={'fp-stage-workspace fp-persistent-layout'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
   data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
-  data-screen={screenMode} data-source-mode={sourceMode}
+  data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
   {!operatorMode&&<nav className="fp-flow-nav" aria-label="Pengaturan Footprints">
@@ -434,7 +441,7 @@ export function FootprintsStageWorkspace({
        onSimulator={openSimulatorInput}/>}
 
      <div className="fp-stage-video">
-      <div className="fp-stage-surface-head"><span>KAMERA · LIVE INPUT</span>
+      <div className="fp-stage-surface-head"><span>INPUT · KAMERA</span>
        <small>{sourceMode==='live'?'VIDEO AKTIF':sourceMode==='warming'?'MENYIAPKAN VIDEO':
         sourceMode==='switch-body'?'PERLU MODE BODY':'OFFLINE'}</small></div>
       <div className="fp-stage-video-content">
@@ -473,8 +480,19 @@ export function FootprintsStageWorkspace({
       <div className="fp-stage-surface-foot"><span>{frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
        <span>{performerCount} performer</span></div>
      </div>
-     <div className="fp-stage-side-previews">
-      <div className="fp-stage-surface">
+     <div className="fp-stage-side-previews" data-preview-mode={previewMode}
+      aria-label="Preview BODY dan FLOOR dari engine Footprints">
+      <div className="fp-stage-preview-toolbar">
+       <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> STAGE PREVIEW</span>
+        <small>{previewLabel(previewMode)} · Preview software</small></div>
+       <div className="fp-stage-preview-modes" role="group" aria-label="Pilih tampilan preview">
+        {STAGE_PREVIEW_MODES.map(item=><button type="button" key={item.id}
+         aria-pressed={previewMode===item.id} aria-label={'Tampilkan '+item.description}
+         title={item.description} onClick={()=>setPreviewMode(item.id)}>
+         {item.id==='split'&&<Layers3 size={13} aria-hidden="true"/>}{item.label}</button>)}
+       </div>
+      </div>
+      <div className="fp-stage-surface fp-preview-body">
        <div className="fp-stage-surface-head"><span>BODY · MASK PREVIEW</span><small>Lower body</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
@@ -486,7 +504,7 @@ export function FootprintsStageWorkspace({
        </div>
        <div className="fp-stage-surface-foot"><span>{maskStatus}</span><span>Mask · preview</span></div>
       </div>
-      <div className="fp-stage-surface">
+      <div className="fp-stage-surface fp-preview-floor">
        <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>Metric floor</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={floorCanvas} width={1280} height={720}
