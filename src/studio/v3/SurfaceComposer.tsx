@@ -14,7 +14,6 @@ const presetKey='soma-s64-presets-v1';
 const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
 const valid=(v:unknown):v is Snapshot=>{if(!v||typeof v!=='object')return false;const x=v as Snapshot;return x.version===1&&surfaces.includes(x.selected)&&surfaces.every(s=>Array.isArray(x.composition?.[s])&&x.composition[s].length<=24&&x.composition[s].every(l=>l&&typeof l.id==='string'&&typeof l.name==='string'&&typeof l.mediaId==='string'&&typeof l.opacity==='number'&&typeof l.scale==='number'&&Array.isArray(l.points)));};
-const styles={};
 type Props={bodyCanvas:React.RefObject<HTMLCanvasElement|null>;floorCanvas:React.RefObject<HTMLCanvasElement|null>;cameraOn:boolean;performerCount:1|2;floorReady:boolean;onClose:()=>void};
 export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,floorReady,onClose}:Props){
  const [selected,setSelected]=useState<Surface>('BODY A');
