@@ -5,6 +5,8 @@ import {ProjectionLink} from '../../projection/channel.ts';
 import type {BodyMask} from '../../studio/bodyField.ts';
 import {download} from '../../engine/recording.ts';
 import {drawSurfaceTestPattern} from './SurfaceTestPattern.ts';
+import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
+import {claimDualOutputStatus,releaseDualOutputStatus,reportDualOutputStatus} from './DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
@@ -37,6 +39,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  const links=useRef<Record<StageSurface,ProjectionLink>|null>(null);
  if(!links.current)links.current=signal();
  const ports=links.current;
+ const telemetryOwner=ports.body.id+':'+ports.floor.id;
  const [plans,setPlans]=useState<Record<StageSurface,StageSurfacePlan>>({
   body:defaultStageSurfacePlan('body'),floor:defaultStageSurfacePlan('floor')
  });
@@ -65,6 +68,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  const signature=(id:StageSurface)=>stageSurfaceSignature(plans[id],context(id));
  const assessment=(id:StageSurface)=>assessSurfaceProof(plans[id],signature(id),proofs[id]);
  useEffect(()=>{
+  claimDualOutputStatus(telemetryOwner);
   ids.forEach(id=>ports[id].start());
   const make=(w:number,h:number)=>{const c=document.createElement('canvas');
    c.width=w;c.height=h;return c;};
@@ -104,6 +108,12 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
      link.sendArtwork(stageSurfaceState(plan,decision.mode,true),canvas,now);
     }else link.send(stageSurfaceState(plan,'blackout',false),now);
     if(now-lastUI>240){
+     reportDualOutputStatus(telemetryOwner,{
+      surface:id,reported:true,opened:link.opened,connected:link.connected,
+      mode:canvas&&link.connected?decision.mode:'blackout',
+      qa:decision.assessment.status,
+      sampledAtMs:now,reason:canvas?decision.reason:'Sumber visual atau output tidak siap.'
+     });
      setDevices(prev=>{
       const next={connected:link.connected,opened:link.opened,viewport,mode:canvas?decision.mode:'blackout',
        reason:canvas?decision.reason:'Sumber visual/test tidak siap atau output terputus.'};
@@ -123,15 +133,32 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
    ports[id].dispose();
   }
    testCanvases.current=null;
+   releaseDualOutputStatus(telemetryOwner);
   };
- },[ports,frameRef,bodyCanvas,floorCanvas]);
+ },[ports,frameRef,bodyCanvas,floorCanvas,telemetryOwner]);
  const targetRef=useRef(target);targetRef.current=target;
  const urgentBlackout=(id:StageSurface)=>{
   // Invalidate the request synchronously, before the next 75 ms send tick.
   // React state updates alone could otherwise resend one obsolete live frame.
   latest.current.requested={...latest.current.requested,[id]:'blackout'};
   latest.current.armed={...latest.current.armed,[id]:false};
-  ports[id].send(stageSurfaceState(latest.current.plans[id],'blackout',false),performance.now(),true);
+  const now=performance.now();
+  ports[id].send(stageSurfaceState(latest.current.plans[id],'blackout',false),now,true);
+  reportDualOutputStatus(telemetryOwner,{
+   surface:id,reported:true,opened:ports[id].opened,connected:ports[id].connected,
+   mode:'blackout',
+   qa:assessSurfaceProof(latest.current.plans[id],
+    stageSurfaceSignature(latest.current.plans[id],{
+     cameraBinding:frameRef.current?.cameraKey??null,
+     floorContext:frameRef.current?.floorKey??null,
+     windowSession:latest.current.epoch[id]>0?ports[id].id+':'+latest.current.epoch[id]:'',
+     viewport:ports[id].outputInfo?{
+      width:ports[id].outputInfo!.viewportWidth,
+      height:ports[id].outputInfo!.viewportHeight,dpr:ports[id].outputInfo!.dpr
+     }:null
+    }),latest.current.proofs[id]).status,
+   sampledAtMs:now,reason:'Blackout manual diperintahkan; periksa cahaya panggung.'
+  });
  };
  const editPlan=(id:StageSurface,fn:(p:StageSurfacePlan)=>StageSurfacePlan)=>{
   try{
@@ -171,6 +198,15 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   setArmed({body:false,floor:false});
   setMessage('Dua output diperintah Blackout. Periksa cahaya proyektor secara fisik.');
  };
+ // Keep the operator's always-visible Studio Blackout effective even while
+ // the dual-projector controls are nested below the Archive preview.
+ const allBlackoutRef=useRef(allBlackout);
+ allBlackoutRef.current=allBlackout;
+ useEffect(()=>{
+  const external=()=>allBlackoutRef.current();
+  window.addEventListener(STAGE_BLACKOUT_EVENT,external);
+  return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,external);
+ },[]);
  const changeMode=(id:StageSurface,mode:Requested)=>{
   if(!STAGE_HARDWARE_ENABLED&&mode!=='blackout'){
    urgentBlackout(id);

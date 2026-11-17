@@ -2,6 +2,7 @@ import {StudioFootprints,footprintDefaults,type FootprintConfig,type FootprintsH
 import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
+import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
 import {MultiPoseGaitRouter} from './footprints/live/MultiPoseGaitRouter';
 import {floorCalibrationSignature} from './projection/floorBridge';
@@ -13,11 +14,13 @@ import {usePhotoArchive} from './photos/usePhotoArchive';
 import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
-import {ScenePicker,type SceneId} from './studio/v3/ScenePicker';
+import type {SceneId} from './studio/v3/ScenePicker';
+import {FootprintsStageWorkspace} from './studio/v3/FootprintsStageWorkspace';
+import {defaultFootprintsWorkspace} from './studio/v3/footprintsUX';
 import {StudioTransport} from './studio/v3/StudioTransport';
 import {SceneInspector} from './studio/v3/SceneInspector';
 import {CaptureHub,type CaptureTab} from './studio/v3/CaptureHub';
-import {bodyConnectionRequired,keyboardIsInControl,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
+import {keyboardIsInControl,stoppingVideoRequiresConfirmation} from './studio/v3/interaction';
 import './studio/v3/studio-v3.css';
 import {LIVE_MODES,switchLiveMode} from './studio/liveVisual';
 import {hydraDefaults} from './studio/hydraConfig';
@@ -51,7 +54,8 @@ const STARTERS=[
 export default function App(){
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
- const [footprintsActive,setFootprintsActive]=useState(false);
+ const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
+ const [footprintsOperator,setFootprintsOperator]=useState(false);
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
@@ -63,7 +67,7 @@ export default function App(){
  const [liveFloorGhosts,setLiveFloorGhosts]=useState(false);
  const [liveFloorRevision,setLiveFloorRevision]=useState(0);
  const [captureOpen,setCaptureOpen]=useState(false),[captureTab,setCaptureTab]=useState<CaptureTab>('photo');
- const [advancedOpen,setAdvancedOpen]=useState(false),[bodyPromptDismissed,setBodyPromptDismissed]=useState(false);
+ const [advancedOpen,setAdvancedOpen]=useState(false),[,setBodyPromptDismissed]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(()=>typeof window==='undefined'||window.innerWidth>=1360);
  const [footprintRecording,setFootprintRecording]=useState(false);
  const [footprintConfig,setFootprintConfig]=useState<FootprintConfig>(()=>{try{const v=JSON.parse(localStorage.getItem('soma-footprint-visual-v1')||'null');const d=footprintDefaults();return v&&typeof v==='object'?{...d,...v,colors:{...d.colors,...v.colors}}:d;}catch{return footprintDefaults();}});
@@ -142,6 +146,12 @@ export default function App(){
    cameraCue.open();
   }catch(e){notify('Gagal membuka kamera tubuh: '+(e instanceof Error?e.message:'coba lagi.'));}
  }
+ function changeLiveFloorCount(count:1|2){
+  if(count===liveFloorCount)return;
+  projection.setTransport('blackout');setLiveFloorApproval(null);
+  liveFloorEngine.resetSession();multiPoseRouter.setMode(count);setLiveFloorCount(count);
+  setLiveFloorRevision(v=>v+1);
+ }
  function openLiveFloor(){
   setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(false);
   setSimulatorApproval(null);setSimulatorTestPattern(false);setFootprintsActive(true);
@@ -150,6 +160,7 @@ export default function App(){
   projection.setTransport('blackout');setLiveFloorOpen(true);
  }
  function selectScene(scene:SceneId){
+  setFootprintsOperator(false);
   if(scene==='footprints'){
    setFootprintsActive(true);setBodyPromptDismissed(false);setTab('visual');
    if(sr.current.output==='sound')update({output:'both'});
@@ -220,25 +231,66 @@ export default function App(){
  const selectedPreset=settings.hydra?.preset;
  const currentScene:SceneId=footprintsActive?'footprints':selectedPreset==='echo'||selectedPreset==='cut'||selectedPreset==='body'?selectedPreset:'liquid';
  const archive=useArchive({pointerStart:e=>{pointer(e);mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);},pointerMove:pointer,pointerEnd:()=>{mouse.current.down=false;},active:archiveActive,engine,frameRef,videoRef:video,settings,cameraOn,cameraBusy,cameraStatus:cameraError||status,audioOn,muted,recording,recordSeconds,chooseInput,startCamera,stopCamera,enableAudio,panic,toggleRecording,openSessions:()=>{archive.setClean(false);setModal('sessions');},setMaster:master=>update({master}),exit:()=>{archive.hold();setArchiveActive(false);archive.setClean(false);}});
- return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
+ return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
-   {!archiveActive&&!projectionActive&&<GlobalNav workspace="studio" perform={clean}
-    onStudio={()=>{setArchiveActive(false);setProjectionActive(false);setClean(false);}}
-    onArchive={()=>{setModal(null);setClean(false);setArchiveActive(true);}}
-    onProjection={()=>{setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
-    onPreset={()=>setModal('presets')} onPerform={()=>setClean(v=>!v)} onHelp={()=>setModal('help')}
+   {!archiveActive&&!projectionActive&&<GlobalNav workspace="studio" scene={currentScene}
+    perform={footprintsActive?footprintsOperator:clean}
+    onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene('footprints');}}
+    onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);selectScene(scene);}}
+    onArchive={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setModal(null);setClean(false);setArchiveActive(true);}}
+    onProjection={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
+    onPreset={()=>setModal('presets')}
+    onPerform={()=>{
+     if(footprintsActive){
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(v=>!v);setClean(false);
+     }else setClean(v=>!v);
+    }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main>
 
-    <ScenePicker scene={currentScene} onSelect={selectScene}
-     needsBody={bodyConnectionRequired(currentScene,settings.input,cameraOn)&&!bodyPromptDismissed}
-     waitingBody={bodyConnectionRequired(currentScene,settings.input,cameraOn)}
-     cameraBusy={cameraBusy} cameraError={cameraError}
-     onUseBody={()=>void acceptFootprintsBody()} onDismissBody={()=>setBodyPromptDismissed(true)}
-     onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
-      onOpenLiveFloor={openLiveFloor}/>
+    {footprintsActive&&!clean&&<FootprintsStageWorkspace
+     frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
+     router={multiPoseRouter} projection={projection}
+     cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
+     bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
+     performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
+     onStartBody={()=>void acceptFootprintsBody()}
+     onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
+      setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
+     onOpenLiveFloor={openLiveFloor}
+     operatorMode={footprintsOperator}
+     onExitOperator={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(false);}}
+     onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
+     onToggleCamera={()=>{
+      if(cameraOn&&settings.input==='body'){
+       if(footprintRecording){
+        if(!window.confirm('Hentikan kamera sekaligus simpan video Footprints?'))return;
+        footprintRef.current?.toggleVideo();
+       }
+       requestStageBlackout(()=>projection.setTransport('blackout'));
+       liveFloorEngine.revoke('Kamera dihentikan; periksa kalibrasi sebelum melanjutkan.');
+       multiPoseRouter.reset();setLiveFloorApproval(null);
+       updateFootprint({hold:false});stopCamera();
+      }else void acceptFootprintsBody();
+     }}
+     onRecordVideo={()=>{
+      if(footprintRecording||(cameraOn&&settings.input==='body'))
+       footprintRef.current?.toggleVideo();
+     }}
+     onCapture={()=>{setCaptureTab('pattern');setCaptureOpen(true);}}
+     videoRecording={footprintRecording}
+     canRecordVideo={cameraOn&&settings.input==='body'}
+     footprint={footprintConfig} updateFootprint={updateFootprint}/>}
     {footprintsActive&&settings.output==='sound'&&<div className="v3-output-hint" role="status"><span>Visual Footprints disembunyikan karena keluaran hanya Suara.</span><button type="button" onClick={()=>update({output:'both'})}>Tampilkan pola</button></div>}
-    <div className="instrument-grid">
+    <div className={'instrument-grid'+(footprintsActive&&!clean?' v3-hidden-engine':'')}
+     aria-hidden={footprintsActive&&!clean}>
      <section className="motion-panel panel"><div className="panel-top"><div className="panel-title"><ScanLine size={14}/> RUANG GERAK <span className="tag">{INPUTS[settings.input].toUpperCase()}</span></div><div className="stage-tools"><button className={settings.layers.camera?'tool active':'tool'} aria-label="Tampilkan gambar kamera" aria-pressed={settings.layers.camera} title="Gambar kamera" onClick={()=>update({layers:{...settings.layers,camera:!settings.layers.camera}})}>{settings.layers.camera?<Eye size={16}/>:<EyeOff size={16}/>}</button><button className={trackingVisible.current?'tool active':'tool'} aria-label="Garis tracking" aria-pressed={trackingVisible.current} title="Garis tracking · T" onClick={toggleTracking}><ScanLine size={16}/></button><button className="tool" onClick={()=>setClean(true)} aria-label="Buka tampilan Clean" title="Clean · C"><Maximize2 size={16}/></button></div></div>
       <div ref={stage} style={{backgroundColor:settings.layers.background}} className={`stage ${source==='mouse'?'mouse-stage':''} ${frame.tracked?'tracked':''}`} tabIndex={source==='mouse'?0:-1} aria-label="Bidang gerak. Dalam mode mouse, tahan dan geser untuk memainkan suara. Gunakan tombol panah saat bidang terfokus untuk memainkan nada." onPointerDown={e=>{if(source!=='mouse'||(e.target as HTMLElement).closest('button'))return;pointer(e);mouse.current.prevX=mouse.current.x;mouse.current.prevY=mouse.current.y;mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);if(!audioOn&&sr.current.output!=='visual')void enableAudio();}} onPointerMove={e=>{if(source==='mouse')pointer(e);}} onPointerUp={()=>{mouse.current.down=false;}} onPointerCancel={()=>{mouse.current.down=false;}} onKeyDown={e=>{if(source!=='mouse'||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();mouse.current.down=true;mouse.current.x=clamp(mouse.current.x+(e.key==='ArrowRight'?.025:e.key==='ArrowLeft'?-.025:0));mouse.current.y=clamp(mouse.current.y+(e.key==='ArrowUp'?.025:e.key==='ArrowDown'?-.025:0));if(!audioOn&&sr.current.output!=='visual')void enableAudio();}} onKeyUp={e=>{if(e.key.startsWith('Arrow'))mouse.current.down=false;}}>
        <video ref={video} autoPlay playsInline muted className={`${cameraOn&&settings.layers.camera?'visible':''} ${settings.mirror?'mirrored':''}`}/><div className="stage-grid"/><div className="stage-corner tl"/><div className="stage-corner tr"/><div className="stage-corner bl"/><div className="stage-corner br"/>
@@ -246,12 +298,12 @@ export default function App(){
        {!cameraOn&&!frame.tracked&&!hasPlayed.current&&!(footprintsActive&&(footprintRef.current?.count()??0)>0)&&<div className="empty-stage"><IdleArt/><h2>{source==='mouse'?'Mulai dengan satu gerakan.':settings.input==='face'?'Hadapkan wajahmu.':settings.input==='body'?'Masuk ke dalam bingkai.':'Angkat tanganmu.'}</h2><p>{source==='mouse'?'Tahan dan geser. Bunyi dan garis akan mengikuti.':settings.input==='face'?'Buka mulut dan miringkan kepala di depan kamera.':settings.input==='body'?'Tampilkan bahu dan pinggul di dalam bingkai.':'Buka telapak di depan kamera, lalu gerakkan perlahan.'}</p>{source==='camera'&&<div className="empty-actions"><button className="primary-button" onClick={()=>void startCamera()}><Camera size={16}/> Mulai kamera</button><button className="text-button" onClick={testMode}>Coba dengan mouse <ArrowUpRight size={15}/></button></div>}{source==='mouse'&&<span className="mouse-helper">ATAS · NADA NAIK <span/> KANAN · VOLUME NAIK</span>}</div>}
        {cameraOn&&!frame.tracked&&<div className="tracking-prompt"><span className={cameraBusy?'loader':'tracking-cross'}>{!cameraBusy&&<Hand size={26}/>}</span><p>{cameraBusy?status:settings.input==='body'?'Mundur hingga tubuh masuk bingkai.':settings.input==='face'?'Hadapkan wajah ke kamera.':'Tunjukkan telapak tangan ke kamera.'}</p></div>}
        {!footprintsActive&&<VisualStage frameRef={frameRef} settingsRef={sr} paramsRef={visualParams} videoRef={video} trackingRef={trackingVisible} metricsRef={metrics}/>}
-       <StudioFootprints ref={footprintRef} active={footprintsActive&&settings.output!=='sound'} forceGaitForLiveFloor={liveFloorOpen} frameRef={frameRef} videoRef={video} settingsRef={sr} trackingRef={trackingVisible} canvasRef={footprintCanvasRef} config={footprintConfig} onNotice={notify} onRecording={setFootprintRecording} audioStream={audioOn&&!muted?engine.recordDestination?.stream:null}
-         onGaitSample={(mark,side,aspect)=>{if(!liveFloorOpen||liveFloorCount!==1)return;
+       <StudioFootprints ref={footprintRef} active={footprintsActive} forceGaitForLiveFloor={footprintsActive} frameRef={frameRef} videoRef={video} settingsRef={sr} trackingRef={trackingVisible} canvasRef={footprintCanvasRef} config={footprintConfig} onNotice={notify} onRecording={setFootprintRecording} audioStream={audioOn&&!muted?engine.recordDestination?.stream:null}
+         onGaitSample={(mark,side,aspect)=>{if(!footprintsActive||liveFloorCount!==1)return;
           const emitted=liveFloorEngine.ingest(mark,side,aspect,cameraBinding(video.current),
            'performer-1',frameRef.current.telemetry?.capturedAt??null);
           multiPoseRouter.acceptSingle(mark,side,emitted);}}
-         onPoseFrame={(f,clock,aspect)=>{if(!liveFloorOpen||liveFloorCount!==2)return;
+         onPoseFrame={(f,clock,aspect)=>{if(!footprintsActive||liveFloorCount!==2)return;
           multiPoseRouter.observe(f,clock,aspect,cameraBinding(video.current));}}/>
        <PhotoWall archive={photoArchive} clean={clean}/>
        <CameraFrame cue={cameraCue}/>
@@ -315,12 +367,7 @@ export default function App(){
   {liveFloorOpen&&<LiveFloorWorkspace tracker={liveFloorEngine} router={multiPoseRouter}
     performerCount={liveFloorCount} showPredictions={liveFloorGhosts}
     onShowPredictions={setLiveFloorGhosts}
-    onPerformerCount={count=>{
-     if(count===liveFloorCount)return;
-     projection.setTransport('blackout');setLiveFloorApproval(null);
-     liveFloorEngine.resetSession();multiPoseRouter.setMode(count);setLiveFloorCount(count);
-     setLiveFloorRevision(v=>v+1);
-    }}
+    onPerformerCount={changeLiveFloorCount}
     onResetIdentity={()=>{
      projection.setTransport('blackout');setLiveFloorApproval(null);
      liveFloorEngine.resetSession();multiPoseRouter.reset();setLiveFloorRevision(v=>v+1);
