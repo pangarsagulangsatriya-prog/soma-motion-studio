@@ -1,6 +1,8 @@
 import {Camera,CameraOff,Circle,Image,MonitorOff,Pause,Play,SlidersHorizontal} from 'lucide-react';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import type {LegacyOutputStatus} from './unifiedStageStatus.ts';
+import type {DualSurfaceState} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
+import {softwareOutputIndicator} from './compactStageStatusModel.ts';
 
 export function UnifiedStageStatusStrip({units,legacy}:{
  units:UnifiedUnit[];legacy:LegacyOutputStatus;
@@ -21,56 +23,66 @@ export function UnifiedStageStatusStrip({units,legacy}:{
  </div>;
 }
 export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRecording,
- canRecordVideo,held,bodySelected,canPreview,legacy,onCamera,onRecordVideo,onCapture,onHold,onLivePreview,onBlackout,onOutputSettings}:{
+ canRecordVideo,held,bodySelected,canPreview,legacy,dual,onCamera,onRecordVideo,onCapture,
+ onHold,onLivePreview,onBlackout,onOutputSettings}:{
  cameraOn:boolean;cameraBusy:boolean;frameFresh:boolean;videoRecording:boolean;
- canRecordVideo:boolean;held:boolean;bodySelected:boolean;canPreview:boolean;legacy:LegacyOutputStatus;
+ canRecordVideo:boolean;held:boolean;bodySelected:boolean;canPreview:boolean;
+ legacy:LegacyOutputStatus;dual:{body:DualSurfaceState;floor:DualSurfaceState};
  onCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  onHold:()=>void;onLivePreview:()=>void;onBlackout:()=>void;onOutputSettings:()=>void;
 }){
- return <div className="fp-unified-transport" data-has-input={cameraOn}
-  role="toolbar" aria-label="Transport utama SOMA Footprints">
-  {cameraOn&&<div className="fp-transport-group" role="group" aria-label="Sumber dan rekaman">
-   <span className="fp-transport-caption">INPUT / CAPTURE</span>
-   <button type="button" onClick={onCamera} disabled={cameraBusy}
-    title={cameraOn&&bodySelected?'Hentikan kamera; konfirmasi saat sedang merekam':'Hubungkan sumber kamera Body'}>
-    {cameraOn&&bodySelected?<CameraOff size={16}/>:<Camera size={16}/>}
-    <span>{cameraBusy?'Menghubungkan…':cameraOn&&bodySelected?'Stop Kamera':
-     cameraOn?'Pakai Body':'Kamera'}</span>
-   </button>
-   <button type="button" className={videoRecording?'fp-transport-recording':''}
-    onClick={onRecordVideo} disabled={!videoRecording&&!canRecordVideo}
-    aria-pressed={videoRecording} title="Rekam video Footprints memakai engine Studio yang sudah ada">
-    <Circle size={15} fill={videoRecording?'currentColor':'none'}/>
-    <span>{videoRecording?'Stop REC':'Rekam'}</span>
-   </button>
-   <button type="button" onClick={onCapture} title="Buka Capture Hub">
-    <Image size={16}/><span>Capture</span>
-   </button>
-  </div>}
-  {cameraOn&&<div className="fp-transport-group" role="group" aria-label="Kontrol preview lokal">
-   <span className="fp-transport-caption">VISUAL PREVIEW</span>
-   <button type="button" disabled={!canPreview||!held}
-    aria-pressed={!held&&canPreview&&cameraOn&&frameFresh} onClick={onLivePreview}
-    title="Lanjutkan preview BODY/FLOOR ke frame terbaru; tidak menyalakan proyektor">
-    <Play size={15}/><span>Preview Live</span>
-   </button>
-   <button type="button" disabled={!canPreview||!cameraOn||!frameFresh||held}
-    aria-pressed={held} onClick={onHold}
-    title="Tahan raster BODY/FLOOR di Live Stage; tracking dan event kaki tetap berjalan">
-    <Pause size={15}/><span>Preview Hold</span>
-   </button>
-  </div>}
-  <div className="fp-transport-group fp-transport-output" role="group" aria-label="Kontrol output panggung">
-   <span className="fp-transport-caption">PROJECTOR / SAFETY</span>
-   <button type="button" onClick={onOutputSettings} title="Buka Projector untuk kalibrasi, QA, dan Live output fisik">
-    <SlidersHorizontal size={15}/><span>Projector</span>
+ const output=softwareOutputIndicator(legacy,dual);
+ return <div className="fp-unified-transport fp-compact-transport"
+  data-has-input={cameraOn} data-output-state={output.state}
+  role="toolbar" aria-label="Kontrol Footprints dan keamanan projector">
+  <div className="fp-transport-local" role="group" aria-label="Capture dan preview lokal">
+   {cameraOn?<>
+    <div className="fp-transport-group fp-transport-capture">
+     <span className="fp-transport-caption">CAPTURE</span>
+     <button type="button" onClick={onCamera} disabled={cameraBusy}
+      title={cameraOn&&bodySelected?'Hentikan kamera; konfirmasi saat merekam':'Gunakan mode Body'}>
+      {cameraOn&&bodySelected?<CameraOff size={16}/>:<Camera size={16}/>}
+      <span>{cameraBusy?'Menghubungkan…':cameraOn&&bodySelected?'Stop kamera':'Pakai Body'}</span>
+     </button>
+     <button type="button" className={videoRecording?'fp-transport-recording':''}
+      onClick={onRecordVideo} disabled={!videoRecording&&!canRecordVideo}
+      aria-pressed={videoRecording} title="Rekam video Footprints memakai engine Studio yang ada">
+      <Circle size={15} fill={videoRecording?'currentColor':'none'}/>
+      <span>{videoRecording?'Stop REC':'Rekam'}</span>
+     </button>
+     <button type="button" onClick={onCapture} title="Buka Capture Hub">
+      <Image size={16}/><span>Capture</span>
+     </button>
+    </div>
+    <div className="fp-transport-group fp-transport-preview" role="group" aria-label="Preview lokal BODY/FLOOR">
+     <span className="fp-transport-caption">PREVIEW LOKAL</span>
+     <button type="button" disabled={!canPreview||!held}
+      aria-pressed={!held&&canPreview&&cameraOn&&frameFresh} onClick={onLivePreview}
+      title="Lanjutkan raster preview BODY/FLOOR; tidak menyalakan output fisik">
+      <Play size={15}/><span>Live</span>
+     </button>
+     <button type="button" disabled={!canPreview||!cameraOn||!frameFresh||held}
+      aria-pressed={held} onClick={onHold}
+      title="Tahan raster preview BODY/FLOOR, tracking dan event tetap berjalan">
+      <Pause size={15}/><span>Hold</span>
+     </button>
+    </div>
+   </>:<span className="fp-transport-idle">Footprints · siap memilih sumber</span>}
+  </div>
+  <div className="fp-transport-safety" role="group" aria-label="Projector dan Blackout">
+   <div className="fp-transport-software" data-level={output.state}
+    title={output.detail} aria-label={`Status output software: ${output.label}. ${output.detail}`}>
+    <span className="fp-transport-software-led" aria-hidden="true"/>
+    <span><small>OUTPUT SOFTWARE</small><strong>{output.label}</strong></span>
+   </div>
+   <button type="button" className="fp-transport-projector" onClick={onOutputSettings}
+    title="Buka Projector untuk kalibrasi, QA dan Live output fisik">
+    <SlidersHorizontal size={16}/><span>Projector</span>
    </button>
    <button type="button" className="fp-transport-blackout" onClick={onBlackout}
-    title="Kirim Blackout ke output lama dan kedua output BODY/FLOOR; matikan perangkat fisik bila darurat">
-    <MonitorOff size={16}/><span>BLACKOUT</span>
+    title="Perintahkan Blackout ke seluruh output software; gunakan pemutus fisik bila darurat">
+    <MonitorOff size={17}/><span>BLACKOUT</span>
    </button>
-   <small className="fp-transport-output-caption">{legacy.connected?
-    'Legacy '+legacy.mode.toUpperCase():'Jendela proyektor belum tersambung'}</small>
   </div>
  </div>;
 }
