@@ -91,6 +91,8 @@ export function FootprintsStageWorkspace({
  const experimentalKind=activeExperimentKind(sourceStatus.selection);
  const [experimentClip,setExperimentClip]=useState<File|null>(null);
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
+ const experimentFrameRef=useRef<ExperimentalFrame|null>(null);
+ experimentFrameRef.current=experimentFrame;
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
@@ -262,21 +264,47 @@ export function FootprintsStageWorkspace({
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
  },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen]);
+ // MP4 preview paints native video frames independently of React snapshots.
+ // FLOOR event output only repaints when sampled tracking data actually changes.
  useEffect(()=>{
-  if(!experimentalKind)return;
+  if(experimentalKind!=='video')return;
+  let raf=0,lastPaintAt=0,lastFloorAt=-Infinity;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
-  if(!experimentFrame||experimentFrame.kind!==experimentalKind){
-   for(const canvas of [cam,body,floor]){
-    if(!canvas)continue;const ctx=canvas.getContext('2d');
-    if(ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
+  const draw=(now:number)=>{
+   const current=experimentFrameRef.current;
+   if(now-lastPaintAt>=1000/30){
+    lastPaintAt=now;
+    if(current?.kind==='video'){
+     const frame={...current,
+      timeMs:(current.video?.currentTime??current.timeMs/1000)*1000};
+     if(cam)paintExperimentCamera(cam,frame,skeletonVisible);
+     if(body&&!footprint.hold)paintExperimentBody(body,frame,skeletonVisible);
+     if(floor&&!footprint.hold&&current.snapshot?.atMs!==lastFloorAt){
+      paintExperimentFloor(floor,frame,footprint);
+      lastFloorAt=current.snapshot?.atMs??-Infinity;
+     }
+    }else{
+     for(const canvas of [cam,body,floor]){
+      if(!canvas)continue;
+      const ctx=canvas.getContext('2d');
+      if(ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
+     }
+    }
    }
-   return;
-  }
-  // Experimental snapshots own the existing canvas elements, never live FloorSession.
-  if(cam)paintExperimentCamera(cam,experimentFrame,skeletonVisible);
+   raf=requestAnimationFrame(draw);
+  };
+  raf=requestAnimationFrame(draw);
+  return()=>cancelAnimationFrame(raf);
+ },[experimentalKind,footprint,skeletonVisible]);
+ useEffect(()=>{
+  if(experimentalKind!=='simulator')return;
+  const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
+  const frame=experimentFrameRef.current;
+  if(!frame||frame.kind!=='simulator')return;
+  if(cam)paintExperimentCamera(cam,frame,skeletonVisible);
   if(!footprint.hold){
-   if(body)paintExperimentBody(body,experimentFrame,skeletonVisible);
-   if(floor)paintExperimentFloor(floor,experimentFrame,footprint);
+   if(body)paintExperimentBody(body,frame,skeletonVisible);
+   if(floor)paintExperimentFloor(floor,frame,footprint);
   }
  },[experimentalKind,experimentFrame,footprint,skeletonVisible]);
  const projectionState=projection.status.connected?
