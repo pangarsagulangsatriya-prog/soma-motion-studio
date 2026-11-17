@@ -381,6 +381,10 @@ export function FootprintsStageWorkspace({
   setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
   return true;
  };
+ const openProjectorQA=()=>{
+  onBlackout();setCalibrationOpen(false);setInspectorOpen(false);
+  setView('stage');setComposerStartQA(true);setComposerOpen(true);
+ };
  const openVideoInput=()=>{void chooseSource('video');};
  const openSimulatorInput=()=>{void chooseSource('simulator');};
  const openCalibration=()=>{
@@ -688,7 +692,7 @@ export function FootprintsStageWorkspace({
      onRehearsal={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setRehearsalOpen(true);}}
      onMapping={showArchive}
      onComposer={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerStartQA(false);setComposerOpen(true);}}
-     onOutputQA={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerStartQA(true);setComposerOpen(true);}}
+     onOutputQA={openProjectorQA}
      onProjector={onOpenProjection}/>}
    </aside>}
   </div>
@@ -700,6 +704,6 @@ export function FootprintsStageWorkspace({
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={onOpenProjection}/>}
+   onOutputSettings={openProjectorQA}/>}
  </section>;
 }
