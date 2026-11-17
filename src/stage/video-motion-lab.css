@@ -1,0 +1,53 @@
+/* S6.5.2 Video Motion Lab — independent local playback, never a projector output */
+.soma-video-lab{border:1px solid #556b59;border-radius:12px;background:#141c17;color:#e5ebe3;padding:19px;margin:11px 0 18px;box-shadow:0 16px 35px #0007}
+.soma-video-lab *{box-sizing:border-box}
+.soma-video-lab button,.soma-video-lab select{font:inherit}
+.soma-video-lab button{background:#25342b;color:#e5f0df;border:1px solid #506a57;border-radius:7px;padding:9px 12px;min-height:40px;font-size:12px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center}
+.soma-video-lab button:hover:not(:disabled){border-color:#b8d7a2;background:#314b36}
+.soma-video-lab button:disabled{opacity:.45;cursor:not-allowed}
+.soma-video-lab .vml-primary{background:#d2e9b0;color:#13221a;border-color:#c7e2a6;font-weight:700}
+.soma-video-lab .vml-primary:hover:not(:disabled){background:#f0f9d6}
+.soma-video-lab :is(button,select,input):focus-visible{outline:2px solid #cdeaa7;outline-offset:2px}
+.vml-heading{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:17px;flex-wrap:wrap}
+.vml-heading small{font-size:10px;letter-spacing:.12em;color:#9bb5a1}
+.vml-heading h2{display:flex;align-items:center;gap:10px;font-size:22px;letter-spacing:-.025em;margin:5px 0}
+.vml-heading p{font-size:12px;color:#a9c0b1;max-width:760px;margin:0;line-height:1.6}
+.vml-content{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:14px}
+.vml-main{min-width:0;display:flex;flex-direction:column;gap:12px}
+.vml-dropzone{min-height:330px;border:1px dashed #69876b;background:#18271e;border-radius:10px;padding:25px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;color:#d2e9bb}
+.vml-dropzone.active{background:#2b4934;border-color:#dbf1b4}
+.vml-dropzone h3{font-size:19px;margin:5px 0 0}
+.vml-dropzone p{color:#a9beab;font-size:12px;margin:0}
+.vml-dropzone small{font-size:10px;color:#aac1ad}
+.vml-player{position:relative;background:#050706;border:1px solid #3e5043;border-radius:9px;overflow:hidden;min-height:210px;aspect-ratio:16/9;display:flex;align-items:center}
+.vml-player[hidden]{display:none}
+.vml-player video{display:block;width:100%;height:100%;max-height:65vh;aspect-ratio:16/9;object-fit:contain;background:#000}
+.vml-player-empty,.vml-buffer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0009;font-size:12px;color:#c4d6c9;pointer-events:none}
+.vml-buffer{inset:auto 14px 14px auto;background:#21302c;padding:7px 10px;border-radius:5px}
+.vml-play-controls{display:flex;flex-direction:column;gap:7px;background:#18251d;padding:12px;border:1px solid #384d40;border-radius:8px}
+.vml-time{display:flex;justify-content:space-between;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#c7d6c7}
+.vml-seek{position:relative;display:flex;align-items:center;min-height:25px}
+.vml-seek input{width:100%;accent-color:#cdeaaa;cursor:pointer}
+.vml-seek input:disabled{cursor:default}
+.vml-range-mark{position:absolute;top:0;bottom:0;width:2px;background:#91e6d7;pointer-events:none}
+.vml-range-mark.end{background:#f4ba8e}
+.vml-transport{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.vml-transport>label{font-size:11px;color:#bbd0c0;display:flex;gap:6px;align-items:center}
+.vml-transport select{color:#e9f1e7;background:#1d3024;border:1px solid #56705a;border-radius:6px;padding:8px}
+.vml-range-tools{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.vml-range-tools button[aria-pressed=true]{background:#405e44;border-color:#cbe2aa}
+.vml-range-tools small{font-size:11px;color:#a6c2ae;margin-left:auto}
+.vml-status{padding:10px 12px;border-radius:6px;border:1px solid #4f6553;background:#1c3022;font-size:11px;color:#d3e6d4;line-height:1.5;overflow-wrap:anywhere}
+.vml-inspector{display:flex;flex-direction:column;gap:9px;border:1px solid #354c3b;border-radius:8px;background:#1b2820;padding:13px;min-width:0}
+.vml-inspector h3{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#c0d9bc;margin:4px 0}
+.vml-inspector>button{justify-content:flex-start}
+.vml-info{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.vml-info>div{display:flex;flex-direction:column;gap:3px;border-bottom:1px solid #344939;padding-bottom:7px}
+.vml-info span{font-size:10px;color:#9cae9d}
+.vml-info strong{font-size:12px;color:#ebf3e4;font-weight:550;word-break:break-word}
+.vml-limits{border-top:1px solid #4a6150;margin-top:10px;padding-top:8px}
+.vml-limits p{font-size:11px;line-height:1.65;color:#a9bead;margin:7px 0}
+.vml-limits strong{color:#d9e6c7}
+.vml-hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+@media(max-width:940px){.vml-content{grid-template-columns:1fr}.vml-inspector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.vml-inspector h3,.vml-info,.vml-limits{grid-column:1/-1}}
+@media(max-width:580px){.soma-video-lab{padding:11px}.vml-player{min-height:140px}.vml-dropzone{min-height:245px}.vml-heading{gap:10px}.vml-heading h2{font-size:18px}.vml-range-tools small{margin-left:0}.vml-inspector{display:flex;flex-direction:column}}
