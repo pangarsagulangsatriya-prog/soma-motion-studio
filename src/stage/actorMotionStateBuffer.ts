@@ -31,7 +31,7 @@ export const DEFAULT_MOTION_FILTER:MotionFilterConfig={
  renderDelayMs:50,predictionLimitMs:55,staleLimitMs:270
 };
 const clamp=(x:number,lo:number,hi:number)=>Math.min(hi,Math.max(lo,x));
-const valid=(p:Landmark|undefined):p is Landmark=>Boolean(p&&
+const valid=(p:Landmark|undefined):boolean=>Boolean(p&&
  Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z)&&
  (p.visibility===undefined||p.visibility>=.2));
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
