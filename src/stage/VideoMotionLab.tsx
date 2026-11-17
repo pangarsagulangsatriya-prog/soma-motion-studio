@@ -387,7 +387,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
         <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
        </span>)}
       </div>}
-      {analysisOn&&<TemporalJointInspector
+      {<TemporalJointInspector
        getTrace={getTemporalTrace} getWindow={getTemporalWindow}
        revision={analysisSnapshot?.sampledFrames??0}
        segment={analysisSnapshot?.segment??0}/>}
