@@ -237,7 +237,7 @@ export default function App(){
      mappings:defaultMappings(sr.current.mode,'body'),
      visual:{...sr.current.visual,mappings:defaultVisualMappings('body')}
     });
-    await startCamera();
+    void startCamera();
    }
    return true;
   }catch(error){
