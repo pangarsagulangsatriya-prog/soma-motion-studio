@@ -45,7 +45,7 @@ export function chooseDuetResolution(results:DuetV2Benchmark[]):{
  if(!a||!b||a.frames!==b.frames||!a.frames)
   return {resolution:null,reason:'Kedua ukuran belum diuji pada jumlah frame yang sama.'};
  const difference=(b.twoDetected-a.twoDetected)/a.frames;
- if(difference>=.06&&b.totalP95Ms<=450)
+ if(difference>=.06&&b.detectorP95Ms<=450)
   return {resolution:512,reason:'512 mendeteksi sedikitnya 6% lebih banyak frame berisi dua tubuh; latency masih masuk batas eksperimen.'};
  if(a.twoDetected/a.frames>=.95)
   return {resolution:384,reason:'384 telah mencapai cakupan target pada video uji; pilih biaya lebih rendah.'};
