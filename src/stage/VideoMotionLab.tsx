@@ -36,6 +36,7 @@ export function VideoMotionLab({onClose}:Props){
  const [analysisSnapshot,setAnalysisSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const engineRef=useRef<VideoPoseGaitEngine|null>(null);
  const generationRef=useRef(0);
+ const pendingSeekReason=useRef('Pemutaran berpindah ke waktu lain.');
  const overlayRef=useRef<HTMLCanvasElement|null>(null);
  const videoRef=useRef<HTMLVideoElement>(null);
  const fileRef=useRef<HTMLInputElement>(null);
@@ -176,18 +177,21 @@ export function VideoMotionLab({onClose}:Props){
   const section=r.rangeStart!==null&&r.rangeEnd!==null?
    validLoopRange(r.rangeStart,r.rangeEnd,r.duration):null;
   if(r.loop&&section&&el.currentTime>=section.end-0.015){
+   pendingSeekReason.current='Loop IN–OUT menuju '+section.start.toFixed(3)+' detik.';
    el.currentTime=section.start;
   }
  };
- const seek=(n:number)=>{
+ const seek=(n:number,kind='Timeline scrub')=>{
   const el=videoRef.current;if(!el||!ready)return;
   const next=clampVideoTime(n,duration);
+  if(Math.abs(el.currentTime-next)<.0005)return;
+  pendingSeekReason.current=kind+' menuju '+next.toFixed(3)+' detik.';
   el.currentTime=next;setPosition(next);
  };
  const step=(direction:-1|1)=>{
   const el=videoRef.current;if(!el||!ready)return;
   el.pause();setPlaying(false);
-  seek(stepVideoTime(el.currentTime,duration,fps,direction));
+  seek(stepVideoTime(el.currentTime,duration,fps,direction),direction<0?'Frame step mundur':'Frame step maju');
  };
  const togglePlay=async()=>{
   const el=videoRef.current;if(!el||!ready)return;
@@ -294,7 +298,7 @@ export function VideoMotionLab({onClose}:Props){
        v.playbackRate=speed;
       }}
       onTimeUpdate={syncPosition}
-      onSeeking={()=>{if(engineRef.current){engineRef.current.reset('Seek/loop: analisis dimulai ulang dari posisi baru.');}}}
+      onSeeking={()=>{if(engineRef.current){engineRef.current.reset(pendingSeekReason.current);pendingSeekReason.current='Pemutaran berpindah ke waktu lain.';}}}
       onSeeked={e=>{syncPosition();engineRef.current?.process(e.currentTarget,e.currentTarget.currentTime,12,true);}}
       onDurationChange={e=>{
        const d=finiteDuration(e.currentTarget.duration);setDuration(d);if(!d)setReady(false);
@@ -341,7 +345,7 @@ export function VideoMotionLab({onClose}:Props){
     <div className="vml-range-tools">
      <button type="button" disabled={!ready} onClick={()=>mark('in')}>Tandai IN</button>
      <button type="button" disabled={!ready} onClick={()=>mark('out')}>Tandai OUT</button>
-     <button type="button" disabled={!range} onClick={()=>{if(range){seek(range.start);setLoop(x=>!x);}}} aria-pressed={loop}>Loop IN–OUT {loop?'ON':'OFF'}</button>
+     <button type="button" disabled={!range} onClick={()=>{if(range){seek(range.start,'Aktifkan loop IN–OUT');setLoop(x=>!x);}}} aria-pressed={loop}>Loop IN–OUT {loop?'ON':'OFF'}</button>
      <button type="button" disabled={rangeStart===null&&rangeEnd===null} onClick={resetMarks}>Hapus rentang</button>
      <small>{range?'Rentang '+formatVideoTime(range.start)+' – '+formatVideoTime(range.end):'Tandai awal dan akhir untuk loop latihan'}</small>
     </div>
