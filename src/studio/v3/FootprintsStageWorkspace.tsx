@@ -305,6 +305,14 @@ export function FootprintsStageWorkspace({
   setSetupOpen(false);
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
  };
+ const openFromStatus=(step:FootprintsStep,trigger:HTMLElement)=>{
+  selectFlowStep(step,trigger);
+  window.requestAnimationFrame(()=>{
+   if(step==='input'&&!cameraOn)
+    document.querySelector<HTMLButtonElement>('.fp-source-launchpad .fp-source-choice')?.focus({preventScroll:true});
+   else document.getElementById('fp-flow-inspector-title')?.focus({preventScroll:true});
+  });
+ };
  const openPhoneInput=()=>{
   setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
   stageSession.patch({source:'phone'});
@@ -357,8 +365,8 @@ export function FootprintsStageWorkspace({
     </div>}
    </div>
    {!setupOpen&&<CompactFootprintsStatus items={compactItems}
-    onSource={trigger=>selectFlowStep('input',trigger)}
-    onProcess={trigger=>selectFlowStep('process',trigger)}/>}
+    onSource={trigger=>openFromStatus('input',trigger)}
+    onProcess={trigger=>openFromStatus('process',trigger)}/>}
 
   </nav>}
   {operatorMode?
@@ -504,7 +512,7 @@ export function FootprintsStageWorkspace({
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
     {!setupOpen&&<FootprintsFlowInspector
-     step={flowStep} onClose={closeInspector}
+     key={flowStep} step={flowStep} onClose={closeInspector}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      cameraLabel={cameraLabel}
      floorConfirmed={floorStatus.confirmed} floorCalibrated={floorStatus.calibrated}
