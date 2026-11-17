@@ -1,0 +1,27 @@
+.soma-d1{display:grid;gap:12px;background:#14221b;border:1px solid #4a6652;border-radius:10px;padding:15px;color:#e4efe6;font-size:12px}
+.soma-d1 *{box-sizing:border-box}
+.soma-d1-explain{margin:0;color:#afc7b5;line-height:1.5}
+.soma-d1-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.soma-d1 label{display:flex;flex-direction:column;gap:5px;flex:1;min-width:148px;color:#c2d5c5}
+.soma-d1 :is(input[type=file],select){max-width:100%;background:#1b3024;border:1px solid #5c7862;border-radius:6px;color:#e2eee6;padding:7px;font:inherit}
+.soma-d1 input[type=range]{width:100%;accent-color:#8bd8c3}
+.soma-d1 button{padding:9px 10px;border-radius:6px;border:1px solid #5b7963;background:#273d30;color:#ebf2e9;cursor:pointer;font:inherit}
+.soma-d1 button:disabled{opacity:.45;cursor:not-allowed}
+.soma-d1 button:first-of-type{background:#d1e7b3;color:#17241c;font-weight:700}
+.soma-d1-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.soma-d1-metrics>div{border:1px solid #395541;background:#102017;border-radius:7px;padding:9px;color:#a4beac}
+.soma-d1-metrics strong{display:block;color:#e2f5de;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
+.soma-d1-views{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.soma-d1-views>div{min-width:0;border:1px solid #395541;border-radius:7px;overflow:hidden;background:#07120c}
+.soma-d1-views b{display:block;padding:8px;font-weight:600}
+.soma-d1-views canvas{display:block;width:100%;height:auto}
+.soma-d1-review{display:grid;grid-template-columns:minmax(0,2fr) minmax(140px,1fr);gap:10px}
+.soma-d1-status{border:1px solid #436b55;background:#10271a;padding:10px;border-radius:6px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.soma-d1-phase{overflow:auto}
+.soma-d1-phase table{width:100%;border-collapse:collapse;font-size:11px}
+.soma-d1-phase :is(th,td){padding:7px;border-bottom:1px solid #35483b;text-align:left}
+.soma-d1>small{color:#a8bfae;line-height:1.5}
+.vml-d1-toggle{border:1px solid #486850;border-radius:10px;background:#18271e;padding:11px;margin:8px 0}
+.vml-d1-toggle>summary{cursor:pointer;font-weight:700;color:#d4edbc;font-size:13px;padding:6px;outline-offset:3px}
+.vml-d1-toggle[open]>summary{margin-bottom:12px}
+@media(max-width:760px){.soma-d1-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.soma-d1-views,.soma-d1-review{grid-template-columns:1fr}}
