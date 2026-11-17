@@ -152,6 +152,11 @@
  grid-column:2;grid-row:2;min-width:0;min-height:0;
  align-self:stretch;border-color:#3c5140;box-shadow:none;animation:none;
 }
+/* Earlier source-mode rules set display:none!important on the camera tile. */
+.fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-overview .fp-stage-video,
+.fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-overview .fp-stage-video{
+ display:flex!important;
+}
 .fp-stage-workspace.fp-persistent-layout .fp-stage-video-content,
 .fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-video-content,
 .fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-video-content,
