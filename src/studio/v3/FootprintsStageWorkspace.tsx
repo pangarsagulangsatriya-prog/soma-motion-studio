@@ -630,7 +630,7 @@ export function FootprintsStageWorkspace({
      </button>
      <div className="fp-stage-view-note"><Film size={15}/>
       <span>Arsip BODY A/B dan residu FLOOR memakai engine S5.7 yang sama. Video tetap di browser. Kembali ke Live Stage menutup pemutar dan memadamkan output dual-surface.</span></div>
-     <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
+     <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn} experimentLocked={!!experimentalKind}
       performerCount={performerCount} router={router} projection={projection}
       stageMedia={stageSession.media} onStageMedia={stageSession.chooseMedia}
       stageSettings={stageSession.meta.archiveSettings}
