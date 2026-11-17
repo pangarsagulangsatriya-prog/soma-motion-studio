@@ -222,11 +222,14 @@ export function FootprintsStageWorkspace({
   data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
   <GuidedStageSetup open={setupOpen&&!operatorMode} onClose={()=>setSetupOpen(false)}
    session={stageSession} frameRef={frameRef} videoRef={videoRef}
+   bodyPreviewRef={bodyCanvas} floorPreviewRef={floorCanvas}
    floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
    performers={performerCount} onStartLaptop={onStartBody}
    onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
    onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
-   onArchive={()=>{showArchive();setSetupOpen(false);}}
+   onArchive={()=>{onBlackout();showArchive();setSetupOpen(false);}}
+   onComposer={()=>{onBlackout();setSetupOpen(false);setView('stage');setComposerOpen(true);}}
+   onBlackout={onBlackout}
    onPerform={onEnterOperator}
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>
