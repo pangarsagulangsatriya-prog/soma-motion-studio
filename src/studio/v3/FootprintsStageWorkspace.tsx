@@ -431,7 +431,7 @@ export function FootprintsStageWorkspace({
     onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(true);setCalibrationOpen(false);}}/>
    <CompactFootprintsStatus items={compactItems}
     onSource={trigger=>openFromStatus('input',trigger)}
-    onProcess={trigger=>openFromStatus('process',trigger)}/>}
+    onProcess={trigger=>openFromStatus('process',trigger)}/>
 
   </nav>}
   {operatorMode?
