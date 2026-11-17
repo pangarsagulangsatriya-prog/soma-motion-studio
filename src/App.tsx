@@ -295,6 +295,7 @@ export default function App(){
      router={multiPoseRouter} projection={projection}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
+     phoneActive={activeCameraMode.current==='phone'&&cameraOn}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>{
       if(activeCameraMode.current==='phone'){
