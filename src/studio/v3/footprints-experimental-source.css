@@ -96,3 +96,7 @@
 @media(max-width:700px){.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status{
  flex:1 1 100%;
 }}
+
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-presence=reacquiring]{
+ border-style:dashed;color:#efd7a5;
+}
