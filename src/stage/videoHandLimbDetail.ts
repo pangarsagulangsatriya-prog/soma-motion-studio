@@ -176,6 +176,7 @@ export class HandLimbDetailAnalyzer{
  private history:HandLimbFrame[]=[];
  private lastTime=-1;
  private lastHands=new Map<string,HandDetail>();
+ get frameCount(){return this.history.length;}
  reset(){this.history=[];this.lastTime=-1;this.lastHands.clear();}
  get latest():HandLimbFrame|null{const v=this.history.at(-1);return v?copyFrame(v):null;}
  get window():HandLimbFrame[]{return this.history.map(copyFrame);}
