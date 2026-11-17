@@ -2,6 +2,8 @@ import {useEffect,useRef,useState,type RefObject} from 'react';
 import {STAGE_INSPECTOR_TABS,moveOperatorCue,
  operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
+import {GuidedStageSetup} from '../../stage/GuidedStageSetup.tsx';
+import {useStageSession} from '../../stage/useStageSession.ts';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
@@ -27,6 +29,8 @@ type Props={
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
+ onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
+ onPhoneDisconnect:()=>void;onEnterOperator:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  operatorMode:boolean;onExitOperator:()=>void;
  videoRecording:boolean;canRecordVideo:boolean;
@@ -39,12 +43,22 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
 export function FootprintsStageWorkspace({
  frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
+ onPhoneStream,onPhoneDisconnect,onEnterOperator,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  operatorMode,onExitOperator,footprint,updateFootprint
 }:Props){
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
+ const stageSession=useStageSession();
+ const [setupOpen,setSetupOpen]=useState(false);
+ const restoredPerformers=useRef(false);
+ useEffect(()=>{
+  if(!stageSession.loaded||restoredPerformers.current)return;
+  restoredPerformers.current=true;
+  if(stageSession.meta.performers!==performerCount)
+   onPerformerCount(stageSession.meta.performers);
+ },[stageSession.loaded,stageSession.meta.performers,performerCount,onPerformerCount]);
  const [view,setView]=useState<WorkspaceView>('stage');
  const previewHoldRef=useRef(footprint.hold);
  previewHoldRef.current=footprint.hold;
@@ -202,6 +216,14 @@ export function FootprintsStageWorkspace({
  };
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
+  <GuidedStageSetup open={setupOpen&&!operatorMode} onClose={()=>setSetupOpen(false)}
+   session={stageSession} onStartLaptop={onStartBody}
+   onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
+   onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
+   onArchive={()=>{showArchive();setSetupOpen(false);}}
+   onPerform={onEnterOperator}
+   cameraOn={cameraOn} calibrated={floorStatus.calibrated}
+   confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>
   {!operatorMode&&<header className="fp-stage-heading">
    <div className="fp-stage-brand">
     <span className="fp-stage-eyebrow">SOMA / MOTION INTELLIGENCE</span>
@@ -227,6 +249,8 @@ export function FootprintsStageWorkspace({
      <Film size={15}/> Archival Mapping</button>
    </div>
    <div className="fp-stage-top-actions">
+    <button type="button" onClick={()=>setSetupOpen(open=>!open)}>
+     <SlidersHorizontal size={15}/> Guided Setup</button>
     <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulasi 3D</button>
     <button type="button" onClick={onOpenLiveFloor}><SlidersHorizontal size={15}/> Kalibrasi & QA</button>
    </div>
@@ -286,7 +310,12 @@ export function FootprintsStageWorkspace({
      <div className="fp-stage-view-note"><Film size={15}/>
       <span>Arsip BODY A/B dan residu FLOOR memakai engine S5.7 yang sama. Video tetap di browser. Kembali ke Live Stage menutup pemutar dan memadamkan output dual-surface.</span></div>
      <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
-      performerCount={performerCount} router={router} projection={projection}/>
+      performerCount={performerCount} router={router} projection={projection}
+      stageMedia={stageSession.media} onStageMedia={stageSession.chooseMedia}
+      stageSettings={stageSession.meta.archiveSettings}
+      onStageSettings={settings=>stageSession.patch({archiveSettings:settings})}
+      stageHoldMs={stageSession.meta.bridgeHoldMs}
+      onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}/>
     </div>}
     {view==='stage'&&<div className="fp-stage-bottom-status">
      <Activity size={15}/>
@@ -312,7 +341,9 @@ export function FootprintsStageWorkspace({
       <p className="fp-stage-label">JUMLAH PERFORMER</p>
       <div className="fp-stage-segments">
        {([1,2] as const).map(v=><button type="button" key={v}
-        aria-pressed={performerCount===v} onClick={()=>onPerformerCount(v)}>
+        aria-pressed={performerCount===v} onClick={()=>{
+        stageSession.patch({performers:v});onPerformerCount(v);
+       }}>
         {v} performer</button>)}
       </div>
       {performerCount===2&&<p className="fp-stage-hint">Identitas A/B: {identityStatus.ambiguous?

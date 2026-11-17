@@ -90,6 +90,7 @@ export default function App(){
  const [mousePinch,setMousePinch]=useState(0),[mouseOpen,setMouseOpen]=useState(true);
  const video=useRef<HTMLVideoElement>(null),stage=useRef<HTMLDivElement>(null),importRef=useRef<HTMLInputElement>(null),playback=useRef<HTMLAudioElement|null>(null);
  const frameRef=useRef<MotionFrame>(emptyFrame()),engine=useRef(new AudioEngine()).current,mapper=useRef(new MappingEngine()).current,tracker=useRef(new CameraTracker()).current,recorder=useRef(new Recorder()).current,motionLog=useRef(new MotionLog()).current;
+ const activeCameraMode=useRef<'laptop'|'phone'>('laptop');
  const lastUI=useRef(0),cal=useRef<{end:number;xs:number[];ys:number[]}|null>(null),mouse=useRef({down:false,x:.5,y:.5,prevX:.5,prevY:.5,last:0,speed:0,acceleration:0,pinch:0,open:true,shift:false,keyPinch:false,lastHit:0,armed:true});
  const [controlsOpen,setControlsOpen]=useState(false),[hudVisible,setHudVisible]=useState(true),[isFullscreen,setIsFullscreen]=useState(false),[trackingLatched,setTrackingLatched]=useState(false),[triggerProgress,setTriggerProgress]=useState(0);
  const visualMapper=useRef(new VisualMappingEngine()).current,holdTrigger=useRef(new HoldTrigger()).current;
@@ -109,7 +110,7 @@ export default function App(){
  useEffect(()=>{tracker.setProjection(projection.running);return()=>tracker.setProjection(false);},[tracker,projection.running]);
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
- const stopCamera=useCallback(()=>{tracker.stop(video.current??undefined);setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
+ const stopCamera=useCallback(()=>{activeCameraMode.current='laptop';tracker.stop(video.current??undefined);setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
  const processFrame=useCallback((f:MotionFrame)=>{
   frameRef.current=f;cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
   if(f.tracked)hasPlayed.current=true;
@@ -121,9 +122,38 @@ export default function App(){
   if(f.time-lastUI.current>100){lastUI.current=f.time;setFrame({...f});setTriggerProgress(hold.progress);setLogCount(motionLog.rows.length);if(motionLog.full){setLogging(false);notify('Log mencapai batas 18.000 sampel. Silakan ekspor datanya.');motionLog.full=false;}}
  },[engine,mapper,visualMapper,holdTrigger,motionLog,notify,update,cameraCue.processFrame]);
  async function startCamera(){
+  activeCameraMode.current='laptop';
   if(sr.current.input==='mouse')update({input:'hands',mappings:defaultMappings(sr.current.mode,'hands'),visual:{...sr.current.visual,mappings:defaultVisualMappings('hands')}});mouse.current.down=false;setSource('camera');sourceRef.current='camera';setCameraBusy(true);setCameraOn(true);setCameraError('');
   await tracker.start(video.current!,()=>sr.current,processFrame,message=>{setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},message=>{setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum siap');setCameraError(message);notify(message);const f=emptyFrame();f.time=performance.now();processFrame(f);},deviceId||undefined);
   if(navigator.mediaDevices)try{setDevices((await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'));}catch{}
+ }
+ async function startPhoneCamera(stream:MediaStream){
+  if(!stream.active||!stream.getVideoTracks().length){
+   notify('HP belum mengirim video. Ulangi sambungan WebRTC.');return;
+  }
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  liveFloorEngine.revoke('Sumber kamera berubah ke HP; kalibrasi harus diulang.');
+  multiPoseRouter.reset();setLiveFloorApproval(null);
+  stopCamera();
+  const next={
+   input:'body' as InputKind,
+   mappings:defaultMappings(sr.current.mode,'body'),
+   visual:{...sr.current.visual,mappings:defaultVisualMappings('body')}
+  };
+  update(next);clearInputFrame('body');
+  activeCameraMode.current='phone';
+  setSource('camera');sourceRef.current='camera';setCameraBusy(true);
+  setCameraOn(true);setCameraError('');
+  await tracker.start(video.current!,()=>sr.current,processFrame,
+   message=>{setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
+   message=>{setCameraOn(false);setCameraBusy(false);setCameraError(message);notify(message);},
+   undefined,stream);
+ }
+ function stopPhoneCamera(){
+  if(activeCameraMode.current!=='phone')return;
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  liveFloorEngine.revoke('Kamera HP terputus; ulangi kalibrasi.');
+  multiPoseRouter.reset();setLiveFloorApproval(null);stopCamera();
  }
  async function enableAudio(){if(sr.current.output==='visual'&&!archiveActive){notify('Pilih keluaran Suara atau Keduanya untuk mengaktifkan audio.');return false;}try{await engine.init();setAudioOn(true);setMuted(false);return true;}catch{notify('Audio belum bisa aktif. Klik Aktifkan audio lagi atau coba browser lain.');return false;}}
  async function toggleAudio(){if(audioOn&&!muted)panic();else await enableAudio();}
@@ -260,7 +290,16 @@ export default function App(){
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
-     onStartBody={()=>void acceptFootprintsBody()}
+     onStartBody={()=>{
+      if(activeCameraMode.current==='phone'){
+       stopPhoneCamera();void startCamera();
+      }else void acceptFootprintsBody();
+     }}
+     onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
+     onEnterOperator={()=>{
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(true);setClean(false);
+     }}
      onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
       setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
      onOpenLiveFloor={openLiveFloor}
