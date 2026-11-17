@@ -4,6 +4,7 @@ import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEn
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
+import type {ReplayReport} from './rehearsalComparisonModel.ts';
 import {VIDEO_LAB_FPS,VIDEO_LAB_SPEEDS,clampVideoTime,finiteDuration,formatVideoTime,simpleVideoFilename,
  stepVideoTime,validLoopRange,validVideoLabFile,type LoopRange} from './videoMotionLabUtils.ts';
 import './video-motion-lab.css';
@@ -11,8 +12,8 @@ import './video-motion-lab.css';
 type Clip={name:string;size:number;type:string;url:string;lastModified:number};
 const readableSize=(n:number)=>n>=1024*1024?(n/(1024*1024)).toFixed(1)+' MB':(n/1024).toFixed(1)+' KB';
 const formatResolution=(w:number,h:number)=>w>0&&h>0?w+' × '+h:'—';
-type Props={onClose:()=>void};
-export function VideoMotionLab({onClose}:Props){
+type Props={onClose:()=>void;onUseReference?:(report:ReplayReport)=>void};
+export function VideoMotionLab({onClose,onUseReference}:Props){
  const [clip,setClip]=useState<Clip|null>(null);
  const [duration,setDuration]=useState(0);
  const [position,setPosition]=useState(0);
@@ -400,6 +401,14 @@ export function VideoMotionLab({onClose}:Props){
        <small>{archiveCount} segmen tersimpan + 1 segmen aktif · {totalEventCount} event tercatat</small></div>
       <button type="button" disabled={!analysisSnapshot} onClick={()=>exportEvents('json')}>Unduh JSON QA</button>
       <button type="button" disabled={!analysisSnapshot} onClick={()=>exportEvents('csv')}>Unduh CSV event</button>
+      {onUseReference&&<button type="button" disabled={!analysisSnapshot}
+       onClick={()=>{
+        const report=getReport();
+        if(!report||report.summary.events<1){
+         setMessage('Belum ada event pijakan untuk dibandingkan. Putar video lebih lama.');return;
+        }
+        onUseReference(report);
+       }}>Kirim ke Rehearsal Lab</button>}
       <small>Ekspor mencatat alasan reset, segmen replay, A/B, jenis event, waktu video, confidence, koordinat 2D, dan status QA. Batas retensi segmen/event dilaporkan agar data lama yang terpotong tidak dianggap lengkap.</small>
      </div>}
      {analysisOn&&<div className="vml-events">
