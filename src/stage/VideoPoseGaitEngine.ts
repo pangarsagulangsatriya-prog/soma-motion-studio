@@ -2,6 +2,8 @@ import {MotionProcessor} from '../engine/motion.ts';
 import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
 import {TwoPersonIdentityTracker} from '../footprints/live/TwoPersonIdentityTracker.ts';
+import {ReplayIdentityGate,type ReplayIdentityQA} from './videoReplayIdentityQA.ts';
+import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
 import type {PoseLandmarker} from '@mediapipe/tasks-vision';
@@ -11,7 +13,7 @@ export type ReplayAnalysisSnapshot={
  atMs:number;segment:number;sampledFrames:number;performers:1|2;
  people:ReplayOverlayPerson[];events:ReplayGaitEvent[];
  status:string;ambiguous:boolean;
- gait:Record<string,ReplayGaitState>;
+ gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
 type Listener=(snapshot:ReplayAnalysisSnapshot)=>void;
 const configs={...defaults(),input:'body' as const,mirror:false};
@@ -23,6 +25,10 @@ export class VideoPoseGaitEngine{
  private model:PoseLandmarker|null=null;
  private processor=new MotionProcessor();
  private identity=new TwoPersonIdentityTracker();
+ private qa=new ReplayIdentityGate();
+ private archived:ReplayArchiveSegment[]=[];
+ private firstAtMs:number|null=null;
+ private discardedSegments=0;
  private analyzers=new Map<ReplayPerformer,GaitAnalyzer>();
  private feet=new Map<string,ReplayGaitState>();
  private history:ReplayGaitEvent[]=[];
@@ -38,12 +44,30 @@ export class VideoPoseGaitEngine{
  private count:1|2=1;
  constructor(private readonly report:Listener){}
  get ready(){return !!this.model&&!this.disposed;}
+ get archivedSegments():ReplayArchiveSegment[]{
+  return this.archived.map(s=>({...s,events:s.events.map(e=>({...e})),
+   identityQA:{...s.identityQA,visible:[...s.identityQA.visible]}}));
+ }
+ get archiveOverflow(){return this.discardedSegments;}
+ private closeSegment(reason:string){
+  if(this.frames===0&&this.history.length===0)return;
+  this.archived.push({
+   segment:this.segment,firstAtMs:this.firstAtMs,lastAtMs:this.lastTime>=0?this.lastTime:null,
+   sampledFrames:this.frames,endReason:reason,events:this.history.map(e=>({...e})),
+   identityQA:this.qa.snapshot
+  });
+  // Oldest segments are safely dropped to prevent unbounded browser memory.
+  while(this.archived.length>64){
+   this.archived.shift();this.discardedSegments++;
+  }
+ }
  get snapshot():ReplayAnalysisSnapshot{
   return {atMs:Math.max(0,this.lastTime),segment:this.segment,
    sampledFrames:this.frames,performers:this.count,people:this.people.map(person=>({
     ...person,landmarks:person.landmarks.map(point=>({...point}))
    })),events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
-   gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}]))};
+   gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
+   qa:this.qa.snapshot,archivedSegments:this.archived.length};
  }
  async init():Promise<void>{
   if(this.disposed)throw Error('Analisis sudah dihentikan.');
@@ -65,7 +89,9 @@ export class VideoPoseGaitEngine{
   this.count=count;this.reset('Jumlah performer berubah. Analisis dimulai ulang.');
  }
  reset(reason='Seek atau loop: event lama dikosongkan agar tidak tercampur.'){
-  this.segment++;this.history=[];this.frames=0;this.feet.clear();
+  this.closeSegment(reason);
+  this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
+  this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.feet.clear();
   this.identity.reset();this.analyzers.clear();this.processor.reset();
   this.people=[];this.ambiguous=false;this.lastTime=-1;
   this.status=reason;this.emit();
@@ -79,7 +105,7 @@ export class VideoPoseGaitEngine{
   if(this.lastTime>=0){
    const diff=atMs-this.lastTime;
    if(!force&&diff<1000/Math.max(1,Math.min(30,capFPS))*.85)return;
-   if(Math.abs(diff)<1&&!force)return;
+   if(Math.abs(diff)<1)return;
   }
   this.inProgress=true;
   try{
@@ -93,6 +119,7 @@ export class VideoPoseGaitEngine{
      landmarks:result.landmarks,worldLandmarks:result.worldLandmarks
     },atMs,configs,capFPS);
     this.lastTime=atMs;this.frames++;
+    this.firstAtMs??=atMs;
     let assigned:ReplayOverlayPerson[]=[];
     if(this.count===2){
      const resolution=this.identity.observe(result.landmarks,atMs);
@@ -110,6 +137,11 @@ export class VideoPoseGaitEngine{
       assigned=[{id:'A',landmarks:result.landmarks[0],confidence:frame.quality}];
      }
      this.status=assigned.length?'Pose A terbaca, membaca fase kaki.':'Kaki/pinggul belum cukup terlihat.';
+    }
+    const identityStable=this.qa.observe(assigned,this.count,this.ambiguous);
+    if(!identityStable){
+     this.status=this.qa.snapshot.reason;
+     assigned=[];
     }
     if(!assigned.length){
      // Never connect a stale planted foot to a new identity.
@@ -132,18 +164,19 @@ export class VideoPoseGaitEngine{
     }
     this.people=assigned;
     // Bound memory during long takes. Position is image-relative, never metric.
-    if(this.history.length>2500)this.history=this.history.slice(-2500);
+    if(this.history.length>5000)this.history=this.history.slice(-5000);
     this.emit();
    }finally{result.close();}
   }catch(e){
    this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
-   this.people=[];this.analyzers.clear();this.feet.clear();this.emit();
+   this.people=[];this.analyzers.clear();this.feet.clear();
+   this.qa.observe([],this.count,false);this.emit();
   }finally{this.inProgress=false;}
  }
  dispose(){
   if(this.disposed)return;
   this.disposed=true;this.model?.close();this.model=null;
   this.identity.reset();this.analyzers.clear();this.feet.clear();
-  this.history=[];this.people=[];this.lastTime=-1;
+  this.history=[];this.archived=[];this.people=[];this.lastTime=-1;
  }
 }
