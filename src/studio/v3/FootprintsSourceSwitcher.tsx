@@ -34,7 +34,7 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
  },[open]);
  const choose=async(choice:FootprintsInputChoice)=>{
   if(busy)return;
-  if(choice===status.selection&&(status.phase==='ready'||choice==='phone'||status.phase==='lab')){
+  if(choice===status.selection&&(status.phase==='ready'||choice==='phone')){
    setOpen(false);trigger.current?.focus({preventScroll:true});
    if(choice==='phone')onPhoneManager();
    return;
@@ -50,7 +50,7 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
  return <div className="fp-source-switcher">
   <button ref={trigger} type="button" className="fp-source-switch-trigger"
    aria-label={`Sumber gerak: ${selection?SOURCE_LABELS[selection]:'belum dipilih'}. Ganti sumber.`}
-   aria-haspopup="menu" aria-expanded={open} aria-controls="fp-source-switch-menu"
+   aria-haspopup="dialog" aria-expanded={open} aria-controls="fp-source-switch-menu"
    data-phase={status.phase} onClick={()=>setOpen(v=>!v)}>
    {status.phase==='connecting'?<LoaderCircle className="fp-switch-spin" size={15}/>:<Icon size={15}/>}
    <span className="fp-source-switch-text"><small>INPUT</small>
@@ -58,14 +58,14 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    <span className="fp-source-switch-dot" data-phase={status.phase} aria-hidden="true"/>
    <ChevronDown size={15} className="fp-switch-chevron" aria-hidden="true"/>
   </button>
-  {open&&<div id="fp-source-switch-menu" ref={panel} role="menu"
+  {open&&<div id="fp-source-switch-menu" ref={panel} role="dialog"
    aria-label="Ganti sumber Footprints" className="fp-source-switch-menu">
    <header><span>SUMBER GERAK</span><button type="button" aria-label="Tutup pilihan sumber"
     onClick={()=>{setOpen(false);trigger.current?.focus({preventScroll:true});}}><X size={16}/></button></header>
    <p>Pengaturan jejak dan arsip tetap tersimpan. Penggantian kamera memerlukan pemeriksaan ulang.</p>
    {SOURCE_CHOICES.map(item=>{
     const ItemIcon=icons[item.id],selected=selection===item.id;
-    return <button type="button" role="menuitem" key={item.id} aria-current={selected?'true':undefined}
+    return <button type="button" key={item.id} aria-current={selected?'true':undefined}
      disabled={busy}
      className="fp-source-switch-option" onClick={()=>void choose(item.id)}>
      <span className="fp-switch-option-icon"><ItemIcon size={18}/></span>
