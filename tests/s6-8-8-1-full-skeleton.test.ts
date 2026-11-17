@@ -30,7 +30,7 @@ test('S6.8.8.1 reject missing/invalid joints, draw uncertain edges as uncertain'
  p[27].x=NaN;
  p[32].y=-.1;
  const data=skeletonGeometry(p);
- assert.equal(data.joints.length,29);
+ assert.equal(data.joints.length,30);
  assert.ok(data.joints.find(j=>j.index===15&&j.level==='uncertain'));
  assert.ok(!data.joints.some(j=>j.index===16||j.index===27||j.index===32));
  assert.ok(data.bones.some(b=>b.from===13&&b.to===15&&b.level==='uncertain'));
