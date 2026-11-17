@@ -28,7 +28,9 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
 export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame){
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
  if(frame.kind==='simulator'){
-  drawPuppetScene(ctx,w,h,frame.session.floor,frame.orbit,frame.performers,
+  // BODY preview zooms toward the virtual legs; INPUT retains the full stage view.
+  const closeOrbit={...frame.orbit,distanceM:Math.max(5.7,frame.orbit.distanceM*.62)};
+  drawPuppetScene(ctx,w,h,frame.session.floor,closeOrbit,frame.performers,
    frame.performers.length,frame.session.events,null,false);
   return;
  }
