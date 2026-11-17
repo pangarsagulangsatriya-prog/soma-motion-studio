@@ -165,8 +165,12 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  };
  const editPlan=(id:StageSurface,fn:(p:StageSurfacePlan)=>StageSurfacePlan)=>{
   try{
+   // Validate synchronously before committing React state: number fields often
+   // produce transient invalid quads while typing. Keep the last valid setup.
+   const next=validateStageSurfacePlan(fn(latest.current.plans[id]));
    urgentBlackout(id);
-   setPlans(prev=>({...prev,[id]:validateStageSurfacePlan(fn(prev[id]))}));
+   latest.current.plans={...latest.current.plans,[id]:next};
+   setPlans(prev=>({...prev,[id]:next}));
    setRequested(prev=>({...prev,[id]:'blackout'}));
    setArmed(prev=>({...prev,[id]:false}));
    setMessage('Kalibrasi '+id+' berubah. Output Blackout dan uji fisik harus diulang.');
