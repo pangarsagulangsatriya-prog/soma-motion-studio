@@ -1,5 +1,6 @@
 import {FilesetResolver,PoseLandmarker} from '@mediapipe/tasks-vision';
 import type {Landmark} from '../engine/types.ts';
+import {descriptorsFor33} from './mediaPipeD2Bridge.ts';
 import {duetSearchRegions,remapPoseFromCrop,rescuePoseQuality,
  mergeRescueDetections,type RescuedPose} from './duetPoseRescue.ts';
 
@@ -93,7 +94,20 @@ self.onmessage=async(event:MessageEvent<Request>)=>{
    rescuedCount=recover(bitmap,landmarks,worldLandmarks,clock);
   }
   const poseMs=performance.now()-start;
-  send({type:'result',id:value.id,landmarks,worldLandmarks,poseMs,rescuedCount});
+  let appearance:(number[]|null)[]=landmarks.map(()=>null);
+  // Read color from the exact ImageBitmap used for this inference frame.
+  try{
+   if(typeof OffscreenCanvas!=='undefined'&&landmarks.length){
+    const w=Math.min(480,bitmap.width),h=Math.max(1,Math.round(bitmap.height*w/bitmap.width));
+    const canvas=new OffscreenCanvas(w,h);
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    if(ctx){
+     ctx.drawImage(bitmap,0,0,w,h);
+     appearance=descriptorsFor33(landmarks,ctx.getImageData(0,0,w,h));
+    }
+   }
+  }catch{/* Position-only gate remains conservative when pixel sampling fails. */}
+  send({type:'result',id:value.id,landmarks,worldLandmarks,poseMs,rescuedCount,appearance});
  }catch(e){send({type:'error',id:value.id,message:e instanceof Error?e.message:String(e)});}
  finally{bitmap.close();}
 };
