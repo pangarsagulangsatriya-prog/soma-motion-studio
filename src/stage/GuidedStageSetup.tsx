@@ -1,10 +1,18 @@
-import {useState} from 'react';
+import {useState,type RefObject} from 'react';
+import type {MotionFrame} from '../engine/types.ts';
+import type {LiveFloorTrackingEngine} from '../footprints/live/LiveFloorTrackingEngine.ts';
+import type {MultiPoseGaitRouter} from '../footprints/live/MultiPoseGaitRouter.ts';
+import {RealDeviceValidationPanel} from './RealDeviceValidationPanel.tsx';
 import {PhoneCameraReceiver} from './PhoneCameraReceiver.tsx';
 import type {StageSessionController} from './useStageSession.ts';
 const steps=['Sumber','Kalibrasi','Tracking','Arsip','Latihan'] as const;
 export function GuidedStageSetup({open,onClose,session,onStartLaptop,onPhoneStream,onPhoneDisconnect,
- onCalibrate,onSimulator,onArchive,onPerform,cameraOn,calibrated,confirmed,contacts}:{
+ onCalibrate,onSimulator,onArchive,onPerform,cameraOn,calibrated,confirmed,contacts,
+ frameRef,videoRef,floorTracker,identityRouter,phoneActive,performers}:{
  open:boolean;onClose:()=>void;session:StageSessionController;
+ frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
+ floorTracker:LiveFloorTrackingEngine;identityRouter:MultiPoseGaitRouter;
+ phoneActive:boolean;performers:1|2;
  onStartLaptop:()=>void;onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
  onPhoneDisconnect:()=>void;onCalibrate:()=>void;onSimulator:()=>void;
  onArchive:()=>void;onPerform:()=>void;cameraOn:boolean;
@@ -47,13 +55,19 @@ export function GuidedStageSetup({open,onClose,session,onStartLaptop,onPhoneStre
    <button type="button" className="soma-setup-primary" onClick={onCalibrate}>Buka kalibrasi Footprints</button>
    <p>Kalibrasi otomatis dengan marker masih tahap berikut. Jangan menggunakan hasil simulasi sebagai persetujuan proyeksi fisik.</p>
   </div>}
-  {step===2&&<div className="soma-setup-page">
+  <div className="soma-setup-page" hidden={step!==2}>
    <h3>03 / Periksa deteksi kaki</h3>
    <p>Pastikan kedua telapak terlihat. Uji walking, slow step, slide, pivot, dan crossing saat memakai dua performer.</p>
    <div className="soma-setup-status">{contacts} kontak tercatat · kamera {cameraOn?'aktif':'mati'}</div>
    <p>Hasil contact hanya dapat dipercaya setelah posisi kamera dan lantai selesai dikalibrasi.</p>
    <button type="button" onClick={onSimulator}>Uji gerak dengan 3D Direct Puppet</button>
-  </div>}
+   {session.meta.source==='phone'&&<details className="soma-device-qa-disclosure">
+    <summary>Real-Device Validation · S6.1.2</summary>
+    <RealDeviceValidationPanel frameRef={frameRef} videoRef={videoRef}
+     tracker={floorTracker} router={identityRouter}
+     performers={performers} phoneActive={phoneActive}/>
+   </details>}
+  </div>
   {step===3&&<div className="soma-setup-page">
    <h3>04 / Pasang video arsip A/B</h3>
    <p>Unggah video kaki, pilih sumber mask, lalu hubungkan contact ke fragmen pad. Arsip disimpan secara lokal.</p>
