@@ -1,4 +1,5 @@
 import {sole} from '../pattern.ts';
+import {PROJECTED_FIDUCIAL_UV,PROJECTED_MARKER_COLORS} from '../../stage/ProjectedMarkerCalibration.ts';
 import type {CalibrationQATarget} from '../validation/CalibrationQA.ts';
 import {floorToUV,type FloorSpace} from '../spatial/coordinates.ts';
 import {validateFloorSession,type FloorSession,type FootstepEvent} from '../spatial/events.ts';
@@ -17,7 +18,8 @@ const solePath=()=>{
 const color=(e:FootstepEvent)=>e.performerId==='B'?
  (e.foot==='left'?'#A5D4D1':'#7FB0CB'):
  (e.foot==='left'?'#E6EBD9':'#D2DD8E');
-export type FloorCanvasOptions={maxTimeMs?:number;showGrid?:boolean;markersOnly?:boolean;qaTarget?:CalibrationQATarget|null};
+export type FloorCanvasOptions={maxTimeMs?:number;showGrid?:boolean;markersOnly?:boolean;
+ projectedMarkers?:boolean;qaTarget?:CalibrationQATarget|null};
 export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,options:FloorCanvasOptions={}){
  const s=validateFloorSession(session),w=FLOOR_RASTER.width,h=FLOOR_RASTER.height;
  if(canvas.width!==w)canvas.width=w;
@@ -27,6 +29,18 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
  ctx.setTransform(1,0,0,1,0,0);
  ctx.fillStyle='#000000';ctx.fillRect(0,0,w,h);
  if(options.markersOnly){
+  if(options.projectedMarkers){
+   // S6.2 uses a dim/black raster and four measured, highly saturated test spots.
+   // Projector alignment needs human observation before these can establish floor boundaries.
+   PROJECTED_FIDUCIAL_UV.forEach((p,i)=>{
+    const x=p.x*w,y=p.y*h,r=Math.max(24,Math.round(Math.min(w,h)*.055));
+    ctx.fillStyle=PROJECTED_MARKER_COLORS[i];
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#070a08';ctx.font='bold '+Math.round(r*.7)+'px monospace';
+    ctx.textAlign='center';ctx.fillText(String(i+1),x,y+r*.23);
+   });
+   return;
+  }
   if(options.qaTarget){
    const target=options.qaTarget;
    const x=target.uv.x*w,y=target.uv.y*h;

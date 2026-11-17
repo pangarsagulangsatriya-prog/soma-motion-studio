@@ -159,6 +159,7 @@ export function GuidedFloorCalibration({tracker,videoRef,cameraOn,active,onDirty
   </div>
   <div className="soma-setup-status" role="status">{message} · {
    approval.confirmed?'Terkonfirmasi':approval.calibrated?'Tersimpan, belum dikonfirmasi':'Belum dikalibrasi'}</div>
-  <button type="button" onClick={onOpenPhysicalQA}>Buka QA proyektor · 5 titik (lanjutan)</button>
+  <button type="button" className="soma-setup-primary" onClick={onOpenPhysicalQA}>
+   S6.2 · Marker proyeksi, drag empat titik & QA lima titik</button>
  </div>;
 }

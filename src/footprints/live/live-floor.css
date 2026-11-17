@@ -129,3 +129,26 @@
 .live-floor-qa-points small{font-size:10px;color:#b6c7af}
 .live-floor-qa-points em{font:600 12px monospace;color:#dceab8;font-style:normal}
 .live-floor-qa-status{border-left:3px solid #d1e8b2;padding-left:9px}
+
+/* S6.2 · Assisted projected-marker matching and four-corner drag */
+.live-floor-view canvas{touch-action:none;cursor:crosshair}
+.soma-projected-assist{margin:14px 0;padding:12px;
+ border:1px solid #54755b;border-radius:9px;background:#101e15}
+.soma-projected-assist>summary{cursor:pointer;padding:6px 2px;
+ color:#dce8c7;font-weight:700;line-height:1.5}
+.soma-projected-assist>summary span{display:block;font-weight:400;
+ font-size:11px;color:#9fbea9}
+.soma-projected-assist>p{font-size:12px;line-height:1.55;color:#c7d8c4}
+.soma-projected-assist .live-floor-tools{display:flex;flex-wrap:wrap;
+ gap:8px;margin:11px 0}
+.soma-projected-assist .live-floor-tools button{min-height:40px}
+.soma-projected-fiducials{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:8px;max-width:670px;margin:12px 0}
+.soma-projected-fiducials>div{display:flex;flex-direction:column;gap:6px}
+.soma-projected-fiducials span{display:block;width:100%;max-width:96px;
+ aspect-ratio:1;border:2px solid #fff;border-radius:7px}
+.soma-projected-fiducials small{font-size:10px;color:#d0e4c8;line-height:1.4}
+@media(max-width:650px){
+ .soma-projected-fiducials{grid-template-columns:1fr 1fr}
+ .soma-projected-assist{padding:9px}
+}
