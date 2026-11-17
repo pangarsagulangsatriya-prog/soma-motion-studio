@@ -12,8 +12,8 @@ import './video-motion-lab.css';
 type Clip={name:string;size:number;type:string;url:string;lastModified:number};
 const readableSize=(n:number)=>n>=1024*1024?(n/(1024*1024)).toFixed(1)+' MB':(n/1024).toFixed(1)+' KB';
 const formatResolution=(w:number,h:number)=>w>0&&h>0?w+' × '+h:'—';
-type Props={onClose:()=>void;onUseReference?:(report:ReplayReport)=>void};
-export function VideoMotionLab({onClose,onUseReference}:Props){
+type Props={onClose:()=>void;onUseReference?:(report:ReplayReport)=>void;initialFile?:File|null};
+export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
  const [clip,setClip]=useState<Clip|null>(null);
  const [duration,setDuration]=useState(0);
  const [position,setPosition]=useState(0);
@@ -164,6 +164,12 @@ export function VideoMotionLab({onClose,onUseReference}:Props){
   if(old)URL.revokeObjectURL(old);
  };
  useEffect(()=>()=>{engineRef.current?.dispose();if(lastUrl.current)URL.revokeObjectURL(lastUrl.current);},[]);
+ // S6.8.4: carry the locally selected Footprints clip into the advanced Lab.
+ const importedInitialFile=useRef<File|null>(null);
+ useEffect(()=>{
+  if(!initialFile||importedInitialFile.current===initialFile)return;
+  importedInitialFile.current=initialFile;loadFile(initialFile);
+ },[initialFile]);
  const changeFile=(e:ChangeEvent<HTMLInputElement>)=>{
   const file=e.target.files?.[0];if(file)loadFile(file);e.target.value='';
  };
