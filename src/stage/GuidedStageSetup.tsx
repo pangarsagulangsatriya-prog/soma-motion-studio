@@ -14,7 +14,9 @@ const steps=[{name:'Input',hint:'Pilih kamera'},{name:'Tracking',hint:'Uji gerak
 const corners=['Kiri atas','Kanan atas','Kanan bawah','Kiri bawah'] as const;
 const sizes=[{label:'4 × 3 m',w:4,d:3},{label:'6 × 4 m',w:6,d:4},{label:'8 × 6 m',w:8,d:6},{label:'10 × 8 m',w:10,d:8}] as const;
 type Props={
- open:boolean;onClose:()=>void;session:StageSessionController;
+ open:boolean;onClose:()=>void;session:StageSessionController;embedded?:boolean;
+ onCalibrationState?:(state:{marks:Array<Point|null>;editing:number}|null)=>void;
+ onBindCalibrationTap?:(handler:((x:number,y:number)=>void)|null)=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  bodyPreviewRef:RefObject<HTMLCanvasElement|null>;floorPreviewRef:RefObject<HTMLCanvasElement|null>;
  floorTracker:LiveFloorTrackingEngine;identityRouter:MultiPoseGaitRouter;
@@ -26,7 +28,8 @@ type Props={
 };
 const emptyCorners=():Array<Point|null>=>[null,null,null,null];
 export function GuidedStageSetup({
- open,onClose,session,onStartLaptop,onPhoneStream,onPhoneDisconnect,
+ open,onClose,session,embedded=false,onCalibrationState,onBindCalibrationTap,
+ onStartLaptop,onPhoneStream,onPhoneDisconnect,
  onCalibrate,onSimulator,onArchive,onComposer,onVideoLab,onPerform,onBlackout,cameraOn,
  calibrated,confirmed,contacts,frameRef,videoRef,bodyPreviewRef,floorPreviewRef,
  floorTracker,identityRouter,phoneActive,performers
@@ -44,11 +47,11 @@ export function GuidedStageSetup({
  const headingRef=useRef<HTMLHeadingElement>(null);
  const cameraPreview=useRef<HTMLCanvasElement>(null),bodyPreview=useRef<HTMLCanvasElement>(null),floorPreview=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
-  const media=window.matchMedia('(max-width: 1250px)');
+  const media=window.matchMedia(embedded?'(max-width: 760px)':'(max-width: 1250px)');
   const sync=()=>setCompact(media.matches);
   sync();media.addEventListener('change',sync);
   return()=>media.removeEventListener('change',sync);
- },[]);
+ },[embedded]);
  useEffect(()=>{
   if(!open)return;
   const prior=document.activeElement;
@@ -63,10 +66,12 @@ export function GuidedStageSetup({
   };
  },[open,compact]);
  const panelKeyDown=(event:KeyboardEvent<HTMLElement>)=>{
-  // Prevent global stage shortcuts (including Space / emergency controls)
-  // from being triggered by interaction with setup fields.
-  event.stopPropagation();
-  if(event.key==='Escape'){event.preventDefault();onClose();return;}
+  // Esc closes this panel. Shift+Esc always issues software Blackout even
+  // while the panel or one of its form controls has keyboard focus.
+  if(event.key==='Escape'&&event.shiftKey){event.preventDefault();event.stopPropagation();onBlackout();return;}
+  if(event.key==='Escape'){event.preventDefault();event.stopPropagation();onClose();return;}
+  if(!event.ctrlKey&&!event.metaKey&&!event.altKey&&
+   /^(Space|Digit[1-9]|Key[CTFRP])$/.test(event.code))event.stopPropagation();
   if(!compact||event.key!=='Tab'||!panelRef.current)return;
   const controls=Array.from(panelRef.current.querySelectorAll<HTMLElement>(
    'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,[tabindex]:not([tabindex="-1"])'
@@ -158,6 +163,25 @@ export function GuidedStageSetup({
   if(floorTracker.isCalibrated)floorTracker.revoke('Sudut atau ukuran lantai berubah. Terapkan dan konfirmasi ulang.');
   identityRouter.reset();
  };
+ const placePoint=(x:number,y:number)=>{
+  if(step!==1||!gate.input.ready)return;
+  if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>1||y<0||y>1){
+   setMessage('Klik di dalam gambar kamera, pada sudut lantai yang terlihat.');return;
+  }
+  dirty();setMarks(prev=>prev.map((p,i)=>i===editing?{x,y}:p));
+  setEditing(v=>(v+1)%4);
+  setMessage('Sudut '+(editing+1)+' disimpan. Periksa posisi setiap titik sebelum menerapkan.');
+ };
+ useEffect(()=>{
+  if(!embedded||!open||step!==1){onCalibrationState?.(null);return;}
+  onCalibrationState?.({marks:marks.map(p=>p?{...p}:null),editing});
+  return()=>onCalibrationState?.(null);
+ },[embedded,open,step,marks,editing,onCalibrationState]);
+ useEffect(()=>{
+  if(!embedded||!open||step!==1){onBindCalibrationTap?.(null);return;}
+  onBindCalibrationTap?.(placePoint);
+  return()=>onBindCalibrationTap?.(null);
+ },[embedded,open,step,editing,marks,gate.input.ready,onBindCalibrationTap]);
  const selectPoint=(e:PointerEvent<HTMLCanvasElement>)=>{
   if(step!==1||!gate.input.ready)return;
   const video=videoRef.current,canvas=cameraPreview.current;
@@ -168,9 +192,7 @@ export function GuidedStageSetup({
   const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
   const w=video.videoWidth*scale,h=video.videoHeight*scale;
   const x=(px-(canvas.width-w)/2)/w,y=(py-(canvas.height-h)/2)/h;
-  if(x<0||x>1||y<0||y>1){setMessage('Klik di dalam gambar kamera, pada sudut lantai yang terlihat.');return;}
-  dirty();setMarks(prev=>prev.map((p,i)=>i===editing?{x,y}:p));
-  setEditing(v=>(v+1)%4);setMessage('Sudut '+(editing+1)+' disimpan. Periksa posisi setiap titik sebelum menerapkan.');
+  placePoint(x,y);
  };
  const applyCalibration=()=>{
   try{
@@ -211,7 +233,7 @@ export function GuidedStageSetup({
    aria-hidden="true" onPointerDown={onClose}/>
   <section id="soma-guide-drawer" ref={panelRef} className="soma-guided-setup soma-guided-v2 soma-guided-sidecar"
    hidden={!open} data-step={step} data-camera-ready={gate.input.ready}
-   role={compact?'dialog':'complementary'} aria-modal={compact?true:undefined}
+   role={compact?'dialog':embedded?'region':'complementary'} aria-modal={compact?true:undefined}
    aria-labelledby="soma-guide-panel-title" onKeyDown={panelKeyDown}>
   <header>
    <div><small>STAGE SETUP · {step+1} / 3</small>
@@ -261,6 +283,11 @@ export function GuidedStageSetup({
      <div className="soma-guide-section-top"><h3>Kalibrasi & cek langkah</h3>
       <p>Klik empat sudut lantai pada preview kamera, sesuai urutan. Gambar kamera tidak dicerminkan.</p></div>
 
+     {embedded&&<div className="soma-guide-main-corners" role="group" aria-label="Titik kalibrasi di kamera utama">
+      {corners.map((name,i)=><button type="button" key={name} aria-pressed={editing===i}
+       onClick={()=>setEditing(i)}>{i+1}. {name} {marks[i]?'✓':''}</button>)}
+      <p>Klik sudut lantai pada preview kamera besar di sebelah kiri.</p>
+     </div>}
      <div className="soma-guide-dimensions">
       <label>Ukuran lantai
        <select value={sizes.find(s=>s.w===widthM&&s.d===depthM)?.label??'custom'}
@@ -317,7 +344,7 @@ export function GuidedStageSetup({
    <aside className="soma-guide-preview" aria-label="Preview kamera pada Guided Setup">
     <div className="soma-guide-preview-head"><b>{step===1?'Tandai sudut lantai':'Kamera langsung'}</b>
      <span data-ready={gate.input.ready}>{gate.input.ready?'LIVE':'OFFLINE'}</span></div>
-    {step===1&&<div className="soma-guide-corners" role="group" aria-label="Sudut lantai yang diedit">
+    {!embedded&&step===1&&<div className="soma-guide-corners" role="group" aria-label="Sudut lantai yang diedit">
      {corners.map((corner,i)=><button type="button" key={corner} aria-pressed={editing===i}
       onClick={()=>setEditing(i)} title={'Pilih titik '+(i+1)}>{i+1}. {corner} {marks[i]?'✓':''}</button>)}
     </div>}
