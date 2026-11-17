@@ -6,7 +6,9 @@ import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from '
 import {HandLimbDetailAnalyzer,HAND_SCAN_INTERVAL_MS,type HandLimbFrame,type RawHandDetection} from './videoHandLimbDetail.ts';
 import type {ReplayIdentityQA} from './videoReplayIdentityQA.ts';
 import {ReplayActorRecoveryGate} from './replayActorRecoveryGate.ts';
-import {MotionSemanticsEngine,type MotionSemanticEvent,type MotionSemanticStatus} from './motionSemantics.ts';
+import {MotionSemanticsEngine,type MotionSemanticEvent,type MotionSemanticStatus,type MotionSemanticKind} from './motionSemantics.ts';
+import {ReplayInferenceWorkerClient} from './replayInferenceWorkerClient.ts';
+import {ReplayPerformanceMeter,AdaptiveHandScheduler,type ReplayPerformance,type HandDetailMode} from './replayPerformance.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
@@ -27,6 +29,9 @@ export type ReplayAnalysisSnapshot={
  /** Image-space semantic events only, never physical projector actions. */
  semanticEvents?:MotionSemanticEvent[];semanticStatuses?:MotionSemanticStatus[];
  status:string;ambiguous:boolean;
+ performance:ReplayPerformance;totalEventCount:number;
+ semanticTotals:Record<MotionSemanticKind,number>;
+ gaitCounts:{contact:number;swing:number;slide:number;pivot:number};
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
 type Listener=(snapshot:ReplayAnalysisSnapshot)=>void;
@@ -37,6 +42,14 @@ const sideName=(side:0|1):ReplayFoot=>side===0?'left':'right';
  * StageSession, calibrated FloorSession, or dual projector renderer. */
 export class VideoPoseGaitEngine{
  private model:PoseLandmarker|null=null;
+ private worker:ReplayInferenceWorkerClient|null=null;
+ private workerDisabled=false;
+ private meter=new ReplayPerformanceMeter();
+ private handsSchedule=new AdaptiveHandScheduler();
+ private epoch=0;
+ private lastEmitAt=-Infinity;
+ private queuedForced:{video:HTMLVideoElement;atSeconds:number;capFPS:number}|null=null;
+ private gaitCounts={contact:0,swing:0,slide:0,pivot:0};
  private handModel:HandLandmarker|null=null;
  private lastHandScanAt=-Infinity;
  private handFailures=0;
@@ -74,7 +87,12 @@ export class VideoPoseGaitEngine{
  private ambiguous=false;
  private count:1|2=1;
  constructor(private readonly report:Listener){}
- get ready(){return !!this.model&&!this.disposed;}
+ get ready(){return (!!this.model||!!this.worker)&&!this.disposed;}
+ get performance(){return this.meter.snapshot;}
+ get handDetailMode(){return this.handsSchedule.mode;}
+ setHandDetailMode(mode:HandDetailMode){this.handsSchedule.setMode(mode);this.emit(true);}
+ recordPresentedFrame(count:number|null){if(count!==null)this.meter.observePresented(count);}
+ recordRender(ms:number){this.meter.observeRender(ms);}
  /** Current replay segment's bounded temporal data; never a physical gait output. */
  getTemporalTrace(actor:'A'|'B',joint:number):TemporalTracePoint[]{
   return this.temporalAnalyzer.getTrace(actor,joint);
@@ -102,7 +120,8 @@ export class VideoPoseGaitEngine{
    this.archived.shift();this.discardedSegments++;
   }
  }
- get snapshot():ReplayAnalysisSnapshot{
+ get snapshot():ReplayAnalysisSnapshot{return this.buildSnapshot(true);}
+ private buildSnapshot(full:boolean):ReplayAnalysisSnapshot{
   return {atMs:Math.max(0,this.lastTime),segment:this.segment,
    firstAtMs:this.firstAtMs,truncatedEvents:this.truncatedEvents,
    sampledFrames:this.frames,performers:this.count,people:this.people.map(person=>({
@@ -114,8 +133,12 @@ export class VideoPoseGaitEngine{
    temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
    handLimb:this.handLimbAnalyzer.latest,handLimbFrameCount:this.handLimbAnalyzer.frameCount,
    handModelStatus:this.handModelStatus,handModelReason:this.handModelReason,
-   semanticEvents:this.semanticEngine.history,semanticStatuses:this.semanticEngine.statuses,
-   events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
+   semanticEvents:full?this.semanticEngine.history:this.semanticEngine.getRecentEvents(64),
+   semanticStatuses:this.semanticEngine.statuses,
+   events:full?this.history.slice():this.history.slice(-64),
+   performance:this.meter.snapshot,totalEventCount:this.history.length+this.truncatedEvents,
+   semanticTotals:this.semanticEngine.counts,gaitCounts:{...this.gaitCounts},
+   status:this.status,ambiguous:this.ambiguous,
    gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
    qa:this.qa.snapshot,archivedSegments:this.archived.length};
  }
