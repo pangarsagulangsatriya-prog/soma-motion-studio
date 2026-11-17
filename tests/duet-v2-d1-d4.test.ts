@@ -32,7 +32,9 @@ test('D2 keeps one visible actor active when partner disappears',()=>{
  assert.equal(partial.actors[1].status,'occluded');
  assert.equal(partial.actors[1].observed,false);
  assert.equal(partial.actors[1].box?.x,.7);
- const lost=track.observe([person(.16,brown,1)],1201);
+ for(let at=201;at<=1101;at+=100)
+  track.observe([person(.15+(at-101)/12000,brown,1)],at);
+ const lost=track.observe([person(.24,brown,1)],1201);
  assert.equal(lost.actors[0].status,'visible');
  assert.equal(lost.actors[1].status,'lost');
 });
