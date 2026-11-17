@@ -119,3 +119,41 @@
 @media(prefers-reduced-motion:reduce){
  .soma-app-sidebar,.soma-rail-item,.soma-v3 .soma-nav-header .soma-nav-toggle{transition:none!important}
 }
+
+
+/* S6.7 — two destinations only; slim rail with clear active system. */
+.soma-v3 .workspace:has(>.soma-primary-sidebar){--soma-sidebar-width:64px}
+.soma-v3 .workspace:has(>.soma-primary-sidebar[data-expanded=true]){--soma-sidebar-width:188px}
+.soma-primary-sidebar .soma-primary-nav-list{
+ display:flex;flex-direction:column;gap:8px;padding:18px 8px;
+}
+.soma-primary-sidebar .soma-primary-destination{
+ min-height:62px;gap:10px;padding:10px 12px;border-radius:9px;
+}
+.soma-primary-sidebar .soma-primary-destination svg{flex:0 0 20px}
+.soma-primary-sidebar .soma-primary-destination .soma-rail-item-copy b{
+ font-size:13px;font-weight:650;
+}
+.soma-primary-sidebar .soma-primary-destination .soma-rail-item-copy small{
+ font-size:9px;letter-spacing:0;line-height:1.35;
+}
+.soma-primary-sidebar[data-expanded=false] .soma-primary-destination{justify-content:center;padding:9px}
+.soma-primary-sidebar .soma-primary-nav-note{
+ min-height:41px;padding:12px;color:#869f88;
+ display:flex;align-items:center;gap:10px;border-top:1px solid #34463a;
+ font:10px system-ui,sans-serif;
+}
+.soma-primary-sidebar .soma-primary-nav-note>span:first-child{font-size:11px;color:#829882}
+.soma-primary-sidebar[data-expanded=false] .soma-primary-nav-note{justify-content:center}
+.soma-v3 .soma-primary-header .v3-brand span{font-size:10px}
+.soma-v3 .soma-primary-header .v3-global-actions{margin-left:auto}
+@media(max-width:760px){
+ .soma-v3 .workspace:has(>.soma-primary-sidebar),
+ .soma-v3 .workspace:has(>.soma-primary-sidebar[data-expanded=true]){
+  --soma-sidebar-width:0px;
+ }
+ .soma-primary-sidebar{width:min(260px,84vw);max-width:84vw}
+ .soma-primary-sidebar .soma-primary-nav-list{padding:14px 10px}
+ .soma-primary-sidebar .soma-primary-destination{justify-content:flex-start;padding:12px}
+ .soma-primary-sidebar[data-expanded=false] .soma-primary-destination{justify-content:flex-start;padding:12px}
+}
