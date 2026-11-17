@@ -368,3 +368,64 @@
  .soma-guided-sidecar,.soma-guided-sidecar .soma-setup-page{animation:none!important}
  .soma-guided-sidecar button{transition:none!important}
 }
+
+
+/* S6.6.1 — guided steps share the one Context Inspector column. */
+.fp-stage-inspector[data-mode=setup] .soma-guided-sidecar{
+ position:relative!important;inset:auto!important;top:auto!important;
+ right:auto!important;bottom:auto!important;left:auto!important;
+ margin:0!important;padding:0!important;
+ width:100%!important;height:100%!important;max-width:none!important;
+ max-height:none!important;min-height:0!important;border:none!important;
+ border-radius:0!important;box-shadow:none!important;
+ background:#142019!important;animation:none!important;
+ display:flex;flex-direction:column;
+}
+.fp-stage-inspector[data-mode=setup] .soma-guided-sidecar>header{padding:14px 14px 11px}
+.fp-stage-inspector[data-mode=setup] .soma-guided-sidecar>header h2{font-size:18px}
+.fp-stage-inspector[data-mode=setup] .soma-guide-main{min-height:0;flex:1}
+.fp-stage-inspector[data-mode=setup] .soma-guide-preview{display:none!important}
+.fp-stage-inspector[data-mode=setup] .soma-guided-steps{padding:9px 10px}
+.fp-stage-inspector[data-mode=setup] .soma-guide-footer{
+ position:sticky;bottom:0;z-index:5;
+}
+.fp-stage-inspector[data-mode=setup] .soma-guide-main-corners{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+ background:#172a1e;border:1px solid #49634d;
+ padding:9px;border-radius:7px;
+}
+.fp-stage-inspector[data-mode=setup] .soma-guide-main-corners button{
+ font-size:10px;min-height:39px;padding:7px 8px;
+ background:#294132;border:1px solid #527251;border-radius:6px;
+ color:#d8e9d5;cursor:pointer;
+}
+.fp-stage-inspector[data-mode=setup] .soma-guide-main-corners button[aria-pressed=true]{
+ background:#4d693e;border-color:#d1e7aa;color:#f1f7df;
+}
+.fp-stage-inspector[data-mode=setup] .soma-guide-main-corners p{
+ grid-column:1/-1;font-size:11px;color:#aec7af;margin:3px 0 0;
+ line-height:1.5;
+}
+.fp-stage-inspector[data-mode=setup] .soma-guide-main-corners button:focus-visible{
+ outline:2px solid #cce5a5;outline-offset:2px;
+}
+@media(max-width:1200px){
+ .fp-stage-inspector[data-mode=setup] .soma-guide-mobile-scrim{
+  display:block!important;
+ }
+ .fp-stage-inspector[data-mode=setup] .soma-guide-preview{
+  display:block!important;
+ }
+ .fp-stage-inspector[data-mode=setup] .soma-guide-preview>canvas{
+  display:block!important;max-height:255px;
+ }
+ .fp-stage-inspector[data-mode=setup] .soma-guide-preview-head{display:flex}
+ .fp-stage-inspector[data-mode=setup] .soma-guide-extra-previews{display:none!important}
+ .fp-stage-inspector[data-mode=setup] .soma-guide-preview-note{display:block}
+ .fp-stage-inspector[data-mode=setup] .soma-guided-sidecar{
+  position:relative!important;height:100%!important;
+ }
+}
+@media(min-width:1201px){
+ .fp-stage-inspector[data-mode=setup] .soma-guide-mobile-scrim{display:none!important}
+}
