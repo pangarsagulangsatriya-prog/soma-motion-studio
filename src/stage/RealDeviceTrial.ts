@@ -43,7 +43,8 @@ const proportion=(count:number,total:number)=>total?Math.round(count/total*1000)
 export const DEVICE_PROVISIONAL_GATES={
  minDurationMs:60_000,minInboundFrames:600,minFps:18,
  minFreshFraction:0.85,minTrackedFraction:0.75,maxAmbiguousFraction:0.15,
- minContactEvents:6,minConnectedSamples:30,minMovementEvidencePerCase:1
+ minContactEvents:6,minConnectedSamples:30,minConnectionFraction:0.85,
+ minCalibrationFraction:0.75,minTwoVisibleFraction:0.6,minMovementEvidencePerCase:1
 } as const;
 /** Start only while the actual receiver is connected and SOMA is using its video. */
 export function beginDeviceTrial(input:{
@@ -71,8 +72,8 @@ export function appendDeviceSample(trial:DeviceTrial,sample:DeviceSample):Device
  if(!finite(sample.elapsedMs)||
   (trial.samples.length>0&&sample.elapsedMs<=trial.samples[trial.samples.length-1].elapsedMs))
   throw Error('Sampel harus berurutan menurut waktu.');
- if(!sample.phoneActive&&sample.transport==='connected')
-  sample={...sample,transport:'interrupted'};
+ if((!sample.phoneActive||sample.source!==trial.source)&&sample.transport==='connected')
+  sample={...sample,transport:'interrupted',phoneActive:false};
  const result={...sample};
  const disconnectAt=trial.disconnectAtMs??(
   trial.samples.some(s=>s.transport==='connected')&&
@@ -138,11 +139,14 @@ export function summarizeDeviceTrial(trial:DeviceTrial,nowMs:number){
   const lost=(packetSamples[i].packetsLost??0)-(packetSamples[i-1].packetsLost??0);
   if(recv>=0&&lost>=0){packetsReceived+=recv;packetsLost+=lost;}
  }
+ // Blackout can be dispatched in the disconnect callback before the 1s QA
+ // sampler notices link loss. Correlate within ±2.5s, never claim photon timing.
  const blackoutAfterLoss=trial.disconnectAtMs===null?null:
-  trial.softwareBlackoutAtMs.filter(t=>t>=trial.disconnectAtMs!&&t<=trial.disconnectAtMs!+2500).length>0;
+  trial.softwareBlackoutAtMs.some(t=>Math.abs(t-trial.disconnectAtMs!)<=2500);
  return {durationMs,samples:trial.samples.length,connectedSamples:active.length,
   decodedFrames:decoded,fpsMedian:fps,
-  frameFreshFraction:proportion(validAge.filter(s=>s.frameAgeMs!<=450).length,validAge.length),
+  connectionFraction:proportion(active.length,trial.samples.length),
+  frameFreshFraction:proportion(validAge.filter(s=>s.frameAgeMs!==null&&s.frameAgeMs<=450).length,validAge.length),
   trackedFraction:proportion(validPose.filter(s=>s.poseTracked).length,validPose.length),
   ambiguousFraction:proportion(ambiguous.length,active.length),
   twoVisibleFraction:proportion(active.filter(s=>s.observedTwo).length,active.length),
@@ -176,6 +180,13 @@ export function assessDeviceTrial(trial:DeviceTrial|null,nowMs:number){
   missing.push('Rekam sekurang-kurangnya 60 detik.');
  if(s.connectedSamples<DEVICE_PROVISIONAL_GATES.minConnectedSamples)
   missing.push('Perlu sekurangnya 30 sampel koneksi WebRTC aktif.');
+ if(s.connectionFraction!==null&&s.connectionFraction<DEVICE_PROVISIONAL_GATES.minConnectionFraction)
+  failed.push('Koneksi WebRTC aktif kurang dari 85% sampel trial.');
+ if(s.calibrationValidFraction!==null&&s.calibrationValidFraction<DEVICE_PROVISIONAL_GATES.minCalibrationFraction)
+  failed.push('Konfirmasi kamera/kalibrasi valid kurang dari 75% sampel aktif.');
+ if(trial.performers===2&&s.twoVisibleFraction!==null&&
+  s.twoVisibleFraction<DEVICE_PROVISIONAL_GATES.minTwoVisibleFraction)
+  failed.push('Dua performer valid terlihat kurang dari 60% sampel aktif.');
  if(s.decodedFrames<DEVICE_PROVISIONAL_GATES.minInboundFrames)
   missing.push('Dekode video belum mencapai 600 frame terukur.');
  if(s.fpsMedian===null)missing.push('Frame rate video WebRTC belum terukur.');
@@ -192,8 +203,13 @@ export function assessDeviceTrial(trial:DeviceTrial|null,nowMs:number){
   failed.push('Identitas A/B ambigu pada lebih dari 15% sampel.');
  if(s.contactDelta<DEVICE_PROVISIONAL_GATES.minContactEvents)
   missing.push('Perlu sekurangnya 6 event kontak kaki selama trial.');
- for(const scenario of s.cases)if(!scenario.count)
-  missing.push('Bukti gerak belum dicatat: '+scenario.kind+'.');
+ for(const scenario of s.cases){
+  if(!scenario.count)missing.push('Bukti gerak belum dicatat: '+scenario.kind+'.');
+  if(trial.performers===2&&scenario.kind!=='crossing'&&scenario.kind!=='disconnect')
+   for(const id of ['A','B'])
+    if(!trial.observations.some(o=>o.case===scenario.kind&&o.performer===id))
+     missing.push('Bukti '+scenario.kind+' performer '+id+' belum dicatat.');
+ }
  if(!s.disconnectRecorded||!s.softwareBlackoutAfterLoss)
   missing.push('Uji putus koneksi dan permintaan Blackout software belum terverifikasi.');
  const status:DeviceTrialStatus=missing.length?'incomplete':
