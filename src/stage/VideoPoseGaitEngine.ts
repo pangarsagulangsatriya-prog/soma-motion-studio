@@ -9,6 +9,7 @@ import {ReplayActorRecoveryGate} from './replayActorRecoveryGate.ts';
 import {MotionSemanticsEngine,type MotionSemanticEvent,type MotionSemanticStatus,type MotionSemanticKind} from './motionSemantics.ts';
 import {ReplayInferenceWorkerClient} from './replayInferenceWorkerClient.ts';
 import {ReplayPerformanceMeter,type ReplayPerformance} from './replayPerformance.ts';
+import {replayPoseCapFPS,replayResultTooLate} from './replayFrameSafety.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayNeedsIdentityReset,replayNeedsGaitWarmup,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
@@ -215,6 +216,7 @@ export class VideoPoseGaitEngine{
    return;
   }
   const atMs=atSeconds*1000;
+  const effectiveFPS=replayPoseCapFPS(capFPS,this.meter.snapshot.backend,this.meter.snapshot.poseMs);
   if(replayNeedsIdentityReset(this.lastTime,atMs)){
    this.reset('Timeline mundur: identitas A/B disetel ulang.');
   }else if(replayNeedsGaitWarmup(this.lastTime,atMs)){
@@ -224,7 +226,7 @@ export class VideoPoseGaitEngine{
   }
   if(this.lastTime>=0){
    const diff=atMs-this.lastTime;
-   if(!force&&diff<1000/Math.max(1,Math.min(30,capFPS))*.85)return;
+   if(!force&&diff<1000/effectiveFPS*.85)return;
    if(Math.abs(diff)<1)return;
   }
   this.inProgress=true;
@@ -235,9 +237,13 @@ export class VideoPoseGaitEngine{
    void worker.detect(video,clock,this.manualCount??
     (this.actorStates.some(a=>a.id==='B'&&a.lastSeenAtMs!==null)?2:1)).then(result=>{
     if(this.disposed||epoch!==this.epoch)return;
+    this.meter.observeVideoLag(video.currentTime*1000,atMs);
+    if(video.seeking||replayResultTooLate(atMs,video.currentTime*1000)){
+     this.meter.observeStaleResult();this.emit(true);return;
+    }
     this.rescueCount=result.rescuedCount??0;
     const begin=performance.now();
-    this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,capFPS,
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,effectiveFPS,
      video.videoWidth/Math.max(1,video.videoHeight));
     this.meter.observeInference(performance.now(),result.poseMs,0,
      performance.now()-begin,performance.now()-startedAt,false,0);
@@ -262,8 +268,9 @@ export class VideoPoseGaitEngine{
    const poseMs=performance.now()-beginPose;
    try{
     const beginAnalysis=performance.now();
-    this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,capFPS,
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,effectiveFPS,
      video.videoWidth/Math.max(1,video.videoHeight));
+    this.meter.observeVideoLag(video.currentTime*1000,atMs);
     this.meter.observeInference(performance.now(),poseMs,0,
      performance.now()-beginAnalysis,performance.now()-startedAt,false,0);
     this.emit();
