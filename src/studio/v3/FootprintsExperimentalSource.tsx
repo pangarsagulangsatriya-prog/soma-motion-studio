@@ -9,10 +9,10 @@ import type {FootSide} from '../../footprints/spatial/events.ts';
 import type {ExperimentInputKind,ExperimentalFrame} from './experimentSourceModel.ts';
 import './footprints-experimental-source.css';
 
-export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,onFrame,
+export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,onFrame,externalRevision,
  onAdvancedVideo,onAdvancedSimulator}:{
  kind:ExperimentInputKind;performers:1|2;clip:File|null;onClip:(file:File|null)=>void;
- model:DirectPuppetSession;
+ model:DirectPuppetSession;externalRevision:number;
  onFrame:(frame:ExperimentalFrame|null)=>void;
  onAdvancedVideo:()=>void;onAdvancedSimulator:()=>void;
 }){
@@ -42,7 +42,7 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,
  useEffect(()=>{
   if(kind!=='simulator')return;
   renderSimulation();
- },[kind,revision,renderSimulation]);
+ },[kind,revision,externalRevision,renderSimulation]);
  useEffect(()=>{
   if(kind!=='video'||!clip){setUrl(null);setVideoReady(false);setSnapshot(null);return;}
   const objectUrl=URL.createObjectURL(clip);setUrl(objectUrl);
