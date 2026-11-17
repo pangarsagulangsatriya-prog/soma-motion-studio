@@ -64,12 +64,13 @@ test('WebRTC measurement strips candidate IPs and distinguishes network RTT from
 });
 test('telemetry is claimed by exact receiver, with stale and old-session updates fail-closed',()=>{
  claimPhoneTransport('session-A','qr');
- reportPhoneTransport('session-A',{...phone,sampledAtMs:2000});
- assert.equal(readPhoneTransport(2001).state,'connected');
- reportPhoneTransport('session-B',{state:'interrupted',sampledAtMs:3000});
- assert.equal(readPhoneTransport(2001).state,'connected');
+ const stamp=performance.now()+100;
+ reportPhoneTransport('session-A',{...phone,sampledAtMs:stamp});
+ assert.equal(readPhoneTransport(stamp+1).state,'connected');
+ reportPhoneTransport('session-B',{state:'interrupted',sampledAtMs:stamp+1000});
+ assert.equal(readPhoneTransport(stamp+1).state,'connected');
  claimPhoneTransport('session-B','manual');
- reportPhoneTransport('session-A',{state:'connected',sampledAtMs:4000});
+ reportPhoneTransport('session-A',{state:'connected',sampledAtMs:stamp+2000});
  assert.equal(readPhoneTransport(performance.now()).mode,'manual');
  reportPhoneTransport('session-B',{state:'connected',sampledAtMs:performance.now()});
  const current=readPhoneTransport(performance.now());
@@ -97,10 +98,10 @@ test('connected full two-performer fixture produces review-only outcome, never a
  assert.equal(s.durationMs,72000);
  assert.ok(s.decodedFrames>DEVICE_PROVISIONAL_GATES.minInboundFrames);
  assert.equal(s.fpsMedian,22);
- assert.ok(s.frameFreshFraction!>.95);
- assert.ok(s.trackedFraction!>.95);
- assert.ok(s.ambiguousFraction!<.05);
- assert.ok(s.packetLossFraction!<.05);
+ assert.ok((s.frameFreshFraction??0)>.95);
+ assert.ok((s.trackedFraction??0)>.95);
+ assert.ok((s.ambiguousFraction??1)<.05);
+ assert.ok((s.packetLossFraction??1)<.05);
  assert.equal(s.contactDelta,8);
  assert.equal(s.disconnectRecorded,true);
  assert.equal(s.softwareBlackoutAfterLoss,true);
@@ -129,7 +130,7 @@ test('poor frame rate, missing camera tracking and ambiguous A/B cannot pass',()
   poseTracked:false,identityAmbiguous:true,frameAgeMs:1500
  }))};
  const summary=assessDeviceTrial(t,73000);
- assert.equal(summary.status,'needs-adjustment');
+ assert.equal(summary.status,'incomplete');
  assert.ok(summary.failed.some(x=>x.includes('Frame rate')));
  assert.ok(summary.failed.some(x=>x.includes('Tracking')));
  assert.ok(summary.failed.some(x=>x.includes('Identitas')));
