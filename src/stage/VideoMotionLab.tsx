@@ -60,6 +60,7 @@ export function VideoMotionLab({onClose}:Props){
    file:{name:clip.name,bytes:clip.size,mime:clip.type,lastModified:clip.lastModified},
    video:{durationSeconds:duration,width:resolution.width,height:resolution.height},
    snapshot:analysisSnapshot,archives:engineRef.current?.archivedSegments??[],
+   discardedSegments:engineRef.current?.archiveOverflow??0,
    requestedAt:new Date().toISOString()
   });
  };
@@ -395,7 +396,7 @@ export function VideoMotionLab({onClose}:Props){
        <small>{archiveCount} segmen tersimpan + 1 segmen aktif · {totalEventCount} event tercatat</small></div>
       <button type="button" disabled={!analysisSnapshot} onClick={()=>exportEvents('json')}>Unduh JSON QA</button>
       <button type="button" disabled={!analysisSnapshot} onClick={()=>exportEvents('csv')}>Unduh CSV event</button>
-      <small>Ekspor mencatat alasan reset, segmen replay, A/B, jenis event, waktu video, confidence, koordinat 2D, dan status QA. Tidak menggabungkan lintasan antar-segmen.</small>
+      <small>Ekspor mencatat alasan reset, segmen replay, A/B, jenis event, waktu video, confidence, koordinat 2D, dan status QA. Batas retensi segmen/event dilaporkan agar data lama yang terpotong tidak dianggap lengkap.</small>
      </div>}
      {analysisOn&&<div className="vml-events">
       <strong>Event terdeteksi</strong>
