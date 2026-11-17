@@ -1,7 +1,6 @@
-/** S6.8.1: one authoritative source selection for Footprints.
- * MP4 and 3D still launch their own Labs until S6.8.4 integrates the data pipelines. */
+/** Source status for live and experiment inputs. Physical output remains separately gated. */
 export type FootprintsInputChoice='webcam'|'phone'|'video'|'simulator';
-export type FootprintsInputPhase='idle'|'connecting'|'pairing'|'ready'|'error'|'lab';
+export type FootprintsInputPhase='idle'|'connecting'|'pairing'|'ready'|'error'|'experiment';
 export type FootprintsInputStatus={
  selection:FootprintsInputChoice|null;phase:FootprintsInputPhase;
  message:string;
@@ -9,8 +8,8 @@ export type FootprintsInputStatus={
 export const SOURCE_CHOICES=[
  {id:'webcam',label:'Webcam laptop',description:'Live · kamera komputer',kind:'live'},
  {id:'phone',label:'Kamera HP',description:'Live · pairing QR/WebRTC',kind:'live'},
- {id:'video',label:'Video MP4',description:'Buka Video Motion Lab',kind:'lab'},
- {id:'simulator',label:'Simulasi 3D',description:'Buka 3D Direct Puppet',kind:'lab'}
+ {id:'video',label:'Video MP4',description:'Input lokal · Pose/Gait 2D',kind:'experiment'},
+ {id:'simulator',label:'Simulasi 3D',description:'Input sintetis · floor virtual',kind:'experiment'}
 ] as const;
 export const SOURCE_LABELS:Record<FootprintsInputChoice,string>={
  webcam:'Webcam laptop',phone:'Kamera HP',video:'Video MP4',simulator:'Simulasi 3D'
@@ -33,7 +32,7 @@ export function deriveFootprintsInputStatus(input:{
   return {selection,phase:cameraOn?'ready':'idle',message:cameraOn?'Webcam tersambung.':'Webcam belum aktif.'};
  }
  if(selection==='video'||selection==='simulator')
-  return {selection,phase:'lab',message:'Mode eksperimen terpisah; preview Footprints live belum memakai sumber ini.'};
+  return {selection,phase:'experiment',message:selection==='video'?'MP4 · analisis lokal, output fisik terkunci.':'Simulasi 3D · preview sintetis, output fisik terkunci.'};
  return {selection:null,phase:'idle',message:'Pilih sumber gerak.'};
 }
 export function requiresSourceRecheck(previous:FootprintsInputChoice|null,next:FootprintsInputChoice){
