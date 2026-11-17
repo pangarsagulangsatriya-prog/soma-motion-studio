@@ -1,7 +1,9 @@
 import {MotionProcessor} from '../engine/motion.ts';
 import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
-import {VideoAutoActorTracker,type VideoActorState} from './videoAutoActorTracker.ts';
+import type {VideoActorState} from './videoAutoActorTracker.ts';
+import {MoveNetIdentityTracker} from './moveNetIdentityTracker.ts';
+import {pose33AsD2,descriptorsFor33,d2ToVideoActorFrame} from './mediaPipeD2Bridge.ts';
 import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
 import {HandLimbDetailAnalyzer,type HandLimbFrame} from './videoHandLimbDetail.ts';
 import type {ReplayIdentityQA} from './videoReplayIdentityQA.ts';
@@ -51,7 +53,8 @@ export class VideoPoseGaitEngine{
  private queuedForced:{video:HTMLVideoElement;atSeconds:number;capFPS:number}|null=null;
  private gaitCounts={contact:0,swing:0,slide:0,pivot:0};
  private processor=new MotionProcessor();
- private actorTracker=new VideoAutoActorTracker();
+ private actorTracker=new MoveNetIdentityTracker();
+ private appearanceCanvas:HTMLCanvasElement|null=null;
  private temporalAnalyzer=new TemporalJointAnalyzer();
  private handLimbAnalyzer=new HandLimbDetailAnalyzer();
  private semanticEngine=new MotionSemanticsEngine();
@@ -244,7 +247,7 @@ export class VideoPoseGaitEngine{
     this.rescueCount=result.rescuedCount??0;
     const begin=performance.now();
     this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,effectiveFPS,
-     video.videoWidth/Math.max(1,video.videoHeight));
+     video.videoWidth/Math.max(1,video.videoHeight),video.videoWidth,video.videoHeight,result.appearance);
     this.meter.observeInference(performance.now(),result.poseMs,0,
      performance.now()-begin,performance.now()-startedAt,false,0);
     this.emit();
@@ -269,7 +272,8 @@ export class VideoPoseGaitEngine{
    try{
     const beginAnalysis=performance.now();
     this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,effectiveFPS,
-     video.videoWidth/Math.max(1,video.videoHeight));
+     video.videoWidth/Math.max(1,video.videoHeight),video.videoWidth,video.videoHeight,
+     this.readAppearance(video,result.landmarks as Landmark[][]));
     this.meter.observeVideoLag(video.currentTime*1000,atMs);
     this.meter.observeInference(performance.now(),poseMs,0,
      performance.now()-beginAnalysis,performance.now()-startedAt,false,0);
@@ -278,18 +282,38 @@ export class VideoPoseGaitEngine{
   }catch(error){this.handleError(error);}
   finally{this.inProgress=false;this.consumeForced();}
  }
+ private readAppearance(video:HTMLVideoElement,landmarks:Landmark[][]):(number[]|null)[]{
+  const empty=landmarks.map(()=>null);
+  if(typeof document==='undefined'||!video.videoWidth||!video.videoHeight)return empty;
+  try{
+   const canvas=this.appearanceCanvas??document.createElement('canvas');
+   this.appearanceCanvas=canvas;
+   const w=Math.min(480,video.videoWidth),h=Math.max(1,Math.round(video.videoHeight*w/video.videoWidth));
+   if(canvas.width!==w)canvas.width=w;
+   if(canvas.height!==h)canvas.height=h;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   if(!ctx)return empty;
+   ctx.drawImage(video,0,0,w,h);
+   return descriptorsFor33(landmarks,ctx.getImageData(0,0,w,h));
+  }catch{return empty;}
+ }
  private analyzeDetections(landmarks:Landmark[][],worldLandmarks:Landmark[][],
-  atMs:number,capFPS:number,aspect:number){
+  atMs:number,capFPS:number,aspect:number,width:number,height:number,
+  appearance:(number[]|null)[]=[]){
     // Expose all detected skeletons before the conservative identity/gait gate.
     // If two people cross, the diagnostic overlay still shows the raw observations.
-    this.rawPoses=landmarks.filter(p=>p.length>=33).slice(0,2)
-     .map(pose=>pose.map(point=>({...point})));
+    const observations=landmarks.map((pose,index)=>({pose,index}))
+     .filter(item=>item.pose.length===33).slice(0,2);
+    this.rawPoses=observations.map(item=>item.pose.map(point=>({...point})));
+    const descriptors=observations.map(item=>appearance[item.index]??null);
     const frame:MotionFrame=this.processor.process(null,{
      landmarks,worldLandmarks
     },atMs,configs,capFPS);
     this.lastTime=atMs;this.frames++;
     this.firstAtMs??=atMs;
-    const observed=this.actorTracker.observe(this.rawPoses,atMs);
+    const mapped=this.rawPoses.map(pose=>pose33AsD2(pose,width,height));
+    const identity=this.actorTracker.observeDescriptors(mapped,descriptors,width,height,atMs);
+    const observed=d2ToVideoActorFrame(identity,this.rawPoses);
     this.actorStates=observed.actors;
     this.detectedCount=observed.detectedCount;
     this.visibleCount=observed.visibleCount;
@@ -359,6 +383,6 @@ export class VideoPoseGaitEngine{
   this.semanticEngine.reset();
   this.analyzers.clear();this.feet.clear();
   this.history=[];this.archived=[];this.people=[];this.rawPoses=[];
-  this.actorStates=[];this.lastTime=-1;
+  this.actorStates=[];this.lastTime=-1;this.appearanceCanvas=null;
  }
 }
