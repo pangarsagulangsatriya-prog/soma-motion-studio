@@ -8,6 +8,8 @@ import {drawSurfaceTestPattern} from './SurfaceTestPattern.ts';
 import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {claimDualOutputStatus,releaseDualOutputStatus,reportDualOutputStatus} from './DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
+import {ProjectorWysiwygPreview} from './ProjectorWysiwygPreview.tsx';
+import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
 import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceReport,
@@ -27,7 +29,7 @@ type Props={
  frameRef:RefObject<StageRouteInput|null>;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;
  floorCanvas:RefObject<HTMLCanvasElement|null>;
- legacyProjection:Projection;
+ legacyProjection:Projection;experimentLocked?:boolean;
 };
 const labels:{[K in StageSurface]:string}={body:'BODY · paha hingga kaki',floor:'FLOOR · arsip pada pad'};
 const signal=()=>{
@@ -35,7 +37,7 @@ const signal=()=>{
  ref.current={body:new ProjectionLink(),floor:new ProjectionLink()};
  return ref.current;
 };
-export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection}:Props){
+export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false}:Props){
  const links=useRef<Record<StageSurface,ProjectionLink>|null>(null);
  if(!links.current)links.current=signal();
  const ports=links.current;
@@ -55,8 +57,9 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   floor:{connected:false,opened:false,viewport:null,mode:'blackout',reason:'Output belum dibuka.'}
  });
  const [operatorConfirm,setOperatorConfirm]=useState(false);
- const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm});
- latest.current={plans,proofs,requested,armed,epoch,operatorConfirm};
+ const [previewView,setPreviewView]=useState<PreviewView>('draft');
+ const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked});
+ latest.current={plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked};
  const legacyRef=useRef(legacyProjection);legacyRef.current=legacyProjection;
  const testCanvases=useRef<Record<StageSurface,HTMLCanvasElement>|null>(null);
  const context=(id:StageSurface,plan=plans[id],output=devices[id]):StageOutputContext=>{
@@ -88,7 +91,8 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     const fresh=!!stage&&stage.mode==='live'&&stage.frameAtMs>0&&
      stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
      now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
-    const safe=STAGE_HARDWARE_ENABLED&&!!stage&&stage.cameraSafe&&fresh&&current.operatorConfirm;
+    const safe=dualPhysicalOutputAllowed(STAGE_HARDWARE_ENABLED,current.experimentLocked,current.operatorConfirm)&&
+     !!stage&&stage.cameraSafe&&fresh;
     const sourceSafe=id==='body'?!!stage?.bodyMediaReady:!!stage?.bridgeSafe;
     const decision=outputSurfaceDecision({
      plan,signature:key,proof:current.proofs[id],requested:current.requested[id],
@@ -162,14 +166,22 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  };
  const editPlan=(id:StageSurface,fn:(p:StageSurfacePlan)=>StageSurfacePlan)=>{
   try{
+   // Validate synchronously before committing React state: number fields often
+   // produce transient invalid quads while typing. Keep the last valid setup.
+   const next=validateStageSurfacePlan(fn(latest.current.plans[id]));
    urgentBlackout(id);
-   setPlans(prev=>({...prev,[id]:validateStageSurfacePlan(fn(prev[id]))}));
+   latest.current.plans={...latest.current.plans,[id]:next};
+   setPlans(prev=>({...prev,[id]:next}));
    setRequested(prev=>({...prev,[id]:'blackout'}));
    setArmed(prev=>({...prev,[id]:false}));
    setMessage('Kalibrasi '+id+' berubah. Output Blackout dan uji fisik harus diulang.');
   }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi tidak valid.');}
  };
  const open=(id:StageSurface)=>{
+  if(experimentLocked){
+   urgentBlackout(id);
+   setMessage('MP4/3D hanya untuk preview lokal. Output fisik BODY/FLOOR dikunci.');return;
+  }
   if(!STAGE_HARDWARE_ENABLED){
    setMessage('Output proyektor fisik terkunci pada rilis Production. Gunakan preview lokal untuk QA.');
    return;
@@ -208,6 +220,10 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,external);
  },[]);
  const changeMode=(id:StageSurface,mode:Requested)=>{
+  if(experimentLocked&&mode!=='blackout'){
+   urgentBlackout(id);
+   setMessage('Eksperimen MP4/3D tidak boleh mengaktifkan output fisik.');return;
+  }
   if(!STAGE_HARDWARE_ENABLED&&mode!=='blackout'){
    urgentBlackout(id);
    setMessage('Build Production ini belum mengizinkan output fisik.');
@@ -263,14 +279,16 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   download(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}),
    'SOMA-S5-7-4-dual-surface-calibration.json');
  };
+ useEffect(()=>{if(experimentLocked){allBlackout();setOperatorConfirm(false);}},[experimentLocked]);
  const activePlan=plans[selected],proof=proofs[selected],qa=assessment(selected);
  return <section className="stage-dual" aria-label="S5.7.4 Dual-Surface Calibration & Output Routing">
   <div className="live-floor-heading"><Monitor size={15}/> 04 / DUAL-SURFACE OUTPUT ROUTING</div>
   <p>Dua jendela berbeda: satu ke tubuh, satu ke pad lantai. Setiap jendela memerlukan kalibrasi dan pengukuran sendiri. Tampilan langsung dikunci saat tracking tidak aman atau pemeriksaan perangkat berubah.</p>
   {!STAGE_HARDWARE_ENABLED&&<p role="status"><b>OUTPUT FISIK TERKUNCI DI PRODUCTION.</b> Simulasi, arsip dan pad tetap bisa digunakan. Aktifkan keluaran panggung hanya melalui build khusus dengan VITE_SOMA_STAGE_OUTPUTS=enabled setelah pengawasan operator dan pemeriksaan fisik.</p>}
-  <label className="stage-dual-check"><input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
+  <label className="stage-dual-check"><input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked} checked={operatorConfirm}
    onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
    Operator menjaga area proyeksi, menghindari sorot mata/wajah, dan siap mematikan proyektor secara fisik</label>
+  {experimentLocked&&<p role="status">SOURCE EXPERIMENT · MP4/3D hanya untuk WYSIWYG lokal. Dua output fisik terkunci.</p>}
   <button type="button" className="stage-dual-emergency" onClick={allBlackout}>
    <Square size={15}/> BLACKOUT KEDUA OUTPUT
   </button>
@@ -282,11 +300,11 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
      <p>{s.opened?(s.connected?'Jendela terhubung':'Menunggu heartbeat output'):'Jendela belum dibuka'}</p>
      <p>Pengukuran {a.count}/5 · {a.status==='within-provisional-target'?'Target sementara tercapai':a.status==='needs-adjustment'?'Perlu koreksi':'Bukti belum lengkap'}</p>
      <div className="stage-dual-buttons">
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!operatorConfirm||s.opened} onClick={()=>open(id)}>Buka output</button>
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.opened} onClick={()=>open(id)}>Buka output</button>
       <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm}
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm}
        onClick={()=>changeMode(id,'test')}><Target size={13}/> Uji terbatas</button>
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
        onClick={()=>changeMode(id,'live')}>LIVE</button>
       <button type="button" onClick={()=>changeMode(id,'blackout')}>Blackout</button>
      </div>
@@ -294,6 +312,31 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     </div>;
    })}
   </div>
+  <section className="stage-wysiwyg" aria-label="Projector WYSIWYG dan Output QA">
+   <div className="stage-wysiwyg-head">
+    <div><b>PROJECTOR / WYSIWYG</b>
+     <small>BODY dan FLOOR memakai transformasi kalibrasi yang sama dengan jendela output</small>
+    </div>
+    <div className="stage-wysiwyg-switch" role="group" aria-label="Mode preview proyektor">
+     <button type="button" aria-pressed={previewView==='draft'}
+      onClick={()=>setPreviewView('draft')}>Draf lokal</button>
+     <button type="button" aria-pressed={previewView==='sent'}
+      onClick={()=>setPreviewView('sent')}>Sinyal dikirim</button>
+    </div>
+   </div>
+   <div className="stage-wysiwyg-grid">
+    {ids.map(id=><ProjectorWysiwygPreview key={id} surface={id}
+     plan={plans[id]} view={previewView} softwareMode={devices[id].mode}
+     connected={devices[id].connected} qa={assessment(id)}
+     liveCanvas={id==='body'?bodyCanvas:floorCanvas}
+     testCanvases={testCanvases} viewport={devices[id].viewport}/>)}
+   </div>
+   <p className="stage-wysiwyg-limit">Draf lokal menampilkan komposisi dengan
+    transformasi dan batas kecerahan yang dipakai output. Mode Sinyal dikirim
+    mengikuti perintah software terbaru (LIVE / TEST / BLACKOUT). Preview
+    ini belum mengukur cahaya pada kain, tubuh, lantai, atau mata penonton.
+    Pengukuran fisik, blackout nyata, dan pemeriksaan area tetap wajib.</p>
+  </section>
   <div className="stage-dual-calibration">
    <label>Bidang yang diedit<select value={selected} onChange={e=>{setSelected(e.target.value as StageSurface);setDx('');setDy('');}}>
     <option value="body">BODY</option><option value="floor">FLOOR</option>

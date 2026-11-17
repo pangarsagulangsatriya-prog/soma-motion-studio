@@ -107,6 +107,7 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(!calibrationOpen)setCalibrationOverlay(null);},[calibrationOpen]);
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
+ const [composerStartQA,setComposerStartQA]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
  const [rehearsalOpen,setRehearsalOpen]=useState(false);
  const [rehearsalReference,setRehearsalReference]=useState<ReplayReport|null>(null);
@@ -380,6 +381,10 @@ export function FootprintsStageWorkspace({
   setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
   return true;
  };
+ const openProjectorQA=()=>{
+  onBlackout();setCalibrationOpen(false);setInspectorOpen(false);
+  setView('stage');setComposerStartQA(true);setComposerOpen(true);
+ };
  const openVideoInput=()=>{void chooseSource('video');};
  const openSimulatorInput=()=>{void chooseSource('simulator');};
  const openCalibration=()=>{
@@ -506,7 +511,7 @@ export function FootprintsStageWorkspace({
    initialReference={rehearsalReference}
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
-  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer
+  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
    bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
    router={router} floorTracker={tracker} projection={projection}
    cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
@@ -625,7 +630,7 @@ export function FootprintsStageWorkspace({
      </button>
      <div className="fp-stage-view-note"><Film size={15}/>
       <span>Arsip BODY A/B dan residu FLOOR memakai engine S5.7 yang sama. Video tetap di browser. Kembali ke Live Stage menutup pemutar dan memadamkan output dual-surface.</span></div>
-     <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
+     <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn} experimentLocked={!!experimentalKind}
       performerCount={performerCount} router={router} projection={projection}
       stageMedia={stageSession.media} onStageMedia={stageSession.chooseMedia}
       stageSettings={stageSession.meta.archiveSettings}
@@ -686,7 +691,8 @@ export function FootprintsStageWorkspace({
      onCalibration={onOpenLiveFloor}
      onRehearsal={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setRehearsalOpen(true);}}
      onMapping={showArchive}
-     onComposer={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerOpen(true);}}
+     onComposer={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerStartQA(false);setComposerOpen(true);}}
+     onOutputQA={openProjectorQA}
      onProjector={onOpenProjection}/>}
    </aside>}
   </div>
@@ -698,6 +704,6 @@ export function FootprintsStageWorkspace({
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={onOpenProjection}/>}
+   onOutputSettings={openProjectorQA}/>}
  </section>;
 }

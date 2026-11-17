@@ -16,7 +16,7 @@ type Props={
  bodyReady:boolean;floorReady:boolean;projectionReason:string;
  onStartBody:()=>void;onPhone:()=>void;onEditFloor:()=>void;onVideo:()=>void;onSimulation:()=>void;
  onCalibration:()=>void;onRehearsal:()=>void;onMapping:()=>void;onComposer:()=>void;
- onProjector:()=>void;
+ onProjector:()=>void;onOutputQA:()=>void;
 };
 const headings={
  input:['Input','Dari mana geraknya?'],
@@ -31,7 +31,7 @@ export function FootprintsFlowInspector({
  performerCount,onPerformerCount,identityAmbiguous,identities,maskStatus,
  footprint,updateFootprint,bodyReady,floorReady,projectionReason,
  onStartBody,onPhone,onEditFloor,onVideo,onSimulation,onCalibration,onRehearsal,
- onMapping,onComposer,onProjector
+ onMapping,onComposer,onProjector,onOutputQA
 }:Props){
  const [name,title]=headings[step];
  return <div className="fp-flow-inspector">
@@ -116,8 +116,10 @@ export function FootprintsFlowInspector({
     <div className="fp-flow-readout"><span>BODY</span><strong>{bodyReady?'Siap':'Belum siap'}</strong></div>
     <div className="fp-flow-readout"><span>FLOOR</span><strong>{floorReady?'Siap':'Belum siap'}</strong></div>
     <p className="fp-flow-note">{projectionReason}</p>
-    <button type="button" className="fp-flow-primary" onClick={onProjector}>
-     <Monitor size={17}/> Buka Projector System <ChevronRight size={15}/></button>
+    <button type="button" className="fp-flow-primary" onClick={onOutputQA}>
+     <Monitor size={17}/> WYSIWYG BODY/FLOOR & Output QA <ChevronRight size={15}/></button>
+    <button type="button" onClick={onProjector}>
+     <Monitor size={17}/> Projection Studio (legacy)</button>
     <button type="button" onClick={onCalibration}>
      <SlidersHorizontal size={16}/> Kalibrasi & pemeriksaan output</button>
     <p className="fp-flow-warning"><ShieldAlert size={15}/>

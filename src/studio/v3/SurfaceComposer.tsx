@@ -27,9 +27,9 @@ type Props={
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
- identitySafe:boolean;onClose:()=>void;
+ identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false}:Props){
  const [selected,setSelected]=useState<Surface>('BODY A');
  const [composition,setComposition]=useState<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
  const [media,setMedia]=useState<Media[]>([]);
@@ -38,7 +38,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [presetName,setPresetName]=useState('New composition');
  const [editMask,setEditMask]=useState(false);
  const [outputOpen,setOutputOpen]=useState(false);
- const [routeOpen,setRouteOpen]=useState(false);
+ const [routeOpen,setRouteOpen]=useState(initialOutputQA);
  const [bodyStatus,setBodyStatus]=useState('Menunggu frame tubuh.');
  const [hint,setHint]=useState('');
  const [blackout,setBlackout]=useState(true);
@@ -263,7 +263,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    <p>BODY A/B dan FLOOR dikomposisi ke dua raster output. Live fisik mengikuti izin perangkat, kalibrasi empat titik, QA lima titik, serta konfirmasi operator di panel yang sama.</p>
    <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="BODY compositor raster"/>
    <canvas ref={floorOutput} width={640} height={360} hidden aria-label="FLOOR compositor raster"/>
-   {routeOpen&&<DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput} floorCanvas={floorOutput} legacyProjection={projection}/>}
+   {routeOpen&&<DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput} floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>}
   </div>
  </div>;
 }
