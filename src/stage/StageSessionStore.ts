@@ -74,8 +74,8 @@ export async function loadStageMedia(slot:StageMediaSlot):Promise<File|null>{
 export async function saveStageMedia(slot:StageMediaSlot,file:File|null):Promise<void>{
  if(file&&(file.size<=0||file.size>STAGE_MEDIA_LIMIT||!['video/mp4','video/webm','video/ogg','video/quicktime'].includes(file.type)))
   throw new Error('Gunakan MP4/WebM/Ogg/MOV maksimal 300 MB.');
- await useStore<IDBValidKey|undefined>('media','readwrite',s=>
-  file?s.put(file,slot):s.delete(slot));
+ if(file)await useStore<IDBValidKey>('media','readwrite',s=>s.put(file,slot));
+ else await useStore<undefined>('media','readwrite',s=>s.delete(slot));
 }
 export async function clearStageSession(){
  const db=await openDB();
