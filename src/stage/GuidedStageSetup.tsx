@@ -31,7 +31,7 @@ export function GuidedStageSetup({open,onClose,session,onStartLaptop,onPhoneStre
      <b>Webcam laptop</b><small>Langsung melalui browser · HTTPS</small></button>
     <button type="button" onClick={()=>session.patch({source:'phone'})}
      aria-pressed={session.meta.source==='phone'}>
-     <b>Kamera HP</b><small>Browser HP · WebRTC · pairing manual MVP</small></button>
+     <b>Kamera HP</b><small>Scan QR otomatis · WebRTC · kode manual cadangan</small></button>
     <button type="button" onClick={()=>{session.patch({source:'simulation'});onSimulator();}}>
      <b>Simulasi 3D</b><small>Tanpa kamera untuk latihan gerakan</small></button>
    </div>
