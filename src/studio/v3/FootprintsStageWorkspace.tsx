@@ -215,7 +215,7 @@ export function FootprintsStageWorkspace({
   dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
  const changeView=(next:WorkspaceView)=>{
-  if(next==='archive')showArchive();
+  if(next==='archive'){onBlackout();setComposerOpen(false);showArchive();}
   else{onBlackout();setView('stage');}
  };
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')}
@@ -262,7 +262,14 @@ export function FootprintsStageWorkspace({
     <button type="button" aria-pressed={composerOpen} onClick={()=>setComposerOpen(v=>!v)}><SlidersHorizontal size={15}/> Surface Composer</button>
    </div>
   </div>}
-  {composerOpen&&!operatorMode&&<SurfaceComposer bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} cameraOn={cameraOn} performerCount={performerCount} floorReady={floorStatus.confirmed&&cameraMatched} floorEvents={()=>tracker.session?.events??[]} identitySafe={!identityStatus.ambiguous} onClose={()=>setComposerOpen(false)}/>}
+  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer
+   bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
+   router={router} floorTracker={tracker} projection={projection}
+   cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
+   floorReady={floorStatus.confirmed&&cameraMatched}
+   floorEvents={()=>tracker.session?.events??[]}
+   identitySafe={!identityStatus.ambiguous}
+   onClose={()=>{onBlackout();setComposerOpen(false);}}/>}
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
