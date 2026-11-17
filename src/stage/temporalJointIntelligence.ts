@@ -1,4 +1,5 @@
 import type {Landmark} from '../engine/types.ts';
+import {adaptivePoseSmoothingAlpha} from './replayPerformance.ts';
 import type {VideoActorAssignment,VideoActorId,VideoActorState,VideoActorPresence}
  from './videoAutoActorTracker.ts';
 
@@ -118,7 +119,8 @@ export class TemporalJointAnalyzer{
     const old=before.get(index);
     const dt=old?(atMs-old.atMs)/1000:0;
     const continuous=!!old&&dt>=.005&&dt<=TEMPORAL_MAX_GAP_MS/1000;
-    const alpha=continuous?1-Math.exp(-(dt*1000)/TEMPORAL_SMOOTH_TAU_MS):1;
+    const rawSpeed=continuous?Math.hypot(p.x-old!.x,p.y-old!.y)/dt:0;
+    const alpha=continuous?adaptivePoseSmoothingAlpha(dt,rawSpeed):1;
     const sx=continuous?old!.x+alpha*(p.x-old!.x):p.x;
     const sy=continuous?old!.y+alpha*(p.y-old!.y):p.y;
     const sz=continuous?old!.z+alpha*(p.z-old!.z):p.z;

@@ -1,0 +1,19 @@
+.vml-perf{margin:9px 0;border:1px solid #58765e;border-radius:8px;background:#16261e;overflow:hidden}
+.vml-perf>summary{display:flex;align-items:center;gap:8px;padding:11px 13px;list-style:none;
+ font-size:12px;font-weight:700;color:#e5eee0;cursor:pointer}
+.vml-perf>summary::-webkit-details-marker{display:none}
+.vml-perf>summary::before{content:'+';font:bold 17px ui-monospace,monospace;color:#a7d09c}
+.vml-perf[open]>summary::before{content:'−'}
+.vml-perf>summary>span{margin-left:auto;color:#b5d0ac;font-weight:400;font-size:10px}
+.vml-perf>summary:focus-visible{outline:2px solid #d8ebb7;outline-offset:-3px}
+.vml-perf-body{border-top:1px solid #415d4b;padding:12px;display:flex;flex-direction:column;gap:10px}
+.vml-perf-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.vml-perf-metrics>span{display:flex;flex-direction:column;gap:5px;min-width:0;
+ background:#102018;border:1px solid #405e4d;border-radius:5px;padding:8px}
+.vml-perf-metrics small{font-size:10px;color:#afc4ae}
+.vml-perf-metrics b{font:600 12px ui-monospace,monospace;color:#e6f2df}
+.vml-perf-hand{font-size:11px;color:#bed3b7;display:flex;align-items:center;gap:12px}
+.vml-perf-hand select{min-height:32px;background:#203c29;color:#e8f4df;
+ border:1px solid #57755e;border-radius:6px;padding:6px}
+.vml-perf-body>small{font-size:10px;line-height:1.5;color:#aebfaa}
+@media(max-width:650px){.vml-perf-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}

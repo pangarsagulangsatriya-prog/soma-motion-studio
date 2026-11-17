@@ -39,7 +39,9 @@ test('S6.8.8.3 EMA uses video timestamp, then velocity and acceleration derivati
  temporal.observe([assignment('A',pose(.2))],presence(),0);
  temporal.observe([assignment('A',pose(.3))],presence(),100);
  const second=joint(temporal,'A')!;
- const alpha=1-Math.exp(-100/130);
+ const speed=.1/.1;
+ const tau=42+128/(1+speed*13);
+ const alpha=1-Math.exp(-100/tau);
  assert.ok(Math.abs(second.smoothX-(.2+.1*alpha))<1e-8);
  assert.ok(Math.abs(second.vx!-(.1*alpha/.1))<1e-8);
  assert.equal(second.ax,null);

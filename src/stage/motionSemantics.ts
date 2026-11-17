@@ -126,10 +126,13 @@ export class MotionSemanticsEngine{
  private transitions=new Map<VideoActorId,Map<string,Transition>>();
  private caches=new Map<VideoActorId,ActorCache>();
  private events:MotionSemanticEvent[]=[];
+ private totals=semanticEventCounts([]);
  private states:MotionSemanticStatus[]=[];
  private lastMs=-1;
- reset(){this.transitions.clear();this.caches.clear();this.events=[];this.states=[];this.lastMs=-1;}
+ reset(){this.transitions.clear();this.caches.clear();this.events=[];this.totals=semanticEventCounts([]);this.states=[];this.lastMs=-1;}
  get history(){return this.events.map(e=>({...e}));}
+ getRecentEvents(limit=64){return this.events.slice(-limit).map(e=>({...e}));}
+ get counts(){return {...this.totals};}
  get statuses(){return this.states.map(s=>({...s}));}
  get count(){return this.events.length;}
  observe(frame:TemporalFrame,approved:readonly ReplayOverlayPerson[],
@@ -218,6 +221,7 @@ export class MotionSemanticsEngine{
     source:'gait-2d-estimate'});
   }
   this.events.push(...emitted);
+  for(const event of emitted)this.totals[event.kind]++;
   if(this.events.length>SEMANTIC_MAX_EVENTS)
    this.events.splice(0,this.events.length-SEMANTIC_MAX_EVENTS);
   return emitted.map(e=>({...e}));
