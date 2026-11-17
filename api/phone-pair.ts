@@ -64,8 +64,10 @@ const RATELIMIT=[
  "return count"
 ].join('\n');
 function environment(){
- const url=process.env.UPSTASH_REDIS_REST_URL;
- const token=process.env.UPSTASH_REDIS_REST_TOKEN;
+ // Vercel Upstash integration uses KV_REST_API_*; standalone Upstash
+ // integrations may use UPSTASH_REDIS_REST_* instead.
+ const url=process.env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL;
+ const token=process.env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN;
  if(!url||!token||!url.startsWith('https://'))throw Error('NO_SIGNALING_STORAGE');
  return {url,token};
 }
