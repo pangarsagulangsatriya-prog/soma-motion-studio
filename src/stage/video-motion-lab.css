@@ -83,3 +83,25 @@
 .vml-events>div>small{color:#9eb9a8}
 .vml-analysis-disclaimer{font-size:10px;color:#a0b8a7;line-height:1.6}
 @media(max-width:600px){.vml-analysis-counters{grid-template-columns:repeat(3,minmax(0,1fr))}.vml-analysis{padding:10px}}
+
+
+/* S6.5.5 — readable identity lock, audit counters and explicit exports */
+.vml-identity-qa{border:1px solid #67846a;border-radius:8px;background:#1c3425;padding:12px;display:flex;flex-direction:column;gap:9px}
+.vml-identity-qa[data-state=locked],.vml-identity-qa[data-state=ambiguous]{border-color:#b77366;background:#382721}
+.vml-identity-qa[data-state=partial],.vml-identity-qa[data-state=warming]{border-color:#9a8b58;background:#312e1f}
+.vml-qa-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px}
+.vml-qa-top>span{font:700 10px ui-monospace,monospace;letter-spacing:.1em;padding:4px 7px;border-radius:4px;border:1px solid currentColor;color:#cee8bb}
+.vml-identity-qa[data-state=locked] .vml-qa-top>span{color:#ffb7a8}
+.vml-identity-qa[data-state=warming] .vml-qa-top>span{color:#e9dc9c}
+.vml-identity-qa>p{font-size:11px;line-height:1.6;color:#d0ddce;margin:0}
+.vml-qa-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.vml-qa-grid>span{background:#122219;border:1px solid #3e5946;border-radius:5px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.vml-qa-grid small,.vml-identity-qa>small{color:#adc6b6;font-size:10px;line-height:1.5}
+.vml-qa-grid b{color:#e5f4dd;font:600 15px ui-monospace,monospace}
+.vml-identity-qa p[role=alert]{border:1px solid #a76356;padding:9px;border-radius:5px;color:#ffe4d5;background:#482e2a}
+.vml-replay-export{border:1px solid #607e62;border-radius:8px;padding:12px;background:#22372a;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vml-replay-export>div{display:flex;flex-direction:column;gap:4px;flex:1;min-width:190px}
+.vml-replay-export strong{font-size:12px}
+.vml-replay-export small{color:#b3cbb9;line-height:1.5;font-size:10px}
+.vml-replay-export>small{width:100%}
+@media(max-width:600px){.vml-qa-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vml-replay-export>button{flex:1}}
