@@ -27,8 +27,10 @@ test('S6.8.8.3 temporal inspector exposes all 33 joints, metrics, and safe expor
  await expect(page.getByRole('button',{name:'CSV sendi terpilih'})).toBeDisabled();
  await expect(page.getByRole('button',{name:'JSON semua sendi'})).toBeDisabled();
  await expect(inspector).toContainText('Belum ada sampel valid');
- await expect(page.locator('.fp-preview-body')).toBeVisible();
- await expect(page.locator('.fp-preview-floor')).toBeVisible();
+ await expect(page.locator('.soma-video-lab')).toBeVisible();
+ // Stage preview remains mounted under the dedicated Video Motion Lab.
+ await expect(page.locator('.fp-preview-body')).toHaveCount(1);
+ await expect(page.locator('.fp-preview-floor')).toHaveCount(1);
 });
 
 test('S6.8.8.3 video temporal diagnostics never bypass physical projector safety',async({page})=>{
