@@ -118,6 +118,7 @@ export function drawSkeletonBodies(
  let drawn=0;
  const size=Math.max(1,Math.min(rect.width,rect.height));
  const width=options.lineWidth??Math.max(1.4,Math.min(3.2,size/150));
+ const parentAlpha=ctx.globalAlpha;
  ctx.save();
  try{
   for(const [i,pose] of poses.slice(0,2).entries()){
@@ -130,7 +131,7 @@ export function drawSkeletonBodies(
    ctx.lineCap='round';ctx.lineJoin='round';
    for(const bone of geometry.bones){
     const a=points.get(bone.from)!,b=points.get(bone.to)!;
-    ctx.beginPath();ctx.strokeStyle=color;ctx.globalAlpha=bone.level==='clear'?.94:.35;
+    ctx.beginPath();ctx.strokeStyle=color;ctx.globalAlpha=parentAlpha*(bone.level==='clear'?.94:.35);
     ctx.lineWidth=width;ctx.setLineDash(bone.level==='uncertain'?[3,4]:[]);
     ctx.moveTo(rect.x+a.x*rect.width,rect.y+a.y*rect.height);
     ctx.lineTo(rect.x+b.x*rect.width,rect.y+b.y*rect.height);
@@ -138,14 +139,14 @@ export function drawSkeletonBodies(
    }
    ctx.setLineDash([]);
    for(const point of geometry.joints){
-    ctx.globalAlpha=point.level==='clear'?1:.38;
+    ctx.globalAlpha=parentAlpha*(point.level==='clear'?1:.38);
     ctx.beginPath();ctx.arc(rect.x+point.x*rect.width,rect.y+point.y*rect.height,
      point.level==='clear'?width*1.45:width*1.2,0,Math.PI*2);
     ctx.fillStyle=color;ctx.fill();
    }
    if(options.labels!==false){
     const anchor=points.get(11)??points.get(12)??points.get(0)??geometry.joints[0];
-    ctx.globalAlpha=1;ctx.fillStyle=color;
+    ctx.globalAlpha=parentAlpha;ctx.fillStyle=color;
     ctx.font='bold 11px system-ui,sans-serif';ctx.textBaseline='bottom';
     const label=typeof options.labels==='object'?
      (options.labels[i]??'POSE '+(i+1)):'POSE '+(i+1);

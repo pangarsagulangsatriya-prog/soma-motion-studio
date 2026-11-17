@@ -3,6 +3,7 @@ import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {floorRasterPoint} from '../../footprints/simulator/floorCanvas.ts';
 import {drawPuppetScene} from '../../footprints/simulator/draw3d.ts';
 import {drawSkeletonBodies,replaySkeletonDiagnosticPreview} from '../../stage/fullBodySkeleton.ts';
+import type {MotionVisualFrame} from '../../stage/actorMotionStateBuffer.ts';
 
 function context(canvas:HTMLCanvasElement,w:number,h:number){
  if(canvas.width!==w)canvas.width=w;
@@ -13,7 +14,34 @@ function context(canvas:HTMLCanvasElement,w:number,h:number){
  ctx.fillStyle='#040806';ctx.fillRect(0,0,w,h);
  return ctx;
 }
-export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame,skeleton=true){
+/**
+ * Render predicted/interpolated landmarks for DIAGNOSTIC software preview only.
+ * Never export these coordinates to contact detection or physical projector.
+ */
+function drawBufferedBodies(ctx:CanvasRenderingContext2D,rect:{x:number;y:number;width:number;height:number},
+ motion:MotionVisualFrame,frame:Extract<ExperimentalFrame,{kind:'video'}>){
+ for(const actor of motion.actors){
+  ctx.save();ctx.globalAlpha=actor.opacity;
+  drawSkeletonBodies(ctx,[actor.pose],rect,
+   {labels:[actor.label],colors:[actor.color]});
+  ctx.restore();
+ }
+ // Uncertain A/B must never receive a misleading performer label.
+ // Show neutral raw detections briefly when identity is held at crossing.
+ const latest=frame.snapshot,age=latest?frame.timeMs-latest.atMs:Infinity;
+ if(motion.actors.length===0&&latest&&age>=0&&age<=130&&
+   (latest.ambiguous||latest.rawPoses.length>0)){
+  const raw=latest.rawPoses.filter(p=>p.length===33).slice(0,2);
+  if(raw.length){
+   ctx.save();ctx.globalAlpha=.42;
+   drawSkeletonBodies(ctx,raw,rect,
+    {labels:false,colors:['#82968a','#82968a']});
+   ctx.restore();
+  }
+ }
+}
+export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
+ skeleton=true,motion?:MotionVisualFrame){
  const ctx=context(canvas,768,432);if(!ctx)return;
  if(frame.kind==='video'){
   const v=frame.video;
@@ -21,7 +49,9 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   const scale=Math.min(768/v.videoWidth,432/v.videoHeight);
   const w=scale*v.videoWidth,h=scale*v.videoHeight;
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
-  if(skeleton&&frame.snapshot){
+  if(skeleton&&motion){
+   drawBufferedBodies(ctx,{x:(768-w)/2,y:(432-h)/2,width:w,height:h},motion,frame);
+  }else if(skeleton&&frame.snapshot){
    const preview=replaySkeletonDiagnosticPreview(frame.snapshot,frame.timeMs,frame.previousSnapshot);
    const rect={x:(768-w)/2,y:(432-h)/2,width:w,height:h};
    ctx.save();ctx.globalAlpha=preview.opacity;
@@ -34,7 +64,8 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
  drawPuppetScene(ctx,768,432,frame.session.floor,frame.orbit,frame.performers,
   frame.performers.length,frame.session.events,null,true);
 }
-export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,skeleton=true){
+export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
+ skeleton=true,motion?:MotionVisualFrame){
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
  if(frame.kind==='simulator'){
   // BODY preview zooms toward the virtual legs; INPUT retains the full stage view.
@@ -45,6 +76,10 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  }
  const snapshot=frame.snapshot;
  if(!snapshot||!frame.ready)return;
+ if(skeleton&&motion){
+  drawBufferedBodies(ctx,{x:0,y:0,width:w,height:h},motion,frame);
+  return;
+ }
  if(skeleton){
   const preview=replaySkeletonDiagnosticPreview(snapshot,frame.timeMs,frame.previousSnapshot);
   const rect={x:0,y:0,width:w,height:h};
