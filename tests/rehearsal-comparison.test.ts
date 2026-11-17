@@ -7,6 +7,7 @@ import {fromReplayReport,parseReferenceReport,selectReferenceSegment,comparisonW
 import type {ReplayAnalysisSnapshot} from '../src/stage/VideoPoseGaitEngine.ts';
 import type {FootstepEvent} from '../src/footprints/spatial/events.ts';
 import {defaultFloorSpace} from '../src/footprints/spatial/coordinates.ts';
+import {LiveFloorTrackingEngine} from '../src/footprints/live/LiveFloorTrackingEngine.ts';
 const reference=()=>{
  const snapshot:ReplayAnalysisSnapshot={
   atMs:9000,segment:1,firstAtMs:0,sampledFrames:110,performers:1,
@@ -86,4 +87,17 @@ test('metric floor visual is normalized only in its own coordinate system',()=>{
  const route=normalizedLivePath([live(1000)],floor,'A');
  assert.deepEqual(route,[{x:.25,y:1-1/6}]);
  assert.deepEqual(normalizedLivePath([live(1000)],null,'A'),[]);
+});
+
+test('cadence stays unavailable when fewer than two contacts are observed',()=>{
+ assert.equal(contactMetrics([],0,10000).cadence,null);
+ assert.equal(contactMetrics([{timeMs:400,foot:'left',confidence:.9}],0,10000).cadence,null);
+});
+test('FloorSession epoch changes independently of event count on reset',()=>{
+ const engine=new LiveFloorTrackingEngine();
+ const initial=engine.sessionEpoch;
+ engine.resetSession();
+ assert.equal(engine.sessionEpoch,initial+1);
+ engine.resetSession();
+ assert.equal(engine.sessionEpoch,initial+2);
 });
