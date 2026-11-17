@@ -70,11 +70,11 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
      className="fp-source-switch-option" onClick={()=>void choose(item.id)}>
      <span className="fp-switch-option-icon"><ItemIcon size={18}/></span>
      <span><strong>{item.label}</strong><small>{item.description}</small></span>
-     {selected?<Check size={16} className="fp-switch-option-end"/>:item.kind==='lab'?
+     {selected?<Check size={16} className="fp-switch-option-end"/>:item.kind==='experiment'?
       <FlaskConical size={15} className="fp-switch-option-end"/>:null}
     </button>;
    })}
-   <footer>MP4 dan Simulasi masih membuka Lab. Output fisik tetap membutuhkan QA.</footer>
+   <footer>Semua sumber memakai Stage Preview yang sama. MP4 dan Simulasi tetap diisolasi dari output proyektor fisik.</footer>
   </div>}
   {status.phase==='error'&&<span className="fp-source-switch-error" role="alert">
     <AlertTriangle size={13}/>{status.message}</span>}
