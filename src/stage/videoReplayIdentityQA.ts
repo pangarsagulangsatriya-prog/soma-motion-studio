@@ -6,6 +6,11 @@ export type ReplayIdentityQA={
  visible:('A'|'B')[];confidence:number;separation:number|null;
  droppedFrames:number;ambiguousFrames:number;stableFrames:number;
  resetCount:number;lastResetReason:string;lastResetAtMs:number|null;
+ /** S6.8.8.5 per-actor approval in the new replay recovery gate. */
+ perActor?:Array<{
+  id:'A'|'B';state:'waiting'|'warming'|'stable'|'uncertain'|'reacquiring'|'occluded'|'lost';
+  approved:boolean;streak:number;lastSeenAtMs:number|null;reason:string;
+ }>;
 };
 const minConfidence=.65;
 const minSeparation=.115;
