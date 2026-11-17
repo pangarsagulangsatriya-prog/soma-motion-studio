@@ -1,18 +1,18 @@
 import {useCallback,useEffect,useRef,useState,type ChangeEvent} from 'react';
-import {Film,FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-react';
+import {FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot}
  from '../../stage/VideoPoseGaitEngine.ts';
 import {validVideoLabFile} from '../../stage/videoMotionLabUtils.ts';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
-import {defaultFloorSpace} from '../../footprints/spatial/coordinates.ts';
 import {initialCamera} from '../../footprints/simulator/scene3d.ts';
 import type {FootSide} from '../../footprints/spatial/events.ts';
 import type {ExperimentInputKind,ExperimentalFrame} from './experimentSourceModel.ts';
 import './footprints-experimental-source.css';
 
-export function FootprintsExperimentalSource({kind,performers,clip,onClip,onFrame,
+export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,onFrame,
  onAdvancedVideo,onAdvancedSimulator}:{
  kind:ExperimentInputKind;performers:1|2;clip:File|null;onClip:(file:File|null)=>void;
+ model:DirectPuppetSession;
  onFrame:(frame:ExperimentalFrame|null)=>void;
  onAdvancedVideo:()=>void;onAdvancedSimulator:()=>void;
 }){
@@ -25,13 +25,12 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,onFram
  const [playing,setPlaying]=useState(false),[analyzing,setAnalyzing]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
  const [snapshot,setSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
- const sessionRef=useRef(new DirectPuppetSession(defaultFloorSpace(8,6)));
+ const sessionRef=useRef(model);
  const [revision,setRevision]=useState(0);
  const [foot,setFoot]=useState<FootSide>('left');
  const [status,setStatus]=useState('Pilih sumber gerak untuk eksperimen.');
  const origin=useRef(performance.now());
  const orbit=useRef(initialCamera());
- const [simPlayer,setSimPlayer]=useState<'edit'|'playing'|'paused'>('edit');
  const [simTime,setSimTime]=useState(0);
  const renderSimulation=useCallback(()=>{
   const model=sessionRef.current;
@@ -143,12 +142,12 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,onFram
    yM:Math.max(.1,Math.min(model.floor.depthM-.1,v.positionM.yM+.42))},time+80);
   model.land(which,time+160);
   setRevision(v=>v+1);
-  setSimTime(model.durationMs);setSimPlayer('edit');
+  setSimTime(model.durationMs);
   setStatus('Jejak simulasi ditambahkan pada FLOOR virtual.');
  };
  const reset=()=>{
   sessionRef.current.clear();origin.current=performance.now();
-  setSimTime(0);setSimPlayer('edit');setRevision(x=>x+1);setStatus('Sesi simulasi baru.');
+  setSimTime(0);setRevision(x=>x+1);setStatus('Sesi simulasi baru.');
  };
  const handleAdvanced=kind==='video'?onAdvancedVideo:onAdvancedSimulator;
  return <section className="fp-experiment-dock" data-experiment-kind={kind}
