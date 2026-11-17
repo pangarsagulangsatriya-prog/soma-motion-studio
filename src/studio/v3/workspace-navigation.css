@@ -191,7 +191,7 @@
 .soma-labs-search input{
  flex:1;min-width:0;width:100%;background:transparent;
  color:#ebf3e7;border:0;outline:0;
- font:12px inherit;padding:10px 0;appearance:none;
+ font-size:12px;font-family:inherit;padding:10px 0;appearance:none;
 }
 .soma-labs-search input::placeholder{color:#8fa794}
 .soma-labs-search>span{font:10px ui-monospace,monospace;color:#839c88}
