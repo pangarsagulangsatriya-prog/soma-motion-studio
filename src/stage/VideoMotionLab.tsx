@@ -3,6 +3,7 @@ import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForwa
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
+import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
 import {VIDEO_LAB_FPS,VIDEO_LAB_SPEEDS,clampVideoTime,finiteDuration,formatVideoTime,simpleVideoFilename,
  stepVideoTime,validLoopRange,validVideoLabFile,type LoopRange} from './videoMotionLabUtils.ts';
 import './video-motion-lab.css';
@@ -43,6 +44,34 @@ export function VideoMotionLab({onClose}:Props){
  loopRef.current={loop,rangeStart,rangeEnd,duration};
  const filename=clip?simpleVideoFilename(clip.name):'video';
  const analysisCounts=replayEventCounts(analysisSnapshot?.events??[]);
+ const qa=analysisSnapshot?.qa;
+ const archiveCount=engineRef.current?.archivedSegments.length??0;
+ const totalEventCount=(analysisSnapshot?.events.length??0)+
+  (engineRef.current?.archivedSegments.reduce((sum,s)=>sum+s.events.length,0)??0);
+ const download=(name:string,mime:string,content:string)=>{
+  const blob=new Blob([content],{type:mime});
+  const url=URL.createObjectURL(blob);const anchor=document.createElement('a');
+  anchor.href=url;anchor.download=name;anchor.click();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1500);
+ };
+ const getReport=()=>{
+  if(!clip||!analysisOn||!analysisSnapshot||!ready)return null;
+  return buildReplayEventExport({
+   file:{name:clip.name,bytes:clip.size,mime:clip.type,lastModified:clip.lastModified},
+   video:{durationSeconds:duration,width:resolution.width,height:resolution.height},
+   snapshot:analysisSnapshot,archives:engineRef.current?.archivedSegments??[],
+   requestedAt:new Date().toISOString()
+  });
+ };
+ const exportEvents=(type:'json'|'csv')=>{
+  const report=getReport();
+  if(!report){setMessage('Jalankan analisis video sebelum mengekspor event.');return;}
+  download(filename+'-gait-events.'+type,
+   type==='json'?'application/json':'text/csv;charset=utf-8',
+   type==='json'?JSON.stringify(report,null,2):replayEventsCsv(report));
+  setMessage('Ekspor '+type.toUpperCase()+' berisi '+report.summary.events+
+   ' event dari '+report.summary.segments+' segmen replay. Video tidak ikut diekspor.');
+ };
  const stopAnalysis=()=>{
   ++generationRef.current;
   engineRef.current?.dispose();engineRef.current=null;
@@ -196,6 +225,7 @@ export function VideoMotionLab({onClose}:Props){
  };
  const exportSession=()=>{
   if(!clip||!ready)return;
+  const report=getReport();
   const data={
    schema:'soma.video-motion-lab',version:1,exportedAt:new Date().toISOString(),
    file:{name:clip.name,bytes:clip.size,mime:clip.type,lastModified:clip.lastModified},
@@ -203,12 +233,10 @@ export function VideoMotionLab({onClose}:Props){
    playback:{positionSeconds:position,speed,muted,stepFpsAssumption:fps,
     loopEnabled:loop&&!!range,loopRange:range},
    annotation:{poseTracking:analysisOn&&!!analysisSnapshot,gaitEvents:analysisOn&&!!analysisSnapshot,physicalFloorCalibrated:false},
-   analysis:analysisOn&&analysisSnapshot?{
-    schema:'soma.video-pose-gait',version:1,
-    segment:analysisSnapshot.segment,frames:analysisSnapshot.sampledFrames,
-    performers:analysisSnapshot.performers,
-    counts:analysisCounts,events:analysisSnapshot.events,
-    positionBasis:'video-2d-estimate',calibration:false
+   analysis:report?{
+    schema:report.schema,version:report.version,
+    summary:report.summary,identityQA:analysisSnapshot?.qa??null,
+    segmentEndReasons:report.segments.map(s=>({segment:s.segment,reason:s.endReason}))
    }:null,
    notice:'Analisis berbasis landmark video 2D, bukan kontak lantai fisik. Video tidak disertakan.'
   };
@@ -331,7 +359,7 @@ export function VideoMotionLab({onClose}:Props){
        onClick={()=>analysisOn?stopAnalysis():void startAnalysis()}>
        {analysisBusy?'Memuat model…':analysisOn?'Hentikan analisis':'Mulai analisis Pose / Gait'}</button>
       <button type="button" disabled={!analysisOn} onClick={()=>{
-       engineRef.current?.reset('Analisis direset oleh pengguna.');
+       engineRef.current?.reset('Identitas dan histori segmen direset secara manual oleh pengguna.');
        const v=videoRef.current;if(v)engineRef.current?.process(v,v.currentTime,12,true);
       }}>Reset identitas & event</button>
       <button type="button" disabled={!ready} aria-expanded={composerOpen}
@@ -342,6 +370,19 @@ export function VideoMotionLab({onClose}:Props){
       {analysisOn?(analysisSnapshot?.status??'Model siap, menunggu frame video.'):
        'Analisis belum aktif. Putar video atau gunakan frame stepping setelah mengaktifkan model.'}
      </p>
+     {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
+      <div className="vml-qa-top"><strong>Identity QA · {replayPeople===2?'BODY A/B':'BODY A'}</strong>
+       <span>{qa?.state==='stable'?'STABLE':qa?.state==='locked'?'LOCKED':qa?.state==='warming'?'WARMING':'HOLD'}</span></div>
+      <p>{qa?.reason??'Menunggu frame analisis.'}</p>
+      <div className="vml-qa-grid">
+       <span><small>Frame stabil</small><b>{qa?.streak??0}/{qa?.requiredFrames??3}</b></span>
+       <span><small>Confidence minimum</small><b>{Math.round((qa?.confidence??0)*100)}%</b></span>
+       <span><small>Frame ditahan</small><b>{qa?.droppedFrames??0}</b></span>
+       <span><small>Ambiguitas</small><b>{qa?.ambiguousFrames??0}</b></span>
+      </div>
+      <small>Reset terakhir: {qa?.lastResetReason??'Belum ada'} · segmen {analysisSnapshot?.segment??0}</small>
+      {qa?.state==='locked'&&<p role="alert">Tubuh berpapasan/tertutup. Perbaiki posisi, lalu tekan Reset identitas & event atau geser ke posisi yang jelas.</p>}
+     </div>}
      <div className="vml-analysis-counters">
       <span><small>Frame dianalisis</small><b>{analysisSnapshot?.sampledFrames??0}</b></span>
       <span><small>Contact*</small><b>{analysisCounts.contact}</b></span>
@@ -349,6 +390,13 @@ export function VideoMotionLab({onClose}:Props){
       <span><small>Slide*</small><b>{analysisCounts.slide}</b></span>
       <span><small>Pivot*</small><b>{analysisCounts.pivot}</b></span>
      </div>
+     {analysisOn&&<div className="vml-replay-export">
+      <div><strong>Event Export</strong>
+       <small>{archiveCount} segmen tersimpan + 1 segmen aktif · {totalEventCount} event tercatat</small></div>
+      <button type="button" disabled={!analysisSnapshot} onClick={()=>exportEvents('json')}>Unduh JSON QA</button>
+      <button type="button" disabled={!analysisSnapshot} onClick={()=>exportEvents('csv')}>Unduh CSV event</button>
+      <small>Ekspor mencatat alasan reset, segmen replay, A/B, jenis event, waktu video, confidence, koordinat 2D, dan status QA. Tidak menggabungkan lintasan antar-segmen.</small>
+     </div>}
      {analysisOn&&<div className="vml-events">
       <strong>Event terdeteksi</strong>
       {analysisSnapshot?.events.length?analysisSnapshot.events.slice(-8).reverse().map(e=>
