@@ -1,7 +1,14 @@
 /** Ephemeral distributed pairing state, backed by Redis EVAL (atomic transitions).
  * Redis keys expire automatically; no local instance state or stored video frames.
  */
-import {PHONE_PAIR_MAX_SDP,PHONE_PAIR_TTL_MS,validRoom,validToken} from '../src/stage/PhonePairProtocol.ts';
+// Standalone server constants: Vercel's Node.js Function bundle does not include
+// relative .ts imports from src/. Keep values aligned with PhonePairProtocol.ts.
+const PHONE_PAIR_MAX_SDP=90_000;
+const PHONE_PAIR_TTL_MS=180_000;
+const validRoom=(value:unknown):value is string=>
+ typeof value==='string'&&/^[a-zA-Z0-9_-]{12,32}$/.test(value);
+const validToken=(value:unknown):value is string=>
+ typeof value==='string'&&/^[a-zA-Z0-9_-]{24,64}$/.test(value);
 
 type Action='create'|'join'|'poll'|'offer'|'answer'|'close';
 type RedisPrimitive=string|number|null|Array<string|number|null>;
