@@ -1,5 +1,5 @@
 import {Camera,ChevronRight,Clapperboard,Film,Monitor,Play,
- Settings2,ShieldAlert,SlidersHorizontal,Video,X} from 'lucide-react';
+ ShieldAlert,SlidersHorizontal,Video,X} from 'lucide-react';
 import type {FootprintConfig,FootprintStyle} from '../../footprints/StudioFootprints.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
 import {palettes} from '../../footprints/pattern.ts';
@@ -14,7 +14,7 @@ type Props={
  identityAmbiguous:boolean;identities:number;maskStatus:string;
  footprint:FootprintConfig;updateFootprint:(patch:Partial<FootprintConfig>)=>void;
  bodyReady:boolean;floorReady:boolean;projectionReason:string;
- onStartBody:()=>void;onGuidedSetup:()=>void;onVideo:()=>void;onSimulation:()=>void;
+ onStartBody:()=>void;onPhone:()=>void;onEditFloor:()=>void;onVideo:()=>void;onSimulation:()=>void;
  onCalibration:()=>void;onRehearsal:()=>void;onMapping:()=>void;onComposer:()=>void;
  onProjector:()=>void;
 };
@@ -30,7 +30,7 @@ export function FootprintsFlowInspector({
  floorConfirmed,floorCalibrated,cameraMatched,floorContacts,floorEvents,floorReason,
  performerCount,onPerformerCount,identityAmbiguous,identities,maskStatus,
  footprint,updateFootprint,bodyReady,floorReady,projectionReason,
- onStartBody,onGuidedSetup,onVideo,onSimulation,onCalibration,onRehearsal,
+ onStartBody,onPhone,onEditFloor,onVideo,onSimulation,onCalibration,onRehearsal,
  onMapping,onComposer,onProjector
 }:Props){
  const [name,title]=headings[step];
@@ -42,11 +42,11 @@ export function FootprintsFlowInspector({
   </header>
   <div className="fp-flow-inspector-body">
    {step==='input'&&<>
-    <p className="fp-flow-note">Pilih satu sumber. Seluruh sumber menggunakan pipeline Footprints yang tersedia.</p>
+    <p className="fp-flow-note">Gunakan menu INPUT di atas untuk memilih sumber live. MP4 dan Simulasi 3D tetap berada di Lab.</p>
     <button type="button" className="fp-flow-primary" onClick={onStartBody} disabled={cameraBusy}>
      <Camera size={17}/>{cameraBusy?'Menghubungkan…':cameraOn?'Kamera aktif · periksa':'Hubungkan webcam'}</button>
-    <button type="button" onClick={onGuidedSetup}><SlidersHorizontal size={16}/>
-     Kamera HP / pengaturan kamera <ChevronRight size={15}/></button>
+    <button type="button" onClick={onPhone}><Camera size={16}/>
+     Hubungkan kamera HP <ChevronRight size={15}/></button>
     <div className="fp-flow-divider"/>
     <p className="fp-flow-label">SUMBER UNTUK EKSPERIMEN</p>
     <button type="button" onClick={onVideo}><Film size={17}/> Gunakan rekaman MP4</button>
@@ -69,10 +69,10 @@ export function FootprintsFlowInspector({
     <div className="fp-flow-readout"><span>Kalibrasi lantai</span><strong>{
      floorConfirmed&&cameraMatched?'Terkonfirmasi':floorCalibrated?'Perlu pemeriksaan':'Belum ada'
     }</strong></div>
-    <button type="button" className="fp-flow-primary" onClick={onCalibration}>
-     <SlidersHorizontal size={16}/> Kalibrasi dan QA lantai</button>
-    <button type="button" onClick={onGuidedSetup}><Settings2 size={16}/>
-     Bantuan setup bertahap</button>
+    <button type="button" className="fp-flow-primary" onClick={onEditFloor}>
+     <SlidersHorizontal size={16}/> Tandai 4 titik lantai</button>
+    <button type="button" onClick={onCalibration}><SlidersHorizontal size={16}/>
+     Calibration & QA lanjutan</button>
     <details className="fp-flow-advanced">
      <summary>Event & diagnostik</summary>
      <div className="fp-flow-readout"><span>Contact</span><strong>{floorContacts}</strong></div>
