@@ -2,7 +2,6 @@ import {useCallback,useEffect,useRef,useState,type RefObject,type PointerEvent} 
 import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
-import {BeginnerUsabilityLab} from './BeginnerUsabilityLab.tsx';
 import {inlineSetupHint,type InlineSetupAction} from './inlineSetupModel.ts';
 import {InlineFloorCalibration} from './InlineFloorCalibration.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
@@ -10,11 +9,9 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Camera,ClipboardCheck,Film,Layers3,MonitorPlay} from 'lucide-react';
+import {Camera,Film,Layers3,MonitorPlay} from 'lucide-react';
 import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
-import {CompactFootprintsStatus} from './CompactFootprintsStatus.tsx';
 import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
-import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
 import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
@@ -48,6 +45,7 @@ import './interaction-refinement.css';
 import './source-switcher-layout.css';
 import './persistent-stage-workspace.css';
 import './inline-setup-assistant.css';
+import './s6-8-7-simplified-stage.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -93,9 +91,8 @@ export function FootprintsStageWorkspace({
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
- const [flowStep,setFlowStep]=useState<FootprintsStep>(()=>sourceStatus.selection?'compose':'input');
- const [usabilityOpen,setUsabilityOpen]=useState(false);
- const [inspectorOpen,setInspectorOpen]=useState(true);
+ const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
+ const [inspectorOpen,setInspectorOpen]=useState(false);
  const [previewMode,setPreviewMode]=useState<StagePreviewMode>(()=>{
   try{return parseStagePreviewMode(localStorage.getItem('soma-stage-preview-mode-v1'));}
   catch{return 'split';}
@@ -367,18 +364,10 @@ export function FootprintsStageWorkspace({
   setCalibrationOpen(false);
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
  };
- const openFromStatus=(step:FootprintsStep,trigger:HTMLElement)=>{
-  selectFlowStep(step,trigger,true);
-  window.requestAnimationFrame(()=>{
-   if(step==='input'&&!cameraOn)
-    document.querySelector<HTMLButtonElement>('.fp-source-switch-trigger')?.focus({preventScroll:true});
-   else document.getElementById('fp-flow-inspector-title')?.focus({preventScroll:true});
-  });
- };
  const chooseSource=async(choice:FootprintsInputChoice):Promise<boolean>=>{
   const accepted=await onSwitchSource(choice);
   if(!accepted)return false;
-  setView('stage');setCalibrationOpen(false);setInspectorOpen(true);
+  setView('stage');setCalibrationOpen(false);setInspectorOpen(choice==='phone');
   setPhonePanelOpen(choice==='phone');
   setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
   return true;
@@ -396,18 +385,6 @@ export function FootprintsStageWorkspace({
  };
  const sourceMode=deriveSourceScreenMode({
   cameraOn,cameraBusy,cameraError,bodySelected,videoReady
- });
- const compactItems=experimentalKind?[{
-  id:'source' as const,label:'Sumber',
-  value:experimentalKind==='video'?'Video 2D':'Puppet 3D',
-  level:'ok' as const,
-  detail:'Preview eksperimen lokal, proyektor fisik tetap memerlukan QA.'
- }]:compactFootprintsReadiness({
-  cameraOn,cameraBusy,cameraError,bodySelected,frameFresh,
-  visibleCount:identityStatus.visible.length,performerCount,
-  identityAmbiguous:identityStatus.ambiguous,
-  identityMatchedFrame:identityStatus.observedFrameTime===frameRef.current.time,
-  floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched
  });
  const sourcePickerVisible=!operatorMode&&!calibrationOpen&&!experimentalKind&&showsSourcePicker(sourceMode);
  const gaitPreviewVisible=!!experimentalKind||showsGaitPreviews(sourceMode);
@@ -431,6 +408,11 @@ export function FootprintsStageWorkspace({
     selectedExperimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0:0
   }:undefined
  });
+ // Only interrupt the Stage for an actionable setup problem.
+ const showSetupHint=!experimentalKind&&(
+  setupHint.severity==='warning'||setupHint.severity==='busy'||
+  (sourceStatus.selection===null&&setupHint.id==='source')
+ );
  const handleAssistantAction=(action:InlineSetupAction)=>{
   switch(action){
    case 'experiment':{
@@ -471,7 +453,7 @@ export function FootprintsStageWorkspace({
     <span className="fp-flow-name">FOOTPRINTS</span>
     <div className="fp-flow-local-tabs" role="group" aria-label="Bagian kerja Footprints">
      {footprintsSteps.map(item=><button type="button" key={item.id}
-      aria-current={flowStep===item.id?'step':undefined}
+      aria-current={flowStep===item.id&&inspectorOpen?'step':undefined}
       aria-expanded={flowStep===item.id&&inspectorOpen}
       aria-controls={flowStep===item.id&&inspectorOpen?'fp-context-panel':undefined}
       onClick={event=>selectFlowStep(item.id,event.currentTarget,true)}
@@ -487,21 +469,8 @@ export function FootprintsStageWorkspace({
    </div>
    <FootprintsSourceSwitcher status={sourceStatus} onChoose={chooseSource}
     onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(true);setCalibrationOpen(false);}}/>
-   <CompactFootprintsStatus items={compactItems}
-    onSource={trigger=>openFromStatus('input',trigger)}
-    onProcess={trigger=>openFromStatus('process',trigger)}/>
-   <button type="button" className="fp-usability-launch"
-    aria-expanded={usabilityOpen} aria-controls="fp-beginner-usability"
-    onClick={()=>setUsabilityOpen(v=>!v)}>
-    <ClipboardCheck size={15} aria-hidden="true"/> Uji Pemula
-   </button>
 
   </nav>}
-  <div id="fp-beginner-usability">
-   <BeginnerUsabilityLab hidden={!usabilityOpen||operatorMode}
-    status={sourceStatus} hint={setupHint} previewReady={gaitPreviewVisible}
-    onClose={()=>setUsabilityOpen(false)}/>
-  </div>
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
@@ -534,7 +503,7 @@ export function FootprintsStageWorkspace({
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
-     <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>
+     {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind} performers={performerCount}
       model={experimentPuppet} externalRevision={experimentPuppetRevision}
@@ -589,7 +558,7 @@ export function FootprintsStageWorkspace({
      <div className="fp-stage-side-previews" data-preview-mode={previewMode}
       aria-label="Preview BODY dan FLOOR dari engine Footprints">
       <div className="fp-stage-preview-toolbar">
-       <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> STAGE PREVIEW</span>
+       <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> PREVIEW</span>
         <small>{experimentalKind?experimentFrameLabel(experimentalKind):previewLabel(previewMode)+' · Preview software'}</small></div>
        <div className="fp-stage-preview-modes" role="group" aria-label="Pilih tampilan preview">
         {STAGE_PREVIEW_MODES.map(item=><button type="button" key={item.id}
