@@ -15,6 +15,14 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
  onDisconnect:()=>void;
 }){
  const [room,setRoom]=useState<PairRoom|null>(null);
+ const [secondsLeft,setSecondsLeft]=useState(0);
+ useEffect(()=>{
+  if(!room){setSecondsLeft(0);return;}
+  const calculate=()=>setSecondsLeft(Math.max(0,Math.ceil((room.expiresAt-Date.now())/1000)));
+  calculate();
+  const timer=setInterval(calculate,1000);
+  return()=>clearInterval(timer);
+ },[room]);
  const [status,setStatus]=useState('Scan QR untuk mengirim video HP ke SOMA.');
  const [phase,setPhase]=useState<'idle'|'creating'|'waiting'|'negotiating'|'connected'|'error'>('idle');
  const roomRef=useRef<PairRoom|null>(null),pcRef=useRef<RTCPeerConnection|null>(null);
@@ -143,6 +151,9 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
   {room&&<div className="soma-auto-pair-code">
    <PhonePairQr value={url}/>
    <div><strong>Scan dengan kamera HP</strong>
+    <span className="soma-pair-expiry" role="status">
+     QR tersisa {Math.floor(secondsLeft/60)}:{String(secondsLeft%60).padStart(2,'0')}
+    </span>
     <p>Gunakan kamera belakang. Setelah halaman HP terbuka, tekan Aktifkan kamera.</p>
     <a href={url} rel="noreferrer" target="_blank">Buka halaman kamera HP</a>
     <button type="button" onClick={()=>void copy()}>Salin tautan HP</button>
