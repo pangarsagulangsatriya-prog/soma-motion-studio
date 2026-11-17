@@ -1,7 +1,7 @@
 import {MotionProcessor} from '../engine/motion.ts';
 import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
-import {TwoPersonIdentityTracker} from '../footprints/live/TwoPersonIdentityTracker.ts';
+import {VideoAutoActorTracker,type VideoActorState} from './videoAutoActorTracker.ts';
 import {ReplayIdentityGate,type ReplayIdentityQA} from './videoReplayIdentityQA.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
@@ -15,6 +15,8 @@ export type ReplayAnalysisSnapshot={
  people:ReplayOverlayPerson[];events:ReplayGaitEvent[];
  /** Independent diagnostic output from MediaPipe; not an identity or gait approval. */
  rawPoses:Landmark[][];
+ actorStates:VideoActorState[];detectedCount:number;visibleCount:number;
+ performerMode:'auto'|'manual';
  status:string;ambiguous:boolean;
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
@@ -27,7 +29,7 @@ const sideName=(side:0|1):ReplayFoot=>side===0?'left':'right';
 export class VideoPoseGaitEngine{
  private model:PoseLandmarker|null=null;
  private processor=new MotionProcessor();
- private identity=new TwoPersonIdentityTracker();
+ private actorTracker=new VideoAutoActorTracker();
  private qa=new ReplayIdentityGate();
  private archived:ReplayArchiveSegment[]=[];
  private firstAtMs:number|null=null;
@@ -44,6 +46,13 @@ export class VideoPoseGaitEngine{
  private inProgress=false;
  private people:ReplayOverlayPerson[]=[];
  private rawPoses:Landmark[][]=[];
+ private actorStates:VideoActorState[]=[
+  {id:'A',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null},
+  {id:'B',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null}
+ ];
+ private detectedCount=0;
+ private visibleCount=0;
+ private manualCount:1|2|null=null;
  private status='Belum dimulai';
  private ambiguous=false;
  private count:1|2=1;
@@ -75,6 +84,9 @@ export class VideoPoseGaitEngine{
    sampledFrames:this.frames,performers:this.count,people:this.people.map(person=>({
     ...person,landmarks:person.landmarks.map(point=>({...point}))
    })),rawPoses:this.rawPoses.map(pose=>pose.map(p=>({...p}))),
+   actorStates:this.actorStates.map(actor=>({...actor})),
+   detectedCount:this.detectedCount,visibleCount:this.visibleCount,
+   performerMode:this.manualCount===null?'auto':'manual',
    events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
    gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
    qa:this.qa.snapshot,archivedSegments:this.archived.length};
@@ -94,16 +106,25 @@ export class VideoPoseGaitEngine{
   this.model=model;this.status='Model Pose siap. Putar video untuk membaca gerak.';
   this.emit();
  }
- setPerformers(count:1|2){
-  if(count===this.count)return;
-  this.count=count;this.reset('Jumlah performer berubah. Analisis dimulai ulang.');
+ /** Auto is the default for every MP4. Manual override stays in the advanced lab. */
+ setPerformers(choice:'auto'|1|2){
+  const next=choice==='auto'?null:choice;
+  if(next===this.manualCount)return;
+  this.manualCount=next;
+  this.reset('Mode jumlah aktor berubah. Analisis dimulai ulang.');
  }
  reset(reason='Seek atau loop: event lama dikosongkan agar tidak tercampur.'){
   this.closeSegment(reason);
   this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
-  this.identity.reset();this.analyzers.clear();this.processor.reset();
+  this.actorTracker.reset();this.analyzers.clear();this.processor.reset();
+  this.count=this.manualCount??1;
   this.people=[];this.rawPoses=[];this.ambiguous=false;this.lastTime=-1;
+  this.detectedCount=0;this.visibleCount=0;
+  this.actorStates=[
+   {id:'A',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null},
+   {id:'B',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null}
+  ];
   this.status=reason;this.emit();
  }
  private emit(){if(!this.disposed)this.report(this.snapshot);}
@@ -134,29 +155,25 @@ export class VideoPoseGaitEngine{
     },atMs,configs,capFPS);
     this.lastTime=atMs;this.frames++;
     this.firstAtMs??=atMs;
-    let assigned:ReplayOverlayPerson[]=[];
-    if(this.count===2){
-     const resolution=this.identity.observe(result.landmarks,atMs);
-     this.ambiguous=resolution.ambiguous;
-     if(!resolution.ambiguous&&resolution.assignments.length===2){
-      assigned=resolution.assignments.map(item=>({
-       id:item.id,landmarks:item.pose,confidence:item.confidence
-      }));
-     }
-     this.status=resolution.ambiguous?'Identitas A/B ambigu. Reset atau seek untuk mengulang.':
-      assigned.length===2?'BODY A/B terbaca pada video.':'Menunggu dua tubuh yang terlihat lengkap.';
-    }else{
-     this.ambiguous=false;
-     if(result.landmarks[0]?.length===33&&frame.tracked){
-      assigned=[{id:'A',landmarks:result.landmarks[0],confidence:frame.quality}];
-     }
-     this.status=assigned.length?'Pose A terbaca, membaca fase kaki.':'Kaki/pinggul belum cukup terlihat.';
+    const observed=this.actorTracker.observe(this.rawPoses,atMs);
+    this.actorStates=observed.actors;
+    this.detectedCount=observed.detectedCount;
+    this.visibleCount=observed.visibleCount;
+    const count=this.manualCount??observed.knownCount;
+    if(count!==this.count){
+     this.count=count;
+     // Changing 1 → 2 invalidates gait continuity, not the raw skeletons.
+     this.qa.reset('Jumlah aktor terdeteksi berubah; cek ulang gait.',atMs);
+     this.analyzers.clear();this.feet.clear();
     }
+    this.ambiguous=observed.ambiguous;
+    let assigned:ReplayOverlayPerson[]=observed.assignments
+     .filter(person=>this.count===2||person.id==='A')
+     .map(person=>({id:person.id,landmarks:person.pose,confidence:person.confidence}));
     const identityStable=this.qa.observe(assigned,this.count,this.ambiguous);
-    if(!identityStable){
-     this.status=this.qa.snapshot.reason;
-     assigned=[];
-    }
+    this.status=observed.reason+(identityStable?' Event gait aktif.':
+     ' Event gait ditahan sampai identitas lolos QA.');
+    if(!identityStable)assigned=[];
     if(!assigned.length){
      // Never connect a stale planted foot to a new identity.
      this.analyzers.clear();this.feet.clear();
@@ -183,14 +200,17 @@ export class VideoPoseGaitEngine{
    }finally{result.close();}
   }catch(e){
    this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
-   this.people=[];this.rawPoses=[];this.analyzers.clear();this.feet.clear();
+   this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
+   this.actorStates=this.actorStates.map(person=>({...person,presence:'lost',rawIndex:null,confidence:0}));
+   this.analyzers.clear();this.feet.clear();
    this.qa.observe([],this.count,false);this.emit();
   }finally{this.inProgress=false;}
  }
  dispose(){
   if(this.disposed)return;
   this.disposed=true;this.model?.close();this.model=null;
-  this.identity.reset();this.analyzers.clear();this.feet.clear();
-  this.history=[];this.archived=[];this.people=[];this.rawPoses=[];this.lastTime=-1;
+  this.actorTracker.reset();this.analyzers.clear();this.feet.clear();
+  this.history=[];this.archived=[];this.people=[];this.rawPoses=[];
+  this.actorStates=[];this.lastTime=-1;
  }
 }
