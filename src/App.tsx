@@ -3,6 +3,7 @@ import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {DirectPuppetSession} from './footprints/simulator/puppet-controller.ts';
 import {defaultFloorSpace} from './footprints/spatial/coordinates.ts';
+import {preserveCurrentSource} from './studio/v3/sourceE2EGuard.ts';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
@@ -116,7 +117,8 @@ export default function App(){
  const notify=useCallback((message:string)=>setNotice(message),[]);
  const photoArchive=usePhotoArchive({frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,muted,notify});
  const cameraCue=useCameraCue({archive:photoArchive,frameRef,settingsRef:sr,videoRef:video,active:!archiveActive,notify,onOpen:()=>{setModal(null);setControlsOpen(false);setProjectionActive(false);}});
- const projection=useProjection({active:projectionActive,frameRef,videoRef:video,input:settings.input,notify,artworkActive:footprintsActive,artworkRef:footprintCanvasRef,
+ const projection=useProjection({active:projectionActive,frameRef,videoRef:video,input:settings.input,
+  sourceChoice:footprintsChoice,notify,artworkActive:footprintsActive,artworkRef:footprintCanvasRef,
   simulatorActive:simulatorOpen,simulatorApproval,simulatorTestPattern,simulatorQaTransport,simulatorArtworkRef,
    liveFloorActive:liveFloorOpen,liveFloorConfirmed:liveFloorEngine.isConfirmed,
    liveFloorBoundCamera:liveFloorEngine.boundCamera,liveFloorApproval,liveFloorTestPattern,liveFloorArtworkRef});
@@ -215,12 +217,11 @@ export default function App(){
    cameraCue.open();
   }catch(e){notify('Gagal membuka kamera tubuh: '+(e instanceof Error?e.message:'coba lagi.'));}
  }
- /** Switching inputs is a single fail-closed transaction.
-  * MP4/3D remain separate experimental workspaces until S6.8.4. */
+ /** S6.8.5: Source Switcher is the only operator transaction for camera/experiment changes.
+  * All sources share the persistent Stage Workspace; experimental hardware output stays locked. */
  async function switchFootprintsSource(next:FootprintsInputChoice):Promise<boolean>{
   if(sourceChangeLock.current)return false;
-  if(next===requestedFootprintsChoice.current&&
-   (next==='phone'||(next==='webcam'&&cameraOn&&!cameraBusy)))return true;
+  if(preserveCurrentSource({current:requestedFootprintsChoice.current,next,cameraOn,cameraBusy}))return true;
   if(footprintRecording&&!window.confirm(
    'Rekaman Footprints masih berjalan. Simpan rekaman dan ganti sumber?'))return false;
   sourceChangeLock.current=true;setSourceSwitchBusy(true);setSourceSwitchError('');
@@ -228,6 +229,7 @@ export default function App(){
    requestStageBlackout(()=>projection.setTransport('blackout'));
    if(footprintRecording)footprintRef.current?.toggleVideo();
    requestedFootprintsChoice.current=next;
+   setSimulatorOpen(false);setSimulatorQaTransport(null);
    liveFloorEngine.revoke('Sumber gerak diganti; periksa ulang kalibrasi.');
    multiPoseRouter.reset();setLiveFloorApproval(null);
    updateFootprint({hold:false});

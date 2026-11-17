@@ -17,7 +17,7 @@ import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
 import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
-import {activeExperimentKind,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
+import {activeExperimentKind,currentExperimentFrame,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
@@ -90,6 +90,7 @@ export function FootprintsStageWorkspace({
  const experimentalKind=activeExperimentKind(sourceStatus.selection);
  const [experimentClip,setExperimentClip]=useState<File|null>(null);
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
+ const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('compose');
  const [inspectorOpen,setInspectorOpen]=useState(true);
@@ -401,8 +402,8 @@ export function FootprintsStageWorkspace({
   identityMatchedFrame:identityStatus.observedFrameTime===frameRef.current.time,
   floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched
  });
- const sourcePickerVisible=!operatorMode&&!calibrationOpen&&showsSourcePicker(sourceMode);
- const gaitPreviewVisible=showsGaitPreviews(sourceMode);
+ const sourcePickerVisible=!operatorMode&&!calibrationOpen&&!experimentalKind&&showsSourcePicker(sourceMode);
+ const gaitPreviewVisible=!!experimentalKind||showsGaitPreviews(sourceMode);
  const screenMode=operatorMode?'operator':calibrationOpen?'setup':sourcePickerVisible?'source':
   gaitPreviewVisible?'live':'preparing';
  const setupHint=inlineSetupHint({
@@ -412,14 +413,15 @@ export function FootprintsStageWorkspace({
   identityMatchedFrame:identityStatus.observedFrameTime===frameRef.current.time,
   floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched,
   experiment:experimentalKind?{
-   ready:!!experimentFrame&&(experimentFrame.kind!=='video'||experimentFrame.ready),
-   name:experimentFrame?.name??'Belum ada berkas',
-   events:experimentFrame?.kind==='simulator'?experimentFrame.session.events.length:
-    experimentFrame?.kind==='video'?experimentFrame.snapshot?.events.length??0:0,
-   contacts:experimentFrame?.kind==='simulator'?
-    experimentFrame.session.events.filter(e=>e.kind==='contact').length:
-    experimentFrame?.kind==='video'?
-    experimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0:0
+   ready:!!selectedExperimentFrame&&
+    (selectedExperimentFrame.kind!=='video'||selectedExperimentFrame.ready),
+   name:selectedExperimentFrame?.name??'Belum ada berkas',
+   events:selectedExperimentFrame?.kind==='simulator'?selectedExperimentFrame.session.events.length:
+    selectedExperimentFrame?.kind==='video'?selectedExperimentFrame.snapshot?.events.length??0:0,
+   contacts:selectedExperimentFrame?.kind==='simulator'?
+    selectedExperimentFrame.session.events.filter(e=>e.kind==='contact').length:
+    selectedExperimentFrame?.kind==='video'?
+    selectedExperimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0:0
   }:undefined
  });
  const handleAssistantAction=(action:InlineSetupAction)=>{
@@ -562,8 +564,8 @@ export function FootprintsStageWorkspace({
         <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
        </div>}
       </div>
-      <div className="fp-stage-surface-foot"><span>{experimentalKind?experimentFrame?
-       experimentFrame.kind==='video'?'Video 2D':'Puppet virtual':'Menyiapkan sumber':
+      <div className="fp-stage-surface-foot"><span>{experimentalKind?selectedExperimentFrame?
+       selectedExperimentFrame.kind==='video'?'Video 2D':'Puppet virtual':'Menyiapkan sumber':
        frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
        <span>{experimentalKind?'OUTPUT FISIK TERKUNCI':performerCount+' performer'}</span></div>
      </div>
@@ -606,13 +608,13 @@ export function FootprintsStageWorkspace({
         {footprint.hold&&<span className="fp-stage-hold-label">
          HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
        </div>
-       <div className="fp-stage-surface-foot"><span>{experimentFrame?
- experimentFrame.kind==='simulator'?experimentFrame.session.events.filter(e=>e.kind==='contact').length+' kontak sintetis':
- (experimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0)+' kontak video':
- floorStatus.contacts+' kontak'}</span>
-        <span>{experimentFrame?experimentFrame.kind==='simulator'?
- experimentFrame.session.events.length:experimentFrame.snapshot?.events.length??0:
- floorStatus.events} event</span></div>
+       <div className="fp-stage-surface-foot"><span>{selectedExperimentFrame?
+ selectedExperimentFrame.kind==='simulator'?selectedExperimentFrame.session.events.filter(e=>e.kind==='contact').length+' kontak sintetis':
+ (selectedExperimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0)+' kontak video':
+ experimentalKind?'0 kontak':floorStatus.contacts+' kontak'}</span>
+        <span>{selectedExperimentFrame?selectedExperimentFrame.kind==='simulator'?
+ selectedExperimentFrame.session.events.length:selectedExperimentFrame.snapshot?.events.length??0:
+ experimentalKind?0:floorStatus.events} event</span></div>
       </div>
      </div>
     </div>
