@@ -38,6 +38,7 @@ import './footprints-stage-workspace.css';
 import './source-screen.css';
 import './compact-stage.css';
 import './interaction-refinement.css';
+import './source-switcher-layout.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -537,7 +538,7 @@ export function FootprintsStageWorkspace({
      </div>}
     {setupOpen&&!phonePanelOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
      phoneManaged={true} onSelectPhone={openPhoneInput}
-     onShowPhoneManager={()=>{setSetupOpen(false);setPhonePanelOpen(true);setInspectorOpen(false);}}
+     onShowPhoneManager={openPhoneInput}
    onCalibrationState={setCalibrationOverlay}
    onBindCalibrationTap={handler=>{calibrationTap.current=handler;}}
    session={stageSession} frameRef={frameRef} videoRef={videoRef}
