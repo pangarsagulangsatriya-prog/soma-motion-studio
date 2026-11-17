@@ -1,5 +1,12 @@
 import {useEffect,useRef,useState} from 'react';
-import type {ChangeEvent,PointerEvent} from 'react';
+import type {ChangeEvent,PointerEvent,RefObject} from 'react';
+import type {MotionFrame} from '../../engine/types.ts';
+import type {Projection} from '../../projection/useProjection.ts';
+import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
+import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
+import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
+import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
+import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
 import './SurfaceComposer.css';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -14,8 +21,15 @@ const presetKey='soma-s64-presets-v1';
 const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
 const valid=(v:unknown):v is Snapshot=>{if(!v||typeof v!=='object')return false;const x=v as Snapshot;return x.version===1&&surfaces.includes(x.selected)&&surfaces.every(s=>Array.isArray(x.composition?.[s])&&x.composition[s].length<=24&&x.composition[s].every(l=>l&&typeof l.id==='string'&&typeof l.name==='string'&&typeof l.mediaId==='string'&&typeof l.opacity==='number'&&typeof l.scale==='number'&&Array.isArray(l.points)));};
-type Props={bodyCanvas:React.RefObject<HTMLCanvasElement|null>;floorCanvas:React.RefObject<HTMLCanvasElement|null>;cameraOn:boolean;performerCount:1|2;floorReady:boolean;floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];identitySafe:boolean;onClose:()=>void};
-export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,floorReady,floorEvents,identitySafe,onClose}:Props){
+type Props={
+ bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
+ frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
+ router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
+ cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
+ floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
+ identitySafe:boolean;onClose:()=>void;
+};
+export function SurfaceComposer({bodyCanvas,floorCanvas,frameRef,videoRef,router,floorTracker,projection,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose}:Props){
  const [selected,setSelected]=useState<Surface>('BODY A');
  const [composition,setComposition]=useState<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
  const [media,setMedia]=useState<Media[]>([]);
@@ -24,6 +38,8 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
  const [presetName,setPresetName]=useState('New composition');
  const [editMask,setEditMask]=useState(false);
  const [outputOpen,setOutputOpen]=useState(false);
+ const [routeOpen,setRouteOpen]=useState(false);
+ const [bodyStatus,setBodyStatus]=useState('Menunggu frame tubuh.');
  const [hint,setHint]=useState('');
  const [blackout,setBlackout]=useState(true);
  const [previewLive,setPreviewLive]=useState(true);
@@ -31,10 +47,29 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
  const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
+ const bodyOutput=useRef<HTMLCanvasElement>(null);
+ const floorOutput=useRef<HTMLCanvasElement>(null);
+ const stageRoute=useRef<StageRouteInput|null>(null);
+ const maskCache=useRef<{at:number;A:HTMLCanvasElement|null;B:HTMLCanvasElement|null;safe:boolean;reason:string;union:ReturnType<typeof buildLowerBodyMask>['mask']|null}>({at:-1,A:null,B:null,safe:false,reason:'Tracking belum siap.',union:null});
+ const maskScratch=useRef<{A:HTMLCanvasElement;B:HTMLCanvasElement}|null>(null);
+ const outputReadyRef=useRef({body:false,floor:false});
+ 
  const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const [eventInfo,setEventInfo]=useState('Belum ada event gerak.');
  
  const canvas=useRef<HTMLCanvasElement>(null);
+ const frameRefLive=useRef(frameRef);frameRefLive.current=frameRef;
+ const videoRefLive=useRef(videoRef);videoRefLive.current=videoRef;
+ const routerRef=useRef(router);routerRef.current=router;
+ const floorRef=useRef(floorTracker);floorRef.current=floorTracker;
+ const cameraOnRef=useRef(cameraOn);cameraOnRef.current=cameraOn;
+ const bodySelectedRef=useRef(bodySelected);bodySelectedRef.current=bodySelected;
+ const performerRef=useRef(performerCount);performerRef.current=performerCount;
+ const floorReadyRef=useRef(floorReady);floorReadyRef.current=floorReady;
+ const identitySafeRef=useRef(identitySafe);identitySafeRef.current=identitySafe;
+ const blackoutRef=useRef(blackout);blackoutRef.current=blackout;
+ const previewLiveRef=useRef(previewLive);previewLiveRef.current=previewLive;
+ 
  const mediaEls=useRef(new Map<string,HTMLImageElement|HTMLVideoElement>());
  const popup=useRef<Window|null>(null);
  const selectedRef=useRef(selected),compositionRef=useRef(composition);
@@ -45,68 +80,140 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
  useEffect(()=>{return()=>{for(const item of mediaEls.current.values())if(item instanceof HTMLVideoElement)item.pause();};},[]);
  useEffect(()=>{for(const m of media){if(mediaEls.current.has(m.id))continue;if(m.kind==='image'){const img=new Image();img.src=m.url;mediaEls.current.set(m.id,img);}else{const video=document.createElement('video');video.src=m.url;video.loop=true;video.muted=true;video.playsInline=true;void video.play().catch(()=>{});mediaEls.current.set(m.id,video);}}},[media]);
  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/'));setMedia(old=>[...old,...files.map(f=>({id:crypto.randomUUID(),name:f.name.slice(0,90),kind:f.type.startsWith('video/')?'video' as const:'image' as const,url:URL.createObjectURL(f),mime:f.type}))].slice(0,48));e.target.value='';};
- const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number)=>{
-  ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
-  if(blackout||!previewLive)return;
-  const base=s==='FLOOR'?floorCanvas.current:bodyCanvas.current;
-  const validSurface=s==='FLOOR'?floorReady:cameraOn&&(performerCount===1?s==='BODY A':false);
-  // Per-performer mask must be provided before enabling two-person body output. Fail closed.
-  if(!validSurface)return;
+ const maskImage=(data:Uint8Array,width:number,height:number,canvas:HTMLCanvasElement)=>{
+  if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
+  const ctx=canvas.getContext('2d');if(!ctx)return;
+  const img=ctx.createImageData(width,height);
+  for(let i=0;i<data.length;i++){const k=i*4;img.data[k]=255;img.data[k+1]=255;img.data[k+2]=255;img.data[k+3]=data[i];}
+  ctx.putImageData(img,0,0);
+ };
+ const updateMasks=(now:number)=>{
+  const frame=frameRefLive.current.current,ids=routerRef.current.status,count=performerRef.current;
+  const validClock=frame?.source==='camera'&&frame.tracked&&frame.time>0&&now-frame.time>=0&&now-frame.time<350;
+  const key=cameraBindingKey(cameraBinding(videoRefLive.current.current));
+  const bindingSafe=!!key&&key===floorRef.current.boundCamera;
+  const idsSafe=count===1||(!ids.ambiguous&&ids.mode===2&&ids.visible.includes('A')&&ids.visible.includes('B')&&ids.observedFrameTime===frame.time&&ids.poseIndices.A!==null&&ids.poseIndices.B!==null&&ids.poseIndices.A!==ids.poseIndices.B);
+  const safe=!!(cameraOnRef.current&&bodySelectedRef.current&&floorReadyRef.current&&bindingSafe&&validClock&&identitySafeRef.current&&idsSafe);
+  if(!safe){
+   maskCache.current={at:-1,A:null,B:null,safe:false,reason:!cameraOnRef.current?'Kamera mati':!floorReadyRef.current||!bindingSafe?'Kalibrasi kamera/lantai belum cocok':!validClock?'Frame kedaluwarsa':'Identitas A/B ambigu',union:null};
+   return;
+  }
+  // Identical source frame: reuse safe per-pose masks while preserving identity routing.
+  if(maskCache.current.at===frame.time&&maskCache.current.safe)return;
+  const result=buildLowerBodyMask(frame,{...LOWER_BODY_MASK_DEFAULTS,performers:count,requireSegmentation:true},now,'camera');
+  if(result.status!=='ready'){
+   maskCache.current={at:-1,A:null,B:null,safe:false,reason:result.reason,union:null};
+   return;
+  }
+  if(!maskScratch.current)maskScratch.current={A:document.createElement('canvas'),B:document.createElement('canvas')};
+  const indexA=count===1?0:ids.poseIndices.A;
+  const indexB=count===2?ids.poseIndices.B:null;
+  const a=indexA===null?null:result.perPoseMasks[indexA];
+  const b=indexB===null?null:result.perPoseMasks[indexB];
+  if(!a||(count===2&&!b)){
+   maskCache.current={at:-1,A:null,B:null,safe:false,reason:'Mask A/B belum terpisah.',union:null};return;
+  }
+  maskImage(a.data,a.width,a.height,maskScratch.current.A);
+  if(b)maskImage(b.data,b.width,b.height,maskScratch.current.B);
+  maskCache.current={at:frame.time,A:maskScratch.current.A,B:b?maskScratch.current.B:null,safe:true,reason:'Mask performer terpisah dan identitas cocok.',union:result.mask};
+ };
+ const readyMedia=(s:Surface)=>{
+  return compositionRef.current[s].some(l=>{
+   if(!l.visible||!l.mediaId)return false;
+   const item=mediaEls.current.get(l.mediaId);
+   return !!item&&(item instanceof HTMLImageElement?item.complete&&item.naturalWidth>0:item.readyState>=2);
+  });
+ };
+ const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true)=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
+  if(blackoutRef.current||!previewLiveRef.current)return;
+  const body=s!=='FLOOR';
+  const currentMask=s==='BODY A'?maskCache.current.A:s==='BODY B'?maskCache.current.B:null;
+  if(body?(!maskCache.current.safe||!currentMask):!floorReadyRef.current)return;
   const now=performance.now();
-  for(const l of compositionRef.current[s]||[]){
-   if(!l.visible)continue;
-   const el=mediaEls.current.get(l.mediaId);
+  for(const layer of compositionRef.current[s]||[]){
+   if(!layer.visible)continue;
+   const el=mediaEls.current.get(layer.mediaId);
    if(!el||(el instanceof HTMLImageElement?!(el.complete&&el.naturalWidth):el.readyState<2))continue;
-   const surfaceKey=s+':'+l.id;
-   let layerCanvas=surfaceBuffers.current.get(surfaceKey);
-   if(!layerCanvas){layerCanvas=document.createElement('canvas');surfaceBuffers.current.set(surfaceKey,layerCanvas);}
-   if(layerCanvas.width!==w)layerCanvas.width=w;if(layerCanvas.height!==h)layerCanvas.height=h;
-   const g=layerCanvas.getContext('2d');if(!g)continue;
-   g.clearRect(0,0,w,h);
-   g.save();g.translate(w*(.5+l.x/100),h*(.5+l.y/100));g.rotate(l.rotation*Math.PI/180);g.scale(l.scale/100,l.scale/100);
-   g.drawImage(el,-w/2,-h/2,w,h);g.restore();
-   if(l.mask!=='none'){
-    const mask=document.createElement('canvas');mask.width=w;mask.height=h;
-    const m=mask.getContext('2d');if(!m)continue;
-    if(l.mask==='polygon'&&l.points.length>=3){
-     m.fillStyle='white';m.beginPath();
-     l.points.forEach(([x,y],i)=>i?m.lineTo(x*w,y*h):m.moveTo(x*w,y*h));m.closePath();m.fill();
-    }else if(l.mask==='silhouette'&&s!=='FLOOR'&&base){
-     m.drawImage(base,0,0,w,h);
-     const raw=m.getImageData(0,0,w,h);
-     for(let i=0;i<raw.data.length;i+=4){
-      const lum=Math.max(raw.data[i],raw.data[i+1],raw.data[i+2]);
-      raw.data[i]=255;raw.data[i+1]=255;raw.data[i+2]=255;raw.data[i+3]=lum;
+   const key=s+':'+layer.id;
+   let off=surfaceBuffers.current.get(key);
+   if(!off){off=document.createElement('canvas');surfaceBuffers.current.set(key,off);}
+   if(off.width!==w)off.width=w;if(off.height!==h)off.height=h;
+   const g=off.getContext('2d');if(!g)continue;
+   g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,w,h);
+   g.save();g.translate(w*(.5+layer.x/100),h*(.5+layer.y/100));
+   g.rotate(layer.rotation*Math.PI/180);g.scale(layer.scale/100,layer.scale/100);
+   try{g.drawImage(el,-w/2,-h/2,w,h);}catch{g.restore();continue;}
+   g.restore();
+   const clipNeeded=body||layer.mask==='polygon';
+   if(clipNeeded){
+    let clip:HTMLCanvasElement|null=null;
+    if(layer.mask==='polygon'&&layer.points.length>=3){
+     clip=document.createElement('canvas');clip.width=w;clip.height=h;
+     const c=clip.getContext('2d');
+     if(c){c.fillStyle='#fff';c.beginPath();
+      layer.points.forEach(([x,y],i)=>i?c.lineTo(x*w,y*h):c.moveTo(x*w,y*h));
+      c.closePath();c.fill();
+      if(layer.feather>0){
+       const blurred=document.createElement('canvas');blurred.width=w;blurred.height=h;
+       const blur=blurred.getContext('2d');
+       if(blur){blur.filter='blur('+Math.min(35,Math.max(0,layer.feather))+'px)';blur.drawImage(clip,0,0);clip=blurred;}
+      }
      }
-     m.putImageData(raw,0,0);
-    }else continue;
-    if(l.feather>0){
-     const blurred=document.createElement('canvas');blurred.width=w;blurred.height=h;
-     const b=blurred.getContext('2d');if(!b)continue;
-     b.filter='blur('+Math.min(35,Math.max(0,l.feather))+'px)';
-     b.drawImage(mask,0,0);
-     m.clearRect(0,0,w,h);
-     m.drawImage(blurred,0,0);
     }
-    g.globalCompositeOperation='destination-in';g.drawImage(mask,0,0);
+    if(clip){g.globalCompositeOperation='destination-in';g.drawImage(clip,0,0,w,h);}
+    if(body&&currentMask){g.globalCompositeOperation='destination-in';g.drawImage(currentMask,0,0,w,h);}
     g.globalCompositeOperation='source-over';
    }
    let envelope=1;
-   const cue=effectClock.current.get(l.id);
-   if(l.recipe!=='none'){
+   const cue=effectClock.current.get(layer.id);
+   if(layer.recipe!=='none'){
     if(!cue)envelope=0;
-    else{
-     const age=now-cue.started;
-     if(l.recipe==='contact-reveal')envelope=Math.min(1,age/250)*Math.max(0,1-age/3000);
-     if(l.recipe==='slide-hold')envelope=age<1500?1:Math.max(0,1-(age-1500)/750);
-     if(l.recipe==='pivot-decay')envelope=Math.max(0,1-age/2200);
+    else{const age=now-cue.started;
+     if(layer.recipe==='contact-reveal')envelope=Math.min(1,age/250)*Math.max(0,1-age/3000);
+     if(layer.recipe==='slide-hold')envelope=age<1500?1:Math.max(0,1-(age-1500)/750);
+     if(layer.recipe==='pivot-decay')envelope=Math.max(0,1-age/2200);
     }
    }
-   ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,l.opacity/100*envelope));ctx.globalCompositeOperation=l.blend;
-   ctx.drawImage(layerCanvas,0,0);ctx.restore();
+   ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100*envelope));
+   ctx.globalCompositeOperation=layer.blend;ctx.drawImage(off,0,0);ctx.restore();
   }
  };
- useEffect(()=>{let raf=0;const tick=()=>{const c=canvas.current;if(c){const ctx=c.getContext('2d');if(ctx)render(ctx,selectedRef.current,c.width,c.height);}raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
+ useEffect(()=>{
+  let raf=0,last=0,lastText='';
+  const tick=(now:number)=>{
+   raf=requestAnimationFrame(tick);
+   if(now-last<1000/24)return;
+   last=now;updateMasks(now);
+   const preview=canvas.current;
+   if(preview){const ctx=preview.getContext('2d');if(ctx)render(ctx,selectedRef.current,preview.width,preview.height);}
+   const body=bodyOutput.current,floor=floorOutput.current;
+   if(body){const ctx=body.getContext('2d');if(ctx){
+    render(ctx,'BODY A',body.width,body.height,true);
+    if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false);
+   }}
+   if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height);}
+   const masks=maskCache.current;
+   const live=previewLiveRef.current&&!blackoutRef.current;
+   const cameraKey=floorRef.current.boundCamera;
+   const floorKey=floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,performerRef.current]):null;
+   const bodyMedia=masks.safe&&readyMedia('BODY A')&&(performerRef.current===1||readyMedia('BODY B'));
+   const floorMedia=floorReadyRef.current&&readyMedia('FLOOR');
+   const cameraSafe=live&&masks.safe&&!!cameraKey;
+   outputReadyRef.current={body:cameraSafe&&bodyMedia,floor:cameraSafe&&floorMedia};
+   stageRoute.current={
+    mode:'live',frameAtMs:cameraSafe?masks.at:0,computedAtMs:now,
+    cameraSafe,bodyMediaReady:outputReadyRef.current.body,
+    bridgeSafe:outputReadyRef.current.floor,mask:cameraSafe?masks.union:null,
+    cameraKey:cameraSafe?cameraKey:null,floorKey:cameraSafe?floorKey:null
+   };
+   const status=(!live?'Preview blackout':masks.reason)+
+    (masks.safe?' · '+(performerRef.current===2?'BODY A/B':'BODY A')+' siap':'');
+   if(status!==lastText){lastText=status;setBodyStatus(status);}
+  };raf=requestAnimationFrame(tick);
+  return()=>{cancelAnimationFrame(raf);stageRoute.current=null;};
+ },[]);
  useEffect(()=>{
   if(!previewLive||blackout)return;
   let id=0;
@@ -119,7 +226,7 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
     const match=event.kind==='contact'?'contact-reveal':event.kind==='move'?'slide-hold':event.kind==='release'?'pivot-decay':null;
     if(match){
      for(const surface of surfaces)for(const layer of compositionRef.current[surface])
-      if(layer.recipe===match&&(surface==='FLOOR'||(surface==='BODY A'&&event.performerId==='performer-1')||(surface==='BODY B'&&event.performerId==='B')))
+      if(layer.recipe===match&&(surface==='FLOOR'||(surface==='BODY A'&&(event.performerId==='performer-1'||event.performerId==='A'))||(surface==='BODY B'&&event.performerId==='B')))
        effectClock.current.set(layer.id,{started:performance.now(),kind:event.kind});
      setEventInfo(event.kind+' · '+event.performerId+' · '+event.id.slice(0,8));
     }
@@ -142,10 +249,20 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
  return <div className="s64-root" role="region" aria-label="Interactive Surface Composer">
   <div className="s64-heading"><div><small>SOMA / S6.4</small><h2>Interactive Surface Composer</h2><p>Assign media, edit mask, arrange layers. Preview terpisah dari output proyektor fisik; Stage Output QA tetap mengontrol perangkat.</p></div><button onClick={onClose}>Tutup</button></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview aktif</label><label><input type="checkbox" checked={previewLive} onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label><button onClick={()=>setBlackout(true)}>BLACKOUT Preview</button><span>{eventInfo}</span></div>
+  <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'terkalibrasi':'belum siap'}. Output fisik memerlukan pemeriksaan operator.</div>
   <div className="s64-layout">
    <aside className="s64-column"><h3>Surface Navigator</h3>{surfaces.map(s=><button key={s} className={selected===s?'active':''} onClick={()=>{setSelected(s);setSelectedLayer(0);}}>{s}<small>{composition[s].length} layer</small></button>)}<h3>Media Library</h3><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>patch({mediaId:m.id,name:m.name})}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media tetap lokal di browser. Pilih ulang berkas setelah reload.</small></aside>
    <section className="s64-center"><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>setEditMask(!editMask)}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>triggerTest('move')}>Test Slide</button><button onClick={()=>triggerTest('release')}>Test Pivot</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><h3>Layer Stack</h3>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}><button onClick={()=>setSelectedLayer(i)}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></section>
    <aside className="s64-column"><h3>Layer Inspector</h3><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}<label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Pivot → Decay</option></select></label><small>Event kontak dan gerak dibaca dari FloorSession. Slide memakai event move dan Pivot memakai release sebagai fallback sementara, bukan klasifikasi pivot terverifikasi.</small><h3>Preset System</h3><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</aside>
+  </div>
+  <div className="s64-runtime">
+   <button type="button" aria-expanded={routeOpen} onClick={()=>setRouteOpen(open=>!open)}>
+    {routeOpen?'Tutup':'Buka'} Dual-Surface Calibration & Output QA
+   </button>
+   <p>BODY A/B dan FLOOR dikomposisi ke dua raster output. Live fisik mengikuti izin perangkat, kalibrasi empat titik, QA lima titik, serta konfirmasi operator di panel yang sama.</p>
+   <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="BODY compositor raster"/>
+   <canvas ref={floorOutput} width={640} height={360} hidden aria-label="FLOOR compositor raster"/>
+   {routeOpen&&<DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput} floorCanvas={floorOutput} legacyProjection={projection}/>}
   </div>
  </div>;
 }
