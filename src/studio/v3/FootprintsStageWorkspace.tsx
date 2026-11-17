@@ -535,7 +535,8 @@ export function FootprintsStageWorkspace({
        <canvas ref={cameraCanvas} width={768} height={432}
         onPointerDown={onMainCameraPoint}
         data-calibration-active={calibrationOpen&&!!calibrationOverlay}
-        aria-label={calibrationOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
+        aria-label={experimentalKind?experimentalKind==='video'?'Input video rekaman 2D':'Input puppet 3D virtual':
+         calibrationOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
        {calibrationOpen&&calibrationOverlay&&<div className="fp-stage-calibration-overlay" aria-hidden="true">
         <svg viewBox="0 0 768 432" preserveAspectRatio="none">
          {calibrationOverlay.marks.every(p=>p!==null)&&<polygon
@@ -582,7 +583,8 @@ export function FootprintsStageWorkspace({
        </div>
       </div>
       <div className="fp-stage-surface fp-preview-body">
-       <div className="fp-stage-surface-head"><span>BODY · MASK PREVIEW</span><small>{experimentalKind?
+       <div className="fp-stage-surface-head"><span>{experimentalKind?experimentalKind==='video'?'BODY · MASK VIDEO 2D':
+ 'BODY · RIG VIRTUAL':'BODY · MASK PREVIEW'}</span><small>{experimentalKind?
  experimentalKind==='video'?'Landmark 2D':'Rig 3D virtual':'Lower body'}</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
@@ -592,7 +594,9 @@ export function FootprintsStageWorkspace({
         {footprint.hold&&<span className="fp-stage-hold-label">
          HOLD · frame BODY ditahan, tracking tetap berjalan</span>}
        </div>
-       <div className="fp-stage-surface-foot"><span>{maskStatus}</span><span>Mask · preview</span></div>
+       <div className="fp-stage-surface-foot"><span>{experimentalKind?
+ experimentalKind==='video'?'Landmark video 2D':'Puppet sintetis (bukan mask fisik)':maskStatus}</span>
+ <span>{experimentalKind?'Preview eksperimen':'Mask · preview'}</span></div>
       </div>
       <div className="fp-stage-surface fp-preview-floor">
        <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>{experimentalKind?
@@ -669,7 +673,9 @@ export function FootprintsStageWorkspace({
       stageSession.patch({performers:count});onPerformerCount(count);
      }}
      identityAmbiguous={identityStatus.ambiguous} identities={identityStatus.visible.length}
-     maskStatus={maskStatus} footprint={footprint} updateFootprint={updateFootprint}
+     maskStatus={experimentalKind?experimentalKind==='video'?'Mask dari landmark video 2D':
+      'Rig 3D sintetis; kamera tidak diperlukan':maskStatus}
+     footprint={footprint} updateFootprint={updateFootprint}
      bodyReady={totalFrames>0&&frameFresh}
      floorReady={floorStatus.confirmed&&cameraMatched}
      projectionReason={legacyGate.reason}
@@ -686,6 +692,7 @@ export function FootprintsStageWorkspace({
    </aside>}
   </div>
   {!operatorMode&&<FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
+   experiment={experimentalKind}
    frameFresh={frameFresh} videoRecording={videoRecording} canRecordVideo={canRecordVideo}
    bodySelected={bodySelected}
    held={footprint.hold} legacy={legacy} dual={dual} canPreview={view==='stage'}
