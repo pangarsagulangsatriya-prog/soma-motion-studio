@@ -67,7 +67,8 @@ test('S6.8.8.3 calculates body joint angles from projected points',()=>{
  assert.ok(leftElbow);
  assert.ok(Math.abs(leftElbow.degrees-90)<1e-8);
  assert.ok(temporal.getTrace('A',13)[0].angleDeg!==null);
- assert.equal(temporal.getTrace('A',15)[0].angleDeg,null);
+ assert.ok(temporal.getTrace('A',15)[0].angleDeg!==null);
+ assert.equal(temporal.getTrace('A',0)[0].angleDeg,null);
 });
 
 test('S6.8.8.3 missing actor creates a gap and never extrapolates across occlusion',()=>{
