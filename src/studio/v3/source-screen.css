@@ -4,7 +4,7 @@
 
 /* Idle, connecting and recover states use a bounded workflow canvas
    instead of the full black camera viewport. */
-.fp-stage-workspace[data-screen=source] .fp-stage-overview{
+.fp-stage-workspace[data-screen=source] .fp-stage-overview:not([hidden]){
  display:block!important;
  grid-template-columns:minmax(0,1fr)!important;
 }
@@ -225,4 +225,34 @@
  .fp-stage-workspace .fp-source-choice,
  .fp-source-choice-arrow,
  .fp-source-spinner{animation:none!important;transition:none!important}
+}
+
+
+/* Keep the archived workspace hidden even if a source is offline.
+   The hidden attribute must always win over the adaptive stage layout. */
+.fp-stage-workspace .fp-stage-overview[hidden]{display:none!important}
+/* Preserve 16:9 CSS geometry for correct four-point calibration taps.
+   Height is determined by the displayed width, avoiding object-fit letterboxing
+   inside the canvas itself on short/wide laptops. */
+.fp-stage-workspace[data-screen=live] .fp-stage-video-content>canvas{
+ width:min(100%,113.777dvh);height:auto;max-height:none;aspect-ratio:16/9;
+}
+.fp-stage-workspace[data-screen=setup] .fp-stage-video-content>canvas{
+ width:min(100%,115.555dvh);height:auto;max-height:none;aspect-ratio:16/9;
+}
+.fp-stage-workspace[data-screen=setup] .fp-stage-calibration-overlay svg{
+ width:min(100%,115.555dvh);height:auto;aspect-ratio:16/9;max-height:none;
+}
+/* A connected non-Body camera still shows the live image with a small
+   corrective control rather than obscuring the entire incoming frame. */
+.fp-stage-workspace .fp-source-correction{
+ inset:auto 12px 14px;left:50%;right:auto;
+ width:min(430px,calc(100% - 24px));max-width:none;
+ transform:translateX(-50%);
+ padding:16px;border:1px solid #738e76;border-radius:9px;
+ background:#102218eb;box-shadow:0 12px 34px #0008;
+}
+.fp-stage-workspace .fp-source-correction p{margin:0 0 5px}
+@media(max-width:620px){
+ .fp-stage-workspace .fp-source-correction{padding:13px}
 }
