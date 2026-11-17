@@ -1,7 +1,8 @@
 import type {Landmark} from '../engine/types.ts';
+import type {D3Guide,D3Report} from './duetPose33.ts';
 export type ReplayWorkerResult={
  landmarks:Landmark[][];worldLandmarks:Landmark[][];poseMs:number;rescuedCount?:number;
- appearance?:(number[]|null)[];
+ appearance?:(number[]|null)[];d3?:D3Report;
 };
 type Pending={
  id:number;resolve:(data:ReplayWorkerResult)=>void;reject:(e:Error)=>void;
@@ -34,7 +35,7 @@ export class ReplayInferenceWorkerClient{
    this.worker.postMessage({type:'init',base:import.meta.env.BASE_URL});
   });
  }
- async detect(video:HTMLVideoElement,clock:number,targetCount:1|2=1):Promise<ReplayWorkerResult>{
+ async detect(video:HTMLVideoElement,clock:number,targetCount:1|2=1,guides:D3Guide[]=[]):Promise<ReplayWorkerResult>{
   if(this.stopped||this.pending)throw Error('Worker inference masih sibuk.');
   const bitmap=await createImageBitmap(video);
   if(this.stopped){bitmap.close();throw Error('Worker telah dihentikan.');}
@@ -42,7 +43,7 @@ export class ReplayInferenceWorkerClient{
    const id=++this.serial;
    const timeout=setTimeout(()=>this.fail(Error('Worker inference melebihi 2 detik.')),2000);
    this.pending={id,resolve,reject,timeout};
-   try{this.worker.postMessage({type:'frame',id,bitmap,clock,targetCount},[bitmap]);}
+   try{this.worker.postMessage({type:'frame',id,bitmap,clock,targetCount,guides},[bitmap]);}
    catch(e){bitmap.close();this.fail(e instanceof Error?e:Error(String(e)));}
   });
  }

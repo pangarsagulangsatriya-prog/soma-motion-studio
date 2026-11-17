@@ -192,6 +192,12 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
       'Mencari tubuh dan memulihkan ID'}</span>
     <span>A: {snapshot.gait['A:left']?.motion??'—'} / {snapshot.gait['A:right']?.motion??'—'}
      {' · '}B: {snapshot.gait['B:left']?.motion??'—'} / {snapshot.gait['B:right']?.motion??'—'}</span>
+    <span data-d3-status={snapshot.d3?.status??'warming'}>
+     D3 · Crop A/B: {snapshot.d3Total?.accepted??0}/{snapshot.d3Total?.attempted??0}
+     {' · '}{snapshot.d3?.status==='active'?'Model siap':
+      snapshot.d3?.status==='fallback'?'Fallback multipose':'Memuat model crop'}
+     {snapshot.d3?.refined.length?' · Baru: '+snapshot.d3.refined.join(', '):''}
+    </span>
    </div>}
    {snapshot&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
     <summary>D4 · Performance <b>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
@@ -204,7 +210,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      <span>Backend <b>{snapshot.performance.backend}</b></span>
     </div>
     {snapshot.performance.fallbackReason&&<p role="status">Fallback: {snapshot.performance.fallbackReason}</p>}
-    <small>MP4 → MediaPipe33 × 2 → D2 A/B berbasis gerak dan warna → gait → FOOTPRINTS. D1 MoveNet 384/512 masih benchmark terpisah dan belum menjadi detector runtime.</small>
+    <small>MediaPipe multipose → D2 A/B → D3 crop 33 per aktor saat ID aman → gait → BODY/FLOOR. Crop gagal QA tetap memakai pose utama. MoveNet 384/512 masih benchmark terpisah.</small>
    </details>}
    {snapshot&&<span className="fp-video-actor-status" role="status"
     aria-label="Status masing-masing aktor MP4">
