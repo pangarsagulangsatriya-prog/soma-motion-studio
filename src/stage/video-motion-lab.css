@@ -119,3 +119,16 @@
 .vml-actor-readout>span[data-presence=uncertain]{color:#e8cea1;border-style:dashed}
 .vml-actor-readout>span[data-presence=lost],
 .vml-actor-readout>span[data-presence=occluded]{color:#b8a9a1}
+
+/* S6.8.8.5 — actor-level recovery and independent gait approval. */
+.vml-recovery-actors{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+ margin:8px 0 10px}
+.vml-recovery-actors>span{display:inline-flex;align-items:center;gap:6px;
+ font-size:11px;color:#b6cdb5;border:1px solid #516d55;
+ padding:6px 9px;border-radius:6px;background:#15261b}
+.vml-recovery-actors>span[data-actor=A]{border-color:#7d9f71}
+.vml-recovery-actors>span[data-actor=B]{border-color:#5897a0}
+.vml-recovery-actors>span[data-approved=true]{color:#eaf4dd;background:#29442f}
+.vml-recovery-actors>span[data-recovery=uncertain],
+.vml-recovery-actors>span[data-recovery=reacquiring]{border-style:dashed;color:#efd7a5}
+.vml-actor-readout>span[data-presence=reacquiring]{border-style:dashed;color:#efd7a5}
