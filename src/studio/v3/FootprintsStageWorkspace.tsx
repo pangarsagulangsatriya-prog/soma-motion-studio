@@ -3,6 +3,7 @@ import {STAGE_INSPECTOR_TABS,moveOperatorCue,
  operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {GuidedStageSetup} from '../../stage/GuidedStageSetup.tsx';
+import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
@@ -54,6 +55,7 @@ export function FootprintsStageWorkspace({
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
+ const [composerOpen,setComposerOpen]=useState(false);
  const restoredPerformers=useRef(false);
  useEffect(()=>{
   if(!stageSession.loaded||restoredPerformers.current)return;
@@ -257,8 +259,10 @@ export function FootprintsStageWorkspace({
      <SlidersHorizontal size={15}/> Guided Setup</button>
     <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulasi 3D</button>
     <button type="button" onClick={onOpenLiveFloor}><SlidersHorizontal size={15}/> Kalibrasi & QA</button>
+    <button type="button" aria-pressed={composerOpen} onClick={()=>setComposerOpen(v=>!v)}><SlidersHorizontal size={15}/> Surface Composer</button>
    </div>
   </div>}
+  {composerOpen&&!operatorMode&&<SurfaceComposer bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} cameraOn={cameraOn} performerCount={performerCount} floorReady={floorStatus.confirmed&&cameraMatched} onClose={()=>setComposerOpen(false)}/>}
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
