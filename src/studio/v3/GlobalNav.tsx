@@ -91,7 +91,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      onClick={()=>{setLabsOpen(false);setExpanded(value=>!value);}}>
      {expanded?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}
     </button>
-    <div className="v3-brand"><b>SOMA</b><span> / {workspace==='projection'?'PROJECTOR':'FOOTPRINTS'}</span></div>
+    <div className="v3-brand"><b>SOMA</b><span> / {workspace==='projection'?'PROJECTOR':workspace==='archive'||scene!=='footprints'?'LABS':'FOOTPRINTS'}</span></div>
    </div>
    <div className="v3-global-actions">
     {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
@@ -126,6 +126,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     <button ref={labsRef} type="button" className="soma-rail-item soma-labs-trigger"
      title="SOMA Labs · Eksperimen & fitur lama"
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
+     aria-current={workspace==='archive'||(workspace==='studio'&&scene!=='footprints')?'page':undefined}
      onClick={()=>setLabsOpen(v=>!v)}>
      <FlaskConical size={20}/><span className="soma-rail-item-copy">
       <b>SOMA Labs</b><small>Eksperimen & legacy</small></span>
