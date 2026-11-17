@@ -266,3 +266,17 @@
   transition:none!important;
  }
 }
+
+
+/* Guided setup owns its own steps; keep the parent local tabs quiet. */
+.fp-flow-guide-label{display:inline-flex;align-items:center;min-height:35px;
+ padding:7px 12px;border:1px solid #4b6b50;border-radius:6px;
+ background:#23382a;color:#deead8;font-size:11px;font-weight:570;
+ white-space:nowrap;
+}
+.fp-stage-workspace[data-utility=video] .fp-health-line,
+.fp-stage-workspace[data-utility=rehearsal] .fp-health-line,
+.fp-stage-workspace[data-utility=composer] .fp-health-line{display:none}
+@media(max-width:650px){
+ .fp-flow-guide-label{font-size:10px;min-height:33px;padding:7px 9px}
+}
