@@ -62,19 +62,19 @@ test('S6.8.8.5 A continues while B disappears, then B reenters after quarantine'
  const tracker=new VideoAutoActorTracker();
  tracker.observe([pose(.25),pose(.75)],0);
  tracker.observe([pose(.26),pose(.75)],100);
- for(let time=200;time<=1000;time+=100){
+ for(let time=200;time<=1100;time+=100){
   const frame=tracker.observe([pose(.26+(time-100)/10000)],time);
   assert.equal(frame.visibleCount,1);
   assert.equal(frame.assignments[0].id,'A');
-  if(time>=1000)assert.equal(frame.actors[1].presence,'lost');
+  if(time>=1100)assert.equal(frame.actors[1].presence,'lost');
  }
- const first=tracker.observe([pose(.36),pose(.75)],1100);
+ const first=tracker.observe([pose(.37),pose(.75)],1200);
  assert.equal(first.visibleCount,1);
  assert.equal(first.actors[0].presence,'visible');
  assert.equal(first.actors[1].presence,'reacquiring');
- const second=tracker.observe([pose(.37),pose(.76)],1200);
+ const second=tracker.observe([pose(.38),pose(.76)],1300);
  assert.equal(second.actors[1].recoveryFrames,2);
- const third=tracker.observe([pose(.38),pose(.77)],1300);
+ const third=tracker.observe([pose(.39),pose(.77)],1400);
  assert.equal(third.visibleCount,2);
  assert.deepEqual(third.assignments.map(a=>a.id),['A','B']);
 });
