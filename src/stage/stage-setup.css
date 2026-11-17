@@ -57,3 +57,31 @@
  .soma-setup-choice{grid-template-columns:1fr}.soma-guided-setup{padding:10px}
  .soma-guided-setup>header{flex-direction:column;gap:10px}
  .soma-setup-page{padding:12px}}
+
+/* S6.1.1 — local QR, no externally hosted QR images or CDN. */
+.soma-setup-phone-choices{display:flex;flex-direction:column;gap:14px;width:100%;min-width:0}
+.soma-setup-pair-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.soma-setup-pair-tabs button[aria-pressed=true]{border-color:#d1edaa;
+ background:#425b37;color:#fff}
+.soma-auto-pair{display:flex;flex-direction:column;align-items:flex-start;
+ gap:12px;padding:16px;border:1px solid #425d46;border-radius:10px;
+ background:#142218;max-width:860px;width:100%;box-sizing:border-box}
+.soma-auto-pair .soma-setup-eyebrow{font-size:10px;letter-spacing:.1em}
+.soma-auto-pair>p{margin:2px 0}
+.soma-auto-pair-code{display:flex;align-items:flex-start;flex-wrap:wrap;gap:18px;width:100%}
+.soma-phone-qr{display:block;flex:0 0 auto;max-width:min(70vw,240px);
+ width:min(70vw,240px);height:auto;aspect-ratio:1;
+ background:#fff;border:10px solid #fff;border-radius:5px;
+ box-sizing:content-box;image-rendering:pixelated}
+.soma-auto-pair-code>div{display:flex;flex-direction:column;align-items:flex-start;
+ gap:10px;min-width:195px;flex:1}
+.soma-auto-pair-code>div p{margin:2px 0}
+.soma-auto-pair-code a{color:#d6eea9;overflow-wrap:anywhere;font-size:12px}
+.soma-auto-pair-code small{font-size:11px;letter-spacing:0;color:#a6bdab;
+ line-height:1.6}
+.soma-auto-pair .soma-setup-status{max-width:100%}
+@media(max-width:700px){
+ .soma-auto-pair{padding:10px}
+ .soma-phone-qr{width:min(65vw,240px);max-width:min(65vw,240px)}
+ .soma-auto-pair-code{flex-direction:column}
+}
