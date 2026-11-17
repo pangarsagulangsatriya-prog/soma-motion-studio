@@ -137,3 +137,46 @@ test('denied camera permission displays recoverable source error without project
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await expect(page.locator('.fp-stage-side-previews')).toBeHidden();
 });
+
+test('S6.8.1 source switcher keeps phone pairing session mounted while its panel closes',async({page},testInfo)=>{
+ await ready(page);
+ const switcher=page.locator('.fp-source-switch-trigger');
+ await expect(switcher).toBeVisible();
+ await switcher.click();
+ const menu=page.getByRole('dialog',{name:'Ganti sumber Footprints'});
+ await expect(menu).toBeVisible();
+ await menu.getByRole('button',{name:/Kamera HP/i}).click();
+ await expect(switcher).toContainText('Kamera HP');
+ const manager=page.locator('.fp-phone-source-panel');
+ await expect(manager).toBeVisible();
+ await expect(manager.locator('.soma-setup-phone-choices')).toHaveCount(1);
+ await manager.getByRole('button',{name:'Tutup panel kamera HP'}).click();
+ await expect(manager).toBeHidden();
+ // Closing the controls must not unmount the WebRTC receiver.
+ await expect(manager.locator('.soma-setup-phone-choices')).toHaveCount(1);
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Kamera HP/i}).click();
+ await expect(manager).toBeVisible();
+ await screenshot(page,testInfo,'phone-switch');
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Webcam laptop/i}).click();
+ await expect(switcher).toContainText('Webcam laptop');
+ await expect(page.locator('.fp-phone-source-panel')).toHaveCount(0);
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ await noOverflow(page);
+});
+
+test('S6.8.1 source menu opens experimental MP4 Lab and can return to a live input',async({page})=>{
+ await ready(page);
+ const switcher=page.locator('.fp-source-switch-trigger');
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Video MP4/i}).click();
+ await expect(switcher).toContainText('Video MP4');
+ await expect(page.getByText('Video Motion Lab',{exact:true})).toBeVisible();
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Kamera HP/i}).click();
+ await expect(page.locator('.fp-phone-source-panel')).toBeVisible();
+ await expect(switcher).toContainText('Kamera HP');
+ await expect(page.getByText('Video Motion Lab',{exact:true})).toHaveCount(0);
+ await noOverflow(page);
+});
