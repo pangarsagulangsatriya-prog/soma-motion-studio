@@ -33,6 +33,7 @@ import {FootprintsStageTransport} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 import './source-screen.css';
 import './compact-stage.css';
+import './interaction-refinement.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
