@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
-import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,X} from 'lucide-react';
+import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VIDEO_LAB_FPS,VIDEO_LAB_SPEEDS,clampVideoTime,finiteDuration,formatVideoTime,simpleVideoFilename,
  stepVideoTime,validLoopRange,validVideoLabFile,type LoopRange} from './videoMotionLabUtils.ts';
 import './video-motion-lab.css';
@@ -17,6 +17,7 @@ export function VideoMotionLab({onClose}:Props){
  const [buffering,setBuffering]=useState(false);
  const [fps,setFPS]=useState<number>(30);
  const [speed,setSpeed]=useState(1);
+ const [muted,setMuted]=useState(true);
  const [rangeStart,setRangeStart]=useState<number|null>(null);
  const [rangeEnd,setRangeEnd]=useState<number|null>(null);
  const [loop,setLoop]=useState(false);
@@ -113,7 +114,7 @@ export function VideoMotionLab({onClose}:Props){
    schema:'soma.video-motion-lab',version:1,exportedAt:new Date().toISOString(),
    file:{name:clip.name,bytes:clip.size,mime:clip.type,lastModified:clip.lastModified},
    video:{durationSeconds:duration,width:resolution.width,height:resolution.height},
-   playback:{positionSeconds:position,speed,stepFpsAssumption:fps,
+   playback:{positionSeconds:position,speed,muted,stepFpsAssumption:fps,
     loopEnabled:loop&&!!range,loopRange:range},
    annotation:{poseTracking:false,gaitEvents:false,physicalFloorCalibrated:false},
    notice:'S6.5.2 hanya menyimpan metadata. Berkas video tidak disertakan.'
@@ -159,7 +160,7 @@ export function VideoMotionLab({onClose}:Props){
     </div>}
     <div className="vml-player" hidden={!clip}>
      <video key={clip?.url??'empty'} ref={videoRef} src={clip?.url??undefined}
-      playsInline preload="auto" controls={false}
+      playsInline preload="auto" controls={false} muted={muted}
       onLoadedMetadata={e=>{
        const v=e.currentTarget;
        const length=finiteDuration(v.duration);
@@ -195,6 +196,7 @@ export function VideoMotionLab({onClose}:Props){
       <button type="button" disabled={!ready} onClick={()=>step(-1)} title="Mundur satu langkah frame perkiraan" aria-label="Mundur satu frame perkiraan"><SkipBack size={18}/></button>
       <button type="button" className="vml-primary" disabled={!ready} onClick={()=>void togglePlay()}>{playing?<><Pause size={18}/> Jeda</>:<><Play size={18}/> Putar</>}</button>
       <button type="button" disabled={!ready} onClick={()=>step(1)} title="Maju satu langkah frame perkiraan" aria-label="Maju satu frame perkiraan"><SkipForward size={18}/></button>
+      <button type="button" disabled={!ready} onClick={()=>setMuted(value=>!value)} aria-label={muted?'Aktifkan suara video':'Matikan suara video'}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>} {muted?'Audio Off':'Audio On'}</button>
       <label>Kecepatan<select value={speed} disabled={!ready} onChange={e=>{
        const rate=Number(e.target.value);setSpeed(rate);if(videoRef.current)videoRef.current.playbackRate=rate;
       }}>{VIDEO_LAB_SPEEDS.map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
