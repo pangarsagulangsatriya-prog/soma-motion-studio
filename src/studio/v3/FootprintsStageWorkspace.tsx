@@ -7,7 +7,9 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Activity,Camera,ChevronRight,Film,ShieldAlert,Video,Smartphone,Box} from 'lucide-react';
+import {Activity,Camera,ChevronRight,Film,ShieldAlert,Video} from 'lucide-react';
+import {FootprintsSourceScreen} from './FootprintsSourceScreen.tsx';
+import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import {footprintsSteps,type FootprintsStep} from './footprintsFlow.ts';
 import type {StageNavigationRequest} from './stageNavigation.ts';
@@ -95,6 +97,7 @@ export function FootprintsStageWorkspace({
  const [maskStatus,setMaskStatus]=useState('Kamera belum terhubung');
  const [bodyVisible,setBodyVisible]=useState(0);
  const [frameFresh,setFrameFresh]=useState(false);
+ const [videoReady,setVideoReady]=useState(false);
  const [viewError,setViewError]=useState('');
  const [dualRaw,setDualRaw]=useState(readDualOutputStatus);
  const hardwareEnabled=stageHardwareAvailable(import.meta.env.DEV,
@@ -156,6 +159,8 @@ export function FootprintsStageWorkspace({
    const fresh=cameraOn&&bodySelected&&f.source==='camera'&&f.tracked&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
+   const videoAvailable=!!(cameraOn&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight);
+   setVideoReady(prev=>prev===videoAvailable?prev:videoAvailable);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
    if(camera&&cam){
     cam.fillStyle='#050807';cam.fillRect(0,0,camera.width,camera.height);
@@ -304,9 +309,17 @@ export function FootprintsStageWorkspace({
   setInspectorOpen(false);setSetupOpen(false);setComposerOpen(false);setRehearsalOpen(false);
   setVideoLabOpen(true);
  };
+ const sourceMode=deriveSourceScreenMode({
+  cameraOn,cameraBusy,cameraError,bodySelected,videoReady
+ });
+ const sourcePickerVisible=!operatorMode&&!setupOpen&&showsSourcePicker(sourceMode);
+ const gaitPreviewVisible=showsGaitPreviews(sourceMode);
+ const screenMode=operatorMode?'operator':setupOpen?'setup':sourcePickerVisible?'source':
+  gaitPreviewVisible?'live':'preparing';
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
-  data-inspector-open={inspectorOpen&&!operatorMode} data-source-ready={cameraOn&&bodySelected}
+  data-inspector-open={inspectorOpen&&!operatorMode} data-source-ready={gaitPreviewVisible}
+  data-screen={screenMode} data-source-mode={sourceMode}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
   {!operatorMode&&<nav className="fp-flow-nav" aria-label="Pengaturan Footprints">
@@ -365,9 +378,13 @@ export function FootprintsStageWorkspace({
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
+     {sourcePickerVisible&&<FootprintsSourceScreen mode={sourceMode as 'select'|'connecting'|'recover'}
+      cameraError={cameraError} onWebcam={onStartBody} onPhone={openPhoneInput}
+      onVideo={openVideoInput} onSimulator={onOpenSimulator}/>}
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>KAMERA · LIVE INPUT</span>
-       <small>{cameraOn&&bodySelected?'LIVE · Kamera Body':'Menunggu Body'}</small></div>
+       <small>{sourceMode==='live'?'VIDEO AKTIF':sourceMode==='warming'?'MENYIAPKAN VIDEO':
+        sourceMode==='switch-body'?'PERLU MODE BODY':'OFFLINE'}</small></div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
         onPointerDown={onMainCameraPoint}
@@ -388,24 +405,17 @@ export function FootprintsStageWorkspace({
         </svg>
         <div className="fp-stage-calibration-hint">TRACKING · Pilih sudut {calibrationOverlay.editing+1}/4 pada gambar kamera</div>
        </div>}
-       {(!cameraOn||!bodySelected)&&<div className="fp-stage-empty fp-source-empty">
-        <div className="fp-source-intro">
-         <span>01 / SOURCE</span><h2>Pilih sumber gerak</h2>
-         <p>SOMA membaca gerakan kaki dari kamera atau rekaman. Pilih satu sumber untuk mulai.</p>
-        </div>
-        <div className="fp-source-options" role="group" aria-label="Pilihan sumber Footprints">
-         <button type="button" className="fp-source-primary" disabled={cameraBusy}
-          onClick={onStartBody}><Camera size={19}/>
-          <span><strong>{cameraBusy?'Menghubungkan…':'Webcam laptop'}</strong>
-           <small>Live · Kamera komputer</small></span></button>
-         <button type="button" onClick={openPhoneInput}><Smartphone size={19}/>
-          <span><strong>Kamera HP</strong><small>Pairing QR · Live</small></span></button>
-         <button type="button" onClick={openVideoInput}><Film size={19}/>
-          <span><strong>Video MP4</strong><small>Eksperimen pose/gait</small></span></button>
-         <button type="button" onClick={onOpenSimulator}><Box size={19}/>
-          <span><strong>Simulasi 3D</strong><small>Eksperimen tanpa kamera</small></span></button>
-        </div>
-        {cameraError&&<p className="fp-source-error" role="alert">{cameraError}</p>}
+       {sourceMode==='switch-body'&&!operatorMode&&<div className="fp-stage-empty fp-source-correction" role="status">
+        <Camera size={24} aria-hidden="true"/>
+        <strong>Kamera sudah terhubung</strong>
+        <p>Aktifkan pelacakan Body untuk membaca gerakan kaki.</p>
+        <button type="button" onClick={onStartBody}>
+         <Camera size={15} aria-hidden="true"/> Gunakan mode Body</button>
+       </div>}
+       {sourceMode==='warming'&&!operatorMode&&<div className="fp-stage-empty fp-source-warming" role="status">
+        <span className="fp-source-spinner" aria-hidden="true"/>
+        <strong>Menyiapkan preview kamera</strong>
+        <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
        </div>}
       </div>
       <div className="fp-stage-surface-foot"><span>{frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
