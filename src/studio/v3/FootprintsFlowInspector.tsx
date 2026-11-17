@@ -3,6 +3,7 @@ import {Camera,ChevronRight,Clapperboard,Film,Monitor,Play,
 import type {FootprintConfig,FootprintStyle} from '../../footprints/StudioFootprints.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
 import {palettes} from '../../footprints/pattern.ts';
+import './footprints-flow.css';
 
 type Props={
  step:FootprintsStep;onClose:()=>void;
