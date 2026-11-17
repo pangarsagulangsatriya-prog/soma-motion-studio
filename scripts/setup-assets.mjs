@@ -27,4 +27,17 @@ for (const name of ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vis
   await copyFile(resolve(root, 'node_modules/@mediapipe/tasks-vision/wasm', name), resolve(root, 'public/wasm', name));
 }
 await copyFile(resolve(root, 'node_modules/@mediapipe/tasks-vision/vision_bundle.cjs'), resolve(root, 'public/wasm/vision_bundle.cjs'));
+// D1-D4: TF.js WASM backend lives under the application base path so
+// GitHub Pages works without a third-party runtime WASM CDN.
+await mkdir(resolve(root,'public/tfjs-wasm'),{recursive:true});
+for(const name of [
+ 'tfjs-backend-wasm.wasm',
+ 'tfjs-backend-wasm-simd.wasm',
+ 'tfjs-backend-wasm-threaded-simd.wasm'
+]){
+ await copyFile(
+  resolve(root,'node_modules/@tensorflow/tfjs-backend-wasm/dist',name),
+  resolve(root,'public/tfjs-wasm',name)
+ );
+}
 console.log('MediaPipe assets ready. Run npm run dev.');
