@@ -18,6 +18,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build -- --mode githubpages
+      - name: Install FFmpeg for deterministic local VP8 fixture
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
       - name: Create short local VP8 video for model initialization smoke
         run: |
           ffmpeg -loglevel error -y -f lavfi -i testsrc=size=640x360:rate=24 -t 0.6 -c:v libvpx -b:v 500k e2e/generated-v2-smoke.webm
