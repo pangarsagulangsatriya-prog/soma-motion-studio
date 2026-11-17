@@ -326,7 +326,18 @@ export function FootprintsStageWorkspace({
     videoRecording={videoRecording} canRecordVideo={canRecordVideo}
     onRecordVideo={onRecordVideo} units={units}
     contacts={floorStatus.contacts} performerCount={performerCount}/>
-   :<UnifiedStageStatusStrip units={units} legacy={legacy}/>}
+   :<div className="fp-health-line" role="status" aria-label="Status pembacaan Footprints">
+    <span data-ready={cameraOn&&bodySelected}>
+     <i aria-hidden="true"/> Sumber <strong>{cameraLabel}</strong>
+    </span>
+    {cameraOn&&<span data-ready={frameFresh&&!identityStatus.ambiguous}>
+     <i aria-hidden="true"/> Tracking <strong>{identityStatus.ambiguous?'Identitas perlu pemeriksaan':
+      frameFresh?'Gerak terbaca':'Menunggu gerak'}</strong>
+    </span>}
+    {cameraOn&&<span data-ready={floorStatus.confirmed&&cameraMatched}>
+     <i aria-hidden="true"/> Lantai <strong>{floorStatus.confirmed&&cameraMatched?'Terkalibrasi':'Perlu kalibrasi'}</strong>
+    </span>}
+   </div>}
   {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab
    onClose={()=>{onBlackout();setVideoLabOpen(false);}}
    onUseReference={report=>{
@@ -373,14 +384,24 @@ export function FootprintsStageWorkspace({
         </svg>
         <div className="fp-stage-calibration-hint">TRACKING · Pilih sudut {calibrationOverlay.editing+1}/4 pada gambar kamera</div>
        </div>}
-       {!cameraOn&&<div className="fp-stage-empty">
-        <CameraOff size={28}/>
-        <strong>Mulai pelacakan kaki</strong>
-        <p>Hubungkan kamera Body untuk membaca langkah dan kontak.</p>
-        <button type="button" disabled={cameraBusy} onClick={onStartBody}>
-         <Camera size={15}/>{cameraBusy?'Menghubungkan…':'Mulai kamera Body'}</button>
-        <button type="button" className="fp-stage-ghost-button" onClick={()=>selectFlowStep('input')}>
-         Pilih sumber lain · HP / MP4 / Simulasi</button>
+       {!cameraOn&&<div className="fp-stage-empty fp-source-empty">
+        <div className="fp-source-intro">
+         <span>01 / SOURCE</span><h2>Pilih sumber gerak</h2>
+         <p>SOMA membaca gerakan kaki dari kamera atau rekaman. Pilih satu sumber untuk mulai.</p>
+        </div>
+        <div className="fp-source-options" role="group" aria-label="Pilihan sumber Footprints">
+         <button type="button" className="fp-source-primary" disabled={cameraBusy}
+          onClick={onStartBody}><Camera size={19}/>
+          <span><strong>{cameraBusy?'Menghubungkan…':'Webcam laptop'}</strong>
+           <small>Live · Kamera komputer</small></span></button>
+         <button type="button" onClick={openPhoneInput}><Smartphone size={19}/>
+          <span><strong>Kamera HP</strong><small>Pairing QR · Live</small></span></button>
+         <button type="button" onClick={openVideoInput}><Film size={19}/>
+          <span><strong>Video MP4</strong><small>Eksperimen pose/gait</small></span></button>
+         <button type="button" onClick={onOpenSimulator}><Box size={19}/>
+          <span><strong>Simulasi 3D</strong><small>Eksperimen tanpa kamera</small></span></button>
+        </div>
+        {cameraError&&<p className="fp-source-error" role="alert">{cameraError}</p>}
        </div>}
       </div>
       <div className="fp-stage-surface-foot"><span>{frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
@@ -429,7 +450,7 @@ export function FootprintsStageWorkspace({
       stageHoldMs={stageSession.meta.bridgeHoldMs}
       onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}/>
     </div>}
-    {view==='stage'&&<div className="fp-stage-bottom-status">
+    {view==='stage'&&cameraOn&&<div className="fp-stage-bottom-status">
      <Activity size={15}/>
      <span>{floorStatus.reason}</span>
      <button type="button" onClick={()=>selectFlowStep('process')}>Atur tracking <ChevronRight size={14}/></button>
@@ -486,7 +507,7 @@ export function FootprintsStageWorkspace({
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={()=>selectFlowStep('output')}/>}
+   onOutputSettings={onOpenProjection}/>}
   {!operatorMode&&<footer className="fp-stage-footer">
    <span><Video size={14}/> Kamera dan video arsip diproses pada perangkat ini.</span>
    <span><ShieldAlert size={14}/> Status output menunjukkan perintah software, bukan pengukuran cahaya proyektor.</span>
