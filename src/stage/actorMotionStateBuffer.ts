@@ -46,8 +46,9 @@ const lerpPose=(a:readonly Landmark[],b:readonly Landmark[],t:number):Landmark[]
 /** Derivative-based cutoff from Casiez et al. One Euro Filter. */
 export class OneEuroScalar{
  private raw=0;private smooth=0;private derivative=0;private lastAtMs=-1;
- constructor(private readonly config:Pick<MotionFilterConfig,'minCutoff'|'beta'|'derivativeCutoff'>=
-  DEFAULT_MOTION_FILTER){}
+ private readonly config:Pick<MotionFilterConfig,'minCutoff'|'beta'|'derivativeCutoff'>;
+ constructor(config:Pick<MotionFilterConfig,'minCutoff'|'beta'|'derivativeCutoff'>=
+  DEFAULT_MOTION_FILTER){this.config=config;}
  reset(){this.lastAtMs=-1;this.raw=0;this.smooth=0;this.derivative=0;}
  private alpha(cutoff:number,dt:number){
   const tau=1/(2*Math.PI*cutoff);
