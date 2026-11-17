@@ -39,6 +39,7 @@ test('four point calibration, camera match and manual confirmation stay mandator
 test('labs do not masquerade as live input nor projector readiness',()=>{
  for(const selection of ['video','simulator'] as const){
   const h=inlineSetupHint({...base,source:{selection,phase:'experiment',message:'Preview'}});
-  assert.equal(h.id,selection==='video'?'video-input':'simulator-input');assert.equal(h.action,'source');
+  assert.equal(h.id,selection==='video'?'video-input':'simulator-input');
+  assert.equal(h.action,'experiment');assert.equal(h.action,'source');
  }
 });
