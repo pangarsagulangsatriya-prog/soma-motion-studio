@@ -3,9 +3,7 @@ import {test,expect} from '@playwright/test';
 test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',async({page})=>{
  await page.goto('/');
  await expect(page.locator('.fp-source-switch-trigger')).toBeVisible();
- const output=page.locator('.fp-flow-local-tabs').getByRole('button',{name:'Output'});
- await output.click();
- await page.getByRole('button',{name:/WYSIWYG BODY\/FLOOR & Output QA/}).click();
+ await page.locator('.fp-transport-projector').click();
 
  const panel=page.locator('.stage-wysiwyg');
  await expect(panel).toBeVisible();
@@ -31,8 +29,7 @@ test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',as
 
 test('Projector WYSIWYG: surface brightness and corners adjust local matrix while output stays blocked',async({page})=>{
  await page.goto('/');
- await page.locator('.fp-flow-local-tabs').getByRole('button',{name:'Output'}).click();
- await page.getByRole('button',{name:/WYSIWYG BODY\/FLOOR & Output QA/}).click();
+ await page.locator('.fp-transport-projector').click();
  const body=page.locator('[data-surface="body"] canvas.stage-wysiwyg-artwork');
  const before=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
 
