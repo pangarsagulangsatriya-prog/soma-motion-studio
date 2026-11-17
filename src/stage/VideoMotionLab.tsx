@@ -45,9 +45,9 @@ export function VideoMotionLab({onClose}:Props){
  const filename=clip?simpleVideoFilename(clip.name):'video';
  const analysisCounts=replayEventCounts(analysisSnapshot?.events??[]);
  const qa=analysisSnapshot?.qa;
- const archiveCount=engineRef.current?.archivedSegments.length??0;
- const totalEventCount=(analysisSnapshot?.events.length??0)+
-  (engineRef.current?.archivedSegments.reduce((sum,s)=>sum+s.events.length,0)??0);
+ const archivedStats=engineRef.current?.archiveStats;
+ const archiveCount=archivedStats?.segments??0;
+ const totalEventCount=(analysisSnapshot?.events.length??0)+(archivedStats?.events??0);
  const download=(name:string,mime:string,content:string)=>{
   const blob=new Blob([content],{type:mime});
   const url=URL.createObjectURL(blob);const anchor=document.createElement('a');
