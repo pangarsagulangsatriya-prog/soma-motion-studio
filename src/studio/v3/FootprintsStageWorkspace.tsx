@@ -7,7 +7,7 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Activity,Camera,CameraOff,ChevronRight,Film,Play,ShieldAlert,Video} from 'lucide-react';
+import {Activity,Camera,CameraOff,ChevronRight,Film,ShieldAlert,Video} from 'lucide-react';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import {footprintsSteps,type FootprintsStep} from './footprintsFlow.ts';
 import type {StageNavigationRequest} from './stageNavigation.ts';
@@ -284,10 +284,26 @@ export function FootprintsStageWorkspace({
  const camScale=Math.min(768/rawW,432/rawH);
  const camDrawWidth=rawW*camScale,camDrawHeight=rawH*camScale;
  const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
+ const selectFlowStep=(step:FootprintsStep)=>{
+  setFlowStep(step);setInspectorOpen(true);setSetupOpen(false);
+  setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
+ };
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
   data-inspector-open={inspectorOpen&&!operatorMode} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
+  {!operatorMode&&<nav className="fp-flow-nav" aria-label="Tahap kerja Footprints">
+   <span className="fp-flow-name">FOOTPRINTS</span>
+   {footprintsSteps.map(item=><button type="button" key={item.id}
+    aria-current={flowStep===item.id?'step':undefined}
+    aria-expanded={flowStep===item.id&&inspectorOpen}
+    onClick={()=>selectFlowStep(item.id)}
+    title={item.hint}>
+    <small>{item.number}</small><strong>{item.title}</strong>
+    <span>{item.hint}</span></button>)}
+   {inspectorOpen&&<button type="button" className="fp-flow-close" title="Tutup pengaturan"
+    aria-label="Tutup pengaturan tahap" onClick={()=>{setInspectorOpen(false);setSetupOpen(false);}}>×</button>}
+  </nav>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
@@ -386,6 +402,9 @@ export function FootprintsStageWorkspace({
     </div>
     {viewError&&<p className="fp-stage-error" role="alert">{viewError}</p>}
     {view==='archive'&&<div className="fp-stage-archive-view">
+     <button type="button" className="fp-flow-back" onClick={()=>{setView('stage');setInspectorOpen(true);setFlowStep('compose');}}>
+      ← Kembali ke preview Footprints
+     </button>
      <div className="fp-stage-view-note"><Film size={15}/>
       <span>Arsip BODY A/B dan residu FLOOR memakai engine S5.7 yang sama. Video tetap di browser. Kembali ke Live Stage menutup pemutar dan memadamkan output dual-surface.</span></div>
      <ArchivalMappingPanel frameRef={frameRef} cameraOn={cameraOn}
@@ -399,12 +418,12 @@ export function FootprintsStageWorkspace({
     {view==='stage'&&<div className="fp-stage-bottom-status">
      <Activity size={15}/>
      <span>{floorStatus.reason}</span>
-     <button type="button" onClick={onOpenLiveFloor}>Atur tracking <ChevronRight size={14}/></button>
+     <button type="button" onClick={()=>selectFlowStep('process')}>Atur tracking <ChevronRight size={14}/></button>
     </div>}
    </div>
-   {!operatorMode&&<aside className="fp-stage-inspector" data-mode={setupOpen?'setup':'inspector'}
-   aria-label={setupOpen?'Guided Setup — Inspector kanan':'Inspector kontekstual Footprints'}>
-   {setupOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
+   {!operatorMode&&inspectorOpen&&<aside className="fp-stage-inspector"
+    data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}>
+    {setupOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
    onCalibrationState={setCalibrationOverlay}
    onBindCalibrationTap={handler=>{calibrationTap.current=handler;}}
    session={stageSession} frameRef={frameRef} videoRef={videoRef}
@@ -420,119 +439,30 @@ export function FootprintsStageWorkspace({
    onPerform={onEnterOperator}
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
-
-    <div className="fp-stage-inspector-title"><span>CONTEXT INSPECTOR</span><h2>{
-     inspector==='tracking'?'Tracking':inspector==='visual'?'Footprint Visual':
-     inspector==='archive'?'Archival Mapping':inspector==='projection'?'Projection Output':'QA & Engineering'}</h2></div>
-    <div className="fp-stage-inspector-tabs" role="group" aria-label="Bagian inspector">
-     {STAGE_INSPECTOR_TABS.map(tab=><button key={tab.id} type="button"
-      title={tab.description} aria-pressed={inspector===tab.id}
-      onClick={()=>setInspector(tab.id)}>{tab.label}</button>)}
-    </div>
-    <div className="fp-stage-inspector-content">
-     {inspector==='tracking'&&<>
-      <p className="fp-stage-label">SUMBER GERAK</p>
-      <div className="fp-stage-inspector-kv"><span>Kamera</span><strong>{cameraLabel}</strong></div>
-      <div className="fp-stage-inspector-kv"><span>Tracking lantai</span>
-       <strong>{floorStatus.confirmed?'Terkalibrasi':'Perlu kalibrasi'}</strong></div>
-      <p className="fp-stage-label">JUMLAH PERFORMER</p>
-      <div className="fp-stage-segments">
-       {([1,2] as const).map(v=><button type="button" key={v}
-        aria-pressed={performerCount===v} onClick={()=>{
-        stageSession.patch({performers:v});onPerformerCount(v);
-       }}>
-        {v} performer</button>)}
-      </div>
-      {performerCount===2&&<p className="fp-stage-hint">Identitas A/B: {identityStatus.ambiguous?
-       'Bersilangan / belum pasti':identityStatus.visible.length===2?'Dua tubuh terbaca':
-       'Menunggu dua tubuh'}</p>}
-      <details className="fp-stage-progressive">
-       <summary>Diagnostik kaki dan event</summary>
-       <div className="fp-stage-progressive-body">
-        <div className="fp-stage-inspector-kv"><span>Kontak tercatat</span><strong>{floorStatus.contacts}</strong></div>
-        <div className="fp-stage-inspector-kv"><span>Jumlah event</span><strong>{floorStatus.events}</strong></div>
-       </div>
-      </details>
-      <button type="button" className="fp-stage-primary-action" disabled={cameraBusy}
-       onClick={onStartBody}><Camera size={15}/>{cameraBusy?'Memuat kamera…':
-       cameraOn?'Periksa kamera Body':'Hubungkan kamera Body'}</button>
-      <button type="button" onClick={onOpenLiveFloor}>
-       <SlidersHorizontal size={15}/> Kalibrasi lantai & pemeriksaan</button>
-      {cameraError&&<p className="fp-stage-error" role="alert">{cameraError}</p>}
-     </>}
-     {inspector==='visual'&&<>
-      <p className="fp-stage-label">BENTUK JEJAK</p>
-      <div className="fp-stage-style-grid">
-       {(['Campuran','Tapak','Garis','Titik'] as FootprintStyle[]).map(style=>
-        <button key={style} type="button" aria-pressed={footprint.style===style}
-         onClick={()=>updateFootprint({style})}>{style}</button>)}
-      </div>
-      <details className="fp-stage-progressive">
-       <summary>Detail visual · ukuran, durasi, palet</summary>
-       <div className="fp-stage-progressive-body">
-        <label className="fp-stage-field">Ukuran jejak · {footprint.size}px
-       <input type="range" min="12" max="90" value={footprint.size}
-        onChange={e=>updateFootprint({size:Number(e.target.value)})}/></label>
-      <label className="fp-stage-field">Umur jejak · {footprint.life} detik
-       <input type="range" min="1" max="60" value={footprint.life}
-        onChange={e=>updateFootprint({life:Number(e.target.value)})}/></label>
-      <label className="fp-stage-field">Palet
-       <select value={footprint.palette} onChange={e=>{
-        const idx=Number(e.target.value),p=palettes[idx]??palettes[0];
-        updateFootprint({palette:idx,colors:{background:p[1],left:p[2],right:p[3]}});
-       }}>{palettes.map((p,i)=><option key={p[0]} value={i}>{p[0]}</option>)}</select>
-      </label>
-        <p className="fp-stage-hint">Gaya ini hanya memengaruhi jejak Studio. BODY mask dan pad terkalibrasi memakai kontrol masing-masing.</p>
-       </div>
-      </details>
-     </>}
-     {inspector==='archive'&&<>
-      <p className="fp-stage-label">DUA PERMUKAAN</p>
-      <div className="fp-stage-inspector-kv"><span>BODY</span><strong>{maskStatus}</strong></div>
-      <div className="fp-stage-inspector-kv"><span>FLOOR</span>
-       <strong>{floorStatus.confirmed?'Terkalibrasi':'Perlu kalibrasi'}</strong></div>
-      <p className="fp-stage-hint">Unggah video arsip A/B, atur batas mask pinggang–kaki, lalu lihat fragmen muncul di pad saat kontak.</p>
-      <button type="button" className="fp-stage-primary-action" onClick={showArchive}>
-       <Film size={15}/> Buka Archival Mapping</button>
-      <button type="button" onClick={onOpenLiveFloor}>
-       <SlidersHorizontal size={15}/> Stage Optics & QA</button>
-      <p className="fp-stage-hint">Buka Mapping untuk preview video. Body Mask pada Live Stage hanya menampilkan geometri kaki.</p>
-     </>}
-     {inspector==='projection'&&<>
-      <p className="fp-stage-label">STATUS PROYEKTOR</p>
-      <div className="fp-stage-inspector-kv"><span>Legacy output</span>
-       <strong>{projectionState}</strong></div>
-      <div className="fp-stage-inspector-kv"><span>BODY</span>
-       <strong>{units.find(u=>u.id==='body')?.detail}</strong></div>
-      <div className="fp-stage-inspector-kv"><span>FLOOR</span>
-       <strong>{units.find(u=>u.id==='floor')?.detail}</strong></div>
-      <p className="fp-stage-hint">Kontrol output fisik tetap di Dual-Surface Calibration dan membutuhkan persetujuan terpisah.</p>
-      <p className="fp-stage-hint">Output tunggal: {legacyGate.reason}</p>
-      <button type="button" className="fp-stage-primary-action" onClick={()=>{
-       setView('archive');setInspector('projection');
-      }}><SlidersHorizontal size={15}/> Atur output BODY / FLOOR</button>
-      <button type="button" onClick={onOpenLiveFloor}>
-       <SlidersHorizontal size={15}/> Kalibrasi Footprints</button>
-      <p className="fp-stage-hint"><ShieldAlert size={14}/> Blackout browser belum menggantikan pemutus daya proyektor fisik.</p>
-     </>}
-     {inspector==='qa'&&<>
-      <p className="fp-stage-label">REHEARSAL / QA</p>
-      <p className="fp-stage-hint">Periksa gerak, koordinat lantai, simulasi dan bukti fisik dari sumber data yang sama.</p>
-      <button type="button" className="fp-stage-primary-action" onClick={onOpenLiveFloor}>
-       <SlidersHorizontal size={15}/> Calibration & Physical QA</button>
-      <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulation Lab · 3D</button>
-      <details className="fp-stage-progressive">
-       <summary>Engineering diagnostics</summary>
-       <div className="fp-stage-progressive-body">
-        <div className="fp-stage-inspector-kv"><span>Floor events</span><strong>{floorStatus.events}</strong></div>
-        <div className="fp-stage-inspector-kv"><span>Contacts</span><strong>{floorStatus.contacts}</strong></div>
-        <div className="fp-stage-inspector-kv"><span>Body mask</span><strong>{maskStatus}</strong></div>
-        <div className="fp-stage-inspector-kv"><span>Renderer</span><strong>{projection.status.reason}</strong></div>
-        <p className="fp-stage-hint">Kalibrasi dan pengukuran optik asli tetap dikerjakan lewat panel QA.</p>
-       </div>
-      </details>
-     </>}
-    </div>
+    {!setupOpen&&<FootprintsFlowInspector
+     step={flowStep} onClose={()=>setInspectorOpen(false)}
+     cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
+     cameraLabel={cameraLabel}
+     floorConfirmed={floorStatus.confirmed} floorCalibrated={floorStatus.calibrated}
+     cameraMatched={cameraMatched} floorContacts={floorStatus.contacts}
+     floorEvents={floorStatus.events} floorReason={floorStatus.reason}
+     performerCount={performerCount} onPerformerCount={count=>{
+      stageSession.patch({performers:count});onPerformerCount(count);
+     }}
+     identityAmbiguous={identityStatus.ambiguous} identities={identityStatus.visible.length}
+     maskStatus={maskStatus} footprint={footprint} updateFootprint={updateFootprint}
+     bodyReady={totalFrames>0&&frameFresh}
+     floorReady={floorStatus.confirmed&&cameraMatched}
+     projectionReason={legacyGate.reason}
+     onStartBody={onStartBody}
+     onGuidedSetup={()=>{setSetupOpen(true);setInspectorOpen(true);}}
+     onVideo={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setView('stage');setVideoLabOpen(true);}}
+     onSimulation={onOpenSimulator}
+     onCalibration={onOpenLiveFloor}
+     onRehearsal={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setView('stage');setRehearsalOpen(true);}}
+     onMapping={showArchive}
+     onComposer={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setView('stage');setComposerOpen(true);}}
+     onProjector={onOpenProjection}/>}
    </aside>}
   </div>
   {!operatorMode&&<FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
@@ -542,7 +472,7 @@ export function FootprintsStageWorkspace({
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={()=>{setView('archive');setInspector('projection');}}/>}
+   onOutputSettings={()=>selectFlowStep('output')}/>}
   {!operatorMode&&<footer className="fp-stage-footer">
    <span><Video size={14}/> Kamera dan video arsip diproses pada perangkat ini.</span>
    <span><ShieldAlert size={14}/> Status output menunjukkan perintah software, bukan pengukuran cahaya proyektor.</span>
