@@ -127,3 +127,13 @@
   max-height:64vh;padding:8px;
  }
 }
+
+/* D4: readable worker and dropped-frame diagnostics in Footprints main. */
+.fp-stage-workspace .fp-d4-performance{flex:1 1 100%;min-width:0;border:1px solid #54715d;border-radius:7px;background:#102017;color:#dcecdf}
+.fp-stage-workspace .fp-d4-performance summary{padding:10px 12px;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:11px}
+.fp-stage-workspace .fp-d4-performance summary>b{color:#b6dfa8}
+.fp-stage-workspace .fp-d4-performance summary>span{margin-left:auto;color:#acc5b4}
+.fp-stage-workspace .fp-d4-metrics{border-top:1px solid #35523c;padding:11px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.fp-stage-workspace .fp-d4-metrics span{display:grid;gap:4px;font-size:10px;color:#b3c9b8}
+.fp-stage-workspace .fp-d4-metrics b{color:#e1f1e1;font:600 12px ui-monospace,monospace}
+.fp-stage-workspace .fp-d4-performance p,.fp-stage-workspace .fp-d4-performance small{display:block;margin:0;padding:5px 11px 10px;color:#d7c4a0;font-size:10px;line-height:1.5}

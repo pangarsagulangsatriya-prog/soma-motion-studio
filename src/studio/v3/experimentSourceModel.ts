@@ -4,7 +4,7 @@ import type {PuppetPerformer,OrbitCamera} from '../../footprints/simulator/scene
 
 export type ExperimentInputKind='video'|'simulator';
 export type ExperimentalFrame=
- |{kind:'video';snapshot:ReplayAnalysisSnapshot|null;
+ |{kind:'video';snapshot:ReplayAnalysisSnapshot|null;previousSnapshot?:ReplayAnalysisSnapshot|null;
    video:HTMLVideoElement|null;timeMs:number;ready:boolean;name:string}
  |{kind:'simulator';session:FloorSession;performers:PuppetPerformer[];
    orbit:OrbitCamera;timeMs:number;name:string};

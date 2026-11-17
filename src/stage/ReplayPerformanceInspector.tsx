@@ -15,6 +15,11 @@ export function ReplayPerformanceInspector({performance:stats}:{
      {name:'Analisis event',value:ms(stats?.analysisMs??0)},
      {name:'Render',value:ms(stats?.renderMs??0)},
      {name:'Total pipeline',value:ms(stats?.pipelineMs??0)},
+     {name:'Pipeline p50',value:ms(stats?.pipelineP50Ms??0)},
+     {name:'Pipeline p95',value:ms(stats?.pipelineP95Ms??0)},
+     {name:'Lag video → AI',value:ms(stats?.latestVideoLagMs??0)},
+     {name:'Frame busy drop',value:String(stats?.busyDrops??0)},
+     {name:'Hasil AI terlambat',value:String(stats?.staleResults??0)},
      {name:'Frame dilewati',value:String(stats?.skippedFrames??0)},
      {name:'Pose aktual',value:fps(stats?.poseFps??0)},
      {name:'Update UI',value:fps(stats?.uiFps??0)}
