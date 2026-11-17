@@ -3,6 +3,7 @@ import {FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-r
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot}
  from '../../stage/VideoPoseGaitEngine.ts';
 import {videoActorPresenceLabel} from '../../stage/videoAutoActorTracker.ts';
+import {subscribeReplayFrames} from '../../stage/replayFrameClock.ts';
 import {validVideoLabFile} from '../../stage/videoMotionLabUtils.ts';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
 import {initialCamera} from '../../footprints/simulator/scene3d.ts';
@@ -63,7 +64,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   setAnalyzing(true);setAnalysisError('');
   void engine.init().then(()=>{
    if(disposed||generationId!==generation.current)return;
-   engine.process(el,el.currentTime,12,true);
+   engine.process(el,el.currentTime,18,true);
    setAnalyzing(false);
   }).catch(error=>{
    if(disposed||generationId!==generation.current)return;
@@ -77,18 +78,11 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  },[kind,clip,videoReady]);
  useEffect(()=>{
   if(kind!=='video'||!videoReady)return;
-  let raf=0,last=0;
-  const tick=(now:number)=>{
-   raf=requestAnimationFrame(tick);
-   if(now-last<80)return;last=now;
-   const el=video.current;
-   if(el&&el.readyState>=2&&!el.paused&&!el.seeking){
-    videoEngine.current?.process(el,el.currentTime,12);
-    setPosition(el.currentTime);
-   }
-  };
-  raf=requestAnimationFrame(tick);
-  return()=>cancelAnimationFrame(raf);
+  const el=video.current;if(!el)return;
+  return subscribeReplayFrames(el,(mediaTime,presentedFrames)=>{
+   videoEngine.current?.recordPresentedFrame(presentedFrames);
+   videoEngine.current?.process(el,mediaTime,18);
+  });
  },[kind,videoReady]);
  useEffect(()=>{
   if(kind!=='video')return;
@@ -96,11 +90,6 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   onFrame({kind:'video',snapshot,video:el,timeMs:(el?.currentTime??position)*1000,
    ready:videoReady,name:clip?.name??'Belum ada video'});
  },[kind,snapshot,clip,position,videoReady,onFrame]);
- useEffect(()=>{
-  if(kind==='video'&&video.current&&videoReady&&snapshot){
-   videoEngine.current?.process(video.current,video.current.currentTime,12,true);
-  }
- },[kind,videoReady]);
  useEffect(()=>{
   if(kind!=='video')return;
   const el=video.current;
@@ -162,7 +151,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     onSeeked={e=>{
      const el=e.currentTarget;
      setPosition(el.currentTime);
-     videoEngine.current?.process(el,el.currentTime,12,true);
+     videoEngine.current?.process(el,el.currentTime,18,true);
     }}
     onTimeUpdate={e=>setPosition(e.currentTarget.currentTime)}
     onEnded={()=>setPlaying(false)}/>
@@ -175,7 +164,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
    <span className="fp-experiment-meta" role="status">
     {analyzing?'Menyiapkan model Pose/Gait…':analysisError?'Analisis belum aktif: '+analysisError:
-     snapshot?String(snapshot.detectedCount)+' pose':
+     snapshot?String(snapshot.detectedCount)+' pose · '+snapshot.performance.backend+' · '+Math.round(snapshot.performance.poseFps)+' FPS':
      clip?'Video siap, mulai analisis':'Video belum dipilih'}
    </span>
    {snapshot&&<span className="fp-video-actor-status" role="status"
