@@ -1,4 +1,5 @@
-import type {FootstepEvent,FloorSpace} from '../footprints/spatial/events.ts';
+import type {FootstepEvent} from '../footprints/spatial/events.ts';
+import type {FloorSpace} from '../footprints/spatial/coordinates.ts';
 import type {ReplayPerformer} from './videoGaitAnalysis.ts';
 import type {buildReplayEventExport} from './videoReplayExport.ts';
 
@@ -173,8 +174,8 @@ export function referenceTimeline(events:ReferenceEvent[],originMs:number,
   .map(e=>({atPct:100*(e.atMs-originMs)/durationMs,kind:e.kind,foot:e.foot}));
 }
 export function liveTimeline(events:FootstepEvent[],originMs:number,durationMs:number,
- performer:ReplayPerformer){
- return events.filter(e=>validLiveEvent(e,originMs,originMs+durationMs,2)&&
+ performer:ReplayPerformer,performers:1|2){
+ return events.filter(e=>validLiveEvent(e,originMs,originMs+durationMs,performers)&&
   (performer==='A'?(e.performerId==='A'||e.performerId==='performer-1'):e.performerId==='B'))
   .map(e=>({atPct:100*(e.timestampMs-originMs)/durationMs,kind:e.kind,foot:e.foot}));
 }
