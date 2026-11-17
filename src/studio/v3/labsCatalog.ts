@@ -20,12 +20,21 @@ export const LABS_GROUPS=[
 ] as const;
 export type LabsId=(typeof LABS_GROUPS)[number]['items'][number]['id'];
 export type LabsGroupId=(typeof LABS_GROUPS)[number]['id'];
-const canonical=(input:string)=>input.normalize('NFKD').toLocaleLowerCase('id-ID').trim();
+const canonical=(input:string)=>input.normalize('NFKD')
+ .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('id-ID').trim();
+const extraTerms:Record<LabsId,string>={
+ liquid:'teks huruf letter liquid',echo:'jejak ulang repeat echo',
+ cut:'potong cut rhythm',body:'siluet tubuh body text',
+ hydra:'generatif visual graphic synth',sound:'suara audio musik synth theremin',
+ capture:'foto photo kamera gestur',archive:'arsip pustaka',
+ video:'video footage mp4',rehearsal:'latihan perbandingan',
+ simulator:'3d puppet virtual'
+};
 export function searchLabs(query:string){
  const needle=canonical(query).slice(0,90);
  return LABS_GROUPS.map(group=>({
   ...group,items:group.items.filter(item=>!needle||
-   canonical([group.label,item.title,item.detail,item.kind].join(' ')).includes(needle))
+   canonical([group.label,item.title,item.detail,item.kind,extraTerms[item.id]].join(' ')).includes(needle))
  })).filter(group=>group.items.length>0);
 }
 export const LABS_ITEM_COUNT=LABS_GROUPS.reduce((count,group)=>count+group.items.length,0);
