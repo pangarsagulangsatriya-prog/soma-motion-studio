@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {createContext,useCallback,useContext,useEffect,useRef,useState} from 'react';
 import {clearStageSession,defaultStageMeta,loadStageMedia,loadStageMeta,
  saveStageMedia,saveStageMeta,type StageMediaSlot,type StageProjectMeta} from './StageSessionStore.ts';
 
@@ -9,7 +9,13 @@ export type StageSessionController={
  chooseMedia:(slot:StageMediaSlot,file:File|null)=>Promise<boolean>;
  reset:()=>Promise<void>;
 };
+export const StageSessionContext=createContext<StageSessionController|null>(null);
 export function useStageSession():StageSessionController{
+ const session=useContext(StageSessionContext);
+ if(!session)throw new Error('StageSessionProvider belum terpasang.');
+ return session;
+}
+export function useStageSessionState():StageSessionController{
  const [meta,setMeta]=useState<StageProjectMeta>(defaultStageMeta);
  const [media,setMedia]=useState<Record<StageMediaSlot,File|null>>({A:null,B:null});
  const [loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false);
