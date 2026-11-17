@@ -404,6 +404,14 @@ export function FootprintsStageWorkspace({
  const camDrawWidth=rawW*camScale,camDrawHeight=rawH*camScale;
  const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
  const selectFlowStep=(step:FootprintsStep,trigger?:HTMLElement|null,forceOpen=false)=>{
+  // MP4 Tracking is an automatic operator surface, never a settings wizard.
+  // The Visual tab retains creative recipe controls; QA remains in SOMA Labs.
+  if(experimentalKind==='video'&&step==='process'){
+   setFlowStep(step);setInspectorOpen(false);setCalibrationOpen(false);
+   setView('stage');setVideoLabOpen(false);
+   setRehearsalOpen(false);setComposerOpen(false);
+   return;
+  }
   const reselect=flowStep===step&&inspectorOpen&&!calibrationOpen&&view==='stage';
   if((!reselect||forceOpen)&&trigger)setupTrigger.current=trigger;
   setFlowStep(step);
