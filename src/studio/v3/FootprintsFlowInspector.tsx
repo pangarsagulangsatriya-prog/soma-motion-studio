@@ -34,11 +34,10 @@ export function FootprintsFlowInspector({
  onMapping,onComposer,onProjector
 }:Props){
  const [name,title]=headings[step];
- return <div className="fp-flow-inspector" onKeyDown={e=>{
-  if(e.key==='Escape'&&!e.shiftKey){e.stopPropagation();onClose();}
- }}>
+ return <div className="fp-flow-inspector">
   <header className="fp-flow-inspector-head">
-   <div><small>FOOTPRINTS / {name.toUpperCase()}</small><h2>{title}</h2></div>
+   <div><small>FOOTPRINTS / {name.toUpperCase()}</small>
+    <h2 id="fp-flow-inspector-title" tabIndex={-1}>{title}</h2></div>
    <button type="button" onClick={onClose} title="Tutup panel (Esc)" aria-label="Tutup pengaturan"><X size={17}/></button>
   </header>
   <div className="fp-flow-inspector-body">
