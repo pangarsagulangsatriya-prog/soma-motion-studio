@@ -3,6 +3,7 @@ import {FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-r
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot}
  from '../../stage/VideoPoseGaitEngine.ts';
 import {videoActorPresenceLabel} from '../../stage/videoAutoActorTracker.ts';
+import {D1MoveNetBenchmark} from '../../stage/D1MoveNetBenchmark.tsx';
 import {subscribeReplayFrames} from '../../stage/replayFrameClock.ts';
 import {validVideoLabFile} from '../../stage/videoMotionLabUtils.ts';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
@@ -26,6 +27,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [position,setPosition]=useState(0),[duration,setDuration]=useState(0);
  const [playing,setPlaying]=useState(false),[analyzing,setAnalyzing]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
+ const [detectorOpen,setDetectorOpen]=useState(false);
  const [snapshot,setSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const sessionRef=useRef(model);
  const [revision,setRevision]=useState(0);
@@ -147,6 +149,14 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     <input aria-label="Pilih file video Footprints" type="file"
      accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg" onChange={inputVideo}/>
    </label>
+   <button type="button" className="fp-d1-open-trigger" disabled={!clip}
+    aria-expanded={detectorOpen} aria-controls="fp-d1-main-panel"
+    onClick={()=>{
+     if(!detectorOpen){video.current?.pause();setPlaying(false);}
+     setDetectorOpen(value=>!value);
+    }}>
+    {detectorOpen?'Tutup Detector':'Detector MultiPose · D1 (384/512)'}
+   </button>
    <video ref={video} src={url??undefined} playsInline muted preload="metadata"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
     onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);setVideoReady(true);}}
@@ -191,6 +201,14 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <button type="button" onClick={reset}><RotateCcw size={15}/> Reset</button>
    <span className="fp-experiment-meta" role="status">{sessionRef.current.events.filter(e=>e.kind==='contact').length} kontak sintetis · {simTime} ms</span>
   </div>}
+  {kind==='video'&&detectorOpen&&<section id="fp-d1-main-panel"
+   className="fp-experiment-d1-panel" aria-label="Pengujian dua aktor MoveNet Footprints">
+   <div className="fp-experiment-d1-heading">
+    <strong>Detector MultiPose · Footprints</strong>
+    <small>Benchmark 384/512 pada MP4 yang sama dengan preview BODY/FLOOR. Pemutaran dihentikan selama inspeksi. Hasil belum mengganti identity gate sebelum lulus QA.</small>
+   </div>
+   <D1MoveNetBenchmark sourceUrl={url} sourceName={clip?.name??null}/>
+  </section>}
   <details className="fp-experiment-advanced-details">
    <summary>Lanjutan</summary>
    <div className="fp-experiment-advanced-content">
