@@ -62,3 +62,14 @@ test('S6.8.8.7 high-speed joints use stronger alpha than stationary jitter',()=>
  assert.equal(adaptivePoseSmoothingAlpha(0,1),1);
  assert.equal(adaptivePoseSmoothingAlpha(.05,NaN)>0,true);
 });
+
+test('SOMA exposes CPU Worker-fallback reason and preserves it through timeline reset',()=>{
+ const meter=new ReplayPerformanceMeter();
+ meter.setBackend('main','Worker initialization unavailable: test error');
+ assert.match(meter.snapshot.fallbackReason??'',/test error/);
+ meter.reset();
+ assert.equal(meter.snapshot.backend,'main');
+ assert.match(meter.snapshot.fallbackReason??'',/test error/);
+ meter.setBackend('worker');
+ assert.equal(meter.snapshot.fallbackReason,undefined);
+});
