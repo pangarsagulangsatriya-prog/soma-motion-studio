@@ -1,0 +1,242 @@
+/* SOMA S6.7.2.3 — compact status / stable local controls / safety-first transport.
+ * All changes are presentational. QA and physical output ownership are unchanged. */
+
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-nav{
+ display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;
+ gap:12px;min-height:48px;padding:2px 2px 8px;margin:0 0 7px;
+ border-bottom:1px solid #304136;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-nav-left{
+ display:flex;align-items:center;gap:14px;min-width:0;flex:0 1 auto;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-name{
+ flex:0 0 auto;padding:0;letter-spacing:.10em;font-size:9px;color:#94ad97;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs{
+ display:flex;flex-wrap:nowrap;align-items:center;gap:2px;
+ padding:3px;background:#17241b;border:1px solid #314637;border-radius:8px;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button{
+ min-height:33px;padding:6px 10px;border-radius:5px;white-space:nowrap;
+ border-color:transparent;background:transparent;
+ color:#a9bdac;font-size:11px;font-weight:550;
+ transition:color .14s ease,background .14s ease,box-shadow .14s ease;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button:hover{
+ color:#edf6e4;background:#283d2d;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button[aria-current=step]{
+ background:#314936;color:#edf6e6;border-color:#4d6850;box-shadow:none;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button[aria-expanded=true]{
+ box-shadow:inset 0 -2px #c9e4ac;
+}
+.fp-compact-status{
+ display:flex;align-items:center;gap:6px;
+ flex:0 1 auto;min-width:0;max-width:56%;
+}
+.fp-stage-workspace .fp-compact-status-item{
+ display:inline-flex;align-items:center;gap:7px;
+ min-width:0;min-height:32px;padding:5px 8px;
+ border:1px solid transparent;border-radius:6px;
+ color:#a0b7a3;background:transparent;font-size:10px;
+ text-align:left;white-space:nowrap;cursor:pointer;
+ transition:background .14s ease,border-color .14s ease;
+}
+.fp-stage-workspace .fp-compact-status-item:hover{
+ background:#26392b;border-color:#47614c;color:#e9f1df;
+}
+.fp-stage-workspace .fp-compact-status-item:focus-visible{
+ outline:2px solid #cde5a7;outline-offset:2px;
+}
+.fp-compact-status-item strong{
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ max-width:152px;color:#dce8d7;font-weight:580;
+}
+.fp-compact-status-name{color:#9fb49f}
+.fp-compact-status-dot{
+ width:7px;height:7px;flex:0 0 7px;border-radius:50%;
+ background:#7c8f82;
+}
+.fp-compact-status-item[data-level=busy] .fp-compact-status-dot{
+ background:#d2c08b;animation:fp-status-pulse 1.5s ease-in-out infinite;
+}
+.fp-compact-status-item[data-level=warn] .fp-compact-status-dot{background:#d8a777}
+.fp-compact-status-item[data-level=ok] .fp-compact-status-dot{background:#b8d99a}
+.fp-compact-status-item[data-level=warn] strong{color:#f1d3a9}
+.fp-compact-status-item[data-level=idle] strong{color:#bbcab9}
+/* Keep the stage stable when local Inspector opens. */
+.fp-stage-workspace:not(.fp-operator-mode)[data-inspector-open=true] .fp-compact-status{
+ max-width:50%;
+}
+/* Transport: a single low bar, with actionable safety controls at its edge. */
+.fp-stage-workspace:not(.fp-operator-mode) .fp-unified-transport.fp-compact-transport{
+ position:sticky;bottom:8px;z-index:105;
+ display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;
+ gap:12px;min-height:58px;padding:7px 10px;margin:10px 0 4px;
+ border:1px solid #425b47;border-radius:9px;
+ background:#19271eea;backdrop-filter:blur(12px);
+ box-shadow:0 8px 24px #0007;
+}
+.fp-transport-local{display:flex;align-items:center;gap:12px;min-width:0;flex:0 1 auto}
+.fp-stage-workspace .fp-transport-local .fp-transport-group{
+ display:flex;align-items:center;flex-wrap:nowrap;justify-content:flex-start;
+ gap:5px;flex:none;min-width:0;padding:0;border:0;
+}
+.fp-stage-workspace .fp-compact-transport .fp-transport-caption{
+ display:inline-block;width:auto;flex:none;margin:0 3px 0 0;
+ font:650 9px ui-monospace,monospace;letter-spacing:.055em;
+ color:#8ea994;white-space:nowrap;
+}
+.fp-stage-workspace .fp-compact-transport button{
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ min-height:37px;padding:8px 10px;flex:none;
+ border:1px solid #4c654f;border-radius:6px;
+ background:#263b2c;color:#e2eddb;
+ font-size:11px;font-family:inherit;font-weight:500;
+ white-space:nowrap;cursor:pointer;
+ transition:background .14s ease,border-color .14s ease;
+}
+.fp-stage-workspace .fp-compact-transport button:hover:not(:disabled){
+ background:#34503a;border-color:#9aba8e;
+}
+.fp-stage-workspace .fp-compact-transport button:disabled{
+ opacity:.38;cursor:not-allowed;
+}
+.fp-stage-workspace .fp-compact-transport button:focus-visible{
+ outline:2px solid #daedb4;outline-offset:2px;
+}
+.fp-stage-workspace .fp-compact-transport button[aria-pressed=true]:not(.fp-transport-recording){
+ background:#3d563b;border-color:#91b07b;color:#eff6e3;
+}
+.fp-stage-workspace .fp-compact-transport button.fp-transport-recording{
+ background:#472e2b;color:#ffdfd7;border-color:#a56c60;
+}
+.fp-transport-idle{
+ font:500 11px system-ui,sans-serif;color:#a6baa9;
+ white-space:nowrap;
+}
+.fp-transport-safety{
+ display:flex;align-items:center;justify-content:flex-end;
+ gap:7px;min-width:0;flex:1 1 auto;
+}
+.fp-transport-software{
+ display:flex;align-items:center;gap:9px;
+ min-width:0;flex:0 1 auto;margin-right:5px;
+}
+.fp-transport-software-led{
+ width:7px;height:7px;flex:0 0 7px;border-radius:50%;
+ background:#889c8f;
+}
+.fp-transport-software[data-level=connected] .fp-transport-software-led{
+ background:#b8d69b;
+}
+.fp-transport-software[data-level=commanded] .fp-transport-software-led{
+ background:#e0b47f;
+}
+.fp-transport-software>span:last-child{
+ display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;
+}
+.fp-transport-software small{
+ font:650 9px ui-monospace,monospace;letter-spacing:.05em;
+ color:#9eb4a1;
+}
+.fp-transport-software strong{
+ display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ max-width:235px;font-size:10px;font-weight:580;color:#d3e1d1;
+}
+.fp-stage-workspace .fp-compact-transport button.fp-transport-projector{
+ border-color:#526b57;background:#263c2c;
+}
+.fp-stage-workspace .fp-compact-transport button.fp-transport-blackout{
+ border:1px solid #a96e62;background:#462723;color:#ffe5d7;
+ min-height:41px;font-weight:750;letter-spacing:.025em;
+}
+.fp-stage-workspace .fp-compact-transport button.fp-transport-blackout:hover{
+ border-color:#e4a298;background:#5b302b;
+}
+@keyframes fp-status-pulse{
+ 0%,100%{opacity:.45}50%{opacity:1}
+}
+@media(max-width:1330px){
+ .fp-compact-status-name{display:none}
+ .fp-compact-status-item strong{max-width:128px}
+ .fp-stage-workspace .fp-compact-transport .fp-transport-caption{display:none}
+ .fp-transport-local{gap:7px}
+ .fp-transport-software strong{max-width:174px}
+}
+@media(max-width:1060px){
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-name{display:none}
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-nav-left{gap:4px}
+ .fp-compact-status{gap:1px}
+ .fp-stage-workspace .fp-compact-status-item{padding:5px}
+ .fp-compact-status-item strong{max-width:105px}
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-unified-transport.fp-compact-transport{
+  gap:8px;flex-wrap:wrap;
+ }
+ .fp-transport-local{flex:1 1 350px}
+ .fp-transport-safety{flex:1 1 auto}
+ .fp-transport-software strong{max-width:155px}
+}
+@media(max-width:760px){
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-nav{
+  gap:5px;flex-wrap:wrap;align-items:flex-start;padding-bottom:8px;
+ }
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs{gap:1px}
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button{
+  min-height:40px;font-size:11px;padding:8px 9px;
+ }
+ .fp-compact-status{max-width:100%;width:100%;justify-content:flex-start;gap:5px}
+ .fp-stage-workspace .fp-compact-status-item{padding:4px 8px;min-height:29px}
+ .fp-compact-status-name{display:inline}
+ .fp-compact-status-item strong{max-width:160px}
+ .fp-stage-workspace:not(.fp-operator-mode)[data-inspector-open=true] .fp-compact-status{max-width:100%}
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-unified-transport.fp-compact-transport{
+  padding:8px;gap:8px;bottom:5px;
+ }
+ .fp-transport-local{flex:1 1 100%;justify-content:flex-start;gap:8px}
+ .fp-transport-safety{
+  flex:1 1 100%;justify-content:space-between;flex-wrap:nowrap;gap:6px;
+ }
+ .fp-transport-software{flex:1 1 auto;margin-right:0}
+ .fp-transport-software strong{max-width:210px}
+ .fp-stage-workspace .fp-compact-transport button{min-height:39px;padding:8px 10px}
+ .fp-stage-workspace .fp-compact-transport button.fp-transport-blackout{min-height:42px}
+ .fp-stage-workspace .fp-compact-transport button.fp-transport-projector{min-height:40px}
+ .fp-stage-workspace .fp-compact-transport .fp-transport-caption{display:none}
+}
+@media(max-width:560px){
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-nav{
+  align-items:stretch;gap:6px;
+ }
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button{
+  font-size:10px;padding:8px 7px;
+ }
+ .fp-compact-status{overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+ .fp-compact-status::-webkit-scrollbar{display:none}
+ .fp-compact-status-item strong{max-width:none}
+ .fp-compact-status-name{display:none}
+ .fp-transport-local{flex-wrap:wrap;gap:5px}
+ .fp-stage-workspace .fp-transport-local .fp-transport-group{
+  flex:1 1 auto;min-width:0;gap:5px;
+ }
+ .fp-transport-safety{flex-wrap:wrap}
+ .fp-transport-software{flex:1 1 100%;margin-bottom:1px}
+ .fp-transport-software strong{max-width:100%;white-space:normal}
+ .fp-stage-workspace .fp-compact-transport button.fp-transport-projector,
+ .fp-stage-workspace .fp-compact-transport button.fp-transport-blackout{
+  flex:1 1 auto;min-width:0;
+ }
+ .fp-stage-workspace .fp-compact-transport button{padding:8px 7px}
+ .fp-stage-workspace .fp-compact-transport button span{font-size:10px}
+ .fp-transport-idle{display:none}
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-unified-transport.fp-compact-transport[data-has-input=false] .fp-transport-local{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-status-pulse{animation:none}
+ .fp-stage-workspace .fp-compact-status-item,
+ .fp-stage-workspace .fp-compact-transport button,
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button{
+  transition:none!important;animation:none!important;
+ }
+}
