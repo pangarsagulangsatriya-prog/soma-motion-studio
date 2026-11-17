@@ -107,3 +107,17 @@
   animation:none!important;transition:none!important;
  }
 }
+
+
+/* S6.7.2.5 mobile: the Inspector must not cover the local workflow tabs.
+   Keep those tabs reachable above the sheet, including while scrolling. */
+@media(max-width:760px){
+ .fp-stage-workspace[data-inspector-open=true][data-context=inspector] .fp-flow-nav{
+  position:sticky;top:58px;z-index:181;
+  background:#111b15;
+ }
+ .fp-stage-workspace[data-inspector-open=true][data-context=inspector] .fp-stage-inspector{
+  top:151px!important;bottom:0!important;
+  height:calc(100dvh - 151px)!important;min-height:0!important;
+ }
+}
