@@ -18,6 +18,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build -- --mode githubpages
+      - name: Create short local VP8 video for model initialization smoke
+        run: |
+          ffmpeg -loglevel error -y -f lavfi -i testsrc=size=640x360:rate=24 -t 0.6 -c:v libvpx -b:v 500k e2e/generated-v2-smoke.webm
       - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 duet-v2-experiment.spec.mjs
