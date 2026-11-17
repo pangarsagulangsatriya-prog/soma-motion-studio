@@ -36,6 +36,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  const toggleRef=useRef<HTMLButtonElement>(null),labsRef=useRef<HTMLButtonElement>(null);
  const labsPanelRef=useRef<HTMLElement>(null),searchRef=useRef<HTMLInputElement>(null);
  const railRef=useRef<HTMLElement>(null);
+ const tipTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ useEffect(()=>()=>{if(tipTimer.current!==null)clearTimeout(tipTimer.current);},[]);
  const labsContext=workspace==='archive'||(workspace==='studio'&&scene!=='footprints');
  useEffect(()=>{
   const media=window.matchMedia(mobileQuery);
@@ -60,7 +62,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     railRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});
   });
   const keydown=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'){e.preventDefault();setExpanded(false);toggleRef.current?.focus({preventScroll:true});return;}
+   if(e.key==='Escape'&&!e.shiftKey){e.preventDefault();setExpanded(false);toggleRef.current?.focus({preventScroll:true});return;}
    if(e.key!=='Tab'||!railRef.current)return;
    const buttons=Array.from(railRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
     .filter(node=>node.getClientRects().length>0);
@@ -79,7 +81,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   const beforeOverflow=document.body.style.overflow;
   if(mobile)document.body.style.overflow='hidden';
   const onKey=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'){
+   if(e.key==='Escape'&&!e.shiftKey){
     e.preventDefault();e.stopPropagation();
     setLabsOpen(false);labsRef.current?.focus({preventScroll:true});return;
    }
@@ -105,13 +107,20 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    document.removeEventListener('pointerdown',outside);
   };
  },[labsOpen,mobile]);
- const showTip=(label:string,node:HTMLElement)=>{
+ const clearTip=()=>{
+  if(tipTimer.current!==null){clearTimeout(tipTimer.current);tipTimer.current=null;}
+  setTip(null);
+ };
+ const showTip=(label:string,node:HTMLElement,mode:'hover'|'focus')=>{
   if(mobile||expanded||labsOpen)return;
+  if(tipTimer.current!==null)clearTimeout(tipTimer.current);
   const rect=node.getBoundingClientRect();
-  setTip({label,top:Math.max(69,Math.min(window.innerHeight-52,rect.top+rect.height/2))});
+  const top=Math.max(69,Math.min(window.innerHeight-52,rect.top+rect.height/2));
+  if(mode==='focus')setTip({label,top});
+  else tipTimer.current=setTimeout(()=>{setTip({label,top});tipTimer.current=null;},260);
  };
  const navigate=(target:'footprints'|'projector')=>{
-  setLabsOpen(false);setTip(null);
+  setLabsOpen(false);clearTip();
   if(mobile){setExpanded(false);requestAnimationFrame(()=>toggleRef.current?.focus({preventScroll:true}));}
   if(target==='footprints')onFootprints();else onProjection();
  };
@@ -123,7 +132,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   simulator:()=>onStageTool('simulator')
  };
  const launch=(id:LabsId)=>{
-  setActiveLab(id);setLabsOpen(false);setTip(null);
+  setActiveLab(id);setLabsOpen(false);clearTip();
   if(mobile)setExpanded(false);
   action[id]();
   requestAnimationFrame(()=>{
@@ -132,7 +141,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   });
  };
  const toggleLabs=()=>{
-  setLabsQuery('');setTip(null);setLabsOpen(value=>!value);
+  setLabsQuery('');clearTip();setLabsOpen(value=>!value);
  };
  const filtered=searchLabs(labsQuery);
  const selectedLab=labsContext?(activeLab??(workspace==='archive'?'archive':scene)):null;
@@ -143,7 +152,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      aria-controls="soma-workspace-rail" aria-expanded={expanded}
      aria-label={expanded?'Ciutkan navigasi':'Buka navigasi SOMA'}
      title={expanded?'Ciutkan navigasi':'Perluas navigasi'}
-     onClick={()=>{setLabsOpen(false);setTip(null);setExpanded(value=>!value);}}>
+     onClick={()=>{setLabsOpen(false);clearTip();setExpanded(value=>!value);}}>
      {expanded?<PanelLeftClose size={17}/>:<PanelLeftOpen size={17}/>}
     </button>
     <div className="v3-brand"><b>SOMA</b>
@@ -170,10 +179,10 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     <button type="button" className="soma-rail-item soma-primary-destination"
      aria-current={workspace==='studio'&&scene==='footprints'?'page':undefined}
      aria-label="Footprints" title={expanded?'Footprints · Kamera, tracking dan komposisi':undefined}
-     onMouseEnter={e=>showTip('Footprints',e.currentTarget)}
-     onMouseLeave={()=>setTip(null)}
-     onFocus={e=>showTip('Footprints',e.currentTarget)}
-     onBlur={()=>setTip(null)}
+     onMouseEnter={e=>showTip('Footprints',e.currentTarget,'hover')}
+     onMouseLeave={clearTip}
+     onFocus={e=>showTip('Footprints',e.currentTarget,'focus')}
+     onBlur={clearTip}
      onClick={()=>navigate('footprints')}>
      <Footprints size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Footprints</b><small>Gerak & komposisi</small></span>
@@ -181,10 +190,10 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     <button type="button" className="soma-rail-item soma-primary-destination"
      aria-current={workspace==='projection'?'page':undefined}
      aria-label="Projector" title={expanded?'Projector · Mapping dan output fisik':undefined}
-     onMouseEnter={e=>showTip('Projector',e.currentTarget)}
-     onMouseLeave={()=>setTip(null)}
-     onFocus={e=>showTip('Projector',e.currentTarget)}
-     onBlur={()=>setTip(null)}
+     onMouseEnter={e=>showTip('Projector',e.currentTarget,'hover')}
+     onMouseLeave={clearTip}
+     onFocus={e=>showTip('Projector',e.currentTarget,'focus')}
+     onBlur={clearTip}
      onClick={()=>navigate('projector')}>
      <Monitor size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Projector</b><small>Output & kalibrasi</small></span>
@@ -195,10 +204,10 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      aria-label="SOMA Labs" title={expanded?'Eksperimen dan instrumen lama':undefined}
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
      aria-current={labsContext?'page':undefined}
-     onMouseEnter={e=>showTip('SOMA Labs',e.currentTarget)}
-     onMouseLeave={()=>setTip(null)}
-     onFocus={e=>showTip('SOMA Labs',e.currentTarget)}
-     onBlur={()=>setTip(null)}
+     onMouseEnter={e=>showTip('SOMA Labs',e.currentTarget,'hover')}
+     onMouseLeave={clearTip}
+     onFocus={e=>showTip('SOMA Labs',e.currentTarget,'focus')}
+     onBlur={clearTip}
      onClick={toggleLabs}>
      <FlaskConical size={19} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>SOMA Labs</b><small>Eksperimen</small></span>
