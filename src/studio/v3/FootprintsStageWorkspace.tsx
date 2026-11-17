@@ -7,7 +7,7 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Activity,Camera,CameraOff,ChevronRight,Film,ShieldAlert,Video} from 'lucide-react';
+import {Activity,Camera,ChevronRight,Film,ShieldAlert,Video,Smartphone,Box,Monitor,ArrowUpRight} from 'lucide-react';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import {footprintsSteps,type FootprintsStep} from './footprintsFlow.ts';
 import type {StageNavigationRequest} from './stageNavigation.ts';
@@ -25,7 +25,7 @@ import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTra
 import {readDualOutputStatus,watchDualOutputStatus,verifiedDualStatus} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from '../../footprints/stage-optics/StageHardwareGate.ts';
 import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatus} from './unifiedStageStatus.ts';
-import {FootprintsStageTransport,UnifiedStageStatusStrip} from './UnifiedStageConsole.tsx';
+import {FootprintsStageTransport} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 
 type WorkspaceView='stage'|'archive';
@@ -285,25 +285,39 @@ export function FootprintsStageWorkspace({
  const camDrawWidth=rawW*camScale,camDrawHeight=rawH*camScale;
  const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
  const selectFlowStep=(step:FootprintsStep)=>{
-  setFlowStep(step);setInspectorOpen(true);setSetupOpen(false);
+  setFlowStep(step);setInspectorOpen(step==='input'?cameraOn:true);setSetupOpen(false);
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
+ };
+ const openPhoneInput=()=>{
+  setFlowStep('input');setView('stage');setInspectorOpen(true);setSetupOpen(true);
+  setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
+ };
+ const openVideoInput=()=>{
+  onBlackout();setFlowStep('input');setView('stage');
+  setInspectorOpen(false);setSetupOpen(false);setComposerOpen(false);setRehearsalOpen(false);
+  setVideoLabOpen(true);
  };
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
-  data-inspector-open={inspectorOpen&&!operatorMode} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
+  data-inspector-open={inspectorOpen&&!operatorMode} data-source-ready={cameraOn&&bodySelected}
+  data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
-  {!operatorMode&&<nav className="fp-flow-nav" aria-label="Tahap kerja Footprints">
-   <span className="fp-flow-name">FOOTPRINTS</span>
-   {footprintsSteps.map(item=><button type="button" key={item.id}
-    aria-current={flowStep===item.id?'step':undefined}
-    aria-expanded={flowStep===item.id&&inspectorOpen}
-    onClick={()=>selectFlowStep(item.id)}
-    title={item.hint}>
-    <small>{item.number}</small><strong>{item.title}</strong>
-    <span>{item.hint}</span></button>)}
-   {inspectorOpen&&<button type="button" className="fp-flow-close" title="Tutup pengaturan"
-    aria-label="Tutup pengaturan tahap" onClick={()=>{setInspectorOpen(false);setSetupOpen(false);}}>×</button>}
-  </nav>}
+  {!operatorMode&&<nav className="fp-flow-nav" aria-label="Pengaturan Footprints">
+   <div className="fp-flow-nav-left">
+    <span className="fp-flow-name">FOOTPRINTS</span>
+    <div className="fp-flow-local-tabs" role="group" aria-label="Bagian kerja Footprints">
+     {footprintsSteps.map(item=><button type="button" key={item.id}
+      aria-current={flowStep===item.id?'step':undefined}
+      aria-expanded={flowStep===item.id&&inspectorOpen}
+      onClick={()=>selectFlowStep(item.id)} title={item.hint}>
+      {item.title}</button>)}
+    </div>
+   </div>
+   <button type="button" className="fp-flow-projector-link"
+    title="Buka Projector untuk kalibrasi output dan Live" onClick={onOpenProjection}>
+    <Monitor size={15}/> Projector <ArrowUpRight size={13}/>
+   </button>
+  </nav>
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
