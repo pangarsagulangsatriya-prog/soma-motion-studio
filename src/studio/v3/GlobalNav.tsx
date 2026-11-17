@@ -52,7 +52,11 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   if(mobile)return;
   try{localStorage.setItem(NAV_KEY,String(expanded));}catch{}
  },[expanded,mobile]);
- useEffect(()=>{if(expanded||labsOpen||mobile)setTip(null);},[expanded,labsOpen,mobile]);
+ useEffect(()=>{
+  if(!expanded&&!labsOpen&&!mobile)return;
+  if(tipTimer.current!==null){clearTimeout(tipTimer.current);tipTimer.current=null;}
+  setTip(null);
+ },[expanded,labsOpen,mobile]);
  // On mobile, the navigation rail behaves as a modal drawer with a focus loop.
  useEffect(()=>{
   if(!mobile||!expanded||labsOpen)return;
@@ -178,7 +182,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    <div className="soma-rail-scroll soma-primary-nav-list">
     <button type="button" className="soma-rail-item soma-primary-destination"
      aria-current={workspace==='studio'&&scene==='footprints'?'page':undefined}
-     aria-label="Footprints" title={expanded?'Footprints · Kamera, tracking dan komposisi':undefined}
+     aria-label="Footprints" aria-describedby={tip?.label==='Footprints'?'soma-rail-tooltip':undefined}
+     title={expanded?'Footprints · Kamera, tracking dan komposisi':undefined}
      onMouseEnter={e=>showTip('Footprints',e.currentTarget,'hover')}
      onMouseLeave={clearTip}
      onFocus={e=>showTip('Footprints',e.currentTarget,'focus')}
@@ -189,7 +194,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     </button>
     <button type="button" className="soma-rail-item soma-primary-destination"
      aria-current={workspace==='projection'?'page':undefined}
-     aria-label="Projector" title={expanded?'Projector · Mapping dan output fisik':undefined}
+     aria-label="Projector" aria-describedby={tip?.label==='Projector'?'soma-rail-tooltip':undefined}
+     title={expanded?'Projector · Mapping dan output fisik':undefined}
      onMouseEnter={e=>showTip('Projector',e.currentTarget,'hover')}
      onMouseLeave={clearTip}
      onFocus={e=>showTip('Projector',e.currentTarget,'focus')}
@@ -201,7 +207,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    </div>
    <div className="soma-primary-labs-launch">
     <button ref={labsRef} type="button" className="soma-rail-item soma-labs-trigger"
-     aria-label="SOMA Labs" title={expanded?'Eksperimen dan instrumen lama':undefined}
+     aria-label="SOMA Labs" aria-describedby={tip?.label==='SOMA Labs'?'soma-rail-tooltip':undefined}
+     title={expanded?'Eksperimen dan instrumen lama':undefined}
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
      aria-current={labsContext?'page':undefined}
      onMouseEnter={e=>showTip('SOMA Labs',e.currentTarget,'hover')}
@@ -215,7 +222,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     </button>
    </div>
   </nav>
-  {tip&&<div className="soma-rail-tooltip" role="tooltip" style={{top:tip.top}}>
+  {tip&&<div id="soma-rail-tooltip" className="soma-rail-tooltip" role="tooltip" style={{top:tip.top}}>
    {tip.label}
   </div>}
   {labsOpen&&mobile&&<button type="button" className="soma-labs-backdrop"
