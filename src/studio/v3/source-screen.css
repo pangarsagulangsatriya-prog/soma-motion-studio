@@ -1,0 +1,228 @@
+/* S6.7.2.2 — source-first Footprints stage, with progressive live layout.
+ * All camera canvases remain mounted; source presentation only changes visibility.
+ * Production output and Blackout controls are unaffected. */
+
+/* Idle, connecting and recover states use a bounded workflow canvas
+   instead of the full black camera viewport. */
+.fp-stage-workspace[data-screen=source] .fp-stage-overview{
+ display:block!important;
+ grid-template-columns:minmax(0,1fr)!important;
+}
+.fp-stage-workspace[data-screen=source] .fp-stage-video,
+.fp-stage-workspace[data-screen=source] .fp-stage-side-previews{
+ display:none!important;
+}
+.fp-stage-workspace[data-screen=source] .fp-health-line{display:none}
+.fp-stage-workspace[data-screen=source] .fp-stage-main{gap:4px}
+.fp-stage-workspace .fp-source-launchpad{
+ position:relative;
+ display:grid;grid-template-columns:minmax(235px,.78fr) minmax(0,1.22fr);
+ align-items:center;column-gap:clamp(24px,4vw,68px);row-gap:28px;
+ width:100%;max-width:none;min-width:0;
+ min-height:clamp(320px,48dvh,510px);
+ padding:clamp(23px,3.5vw,52px);
+ overflow:hidden;border-radius:11px;
+ border:1px solid #34483b;
+ color:#e5ede3;
+ background:
+  radial-gradient(ellipse at 4% 0%,#2b3c2d44,transparent 55%),
+  linear-gradient(122deg,#17231a 0%,#111c15 62%,#0e1912 100%);
+ animation:fp-screen-arrive .22s ease-out both;
+}
+.fp-stage-workspace .fp-source-launchpad::before{
+ content:"";pointer-events:none;position:absolute;inset:0;
+ background-image:linear-gradient(90deg,transparent 97.5%,#8aaf8520 98%);
+ background-size:40px 100%;opacity:.12;
+}
+.fp-stage-workspace .fp-source-lead,.fp-stage-workspace .fp-source-groups{position:relative;z-index:1;min-width:0}
+.fp-stage-workspace .fp-source-lead{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+.fp-source-eyebrow{
+ font:700 10px ui-monospace,monospace;letter-spacing:.13em;color:#a9c4aa;
+}
+.fp-source-ledger{display:flex;align-items:center;gap:9px;margin:0 0 1px;
+ font:550 9px ui-monospace,monospace;letter-spacing:.04em;color:#92a995;
+}
+.fp-source-ledger i{display:block;width:24px;height:1px;background:#526e57}
+.fp-stage-workspace .fp-source-lead h2{
+ font:650 clamp(25px,2.7vw,37px)/1.13 'Space Grotesk',system-ui,sans-serif;
+ letter-spacing:-.035em;margin:0;max-width:330px;color:#eef3e9;
+}
+.fp-stage-workspace .fp-source-lead>p{
+ font-size:12px;line-height:1.7;color:#b5c6b6;
+ max-width:320px;margin:0;
+}
+.fp-source-led-note{display:flex;align-items:flex-start;gap:8px;
+ margin-top:8px;max-width:310px;font-size:10px;line-height:1.55;color:#8fa993;
+}
+.fp-source-mark{flex:0 0 5px;height:5px;border:1px solid #829d7c;
+ border-radius:50%;margin-top:5px;
+}
+.fp-source-feedback{display:flex;align-items:flex-start;gap:9px;
+ max-width:340px;margin-top:6px;padding:12px 13px;
+ border:1px solid #557257;border-radius:7px;
+ background:#263b2a;color:#d1e5cc;font-size:11px;line-height:1.5;
+}
+.fp-source-feedback svg{flex:none}
+.fp-source-feedback-error{background:#352922;border-color:#926a58;color:#f3d1bd}
+.fp-source-spinner{display:inline-block;flex:none;width:18px;height:18px;
+ border:2px solid #7e9e7b;border-top-color:#e3f5c2;border-radius:50%;
+ animation:fp-source-spin .8s linear infinite;
+}
+.fp-source-groups{display:flex;flex-direction:column;gap:20px}
+.fp-source-choice-group{display:flex;flex-direction:column;gap:10px}
+.fp-source-choice-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+ padding:0 2px;color:#a7c2ab;
+}
+.fp-source-choice-head>span{font:680 10px ui-monospace,monospace;letter-spacing:.08em}
+.fp-source-choice-head>small{font:10px system-ui,sans-serif;color:#8ca792}
+.fp-source-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.fp-stage-workspace .fp-source-choice{
+ position:relative;min-width:0;min-height:104px;
+ display:flex;align-items:flex-start;justify-content:flex-start;gap:12px;
+ padding:16px 13px;border-radius:9px;border:1px solid #425b47;
+ background:#1d2c22;color:#e0e9dc;text-align:left;cursor:pointer;
+ transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+.fp-stage-workspace .fp-source-choice-main{background:#283a2a;border-color:#70896d}
+.fp-stage-workspace .fp-source-choice:hover:not(:disabled){
+ background:#304634;border-color:#b2cf9d;transform:translateY(-2px);
+ box-shadow:0 10px 18px #05090637;
+}
+.fp-stage-workspace .fp-source-choice:active:not(:disabled){transform:translateY(0);box-shadow:none}
+.fp-stage-workspace .fp-source-choice:focus-visible{outline:2px solid #d1e5ab;outline-offset:3px}
+.fp-stage-workspace .fp-source-choice:disabled{cursor:progress;opacity:.46}
+.fp-source-choice-icon{display:flex;align-items:center;justify-content:center;
+ width:33px;height:33px;flex:0 0 33px;border-radius:8px;
+ background:#364a38;color:#d7eacb;
+}
+.fp-source-choice-copy{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1}
+.fp-source-choice-copy strong{font-size:12px;font-weight:650;line-height:1.35}
+.fp-source-choice-copy small{font-size:10px;line-height:1.5;color:#a9bdab}
+.fp-source-choice-arrow{position:absolute;right:12px;bottom:12px;color:#91b196;
+ opacity:0;transform:translate(-3px,3px);
+ transition:opacity .14s ease,transform .14s ease;
+}
+.fp-source-choice:hover .fp-source-choice-arrow,
+.fp-source-choice:focus-visible .fp-source-choice-arrow{
+ opacity:1;transform:translate(0,0);
+}
+/* Live camera is the dominant surface. Side previews are independent
+   and retain the same existing canvas/event pipelines. */
+.fp-stage-workspace[data-screen=live] .fp-stage-overview{
+ grid-template-columns:minmax(0,1.58fr) minmax(248px,.8fr)!important;
+ gap:10px;align-items:stretch;
+}
+.fp-stage-workspace[data-screen=live] .fp-stage-video,
+.fp-stage-workspace[data-screen=live] .fp-stage-surface{
+ border-color:#35483b;background:#111b14;box-shadow:none;
+ animation:fp-screen-arrive .2s ease-out both;
+}
+.fp-stage-workspace[data-screen=live] .fp-stage-video-content{
+ min-height:clamp(280px,47dvh,575px);background:#050a07;
+}
+.fp-stage-workspace[data-screen=live] .fp-stage-video-content canvas{
+ max-height:min(65dvh,650px);
+}
+.fp-stage-workspace[data-screen=live] .fp-stage-side-previews{
+ display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+ gap:9px;min-width:0;
+}
+.fp-stage-workspace[data-screen=live] .fp-stage-canvas-area{min-height:130px}
+.fp-stage-workspace[data-screen=live] .fp-stage-surface-head{
+ padding:8px 11px;min-height:33px;
+}
+.fp-stage-workspace[data-screen=preparing] .fp-stage-overview{
+ grid-template-columns:minmax(0,1fr)!important;
+}
+.fp-stage-workspace[data-screen=preparing] .fp-stage-side-previews{
+ display:none!important;
+}
+.fp-stage-workspace[data-screen=preparing] .fp-stage-video-content{
+ min-height:clamp(310px,45dvh,520px);
+}
+.fp-stage-workspace .fp-source-correction,
+.fp-stage-workspace .fp-source-warming{
+ background:#071009cf;gap:12px;
+}
+.fp-stage-workspace .fp-source-correction strong,
+.fp-stage-workspace .fp-source-warming strong{font-size:17px}
+.fp-stage-workspace .fp-source-correction p,
+.fp-stage-workspace .fp-source-warming p{max-width:320px;line-height:1.65;margin:0}
+.fp-stage-workspace .fp-source-correction button{
+ min-height:42px;border:1px solid #cce5ab;
+ padding:10px 15px;background:#cde6ad;color:#142219;
+ border-radius:7px;font-weight:700;
+}
+.fp-stage-workspace .fp-source-correction button:hover{background:#e2f3c8}
+/* Setup must always be able to show the camera for 4-point calibration. */
+.fp-stage-workspace[data-screen=setup] .fp-stage-video{display:flex}
+.fp-stage-workspace[data-screen=setup] .fp-stage-side-previews{display:none!important}
+.fp-stage-workspace[data-screen=operator] .fp-source-launchpad{display:none!important}
+/* Projector safety bar remains visible with every source mode. */
+.fp-stage-workspace[data-screen=source] .fp-unified-transport{
+ position:relative;z-index:2;margin-top:10px;
+}
+@keyframes fp-screen-arrive{
+ from{opacity:.7;transform:translateY(5px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@keyframes fp-source-spin{to{transform:rotate(360deg)}}
+@media(max-width:1220px){
+ .fp-stage-workspace .fp-source-launchpad{
+  grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);
+  column-gap:26px;padding:30px 25px;
+ }
+ .fp-stage-workspace[data-screen=live] .fp-stage-overview{
+  grid-template-columns:minmax(0,1.35fr) minmax(225px,.8fr)!important;
+ }
+}
+@media(max-width:980px){
+ .fp-stage-workspace .fp-source-launchpad{
+  grid-template-columns:minmax(0,1fr);min-height:0;gap:26px;
+  padding:28px 24px;
+ }
+ .fp-stage-workspace .fp-source-lead{gap:10px}
+ .fp-stage-workspace .fp-source-lead>p{max-width:540px}
+ .fp-source-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .fp-source-choice-grid{grid-template-columns:minmax(0,1fr)}
+ .fp-stage-workspace .fp-source-choice{min-height:83px;padding:12px}
+ .fp-stage-workspace[data-screen=live] .fp-stage-overview{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace[data-screen=live] .fp-stage-side-previews{
+  grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);
+ }
+ .fp-stage-workspace[data-screen=live] .fp-stage-video-content{min-height:300px}
+ .fp-stage-workspace[data-screen=live] .fp-stage-canvas-area{min-height:150px}
+}
+@media(max-width:620px){
+ .fp-stage-workspace .fp-source-launchpad{padding:22px 16px;gap:22px;border-radius:8px}
+ .fp-stage-workspace .fp-source-lead h2{font-size:25px}
+ .fp-source-ledger{gap:7px}
+ .fp-source-ledger i{width:15px}
+ .fp-source-groups{display:flex;gap:19px}
+ .fp-source-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .fp-stage-workspace .fp-source-choice{
+  padding:12px 10px;min-height:104px;gap:8px;flex-direction:column;
+ }
+ .fp-source-choice-icon{width:27px;height:27px;flex-basis:27px}
+ .fp-source-choice-icon svg{width:17px;height:17px}
+ .fp-source-choice-copy{gap:4px}
+ .fp-source-choice-copy strong{font-size:11px}
+ .fp-source-choice-copy small{font-size:9px;line-height:1.35}
+ .fp-source-choice-arrow{display:none}
+ .fp-stage-workspace[data-screen=live] .fp-stage-side-previews{
+  grid-template-columns:minmax(0,1fr);grid-template-rows:auto;
+ }
+ .fp-stage-workspace[data-screen=live] .fp-stage-video-content{min-height:225px}
+ .fp-stage-workspace[data-screen=live] .fp-stage-canvas-area{min-height:160px}
+ .fp-stage-workspace[data-screen=preparing] .fp-stage-video-content{min-height:275px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace .fp-source-launchpad,
+ .fp-stage-workspace .fp-stage-video,
+ .fp-stage-workspace .fp-stage-surface,
+ .fp-stage-workspace .fp-source-choice,
+ .fp-source-choice-arrow,
+ .fp-source-spinner{animation:none!important;transition:none!important}
+}
