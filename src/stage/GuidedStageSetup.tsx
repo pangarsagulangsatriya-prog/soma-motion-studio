@@ -21,13 +21,13 @@ type Props={
  phoneActive:boolean;performers:1|2;
  onStartLaptop:()=>void;onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
  onPhoneDisconnect:()=>void;onCalibrate:()=>void;onSimulator:()=>void;
- onArchive:()=>void;onComposer:()=>void;onPerform:()=>void;onBlackout:()=>void;
+ onArchive:()=>void;onComposer:()=>void;onVideoLab:()=>void;onPerform:()=>void;onBlackout:()=>void;
  cameraOn:boolean;calibrated:boolean;confirmed:boolean;contacts:number;
 };
 const emptyCorners=():Array<Point|null>=>[null,null,null,null];
 export function GuidedStageSetup({
  open,onClose,session,onStartLaptop,onPhoneStream,onPhoneDisconnect,
- onCalibrate,onSimulator,onArchive,onComposer,onPerform,onBlackout,cameraOn,
+ onCalibrate,onSimulator,onArchive,onComposer,onVideoLab,onPerform,onBlackout,cameraOn,
  calibrated,confirmed,contacts,frameRef,videoRef,bodyPreviewRef,floorPreviewRef,
  floorTracker,identityRouter,phoneActive,performers
 }:Props){
@@ -203,11 +203,14 @@ export function GuidedStageSetup({
      {currentSource==='phone'&&
       <div className="soma-guide-pair"><PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/></div>}
      {currentSource==='phone'&&phoneActive&&<div className="soma-setup-status">Kamera HP tersambung. Periksa preview di samping.</div>}
-     <button type="button" className="soma-guide-text-link"
-      onClick={()=>{session.patch({source:'simulation'});onClose();onSimulator();}}>Coba simulasi 3D tanpa kamera</button>
+     <div className="soma-guide-experiments">
+      <button type="button" onClick={()=>{onClose();onVideoLab();}}>Unggah video MP4 · Video Motion Lab</button>
+      <button type="button" className="soma-guide-text-link"
+       onClick={()=>{session.patch({source:'simulation'});onClose();onSimulator();}}>Coba simulasi 3D tanpa kamera</button>
+     </div>
      <details className="soma-guide-advanced"><summary>Informasi koneksi</summary>
       <p>Sumber yang dipilih: {sourceLabel}. Preview berasal dari video yang sama dengan pelacak SOMA. Tidak mengunggah video ke server.</p>
-      <p>Mode input MP4 akan tersedia melalui Video Motion Lab pada sprint terpisah.</p>
+      <p>Video Motion Lab membuka pemutar MP4 lokal. Analisis Pose/Gait dari video disiapkan untuk S6.5.3.</p>
      </details>
     </div>
     {step===1&&<div className="soma-setup-page">
