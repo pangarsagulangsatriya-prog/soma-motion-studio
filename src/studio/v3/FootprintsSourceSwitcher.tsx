@@ -34,7 +34,8 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
  },[open]);
  const choose=async(choice:FootprintsInputChoice)=>{
   if(busy)return;
-  if(choice===status.selection&&(status.phase==='ready'||choice==='phone')){
+  if(choice===status.selection&&(status.phase==='ready'||status.phase==='experiment'||
+   (choice==='phone'&&status.phase!=='error'))){
    setOpen(false);trigger.current?.focus({preventScroll:true});
    if(choice==='phone')onPhoneManager();
    return;
