@@ -17,6 +17,7 @@ import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
 import {activeExperimentKind,currentExperimentFrame,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
+import {drawSkeletonBodies} from '../../stage/fullBodySkeleton.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -93,6 +94,7 @@ export function FootprintsStageWorkspace({
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
  const [inspectorOpen,setInspectorOpen]=useState(false);
+ const [skeletonVisible,setSkeletonVisible]=useState(true);
  const [previewMode,setPreviewMode]=useState<StagePreviewMode>(()=>{
   try{return parseStagePreviewMode(localStorage.getItem('soma-stage-preview-mode-v1'));}
   catch{return 'split';}
@@ -205,6 +207,13 @@ export function FootprintsStageWorkspace({
      const w=v.videoWidth*scale,h=v.videoHeight*scale;
      try{cam.drawImage(v,(camera.width-w)/2,(camera.height-h)/2,w,h);}
      catch{/* Video can briefly detach on source changes. */}
+     // Diagnostic only: uses latest raw CameraTracker poses, never the
+     // physical BODY/FLOOR output, gait event gate or projector approval.
+     if(skeletonVisible&&!calibrationOpen&&f.source==='camera'&&f.time>0&&
+      now>=f.time&&now-f.time<450){
+      drawSkeletonBodies(cam,f.poses??[],
+       {x:(camera.width-w)/2,y:(camera.height-h)/2,width:w,height:h});
+     }
     }
    }
    const options={...LOWER_BODY_MASK_DEFAULTS,performers:performerCount,
@@ -251,7 +260,7 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind]);
+ },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen]);
  useEffect(()=>{
   if(!experimentalKind)return;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
@@ -263,12 +272,12 @@ export function FootprintsStageWorkspace({
    return;
   }
   // Experimental snapshots own the existing canvas elements, never live FloorSession.
-  if(cam)paintExperimentCamera(cam,experimentFrame);
+  if(cam)paintExperimentCamera(cam,experimentFrame,skeletonVisible);
   if(!footprint.hold){
-   if(body)paintExperimentBody(body,experimentFrame);
+   if(body)paintExperimentBody(body,experimentFrame,skeletonVisible);
    if(floor)paintExperimentFloor(floor,experimentFrame,footprint);
   }
- },[experimentalKind,experimentFrame,footprint]);
+ },[experimentalKind,experimentFrame,footprint,skeletonVisible]);
  const projectionState=projection.status.connected?
   projection.transport==='blackout'?'Blackout aktif':projection.transport==='hold'?'Output ditahan':'Output aktif':
   'Output belum tersambung';
@@ -445,7 +454,7 @@ export function FootprintsStageWorkspace({
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
   data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
   data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode}
-  data-experimental={!!experimentalKind}
+  data-experimental={!!experimentalKind} data-skeleton-visible={skeletonVisible}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
   {!operatorMode&&<nav className="fp-flow-nav" aria-label="Pengaturan Footprints">
@@ -514,8 +523,13 @@ export function FootprintsStageWorkspace({
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>{experimentalKind?
        experimentalKind==='video'?'INPUT · VIDEO':'INPUT · PUPPET 3D':'INPUT · KAMERA'}</span>
-       <small>{experimentalKind?'EKSPERIMEN':sourceMode==='live'?'VIDEO AKTIF':sourceMode==='warming'?'MENYIAPKAN VIDEO':
-        sourceMode==='switch-body'?'PERLU MODE BODY':'OFFLINE'}</small></div>
+       {experimentalKind!=='simulator'&&<button type="button" className="fp-full-skeleton-switch"
+        aria-pressed={skeletonVisible}
+        aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
+        title="Kerangka tubuh 33 titik · diagnostik, bukan output proyektor"
+        onClick={()=>setSkeletonVisible(current=>!current)}>
+        Skeleton <span aria-hidden="true">{skeletonVisible?'ON':'OFF'}</span>
+       </button>}</div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
         onPointerDown={onMainCameraPoint}
@@ -568,9 +582,9 @@ export function FootprintsStageWorkspace({
        </div>
       </div>
       <div className="fp-stage-surface fp-preview-body">
-       <div className="fp-stage-surface-head"><span>{experimentalKind?experimentalKind==='video'?'BODY · MASK VIDEO 2D':
+       <div className="fp-stage-surface-head"><span>{experimentalKind?experimentalKind==='video'?(skeletonVisible?'BODY · SKELETON 33':'BODY · MASK VIDEO 2D'):
  'BODY · RIG VIRTUAL':'BODY · MASK PREVIEW'}</span><small>{experimentalKind?
- experimentalKind==='video'?'Landmark 2D':'Rig 3D virtual':'Lower body'}</small></div>
+ experimentalKind==='video'?'Pose mentah · diagnostik':'Rig 3D virtual':'Lower body'}</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
