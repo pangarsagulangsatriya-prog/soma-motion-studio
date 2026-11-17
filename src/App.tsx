@@ -280,11 +280,31 @@ export default function App(){
      setSelectedStageTool('live');
      setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'live'}));}}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
-     setFootprintsOperator(false);selectScene(scene);}}
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
     onArchive={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
-     setFootprintsOperator(false);setModal(null);setClean(false);setArchiveActive(true);}}
+     setFootprintsOperator(false);setModal(null);setClean(false);
+     setProjectionActive(false);setArchiveActive(true);}}
     onProjection={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
+    onSoundLab={()=>{
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     setArchiveActive(false);setProjectionActive(false);setClean(false);
+     setFootprintsOperator(false);selectScene('liquid');
+     setTab('sound');setInspectorOpen(true);setControlsOpen(true);
+    }}
+    onHydraLab={()=>{
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     setArchiveActive(false);setProjectionActive(false);setClean(false);
+     setFootprintsOperator(false);selectScene('liquid');
+     setTab('visual');setInspectorOpen(true);setControlsOpen(true);
+    }}
+    onCaptureLab={()=>{
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     setArchiveActive(false);setProjectionActive(false);setClean(false);
+     setFootprintsOperator(false);selectScene('liquid');
+     setCaptureTab('photo');setCaptureOpen(true);
+    }}
     onStageTool={(tool:StageNavigationTool)=>{
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
