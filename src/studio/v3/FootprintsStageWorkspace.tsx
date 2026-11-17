@@ -17,7 +17,6 @@ import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
 import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
-import {defaultFloorSpace} from '../../footprints/spatial/coordinates.ts';
 import {activeExperimentKind,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
@@ -57,6 +56,7 @@ type Props={
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
  phoneActive:boolean;sourceStatus:FootprintsInputStatus;
+ experimentPuppet:DirectPuppetSession;experimentPuppetRevision:number;
  onSwitchSource:(choice:FootprintsInputChoice)=>Promise<boolean>;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
@@ -74,7 +74,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
  navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
- sourceStatus,onSwitchSource,
+ sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
  onPhoneStream,onPhoneDisconnect,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
@@ -89,9 +89,6 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(sourceStatus.selection!=='phone')setPhonePanelOpen(false);},[sourceStatus.selection]);
  const experimentalKind=activeExperimentKind(sourceStatus.selection);
  const [experimentClip,setExperimentClip]=useState<File|null>(null);
- const experimentPuppet=useRef<DirectPuppetSession|null>(null);
- if(!experimentPuppet.current)experimentPuppet.current=
-  new DirectPuppetSession(defaultFloorSpace(8,6));
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('compose');
@@ -521,7 +518,7 @@ export function FootprintsStageWorkspace({
      <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind} performers={performerCount}
-      model={experimentPuppet.current}
+      model={experimentPuppet} externalRevision={experimentPuppetRevision}
       clip={experimentClip} onClip={setExperimentClip} onFrame={onExperimentFrame}
       onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
       onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}

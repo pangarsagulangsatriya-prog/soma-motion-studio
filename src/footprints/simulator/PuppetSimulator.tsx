@@ -26,17 +26,18 @@ function saveBlob(content:Blob,name:string){
  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,onQATransportChange}:{
+export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified,testPattern,onVerify,onTestPattern,onOpenOutput,onCalibrate,onLive,onHold,onBlackout,onQATransportChange,sharedSession,onSessionChange,experimentLocked=false}:{
  onClose:()=>void;projection:Projection;projectorArtworkRef:RefObject<HTMLCanvasElement|null>;
  verified:boolean;testPattern:boolean;onVerify:(value:boolean)=>void;onTestPattern:(value:boolean)=>void;onOpenOutput:()=>void;onCalibrate:()=>void;
  onLive:()=>void;onHold:()=>void;onBlackout:()=>void;
  onQATransportChange:(value:'live'|'hold'|'blackout'|null)=>void;
+ sharedSession?:DirectPuppetSession;onSessionChange?:()=>void;experimentLocked?:boolean;
 }){
  const dialog=useRef<HTMLDialogElement>(null),canvas=useRef<HTMLCanvasElement>(null);
  const labPreview=useRef<HTMLCanvasElement>(null);
- const sessionRef=useRef<DirectPuppetSession>(new DirectPuppetSession(startFloor));
+ const sessionRef=useRef<DirectPuppetSession>(sharedSession??new DirectPuppetSession(startFloor));
  const origin=useRef(0),drag=useRef<Drag|null>(null),fileInput=useRef<HTMLInputElement>(null);
- const [floor,setFloor]=useState<FloorSpace>(startFloor);
+ const [floor,setFloor]=useState<FloorSpace>(sharedSession?.floor??startFloor);
  const [camera,setCamera]=useState<OrbitCamera>(initialCamera);
  const [count,setCount]=useState<1|2>(1);
  const [selected,setSelected]=useState<Selection>({performerId:'A',foot:'left'});
@@ -60,7 +61,7 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  const svg=useMemo(()=>labActive?'':floorArtworkSVG({...session,events:manualEvents},{
   width:960,height:720,showGrid:grid
  }),[labActive,version,playhead,mode,grid]);
- const refresh=()=>{setVersion(v=>v+1);setMode('edit');setPlayhead(0);};
+ const refresh=()=>{setVersion(v=>v+1);setMode('edit');setPlayhead(0);onSessionChange?.();};
  useEffect(()=>{
   const raster=projectorArtworkRef.current;
   if(raster){
@@ -75,9 +76,10 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
  },[projectorArtworkRef,labActive,qaScenario,qaVisible,version,playhead,mode,testPattern,grid]);
  const time=()=>performance.now()-origin.current;
  useEffect(()=>{
+  if(experimentLocked){onQATransportChange(null);return;}
   onQATransportChange(labActive&&!testPattern?
    qaOutputTransportAt(labTime,verified,labFaults):null);
- },[labActive,labTime,labFaults,verified,testPattern,onQATransportChange]);
+ },[labActive,labTime,labFaults,verified,testPattern,onQATransportChange,experimentLocked]);
  useEffect(()=>()=>{
   onQATransportChange(null);
  },[onQATransportChange]);
@@ -296,9 +298,10 @@ export function PuppetSimulator({onClose,projection,projectorArtworkRef,verified
     faultsEnabled={labFaults} onFaultsEnabled={setLabFaults}
     verified={verified} actualTransport={projection.transport}
     onExportReport={exportLabReport} onExportSession={exportLabSession}/>
+   {experimentLocked?<p role="status" className="puppet-inline-state">Riset 3D: sesi dibagikan ke Stage Preview. Proyektor fisik tetap terkunci.</p>:
    <FloorProjectionPanel projection={projection} verified={verified} testPattern={testPattern}
      onVerify={onVerify} onTestPattern={onTestPattern} onOpenOutput={onOpenOutput} onCalibrate={onCalibrate}
-     onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>
+     onLive={onLive} onHold={onHold} onBlackout={onBlackout}/>}
     <section className="puppet-controls" hidden={labActive}>
      <div className="puppet-section-title"><b>DIRECT PUPPET</b><span>{selected.performerId} · {selected.foot==='left'?'Kiri':'Kanan'}</span></div>
      <div className="puppet-foot-pick">

@@ -1,6 +1,8 @@
 import {StudioFootprints,footprintDefaults,type FootprintConfig,type FootprintsHandle} from './footprints/StudioFootprints';
 import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
+import {DirectPuppetSession} from './footprints/simulator/puppet-controller.ts';
+import {defaultFloorSpace} from './footprints/spatial/coordinates.ts';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
@@ -63,6 +65,9 @@ export default function App(){
  const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
  const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('live');
  const [simulatorOpen,setSimulatorOpen]=useState(false);
+ const experimentPuppetRef=useRef<DirectPuppetSession|null>(null);
+ if(!experimentPuppetRef.current)experimentPuppetRef.current=new DirectPuppetSession(defaultFloorSpace(8,6));
+ const [experimentPuppetRevision,setExperimentPuppetRevision]=useState(0);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
  const [simulatorQaTransport,setSimulatorQaTransport]=useState<'live'|'hold'|'blackout'|null>(null);
@@ -398,6 +403,7 @@ export default function App(){
       phoneActive:activeCameraMode.current==='phone'&&cameraOn,
       switchBusy:sourceSwitchBusy,switchError:sourceSwitchError
      })}
+     experimentPuppet={experimentPuppetRef.current} experimentPuppetRevision={experimentPuppetRevision}
      onSwitchSource={switchFootprintsSource}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>{void switchFootprintsSource('webcam');}}
@@ -546,7 +552,10 @@ export default function App(){
    onBlackout={()=>projection.setTransport('blackout')}
    onClose={()=>{projection.setTransport('blackout');multiPoseRouter.reset();setLiveFloorApproval(null);setLiveFloorTestPattern(false);setLiveFloorOpen(false);}}/>}
   {simulatorOpen&&<PuppetSimulator projection={projection} projectorArtworkRef={simulatorArtworkRef}
-    onQATransportChange={setSimulatorQaTransport}
+    sharedSession={footprintsChoice==='simulator'?experimentPuppetRef.current:undefined}
+    onSessionChange={()=>setExperimentPuppetRevision(value=>value+1)}
+    experimentLocked={footprintsChoice==='simulator'}
+    onQATransportChange={value=>setSimulatorQaTransport(footprintsChoice==='simulator'?null:value)}
     verified={simulatorFloorVerified} testPattern={simulatorTestPattern}
     onVerify={value=>{
      projection.setTransport('blackout');
