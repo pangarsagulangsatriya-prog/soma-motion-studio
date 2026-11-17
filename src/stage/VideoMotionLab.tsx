@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
-import {drawSkeletonBodies,replaySkeletonsCurrent} from './fullBodySkeleton.ts';
+import {drawSkeletonBodies,replaySkeletonPresentation} from './fullBodySkeleton.ts';
+import {videoActorPresenceLabel} from './videoAutoActorTracker.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
@@ -34,7 +35,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
  const [composerOpen,setComposerOpen]=useState(false);
  const [analysisBusy,setAnalysisBusy]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
- const [replayPeople,setReplayPeople]=useState<1|2>(1);
+ const [replayPeople,setReplayPeople]=useState<'auto'|1|2>('auto');
  const [analysisSnapshot,setAnalysisSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const engineRef=useRef<VideoPoseGaitEngine|null>(null);
  const generationRef=useRef(0);
@@ -127,8 +128,9 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
   const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
   const width=scale*video.videoWidth,height=scale*video.videoHeight;
   const x=(canvas.width-width)/2,y=(canvas.height-height)/2;
-  drawSkeletonBodies(ctx,replaySkeletonsCurrent(analysisSnapshot,video.currentTime*1000),
-   {x,y,width,height},{labels:true});
+  const overlay=replaySkeletonPresentation(analysisSnapshot,video.currentTime*1000);
+  drawSkeletonBodies(ctx,overlay.poses,{x,y,width,height},
+   {labels:overlay.labels,colors:overlay.colors});
  },[analysisOn,analysisSnapshot]);
 
  const range=rangeStart!==null&&rangeEnd!==null?validLoopRange(rangeStart,rangeEnd,duration):null;
@@ -301,7 +303,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
       aria-label="Video rekaman lokal"/>
      <canvas ref={overlayRef} className="vml-pose-overlay" width={960} height={540}
       aria-label="Overlay skeleton seluruh tubuh 33 landmark dari video"/>
-     {analysisOn&&<span className="vml-overlay-badge">FULL BODY · {analysisSnapshot?.rawPoses.length??0} POSE TERDETEKSI</span>}
+     {analysisOn&&<span className="vml-overlay-badge">FULL BODY · {analysisSnapshot?.detectedCount??0} POSE TERDETEKSI</span>}
      {clip&&!ready&&<div className="vml-player-empty">Membuka video…</div>}
      {buffering&&ready&&<div className="vml-buffer">Memuat frame…</div>}
     </div>
@@ -344,10 +346,16 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
      <div className="vml-analysis-head">
       <div><h3>Pose / Gait Analysis</h3>
        <p>Deteksi lokal dari MP4 menggunakan MediaPipe dan gait analyzer SOMA.</p></div>
-      <label>Performer<select value={replayPeople}
-       onChange={e=>{const count=Number(e.target.value) as 1|2;setReplayPeople(count);
-        engineRef.current?.setPerformers(count);}}>
-       <option value={1}>1 performer</option><option value={2}>2 performer (A/B)</option>
+      <label>Jumlah aktor<select value={replayPeople}
+       aria-label="Mode jumlah aktor video"
+       onChange={e=>{
+        const v=e.target.value;
+        const choice=v==='auto'?'auto':Number(v) as 1|2;
+        setReplayPeople(choice);engineRef.current?.setPerformers(choice);
+       }}>
+       <option value="auto">Otomatis</option>
+       <option value={1}>1 aktor (manual)</option>
+       <option value={2}>2 aktor (manual)</option>
       </select></label>
      </div>
      <div className="vml-analysis-actions">
@@ -366,8 +374,16 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
       {analysisOn?(analysisSnapshot?.status??'Model siap, menunggu frame video.'):
        'Analisis belum aktif. Putar video atau gunakan frame stepping setelah mengaktifkan model.'}
      </p>
-     {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
-      <div className="vml-qa-top"><strong>Identity QA · {replayPeople===2?'BODY A/B':'BODY A'}</strong>
+     {analysisOn&&<div className="vml-actor-readout" role="status"
+       aria-label="Status deteksi aktor video">
+       <strong>{analysisSnapshot?.detectedCount??0} pose terdeteksi · {analysisSnapshot?.performerMode==='auto'?'AUTO':'MANUAL'}</strong>
+       {analysisSnapshot?.actorStates.map(actor=><span key={actor.id}
+        data-actor={actor.id} data-presence={actor.presence}>
+        <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
+       </span>)}
+      </div>}
+      {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
+      <div className="vml-qa-top"><strong>Identity QA · {(analysisSnapshot?.performers??1)===2?'BODY A/B':'BODY A'}</strong>
        <span>{qa?.state==='stable'?'STABLE':qa?.state==='locked'?'LOCKED':qa?.state==='warming'?'WARMING':'HOLD'}</span></div>
       <p>{qa?.reason??'Menunggu frame analisis.'}</p>
       <div className="vml-qa-grid">
@@ -412,7 +428,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
      <small className="vml-analysis-disclaimer">*Estimasi berbasis gambar 2D. Tidak mengukur tekanan, gaya kontak, atau koordinat lantai dalam meter. Seeking dan looping menghapus histori analisis agar urutan gerak tetap valid.</small>
     </section>
     {composerOpen&&clip&&<VideoSurfaceComposer videoRef={videoRef} snapshot={analysisSnapshot}
-     active={analysisOn&&ready} performers={replayPeople} fileKey={clip.url}/>}
+     active={analysisOn&&ready} performers={analysisSnapshot?.performers??1} fileKey={clip.url}/>}
     <div className="vml-status" role="status" aria-live="polite">{message}</div>
    </div>
    <aside className="vml-inspector">

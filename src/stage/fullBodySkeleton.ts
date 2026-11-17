@@ -51,9 +51,27 @@ export function replaySkeletonsCurrent(snapshot:{
   Math.abs(snapshot.atMs-videoTimeMs)>maxDriftMs)return [];
  return (snapshot.rawPoses??[]).filter(p=>p.length>=POSE_LANDMARK_COUNT).slice(0,2);
 }
+/** Ordered by raw MediaPipe pose index; A/B labels are attached only to
+ * reliable current-frame assignments from the video actor tracker. */
+export function replaySkeletonPresentation(snapshot:{
+ atMs:number;rawPoses?:Landmark[][];
+ actorStates?:Array<{id:'A'|'B';presence:string;rawIndex:number|null}>;
+},videoTimeMs:number){
+ const poses=replaySkeletonsCurrent(snapshot,videoTimeMs);
+ const labels=poses.map((_,index)=>{
+  const actor=snapshot.actorStates?.find(a=>a.rawIndex===index&&a.presence==='visible');
+  return actor?'ACTOR '+actor.id:'POSE '+(index+1)+' ?';
+ });
+ const colors=poses.map((_,index)=>{
+  const actor=snapshot.actorStates?.find(a=>a.rawIndex===index&&a.presence==='visible');
+  return actor?SKELETON_COLORS[actor.id==='A'?0:1]:'#b7bdba';
+ });
+ return {poses,labels,colors};
+}
 export function drawSkeletonBodies(
  ctx:CanvasRenderingContext2D,poses:readonly (readonly Landmark[])[],
- rect:SkeletonRect,options:{labels?:boolean;lineWidth?:number;minVisibility?:number}={}
+ rect:SkeletonRect,options:{labels?:boolean|readonly string[];colors?:readonly string[];
+ lineWidth?:number;minVisibility?:number}={}
 ):number{
  if(!Number.isFinite(rect.x)||!Number.isFinite(rect.y)||
   !Number.isFinite(rect.width)||!Number.isFinite(rect.height)||
@@ -67,7 +85,7 @@ export function drawSkeletonBodies(
    const geometry=skeletonGeometry(pose,options.minVisibility);
    if(!geometry.joints.length)continue;
    drawn++;
-   const color=SKELETON_COLORS[i];
+   const color=options.colors?.[i]??SKELETON_COLORS[i];
    const points=new Map(geometry.joints.map(p=>[p.index,p]));
    ctx.save();
    ctx.lineCap='round';ctx.lineJoin='round';
@@ -90,7 +108,9 @@ export function drawSkeletonBodies(
     const anchor=points.get(11)??points.get(12)??points.get(0)??geometry.joints[0];
     ctx.globalAlpha=1;ctx.fillStyle=color;
     ctx.font='bold 11px system-ui,sans-serif';ctx.textBaseline='bottom';
-    ctx.fillText('POSE '+(i+1),rect.x+anchor.x*rect.width+7,
+    const label=typeof options.labels==='object'?
+     (options.labels[i]??'POSE '+(i+1)):'POSE '+(i+1);
+    ctx.fillText(label,rect.x+anchor.x*rect.width+7,
      Math.max(rect.y+13,rect.y+anchor.y*rect.height-5));
    }
    ctx.restore();

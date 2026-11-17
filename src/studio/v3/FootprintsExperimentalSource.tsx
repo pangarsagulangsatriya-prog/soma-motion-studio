@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState,type ChangeEvent} from 'react';
 import {FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot}
  from '../../stage/VideoPoseGaitEngine.ts';
+import {videoActorPresenceLabel} from '../../stage/videoAutoActorTracker.ts';
 import {validVideoLabFile} from '../../stage/videoMotionLabUtils.ts';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
 import {initialCamera} from '../../footprints/simulator/scene3d.ts';
@@ -9,9 +10,9 @@ import type {FootSide} from '../../footprints/spatial/events.ts';
 import type {ExperimentInputKind,ExperimentalFrame} from './experimentSourceModel.ts';
 import './footprints-experimental-source.css';
 
-export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,onFrame,externalRevision,
+export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,externalRevision,
  onAdvancedVideo,onAdvancedSimulator}:{
- kind:ExperimentInputKind;performers:1|2;clip:File|null;onClip:(file:File|null)=>void;
+ kind:ExperimentInputKind;clip:File|null;onClip:(file:File|null)=>void;
  model:DirectPuppetSession;externalRevision:number;
  onFrame:(frame:ExperimentalFrame|null)=>void;
  onAdvancedVideo:()=>void;onAdvancedSimulator:()=>void;
@@ -62,7 +63,6 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,
   setAnalyzing(true);setAnalysisError('');
   void engine.init().then(()=>{
    if(disposed||generationId!==generation.current)return;
-   engine.setPerformers(performers);
    engine.process(el,el.currentTime,12,true);
    setAnalyzing(false);
   }).catch(error=>{
@@ -75,9 +75,6 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,
    engine.dispose();if(videoEngine.current===engine)videoEngine.current=null;
   };
  },[kind,clip,videoReady]);
- useEffect(()=>{
-  if(kind==='video')videoEngine.current?.setPerformers(performers);
- },[performers,kind]);
  useEffect(()=>{
   if(kind!=='video'||!videoReady)return;
   let raf=0,last=0;
@@ -178,9 +175,16 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,
    <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
    <span className="fp-experiment-meta" role="status">
     {analyzing?'Menyiapkan model Pose/Gait…':analysisError?'Analisis belum aktif: '+analysisError:
-     snapshot?String(snapshot.people.length)+' performer terbaca · '+snapshot.events.length+' event 2D':
+     snapshot?String(snapshot.detectedCount)+' pose':
      clip?'Video siap, mulai analisis':'Video belum dipilih'}
    </span>
+   {snapshot&&<span className="fp-video-actor-status" role="status"
+    aria-label="Status masing-masing aktor MP4">
+    {snapshot.actorStates.map(actor=><span key={actor.id}
+     data-actor={actor.id} data-presence={actor.presence}>
+     <b>{actor.id}</b> {videoActorPresenceLabel(actor.presence)}
+    </span>)}
+   </span>}
   </div>:<div className="fp-experiment-controls">
    <label>Pilih kaki <select aria-label="Kaki simulasi aktif" value={foot}
     onChange={e=>setFoot(e.target.value as FootSide)}>

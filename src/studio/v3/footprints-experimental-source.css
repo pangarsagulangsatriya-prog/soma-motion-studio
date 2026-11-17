@@ -70,3 +70,29 @@
  .fp-stage-workspace.fp-persistent-layout .fp-experiment-controls button,
  .fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced{transition:none}
 }
+
+/* S6.8.8.2 — actor visibility is separate from the gait event counter. */
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status{
+ display:inline-flex;align-items:center;flex-wrap:wrap;gap:5px;
+ font-size:10px;line-height:1.35;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span{
+ display:inline-flex;align-items:center;gap:5px;padding:5px 7px;
+ border-radius:5px;border:1px solid #546c59;color:#bbcbb9;
+ white-space:nowrap;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-actor=A]{border-color:#71965d}
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-actor=B]{border-color:#568f97}
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-presence=visible]{
+ background:#2c4330;color:#e0edcd;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-presence=uncertain]{
+ border-style:dashed;color:#ddc1a0;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-presence=occluded],
+.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-presence=lost]{
+ color:#b0aaa4;
+}
+@media(max-width:700px){.fp-stage-workspace.fp-persistent-layout .fp-video-actor-status{
+ flex:1 1 100%;
+}}
