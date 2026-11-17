@@ -18,6 +18,7 @@ import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.
 import {activeExperimentKind,currentExperimentFrame,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {drawSkeletonBodies} from '../../stage/fullBodySkeleton.ts';
+import {ActorMotionStateBuffer} from '../../stage/actorMotionStateBuffer.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -93,6 +94,9 @@ export function FootprintsStageWorkspace({
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
  const experimentFrameRef=useRef<ExperimentalFrame|null>(null);
  experimentFrameRef.current=experimentFrame;
+ const motionBufferRef=useRef<ActorMotionStateBuffer>(new ActorMotionStateBuffer());
+ const [videoRenderFps,setVideoRenderFps]=useState(0);
+ useEffect(()=>{motionBufferRef.current.reset();setVideoRenderFps(0);},[experimentalKind,experimentClip]);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
@@ -264,31 +268,46 @@ export function FootprintsStageWorkspace({
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
  },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen]);
- // MP4 preview paints native video frames independently of React snapshots.
- // FLOOR event output only repaints when sampled tracking data actually changes.
+ // S0.2/S0.3: AI snapshots update a per-actor motion buffer; software
+ // canvases paint at DISPLAY refresh (rAF), not only on AI arrival or 30 FPS.
+ // FLOOR continues to render only measured contact events.
  useEffect(()=>{
   if(experimentalKind!=='video')return;
-  let raf=0,lastPaintAt=0,lastFloorAt=-Infinity;
+  let raf=0,lastFloorAt=-Infinity,lastVideoAt=-1;
+  let source:HTMLVideoElement|null=null;
+  let count=0,lastFpsAt=0;
+  const buffer=motionBufferRef.current;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
   const draw=(now:number)=>{
    const current=experimentFrameRef.current;
-   if(now-lastPaintAt>=1000/30){
-    lastPaintAt=now;
-    if(current?.kind==='video'){
-     const frame={...current,
-      timeMs:(current.video?.currentTime??current.timeMs/1000)*1000};
-     if(cam)paintExperimentCamera(cam,frame,skeletonVisible);
-     if(body&&!footprint.hold)paintExperimentBody(body,frame,skeletonVisible);
-     if(floor&&!footprint.hold&&current.snapshot?.atMs!==lastFloorAt){
-      paintExperimentFloor(floor,frame,footprint);
-      lastFloorAt=current.snapshot?.atMs??-Infinity;
-     }
-    }else{
-     for(const canvas of [cam,body,floor]){
-      if(!canvas)continue;
-      const ctx=canvas.getContext('2d');
-      if(ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
-     }
+   if(current?.kind==='video'){
+    const atMs=(current.video?.currentTime??current.timeMs/1000)*1000;
+    const frame={...current,timeMs:atMs};
+    if(source!==current.video||current.video?.seeking||
+       (lastVideoAt>=0&&atMs<lastVideoAt-50)){
+     buffer.reset();lastFloorAt=-Infinity;
+    }
+    source=current.video;
+    lastVideoAt=atMs;
+    if(!current.video?.seeking&&current.snapshot)buffer.ingest(current.snapshot);
+    const motion=buffer.present(atMs);
+    if(cam)paintExperimentCamera(cam,frame,skeletonVisible,motion);
+    if(body&&!footprint.hold)paintExperimentBody(body,frame,skeletonVisible,motion);
+    if(floor&&!footprint.hold&&current.snapshot?.atMs!==lastFloorAt){
+     paintExperimentFloor(floor,frame,footprint);
+     lastFloorAt=current.snapshot?.atMs??-Infinity;
+    }
+    count++;
+    if(lastFpsAt===0)lastFpsAt=now;
+    if(now-lastFpsAt>=900){
+     setVideoRenderFps(Math.round(count*1000/(now-lastFpsAt)));
+     count=0;lastFpsAt=now;
+    }
+   }else{
+    for(const canvas of [cam,body,floor]){
+     if(!canvas)continue;
+     const ctx=canvas.getContext('2d');
+     if(ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
     }
    }
    raf=requestAnimationFrame(draw);
@@ -552,6 +571,10 @@ export function FootprintsStageWorkspace({
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>{experimentalKind?
        experimentalKind==='video'?'INPUT · VIDEO':'INPUT · PUPPET 3D':'INPUT · KAMERA'}</span>
+       {experimentalKind==='video'&&<span className="fp-motion-render-fps"
+        title="S0.2 One Euro A/B · S0.3 interpolasi BODY; FPS repaint aktual, terpisah dari FPS AI">
+        Motion Smooth · {videoRenderFps} FPS render
+       </span>}
        {experimentalKind!=='simulator'&&<button type="button" className="fp-full-skeleton-switch"
         aria-pressed={skeletonVisible}
         aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
