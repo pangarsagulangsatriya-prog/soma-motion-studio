@@ -9,6 +9,7 @@ import {TemporalJointInspector} from './TemporalJointInspector.tsx';
 import {ReplayPerformanceInspector} from './ReplayPerformanceInspector.tsx';
 import {subscribeReplayFrames} from './replayFrameClock.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
+import {D1MoveNetBenchmark} from './D1MoveNetBenchmark.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
 import type {ReplayReport} from './rehearsalComparisonModel.ts';
@@ -471,6 +472,10 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
      </div>}
      <small className="vml-analysis-disclaimer">*Estimasi berbasis gambar 2D. Tidak mengukur tekanan, gaya kontak, atau koordinat lantai dalam meter. Seeking dan looping menghapus histori analisis agar urutan gerak tetap valid.</small>
     </section>
+    {clip&&<details className="vml-d1-toggle" aria-label="D1 MoveNet MultiPose Benchmark">
+     <summary>D1 · Detector Benchmark — MoveNet 384 vs 512 · 192 frame</summary>
+     <D1MoveNetBenchmark sourceUrl={clip.url} sourceName={clip.name}/>
+    </details>}
     {composerOpen&&clip&&<VideoSurfaceComposer videoRef={videoRef} snapshot={analysisSnapshot}
      active={analysisOn&&ready} performers={analysisSnapshot?.performers??1} fileKey={clip.url}/>}
     <div className="vml-status" role="status" aria-live="polite">{message}</div>
