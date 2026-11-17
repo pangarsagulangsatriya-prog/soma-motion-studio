@@ -27,9 +27,14 @@ test('responsive initial source screen, safety access, no horizontal overflow',a
  await ready(page);
  const stage=page.locator('.fp-stage-workspace');
  await expect(stage).toHaveAttribute('data-screen','source');
- await expect(page.locator('.fp-source-launchpad')).toBeVisible();
+ await expect(page.locator('.fp-inline-assistant')).toHaveAttribute('data-condition','source');
+ await expect(page.locator('.soma-guided-setup')).toHaveCount(0);
+ await expect(page.locator('.fp-source-launchpad')).toHaveCount(0);
+ await page.locator('.fp-inline-assistant-action').click();
+ const menu=page.getByRole('dialog',{name:'Ganti sumber Footprints'});
  for(const label of ['Webcam laptop','Kamera HP','Video MP4','Simulasi 3D'])
-  await expect(page.locator('.fp-source-launchpad').getByRole('button',{name:new RegExp(label,'i')})).toBeVisible();
+  await expect(menu.getByRole('button',{name:new RegExp(label,'i')})).toBeVisible();
+ await page.keyboard.press('Escape');
  await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
  await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
  await expect(page.locator('.fp-stage-video')).toBeVisible();
@@ -137,9 +142,11 @@ test('denied camera permission displays recoverable source error without project
   });
  });
  await ready(page);
- await page.locator('.fp-source-launchpad').getByRole('button',{name:/webcam laptop/i}).click();
+ await page.locator('.fp-inline-assistant-action').click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+  .getByRole('button',{name:/webcam laptop/i}).click();
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-source-mode','recover',{timeout:25_000});
- await expect(page.locator('.fp-source-feedback-error')).toBeVisible();
+ await expect(page.locator('.fp-inline-assistant')).toHaveAttribute('data-condition','error');
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
  await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
@@ -249,17 +256,20 @@ test('S6.8.2 stage preview layout remains mounted when source changes to phone p
  await noOverflow(page);
 });
 
-test('S6.8.2 guided calibration keeps preview canvases and enlarges camera in same workspace',async({page},testInfo)=>{
+test('S6.8.3 inline four-point calibration keeps camera and preview in one workspace',async({page},testInfo)=>{
  await ready(page);
  const tracking=tab(page,'Tracking');
  await tracking.click();
- await page.getByRole('button',{name:'Bantuan setup bertahap'}).click();
+ await page.getByRole('button',{name:'Tandai 4 titik lantai'}).click();
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-screen','setup');
  await expect(page.locator('.fp-stage-video')).toBeVisible();
  await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
  await expect(page.locator('.fp-preview-body canvas')).toHaveCount(1);
  await expect(page.locator('.fp-preview-floor canvas')).toHaveCount(1);
- await expect(page.locator('.soma-guided-setup')).toBeVisible();
+ await expect(page.locator('.fp-inline-floor-editor')).toBeVisible();
+ await expect(page.locator('.soma-guided-setup')).toHaveCount(0);
+ await expect(page.locator('.fp-inline-floor-corners button')).toHaveCount(4);
+ await expect(page.locator('.fp-inline-floor-primary')).toBeDisabled();
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  if(testInfo.project.name==='mobile-390'){
   const cameraBounds=await page.locator('.fp-stage-video').boundingBox();
@@ -270,5 +280,45 @@ test('S6.8.2 guided calibration keeps preview canvases and enlarges camera in sa
    .toBeLessThan(previewBounds.y);
  }
  await noOverflow(page);
- await screenshot(page,testInfo,'guided-calibration');
+ await screenshot(page,testInfo,'inline-calibration');
+ await page.getByRole('button',{name:'Tutup kalibrasi'}).click();
+ await expect(page.locator('.fp-inline-floor-editor')).toHaveCount(0);
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Baca gerak kaki');
+});
+
+test('S6.8.3 assistant follows phone pairing and retains one camera receiver',async({page})=>{
+ await ready(page);
+ const hint=page.locator('.fp-inline-assistant');
+ await expect(hint).toHaveAttribute('data-condition','source');
+ await hint.locator('button').click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+  .getByRole('button',{name:/Kamera HP/i}).click();
+ await expect(hint).toHaveAttribute('data-condition','pairing');
+ await expect(page.locator('.fp-phone-source-panel')).toBeVisible();
+ await expect(page.locator('.fp-phone-source-panel .soma-setup-phone-choices')).toHaveCount(1);
+ await page.getByRole('button',{name:'Tutup panel kamera HP'}).click();
+ await expect(hint).toHaveAttribute('data-condition','pairing');
+ await hint.locator('button').click();
+ await expect(page.locator('.fp-phone-source-panel')).toBeVisible();
+ await expect(page.locator('.fp-phone-source-panel .soma-setup-phone-choices')).toHaveCount(1);
+ await expect(page.locator('.soma-guided-steps')).toHaveCount(0);
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ await noOverflow(page);
+});
+
+test('S6.8.3 calibration editor returns focus and never authorizes projector on empty camera',async({page})=>{
+ await ready(page);
+ const tracking=tab(page,'Tracking');
+ await tracking.click();
+ const open=page.getByRole('button',{name:'Tandai 4 titik lantai'});
+ await open.click();
+ await expect(page.locator('.fp-inline-floor-primary')).toBeDisabled();
+ await expect(page.locator('.fp-inline-floor-confirm')).toBeDisabled();
+ await expect(page.locator('.fp-stage-video-content canvas')).toHaveAttribute('data-calibration-active','true');
+ await page.locator('.fp-inline-floor-corners button').first().isDisabled();
+ await page.getByRole('button',{name:'Tutup kalibrasi'}).click();
+ await expect(page.locator('.fp-inline-floor-editor')).toHaveCount(0);
+ await expect(tracking).toBeFocused();
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ await noOverflow(page);
 });
