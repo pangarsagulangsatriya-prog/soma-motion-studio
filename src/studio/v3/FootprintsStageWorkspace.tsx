@@ -289,7 +289,7 @@ export function FootprintsStageWorkspace({
   setComposerOpen(false);
   onBlackout();
   switch(request.tool){
-   case 'live':setView('stage');setFlowStep('input');setInspectorOpen(false);break;
+   case 'live':setView('stage');setInspectorOpen(true);break;
    case 'setup':setView('stage');setFlowStep('input');setInspectorOpen(true);setSetupOpen(true);break;
    case 'archival-mapping':showArchive();break;
    case 'composer':setView('stage');setFlowStep('compose');setComposerOpen(true);break;
@@ -341,7 +341,7 @@ export function FootprintsStageWorkspace({
  const chooseSource=async(choice:FootprintsInputChoice):Promise<boolean>=>{
   const accepted=await onSwitchSource(choice);
   if(!accepted)return false;
-  setFlowStep('input');setView('stage');setSetupOpen(false);setInspectorOpen(false);
+  setView('stage');setSetupOpen(false);setInspectorOpen(true);
   setPhonePanelOpen(choice==='phone');
   setVideoLabOpen(choice==='video');setRehearsalOpen(false);setComposerOpen(false);
   if(choice==='simulator')onOpenSimulator();
