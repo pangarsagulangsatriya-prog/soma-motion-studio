@@ -1,0 +1,174 @@
+/* S6.8.7 — Stage-first, single source switcher, progressive disclosure.
+ * Presentation only. Never bypass physical stage safety, tracking, or blackout.
+ */
+.fp-stage-workspace.fp-persistent-layout:not(.fp-operator-mode) .fp-flow-nav{
+ min-height:42px;margin-bottom:6px;padding-bottom:6px;gap:9px;
+}
+.fp-stage-workspace.fp-persistent-layout:not(.fp-operator-mode) .fp-flow-nav-left{
+ flex:0 1 auto;gap:14px;
+}
+.fp-stage-workspace.fp-persistent-layout:not(.fp-operator-mode) .fp-flow-local-tabs{
+ padding:2px;gap:2px;
+}
+.fp-stage-workspace.fp-persistent-layout:not(.fp-operator-mode) .fp-flow-local-tabs>button{
+ min-height:33px;padding:6px 12px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-switch-menu>p,
+.fp-stage-workspace.fp-persistent-layout .fp-source-switch-menu>footer{display:none}
+.fp-stage-workspace.fp-persistent-layout .fp-source-switch-menu .fp-source-switch-option{
+ min-height:50px;padding:8px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-switch-option small{display:none}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-main{gap:7px}
+.fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-overview:not([hidden]),
+.fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-overview:not([hidden]),
+.fp-stage-workspace.fp-persistent-layout[data-screen=live] .fp-stage-overview:not([hidden]){
+ grid-template-columns:minmax(0,1fr) minmax(185px,.26fr)!important;
+ grid-template-rows:auto minmax(0,1fr);
+ gap:8px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews{
+ min-height:390px;gap:6px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-canvas-area{
+ min-height:clamp(260px,43dvh,480px)!important;
+ max-height:clamp(330px,56dvh,660px);
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-preview-toolbar{
+ min-height:35px;padding:3px 7px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-preview-heading small{display:none}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-preview-modes button{
+ min-height:27px;padding:4px 8px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-surface-head,
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video .fp-stage-surface-head{
+ min-height:29px;padding:5px 9px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-surface-head small,
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video .fp-stage-surface-head small{
+ display:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-surface-foot,
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video .fp-stage-surface-foot{
+ min-height:24px;padding:5px 8px;font-size:10px;letter-spacing:0;
+ color:#9fb1a0;
+}
+/* No verbose guidance row while a source and preview are functioning.
+   Warnings still appear as a compact one-action strip. */
+.fp-stage-workspace.fp-persistent-layout .fp-inline-assistant{
+ min-height:49px;padding:8px 10px;gap:9px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-inline-assistant-eyebrow{display:none}
+.fp-stage-workspace.fp-persistent-layout .fp-inline-assistant-symbol{
+ width:28px;height:28px;flex-basis:28px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-inline-assistant-content h2{
+ font-size:12px;margin:0 0 2px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-inline-assistant-content p{
+ font-size:10px;line-height:1.35;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-inline-assistant-action{
+ min-height:32px;padding:6px 9px;
+}
+/* Single compact transport strip for MP4 and the direct puppet. */
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-dock{
+ grid-row:2;grid-column:1/-1;flex-direction:row;align-items:center;
+ gap:10px;min-height:45px;padding:6px 9px;border-radius:8px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-controls{
+ flex:1 1 auto;min-width:0;gap:7px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-controls button,
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-upload{
+ min-height:32px;padding:5px 9px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-controls input[type=range]{
+ max-width:none;min-width:70px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-meta{
+ font-size:10px;max-width:250px;white-space:nowrap;overflow:hidden;
+ text-overflow:ellipsis;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details{
+ flex:0 0 auto;position:relative;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details>summary{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:32px;padding:6px 10px;border:1px solid #526e58;
+ border-radius:7px;background:#263b2d;color:#dcebd8;
+ font-size:11px;cursor:pointer;list-style:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details>summary::-webkit-details-marker{display:none}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details>summary::after{
+ content:' +';font-weight:700;margin-left:6px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details[open]>summary::after{content:' −'}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details>summary:focus-visible{
+ outline:2px solid #d7e9ac;outline-offset:2px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-content{
+ position:absolute;right:0;top:calc(100% + 7px);z-index:24;
+ display:flex;flex-direction:column;align-items:stretch;gap:8px;
+ min-width:230px;max-width:min(310px,85vw);padding:11px;
+ border:1px solid #61785e;border-radius:8px;
+ background:#1a2b20;box-shadow:0 10px 32px #000b;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-content button{
+ min-height:36px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-content small{
+ font-size:10px;color:#b5c9b4;line-height:1.4;
+}
+.fp-stage-workspace.fp-persistent-layout[data-experimental=true] .fp-stage-overview:not([hidden]){
+ grid-template-rows:minmax(0,auto) minmax(0,auto) minmax(0,1fr)!important;
+}
+.fp-stage-workspace.fp-persistent-layout[data-experimental=true] .fp-stage-side-previews,
+.fp-stage-workspace.fp-persistent-layout[data-experimental=true] .fp-stage-video{
+ grid-row:3!important;
+}
+@media(max-width:1050px){
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-overview:not([hidden]){
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews{
+  grid-column:1!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-overview .fp-stage-video{
+  grid-column:1!important;grid-row:4!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-canvas-area{
+  min-height:235px!important;
+ }
+}
+@media(max-width:700px){
+ .fp-stage-workspace.fp-persistent-layout .fp-flow-nav-left{
+  flex:1 1 100%;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-experiment-dock{
+  flex-wrap:wrap;align-items:flex-start;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-experiment-controls{
+  flex:1 1 100%;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-experiment-advanced-details{
+  margin-left:auto;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-preview-body,
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-preview-floor{
+  grid-column:1!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-preview-body{
+  grid-row:2;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-preview-floor{
+  grid-row:3;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-inline-assistant-content p{
+  display:none;
+ }
+}
