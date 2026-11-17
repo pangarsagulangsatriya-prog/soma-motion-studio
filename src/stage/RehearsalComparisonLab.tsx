@@ -201,3 +201,29 @@ export function RehearsalComparisonLab({
      <RehearsalTimeline marks={liveMarks} title="Timeline pijakan kamera"/>
      <RehearsalPath points={livePath} title="Lintasan estimasi lantai fisik"/></div>
    </div>
+   <div className="rcl-stats">
+    <div className="rcl-stats-head"><b>Indikator ritme</b><b>Video</b><b>Live</b></div>
+    {([
+     ['Pijakan Contact',referenceMetrics?.count,liveMetrics?.count,''],
+     ['Pijakan / menit',referenceMetrics?.cadence,liveMetrics?.cadence,''],
+     ['Median antar-pijakan',referenceMetrics?.medianIntervalMs,liveMetrics?.medianIntervalMs,' ms'],
+     ['Jeda antar-pijakan ≥2 dtk',referenceMetrics?.pauseCount,liveMetrics?.pauseCount,''],
+     ['Total gap panjang',referenceMetrics?.pauseDurationMs,liveMetrics?.pauseDurationMs,' ms'],
+     ['Kaki kiri',referenceMetrics?.left,liveMetrics?.left,''],
+     ['Kaki kanan',referenceMetrics?.right,liveMetrics?.right,'']
+    ] as const).map(([name,a,b,unit])=><div key={name}><span>{name}</span>
+     <b>{shown(a,unit)}</b><b>{shown(b,unit)}</b></div>)}
+   </div>
+   {full&&referenceMetrics&&liveMetrics&&<p className="rcl-diff">
+    Selisih {liveMetrics.count-referenceMetrics.count} contact.
+    {referenceMetrics.cadence!==null&&liveMetrics.cadence!==null?
+     ' Selisih '+(liveMetrics.cadence-referenceMetrics.cadence).toFixed(1)+' pijakan/menit.':''}
+   </p>}
+   <p className="rcl-note">Slide/Pivot dari video dan Move/Release dari kamera memiliki definisi berbeda.
+    Keduanya tetap diberi label sendiri; lintasan tidak ditumpuk karena memakai skala berbeda.
+    Contact masih estimasi visual, bukan sensor tekanan. Jeda panjang dihitung dari
+    selisih antar-contact yang tercatat; jeda sebelum dan sesudah pijakan belum terukur.
+    Rekaman dengan frame hilang atau histori terpotong perlu ditafsirkan hati-hati.</p>
+  </section>
+ </section>;
+}
