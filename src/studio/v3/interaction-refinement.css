@@ -121,3 +121,28 @@
   height:calc(100dvh - 151px)!important;min-height:0!important;
  }
 }
+
+
+/* S6.7.2.5 — Blackout must stay tappable above the fixed Inspector.
+ * Only editing layouts <=1150px need a fixed operator safety dock. */
+@media(max-width:1150px){
+ .fp-stage-workspace[data-inspector-open=true]:not(.fp-operator-mode) .fp-unified-transport.fp-compact-transport{
+  position:fixed!important;
+  left:calc(var(--soma-sidebar-width,60px) + 10px);
+  right:10px;bottom:8px;
+  width:auto;margin:0;
+  z-index:260!important;
+ }
+ .fp-stage-workspace[data-inspector-open=true][data-context=inspector] .fp-stage-inspector{
+  padding-bottom:88px;
+  box-sizing:border-box;
+ }
+}
+@media(max-width:760px){
+ .fp-stage-workspace[data-inspector-open=true]:not(.fp-operator-mode) .fp-unified-transport.fp-compact-transport{
+  left:8px;right:8px;bottom:6px;
+ }
+ .fp-stage-workspace[data-inspector-open=true][data-context=inspector] .fp-stage-inspector{
+  padding-bottom:124px;
+ }
+}
