@@ -21,3 +21,7 @@ Vercel Upstash integration supplies server-only `KV_REST_API_URL` and `KV_REST_A
 ## Actual deployment status
 
 This checklist is part of the source branch. Verify deployment and server/real-device outcomes separately: GitHub Actions passing does not prove Upstash API routing or camera stream stability.
+
+## Completed infrastructure check
+
+Installed Vercel Upstash publishes `KV_REST_API_URL`/`KV_REST_API_TOKEN` server-side. S6.1.1 now supports them. The POST Vercel Function initially had a `ERR_MODULE_NOT_FOUND` from a TypeScript cross-folder import; its self-contained runtime version fixed this (GET without handler returned 405). The temporary Preview-only GET test verified **real Redis room create/join/poll/close**, HTTP 200; test route subsequently removed. Real Android/iPhone WebRTC and stage QA still outstanding.
