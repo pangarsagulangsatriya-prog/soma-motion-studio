@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DuetIdentityManager,duetBoxIoU,expandedDuetRoi,sampleTorsoColor,
+ duetLetterbox,remapDuetLetterboxLandmarks,
  type DuetPerson} from '../src/stage/duetV2Identity.ts';
 import {chooseDuetResolution,summarizeDuetBenchmark,duetBenchmarkCsv}
  from '../src/stage/duetV2Benchmark.ts';
@@ -103,4 +104,34 @@ test('D1 resolution selection respects two-person coverage and comparative laten
  const precise=summarizeDuetBenchmark(512,[mock(0,2),mock(42,2),mock(83,2)]);
  assert.equal(chooseDuetResolution([fast,precise]).resolution,512);
  assert.equal(chooseDuetResolution([fast]).resolution,null);
+});
+
+test('D3 letterbox preserves normalized geometry of portrait actor crop',()=>{
+ const roi={x:.31,y:.14,width:.18,height:.68};
+ const pad=duetLetterbox(roi,640,360,480,640);
+ assert.ok(pad.width<480);
+ assert.equal(pad.height,640);
+ const centerX=(pad.x+pad.width*.5)/480;
+ const centerY=(pad.y+pad.height*.5)/640;
+ const mapped=remapDuetLetterboxLandmarks([
+  {x:centerX,y:centerY,z:.01,visibility:.98}
+ ],roi,pad);
+ assert.ok(Math.abs(mapped[0].x-(roi.x+roi.width*.5))<1e-8);
+ assert.ok(Math.abs(mapped[0].y-(roi.y+roi.height*.5))<1e-8);
+});
+test('D2 crossing may be marked uncertain but cannot silently reuse one observation for both actors',()=>{
+ const tracks=new DuetIdentityManager();
+ tracks.observe([person(.12,brown,1),person(.69,blue,2)],1);
+ for(let i=1;i<=4;i++){
+  const xA=.12+i*.10,xB=.69-i*.10;
+  const observations=[person(xA,brown,1),person(xB,blue,2)];
+  const result=tracks.observe(i%2?observations.reverse():observations,1+i*100);
+  const assigned=result.actors.filter(a=>a.observed);
+  assert.ok(assigned.length<=2);
+  if(assigned.length===2){
+   assert.notEqual(assigned[0].observedIndex,assigned[1].observedIndex);
+   assert.equal(assigned[0].trackerId,1);
+   assert.equal(assigned[1].trackerId,2);
+  }else assert.ok(result.ambiguous||assigned.some(a=>a.status==='reacquiring'));
+ }
 });
