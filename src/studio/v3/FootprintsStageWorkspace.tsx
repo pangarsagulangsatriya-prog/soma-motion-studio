@@ -9,6 +9,7 @@ import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Camera,Film} from 'lucide-react';
 import {CompactFootprintsStatus} from './CompactFootprintsStatus.tsx';
+import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
 import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceScreen} from './FootprintsSourceScreen.tsx';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -299,15 +300,18 @@ export function FootprintsStageWorkspace({
  const camScale=Math.min(768/rawW,432/rawH);
  const camDrawWidth=rawW*camScale,camDrawHeight=rawH*camScale;
  const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
- const selectFlowStep=(step:FootprintsStep,trigger?:HTMLElement|null)=>{
+ const selectFlowStep=(step:FootprintsStep,trigger?:HTMLElement|null,forceOpen=false)=>{
   const reselect=flowStep===step&&inspectorOpen&&!setupOpen&&view==='stage';
-  if(!reselect&&trigger)setupTrigger.current=trigger;
-  setFlowStep(step);setInspectorOpen(!reselect&&(step==='input'?cameraOn:true));
+  if((!reselect||forceOpen)&&trigger)setupTrigger.current=trigger;
+  setFlowStep(step);
+  setInspectorOpen(shouldOpenInspector({
+   sameStep:reselect,panelOpen:inspectorOpen,cameraOn,step,forceOpen
+  }));
   setSetupOpen(false);
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
  };
  const openFromStatus=(step:FootprintsStep,trigger:HTMLElement)=>{
-  selectFlowStep(step,trigger);
+  selectFlowStep(step,trigger,true);
   window.requestAnimationFrame(()=>{
    if(step==='input'&&!cameraOn)
     document.querySelector<HTMLButtonElement>('.fp-source-launchpad .fp-source-choice')?.focus({preventScroll:true});
@@ -356,7 +360,7 @@ export function FootprintsStageWorkspace({
       aria-controls={flowStep===item.id&&inspectorOpen?'fp-context-panel':undefined}
       onClick={event=>selectFlowStep(item.id,event.currentTarget)}
       onKeyDown={event=>{
-       if(event.key==='ArrowDown'&&flowStep===item.id&&inspectorOpen){
+       if(shouldEnterInspectorByArrow(event,flowStep===item.id&&inspectorOpen)){
         event.preventDefault();
         document.querySelector<HTMLElement>('#fp-context-panel .fp-flow-inspector-head button, #fp-context-panel .soma-guide-close')
          ?.focus({preventScroll:true});
@@ -492,7 +496,7 @@ export function FootprintsStageWorkspace({
    {!operatorMode&&inspectorOpen&&<aside id="fp-context-panel" className="fp-stage-inspector"
     data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}
     onKeyDown={event=>{
-     if(event.key==='Escape'&&!event.shiftKey){
+     if(isDismissEscape(event)){
       event.preventDefault();event.stopPropagation();closeInspector();
      }
     }}>
