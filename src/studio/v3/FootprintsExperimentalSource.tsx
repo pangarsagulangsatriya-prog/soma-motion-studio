@@ -60,6 +60,9 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   const engine=new VideoPoseGaitEngine(value=>{
    if(!disposed&&generationId===generation.current)setSnapshot(value);
   });
+  // Footprints stage is a two-performer rehearsal space. Keep both actor
+  // slots active, even when one person's pose is temporarily invisible.
+  engine.setPerformers(2);
   videoEngine.current=engine;
   setAnalyzing(true);setAnalysisError('');
   void engine.init().then(()=>{
@@ -164,7 +167,9 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
    <span className="fp-experiment-meta" role="status">
     {analyzing?'Menyiapkan model Pose/Gait…':analysisError?'Analisis belum aktif: '+analysisError:
-     snapshot?String(snapshot.detectedCount)+' pose · '+snapshot.performance.backend+' · '+Math.round(snapshot.performance.poseFps)+' FPS':
+     snapshot?String(snapshot.detectedCount)+'/2 pose terbaca'+
+      (snapshot.rescueCount?' · pemindaian ulang':'')+' · '+snapshot.performance.backend+
+      ' · '+Math.round(snapshot.performance.poseFps)+' FPS':
      clip?'Video siap, mulai analisis':'Video belum dipilih'}
    </span>
    {snapshot&&<span className="fp-video-actor-status" role="status"
