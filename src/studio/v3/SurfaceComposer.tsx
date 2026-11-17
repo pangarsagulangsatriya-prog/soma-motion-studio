@@ -42,15 +42,15 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
  const layers=composition[selected],layer=layers[selectedLayer]||layers[0];
  const patch=(p:Partial<Layer>)=>setComposition(c=>({...c,[selected]:c[selected].map((l,i)=>i===selectedLayer?{...l,...p}:l)}));
  useEffect(()=>{try{localStorage.setItem(key,JSON.stringify({version:1,selected,composition}));}catch{}},[composition,selected]);
- useEffect(()=>()=>{media.forEach(m=>URL.revokeObjectURL(m.url));},[media]);
+ useEffect(()=>{return()=>{for(const item of mediaEls.current.values())if(item instanceof HTMLVideoElement)item.pause();};},[]);
  useEffect(()=>{for(const m of media){if(mediaEls.current.has(m.id))continue;if(m.kind==='image'){const img=new Image();img.src=m.url;mediaEls.current.set(m.id,img);}else{const video=document.createElement('video');video.src=m.url;video.loop=true;video.muted=true;video.playsInline=true;void video.play().catch(()=>{});mediaEls.current.set(m.id,video);}}},[media]);
  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/'));setMedia(old=>[...old,...files.map(f=>({id:crypto.randomUUID(),name:f.name.slice(0,90),kind:f.type.startsWith('video/')?'video' as const:'image' as const,url:URL.createObjectURL(f),mime:f.type}))].slice(0,48));e.target.value='';};
  const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number)=>{
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
   if(blackout||!previewLive)return;
   const base=s==='FLOOR'?floorCanvas.current:bodyCanvas.current;
-  const validSurface=s==='FLOOR'?floorReady:cameraOn&&(performerCount===1?s==='BODY A':identitySafe&&s==='BODY A');
-  // Body A/B separation cannot be derived from a union mask. Fail closed for ambiguous 2-person assignments.
+  const validSurface=s==='FLOOR'?floorReady:cameraOn&&(performerCount===1?s==='BODY A':false);
+  // Per-performer mask must be provided before enabling two-person body output. Fail closed.
   if(!validSurface)return;
   const now=performance.now();
   for(const l of compositionRef.current[s]||[]){
@@ -106,7 +106,7 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
    ctx.drawImage(layerCanvas,0,0);ctx.restore();
   }
  };
- useEffect(()=>{let raf=0;const tick=()=>{const c=canvas.current;if(c){const ctx=c.getContext('2d');if(ctx)render(ctx,selectedRef.current,c.width,c.height);}raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[]);
+ useEffect(()=>{let raf=0;const tick=()=>{const c=canvas.current;if(c){const ctx=c.getContext('2d');if(ctx)render(ctx,selectedRef.current,c.width,c.height);}raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  useEffect(()=>{
   if(!previewLive||blackout)return;
   let id=0;
@@ -138,7 +138,7 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,cameraOn,performerCount,
  const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
  const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);setHint('Konfigurasi dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
- useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen]);
+ useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  return <div className="s64-root" role="region" aria-label="Interactive Surface Composer">
   <div className="s64-heading"><div><small>SOMA / S6.4</small><h2>Interactive Surface Composer</h2><p>Assign media, edit mask, arrange layers. Preview terpisah dari output proyektor fisik; Stage Output QA tetap mengontrol perangkat.</p></div><button onClick={onClose}>Tutup</button></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview aktif</label><label><input type="checkbox" checked={previewLive} onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label><button onClick={()=>setBlackout(true)}>BLACKOUT Preview</button><span>{eventInfo}</span></div>
