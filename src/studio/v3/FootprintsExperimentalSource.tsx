@@ -217,6 +217,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      <span>D3 waktu crop <b>{(snapshot.d3?.elapsedMs??0).toFixed(0)} ms</b></span>
     </div>
     {snapshot.performance.fallbackReason&&<p role="status">Fallback: {snapshot.performance.fallbackReason}</p>}
+    {snapshot.d3?.reason&&<p role="status">D3: {snapshot.d3.reason}</p>}
     <small>MediaPipe multipose → D2 A/B → D3 crop 33 per aktor saat ID aman → gait → BODY/FLOOR. Crop gagal QA tetap memakai pose utama. MoveNet 384/512 masih benchmark terpisah.</small>
    </details>}
 
