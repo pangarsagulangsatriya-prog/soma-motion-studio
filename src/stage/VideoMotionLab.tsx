@@ -380,7 +380,8 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
      </div>
      <ReplayPerformanceInspector performance={analysisSnapshot?.performance??null}/>
      <DuetV2BenchmarkPanel clipUrl={clip?.url??null}
-      clipName={clip?.name??null} sourceVideo={videoRef}/>
+      clipName={clip?.name??null} sourceVideo={videoRef}
+      analysisActive={analysisOn}/>
      <div className="vml-analysis-actions">
       <button type="button" className="vml-primary" disabled={!ready||analysisBusy}
        onClick={()=>analysisOn?stopAnalysis():void startAnalysis()}>
