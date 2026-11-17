@@ -1,6 +1,6 @@
 import type {Landmark} from '../engine/types.ts';
 export type ReplayWorkerResult={
- landmarks:Landmark[][];worldLandmarks:Landmark[][];poseMs:number;
+ landmarks:Landmark[][];worldLandmarks:Landmark[][];poseMs:number;rescuedCount?:number;
 };
 type Pending={
  id:number;resolve:(data:ReplayWorkerResult)=>void;reject:(e:Error)=>void;
@@ -33,7 +33,7 @@ export class ReplayInferenceWorkerClient{
    this.worker.postMessage({type:'init',base:import.meta.env.BASE_URL});
   });
  }
- async detect(video:HTMLVideoElement,clock:number):Promise<ReplayWorkerResult>{
+ async detect(video:HTMLVideoElement,clock:number,targetCount:1|2=1):Promise<ReplayWorkerResult>{
   if(this.stopped||this.pending)throw Error('Worker inference masih sibuk.');
   const bitmap=await createImageBitmap(video);
   if(this.stopped){bitmap.close();throw Error('Worker telah dihentikan.');}
@@ -41,7 +41,7 @@ export class ReplayInferenceWorkerClient{
    const id=++this.serial;
    const timeout=setTimeout(()=>this.fail(Error('Worker inference melebihi 2 detik.')),2000);
    this.pending={id,resolve,reject,timeout};
-   try{this.worker.postMessage({type:'frame',id,bitmap,clock},[bitmap]);}
+   try{this.worker.postMessage({type:'frame',id,bitmap,clock,targetCount},[bitmap]);}
    catch(e){bitmap.close();this.fail(e instanceof Error?e:Error(String(e)));}
   });
  }
