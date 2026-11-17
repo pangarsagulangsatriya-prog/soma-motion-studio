@@ -7,7 +7,11 @@ import {paintFloorCanvas} from '../simulator/floorCanvas.ts';
 import {floorArtworkSVG} from '../simulator/floor-artwork.ts';
 import {defaultFloorSpace,validateCameraFloorCalibration,type CameraFloorCalibration,type FloorSpace} from '../spatial/coordinates.ts';
 import {createFloorSession} from '../spatial/events.ts';
-import {cameraBinding,LiveFloorTrackingEngine,type LiveFloorStatus} from './LiveFloorTrackingEngine.ts';
+import {cameraBinding,cameraBindingKey,LiveFloorTrackingEngine,type LiveFloorStatus} from './LiveFloorTrackingEngine.ts';
+import {FLOOR_MARKERS} from '../../stage/GuidedSetupEngine.ts';
+import {differentialProjectedScan,resolveProjectedMatch,
+ type ProjectedMatch} from '../../stage/ProjectedMarkerCalibration.ts';
+import type {MarkerScan} from '../../stage/GuidedSetupEngine.ts';
 import type {MultiPoseGaitRouter} from './MultiPoseGaitRouter.ts';
 import {FloorRenderGate,floorPaintKey} from './FloorRenderGate.ts';
 import {FloorRealtimeTimingWindow} from './FloorRealtimeDiagnostics.ts';
@@ -72,7 +76,19 @@ export function LiveFloorWorkspace({
  const [status,setStatus]=useState<LiveFloorStatus>(tracker.status);
  const [message,setMessage]=useState('Ambil empat sudut lantai dari gambar kamera mentah.');
  const [physicalUnsaved,setPhysicalUnsaved]=useState(false);
+ const [projectedMarkers,setProjectedMarkers]=useState(false);
+ const [assistedBusy,setAssistedBusy]=useState(false);
+ const [assistedMessage,setAssistedMessage]=useState(
+  'Proyeksikan empat marker pada lantai, baca dengan kamera, lalu periksa hasil.');
+ const [projectedMatch,setProjectedMatch]=useState<ProjectedMatch|null>(null);
+ const [floorAligned,setFloorAligned]=useState(false);
+ const baseline=useRef<{
+  image:Uint8ClampedArray;width:number;height:number;camera:string
+ }|null>(null);
+ const scanVersion=useRef(0),dragCorner=useRef<number|null>(null);
+ const cameraScratch=useRef<HTMLCanvasElement|null>(null);
  const requestClose=()=>{
+  scanVersion.current++;onBlackout();onTestPattern(false);
   if(physicalUnsaved&&!window.confirm('Anotasi panggung belum diekspor. Tutup dan hilangkan data review ini?'))return;
   onClose();
  };
@@ -95,6 +111,7 @@ export function LiveFloorWorkspace({
  const qaReady=!!qaContextKey&&cameraOn&&status.confirmed&&projection.status.connected;
  const qaOutputLive=testPattern&&projection.status.connected&&projection.transport==='live';
  const beginQA=()=>{
+  setProjectedMarkers(false);baseline.current=null;setProjectedMatch(null);
   if(!qaReady){setQaMessage('Kalibrasi kamera harus dikonfirmasi dan proyektor tersambung.');return;}
   setQaSamples([]);setQaTargetIndex(0);setQaMessage('Aktifkan Live pada panel proyektor, lalu klik silang Q1 pada kamera.');
   onTestPattern(true);
@@ -172,11 +189,13 @@ export function LiveFloorWorkspace({
    const ghostIds=showPredictions?router.getGhosts(router.displayClockMs).map(g=>g.id):[];
    const activeFloor=tracker.floor??floor;
    const key=floorPaintKey(tracker.eventRevision,ghostIds,testPattern,
-    activeFloor.widthM,activeFloor.depthM,showPredictions)+':qa:'+String(qaTargetIndex);
+    activeFloor.widthM,activeFloor.depthM,showPredictions)+':qa:'+String(qaTargetIndex)+
+    ':projected:'+String(projectedMarkers);
    if(canvas&&renderGate.shouldPaint(key,now)){
     const current=(showPredictions?router.previewSession:tracker.session)??createFloorSession(activeFloor);
     const start=performance.now();
     paintFloorCanvas(canvas,current,{markersOnly:testPattern,showGrid:false,
+     projectedMarkers:testPattern&&projectedMarkers&&qaTargetIndex===null,
      qaTarget:testPattern&&qaTargetIndex!==null?CALIBRATION_QA_TARGETS[qaTargetIndex]:null});
     canvas.dataset.floorRevision=key;
     const paintedAt=performance.now();
@@ -213,7 +232,118 @@ export function LiveFloorWorkspace({
    scheduler.dispose();requestCurrent.current=()=>{};
   };
  },[tracker,router,realtime]);
- useEffect(()=>{requestCurrent.current();},[showPredictions,testPattern,floor,qaTargetIndex]);
+ useEffect(()=>{requestCurrent.current();},[
+  showPredictions,testPattern,floor,qaTargetIndex,projectedMarkers
+ ]);
+
+ const videoPixel=(e:PointerEvent<HTMLCanvasElement>)=>{
+  const v=videoRef.current,canvas=cameraCanvas.current;
+  if(!v||!canvas||!v.videoWidth||!v.videoHeight||v.readyState<2)return null;
+  const rect=canvas.getBoundingClientRect(),pixel={
+   x:(e.clientX-rect.left)/rect.width*canvas.width,
+   y:(e.clientY-rect.top)/rect.height*canvas.height
+  };
+  const box=videoRect(canvas.width,canvas.height,v.videoWidth,v.videoHeight);
+  const point={x:(pixel.x-box.x)/box.width,y:(pixel.y-box.y)/box.height};
+  return point.x>=0&&point.x<=1&&point.y>=0&&point.y<=1?point:null;
+ };
+ const pointerDown=(e:PointerEvent<HTMLCanvasElement>)=>{
+  if(qaTargetIndex!==null){choosePoint(e);return;}
+  const pt=videoPixel(e);
+  if(!pt){setMessage('Pilih titik di dalam gambar kamera.');return;}
+  const closest=marksAt.map((p,i)=>({i,d:Math.hypot(p.x-pt.x,p.y-pt.y)}))
+   .filter(x=>Number.isFinite(x.d)&&x.d<.043).sort((a,b)=>a.d-b.d)[0];
+  if(!closest){choosePoint(e);return;}
+  // Dragging an existing point remains a draft until apply+camera confirmation.
+  scanVersion.current++;setProjectedMarkers(false);baseline.current=null;
+  onTestPattern(false);onBlackout();onCalibrationDirty();
+  setQaSamples([]);setQaTargetIndex(null);setProjectedMatch(null);
+  dragCorner.current=closest.i;setSelect(closest.i);
+  e.currentTarget.setPointerCapture(e.pointerId);
+  setMessage('Geser sudut '+(closest.i+1)+' lalu terapkan empat titik.');
+ };
+ const pointerMove=(e:PointerEvent<HTMLCanvasElement>)=>{
+  const idx=dragCorner.current;
+  if(idx===null)return;
+  const pt=videoPixel(e);if(!pt)return;
+  setMarksAt(old=>old.map((p,i)=>i===idx?pt:p));
+ };
+ const pointerUp=(e:PointerEvent<HTMLCanvasElement>)=>{
+  if(dragCorner.current===null)return;
+  dragCorner.current=null;
+  if(e.currentTarget.hasPointerCapture(e.pointerId))
+   e.currentTarget.releasePointerCapture(e.pointerId);
+ };
+ const captureProjectedFrame=()=>{
+  const v=videoRef.current;
+  const key=cameraBindingKey(cameraBinding(v));
+  if(!v||!key||!cameraOn||v.readyState<2||v.videoWidth<1||v.videoHeight<1)
+   throw Error('Aktifkan kamera Body yang memperlihatkan seluruh lantai.');
+  const canvas=cameraScratch.current??document.createElement('canvas');
+  cameraScratch.current=canvas;canvas.width=320;
+  canvas.height=Math.max(80,Math.round(320*v.videoHeight/v.videoWidth));
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  if(!ctx)throw Error('Akses frame kamera tidak tersedia.');
+  ctx.drawImage(v,0,0,canvas.width,canvas.height);
+  return {image:ctx.getImageData(0,0,canvas.width,canvas.height).data,
+   width:canvas.width,height:canvas.height,camera:key};
+ };
+ const startProjected=async()=>{
+  const version=++scanVersion.current;
+  setAssistedBusy(true);setProjectedMatch(null);setAssistedMessage('Menyiapkan frame awal saat proyektor Blackout…');
+  onBlackout();onTestPattern(false);setProjectedMarkers(false);baseline.current=null;
+  try{
+   // Allow the browser output and camera exposure to settle after Blackout.
+   await new Promise<void>(r=>setTimeout(r,650));
+   if(version!==scanVersion.current)return;
+   baseline.current=captureProjectedFrame();
+   setQaTargetIndex(null);setQaSamples([]);
+   setProjectedMarkers(true);onTestPattern(true);
+   setAssistedMessage('Baseline tersimpan. Buka output, lalu tekan Live Test untuk memproyeksikan empat marker.');
+  }catch(e){setAssistedMessage(e instanceof Error?e.message:'Gagal membaca baseline kamera.');}
+  finally{if(version===scanVersion.current)setAssistedBusy(false);}
+ };
+ const stopProjected=()=>{
+  scanVersion.current++;baseline.current=null;setProjectedMarkers(false);
+  onTestPattern(false);onBlackout();setAssistedBusy(false);
+  setAssistedMessage('Marker dihentikan; Blackout diminta. Kalibrasi manual tetap tersedia.');
+ };
+ const scanProjected=async()=>{
+  if(!floorAligned){
+   setAssistedMessage('Konfirmasi dulu bahwa marker diproyeksikan pada bidang lantai yang benar.');return;
+  }
+  if(!projectedMarkers||!testPattern||!projection.status.connected||
+   projection.transport!=='live'){
+   setAssistedMessage('Buka output dan tampilkan marker melalui Live Test lebih dulu.');return;
+  }
+  const reference=baseline.current;
+  if(!reference){setAssistedMessage('Baseline belum ada. Ulangi persiapan marker.');return;}
+  const version=++scanVersion.current;setAssistedBusy(true);
+  try{
+   const scans:MarkerScan[]=[];
+   for(let i=0;i<5;i++){
+    if(version!==scanVersion.current)throw Error('Scan dibatalkan.');
+    if(!testPattern||projection.transport!=='live')throw Error('Output uji sudah tidak Live.');
+    const frame=captureProjectedFrame();
+    if(frame.camera!==reference.camera||frame.width!==reference.width||
+     frame.height!==reference.height)throw Error('Kamera berubah. Rekam ulang baseline.');
+    scans.push(differentialProjectedScan(frame.image,reference.image,frame.width,frame.height));
+    await new Promise<void>(r=>setTimeout(r,190));
+   }
+   const match=resolveProjectedMatch(scans);
+   if(version!==scanVersion.current)return;
+   // Candidate never activates the projector: revoke old geometry & blackout.
+   onBlackout();onTestPattern(false);setProjectedMarkers(false);baseline.current=null;
+   onCalibrationDirty();setQaSamples([]);setQaTargetIndex(null);
+   setMarksAt(match.cameraQuad.map(p=>({...p})));setSelect(0);
+   setProjectedMatch(match);
+   setAssistedMessage('Empat marker cocok selama lima frame. Periksa bidang kamera, geser jika perlu, terapkan dan konfirmasi secara manual.');
+  }catch(e){
+   if(version===scanVersion.current)
+    setAssistedMessage(e instanceof Error?e.message:'Scan gagal. Gunakan empat titik manual.');
+  }finally{if(version===scanVersion.current)setAssistedBusy(false);}
+ };
+
  const choosePoint=(e:PointerEvent<HTMLCanvasElement>)=>{
   const v=videoRef.current,canvas=cameraCanvas.current;
   if(!v||!canvas||!v.videoWidth||!v.videoHeight||v.readyState<2)return;
@@ -244,8 +374,11 @@ export function LiveFloorWorkspace({
    }catch(e){setQaMessage(e instanceof Error?e.message:'Titik QA gagal dibaca.');}
    return;
   }
-  // Any change of physical marker must revoke the old approved projection.
+  // Any change of physical marker must revoke prior projector approval and light.
+  scanVersion.current++;setProjectedMarkers(false);baseline.current=null;
+  onTestPattern(false);onBlackout();
   onCalibrationDirty();setQaSamples([]);setQaTargetIndex(null);
+  setProjectedMatch(null);
   setMarksAt(old=>{
    const copy=old.slice(0,4);copy[select]={x,y};
    // Selecting a later point is allowed; the Apply button still requires all 4.
@@ -302,8 +435,10 @@ export function LiveFloorWorkspace({
     </details>
     <div className="live-floor-heading">01 / KALIBRASI KAMERA → LANTAI</div>
     <div className="live-floor-view">
-     <canvas ref={cameraCanvas} width={800} height={450} onPointerDown={choosePoint}
-      aria-label="Gambar kamera mentah. Klik posisi sudut lantai sesuai urutan 1 sampai 4."/>
+     <canvas ref={cameraCanvas} width={800} height={450}
+      onPointerDown={pointerDown} onPointerMove={pointerMove}
+      onPointerUp={pointerUp} onPointerCancel={pointerUp}
+      aria-label="Gambar kamera mentah. Klik posisi sudut atau geser empat titik dengan pointer."/>
     </div>
     <p className="live-floor-help">Kamera yang sama dengan SOMA Body. Klik sudut lantai di gambar mentah, sesuai nomor. Jangan ikuti posisi kaki yang sedang terangkat.</p>
     <div className="live-floor-corners" role="group" aria-label="Pilih sudut lantai">
@@ -334,6 +469,35 @@ export function LiveFloorWorkspace({
      <b>{!cameraOn?'Kamera mati':status.confirmed?'Kamera lantai aktif':status.calibrated?'Perlu konfirmasi':'Belum dikalibrasi'}</b>
      <span>{message}</span>
     </div>
+    <details className="live-floor-validation-drawer soma-projected-assist">
+     <summary>S6.2 / Assisted Auto Calibration <span>Marker proyeksi → kamera → drag → QA</span></summary>
+     <p>Empat lingkaran warna muncul pada bidang proyektor FLOOR. Kamera memotret keadaan Blackout terlebih dahulu, kemudian membandingkannya dengan lima frame cahaya marker. Hasil cocok warna masih berupa draf.</p>
+     <div className="soma-projected-fiducials" aria-label="Empat marker proyeksi berurutan">
+      {FLOOR_MARKERS.map(m=><div key={m.id}>
+       <span style={{backgroundColor:m.hex}}/><small>{m.label}</small>
+      </div>)}
+     </div>
+     <label className="live-floor-confirm"><input type="checkbox" checked={floorAligned}
+      onChange={e=>setFloorAligned(e.target.checked)}/>
+      <span>Saya melihat bidang raster proyektor tepat pada area lantai yang hendak dikalibrasi, dan siap menggunakan Blackout.</span>
+     </label>
+     <div className="live-floor-tools">
+      <button type="button" disabled={!cameraOn||assistedBusy||!floorAligned}
+       onClick={()=>void startProjected()}>1 · Rekam baseline & siapkan marker</button>
+      <button type="button" onClick={onOpenOutput}>2 · Buka jendela proyektor</button>
+      <button type="button" disabled={!projectedMarkers||!projection.status.connected||assistedBusy}
+       onClick={onLive}>3 · Tampilkan marker (Live Test)</button>
+      <button type="button" disabled={!projectedMarkers||!testPattern||
+       !projection.status.connected||projection.transport!=='live'||assistedBusy}
+       onClick={()=>void scanProjected()}>
+       {assistedBusy?'Membaca lima frame…':'4 · Cocokkan marker dari kamera'}</button>
+      <button type="button" onClick={stopProjected}>Blackout / Batalkan</button>
+     </div>
+     {projectedMatch&&<p>Deteksi {projectedMatch.scans} frame; keyakinan warna minimum {
+      Math.round(projectedMatch.confidence*100)}%. Sudut masih bisa digeser pada video sebelum diterapkan.</p>}
+     <p role="status">{assistedMessage}</p>
+     <p className="live-floor-help">Fallback: klik atau drag keempat sudut pada video, lalu Terapkan 4 titik kamera. Titik proyeksi tidak menggantikan bukti posisi lantai fisik. Lanjutkan uji silang lima titik setelah konfirmasi kamera; hasil QA tetap diperiksa operator.</p>
+    </details>
     <CalibrationQAPanel activeIndex={qaTargetIndex} contextKey={qaContextKey}
      samples={qaSamples} ready={qaReady} outputLive={qaOutputLive} message={qaMessage}
      onBegin={beginQA} onCancel={cancelQA}
