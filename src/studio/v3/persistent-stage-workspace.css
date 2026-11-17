@@ -1,0 +1,329 @@
+/* S6.8.2 — Persistent Footprints Stage Workspace
+ * This stylesheet comes last. It changes presentation only: camera, BODY and
+ * FLOOR canvases remain mounted, and projector gates stay with their engines. */
+.fp-stage-workspace.fp-persistent-layout:not(.fp-operator-mode){
+ padding-bottom:16px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-layout{
+ align-items:start;gap:12px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-main{gap:10px}
+/* Older source/preparing CSS replaced the stage with a full-screen launcher.
+   Retain the same stage slots for every live camera lifecycle. */
+.fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-overview:not([hidden]),
+.fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-overview:not([hidden]),
+.fp-stage-workspace.fp-persistent-layout[data-screen=live] .fp-stage-overview:not([hidden]),
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview:not([hidden]){
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) minmax(198px,.34fr)!important;
+ grid-template-rows:auto minmax(0,1fr);
+ gap:11px;align-items:stretch;min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-overview[hidden]{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-side-previews,
+.fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-side-previews,
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-side-previews,
+.fp-stage-workspace.fp-persistent-layout[data-source-ready=false] .fp-stage-side-previews,
+.fp-stage-workspace.fp-persistent-layout[data-screen=live] .fp-stage-side-previews{
+ display:grid!important;
+}
+/* Short initial onboarding instead of a second full-screen workspace. */
+.fp-stage-workspace.fp-persistent-layout .fp-source-launchpad,
+.fp-stage-workspace.fp-persistent-layout .fp-phone-wait{
+ grid-column:1/-1;grid-row:1;min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-launchpad{
+ min-height:0!important;
+ grid-template-columns:minmax(190px,.8fr) minmax(0,1.4fr)!important;
+ gap:16px!important;
+ padding:16px 19px!important;
+ animation:none;
+ background:#17251b;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-lead{gap:7px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-lead h2{
+ font-size:clamp(18px,1.65vw,24px);max-width:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-lead>p{
+ line-height:1.45;font-size:11px;max-width:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-led-note{
+ margin-top:0;font-size:9px;line-height:1.4;max-width:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-groups{gap:7px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice-group{gap:5px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice{
+ min-height:54px;padding:9px;flex-direction:row;align-items:center;
+ gap:8px;box-shadow:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice:hover:not(:disabled){
+ transform:none;box-shadow:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice-icon{
+ width:26px;height:26px;flex-basis:26px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice-copy{gap:2px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice-copy strong{font-size:11px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice-copy small{
+ font-size:9px;line-height:1.25;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-choice-arrow{display:none}
+.fp-stage-workspace.fp-persistent-layout .fp-phone-wait{
+ min-height:120px;gap:7px;padding:16px 20px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-phone-wait h2{font-size:19px}
+.fp-stage-workspace.fp-persistent-layout .fp-phone-wait p{font-size:11px;max-width:100%}
+.fp-stage-workspace.fp-persistent-layout .fp-phone-wait button{min-height:38px;padding:8px 11px}
+/* Preview first: the software render, not the incoming webcam, is the
+   dominant pane. Both surfaces stay mounted even when one is visually hidden. */
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews{
+ grid-column:1;grid-row:2;
+ display:grid!important;
+ grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
+ grid-template-rows:auto minmax(0,1fr)!important;
+ gap:8px;min-width:0;min-height:330px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-preview-toolbar{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ grid-row:1;grid-column:1/-1;gap:8px;
+ min-height:41px;padding:5px 9px;
+ border:1px solid #3a5540;border-radius:8px;
+ background:#1b2920;
+}
+.fp-stage-preview-heading{display:flex;flex-wrap:wrap;gap:5px 12px;
+ align-items:center;min-width:0}
+.fp-stage-preview-heading>span{
+ display:flex;align-items:center;gap:7px;
+ color:#e4efd9;font-size:11px;font-weight:730;letter-spacing:.045em;
+}
+.fp-stage-preview-heading small{font-size:10px;color:#a2bba3}
+.fp-stage-preview-modes{display:flex;gap:2px;padding:3px;
+ border:1px solid #425845;border-radius:7px;background:#132019;
+}
+.fp-stage-preview-modes button{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-height:30px;padding:5px 10px;background:transparent;
+ border:1px solid transparent;border-radius:5px;
+ font-size:11px;color:#b7cdb8;cursor:pointer;
+ transition:background .14s,color .14s,border-color .14s;
+}
+.fp-stage-preview-modes button:hover{background:#304332;color:#edf5e7}
+.fp-stage-preview-modes button[aria-pressed=true]{
+ background:#3b523a;border-color:#719069;color:#ecf4df;font-weight:700;
+}
+.fp-stage-preview-modes button:focus-visible{
+ outline:2px solid #d5ecac;outline-offset:2px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-preview-floor{
+ grid-column:1;grid-row:2;min-width:0;min-height:0;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-preview-body{
+ grid-column:2;grid-row:2;min-width:0;min-height:0;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews[data-preview-mode=floor] .fp-preview-floor,
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews[data-preview-mode=body] .fp-preview-body{
+ grid-column:1/-1;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews[data-preview-mode=floor] .fp-preview-body,
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews[data-preview-mode=body] .fp-preview-floor{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-surface{
+ display:flex;min-height:0;border:1px solid #3c5441;
+ background:#101b14;animation:none;box-shadow:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-surface-head{
+ min-height:35px;padding:7px 10px;font-size:10px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-canvas-area{
+ min-height:255px!important;max-height:clamp(260px,41dvh,520px);
+ flex:1 1 auto;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews canvas{
+ width:100%;height:auto;max-height:100%;object-fit:contain;
+}
+.fp-stage-workspace.fp-persistent-layout[data-source-ready=false] .fp-stage-surface-foot{
+ display:flex!important;
+}
+/* Camera stays in the same viewport, but as an input monitor. */
+.fp-stage-workspace.fp-persistent-layout .fp-stage-overview .fp-stage-video{
+ grid-column:2;grid-row:2;min-width:0;min-height:0;
+ align-self:stretch;border-color:#3c5140;box-shadow:none;animation:none;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video-content,
+.fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-video-content,
+.fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-video-content,
+.fp-stage-workspace.fp-persistent-layout[data-source-ready=false] .fp-stage-video-content{
+ min-height:180px!important;max-height:none;
+ background:#060a07;align-items:center;justify-content:center;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video-content>canvas,
+.fp-stage-workspace.fp-persistent-layout[data-screen=live] .fp-stage-video-content>canvas,
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-video-content>canvas{
+ display:block;width:100%!important;height:auto!important;
+ max-height:none!important;aspect-ratio:16/9;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video .fp-stage-surface-foot{
+ display:flex!important;padding:7px 9px;gap:6px;flex-wrap:wrap;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-correction,
+.fp-stage-workspace.fp-persistent-layout .fp-source-warming{
+ inset:auto 7px 9px!important;width:calc(100% - 14px);left:7px;right:7px;
+ max-width:none;transform:none;padding:9px;gap:5px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-source-correction svg{width:17px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-correction strong,
+.fp-stage-workspace.fp-persistent-layout .fp-source-warming strong{font-size:12px}
+.fp-stage-workspace.fp-persistent-layout .fp-source-correction p,
+.fp-stage-workspace.fp-persistent-layout .fp-source-warming p{font-size:10px;line-height:1.4}
+.fp-stage-workspace.fp-persistent-layout .fp-source-correction button{min-height:36px;padding:7px;font-size:10px}
+/* Calibration temporarily makes the camera larger while retaining both
+   BODY/FLOOR previews and the same Inspector (no canvas remount). */
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview:not([hidden]){
+ grid-template-columns:minmax(0,1.4fr) minmax(190px,.6fr)!important;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview .fp-stage-video{
+ grid-column:1;grid-row:2;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview .fp-stage-side-previews{
+ grid-column:2;grid-row:2;grid-template-columns:1fr;
+ grid-template-rows:auto repeat(2,minmax(0,1fr))!important;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-preview-body{
+ grid-column:1;grid-row:2;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-preview-floor{
+ grid-column:1;grid-row:3;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-side-previews .fp-stage-canvas-area{
+ min-height:115px!important;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-video-content{
+ min-height:300px!important;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-video-content>canvas,
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-calibration-overlay svg{
+ width:100%!important;height:auto!important;aspect-ratio:16/9;
+}
+.fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-preview-modes{
+ display:none;
+}
+/* On laptop widths, preserve a two-column stage + Inspector. Old CSS
+   changed the Inspector into a fullscreen overlay at 1150px. */
+@media(min-width:900px){
+ .fp-stage-workspace.fp-persistent-layout[data-inspector-open=true][data-context=inspector] .fp-stage-layout{
+  grid-template-columns:minmax(0,1fr) minmax(260px,290px)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){
+  position:sticky!important;top:75px!important;right:auto!important;bottom:auto!important;
+  width:auto!important;min-width:0;min-height:340px!important;
+  height:min(710px,calc(100dvh - 155px))!important;max-height:none!important;
+  box-shadow:none!important;z-index:10;
+  padding-bottom:0!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout[data-inspector-open=true] .fp-unified-transport.fp-compact-transport{
+  position:sticky!important;bottom:8px!important;left:auto!important;right:auto!important;
+  width:auto!important;margin:10px 0 4px!important;
+ }
+}
+@media(min-width:900px) and (max-width:1270px){
+ .fp-stage-workspace.fp-persistent-layout[data-screen=live] .fp-stage-overview:not([hidden]),
+ .fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-overview:not([hidden]),
+ .fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-overview:not([hidden]){
+  grid-template-columns:minmax(0,1fr) minmax(174px,.33fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-heading small{display:none}
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews{
+  grid-template-columns:minmax(0,1fr) minmax(0,.85fr);
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-canvas-area{
+  min-height:215px!important;
+ }
+}
+/* Tablet and phones: same mounted workspace, Inspector in the document flow
+   below preview rather than a blocking fullscreen modal. */
+@media(max-width:899px){
+ .fp-stage-workspace.fp-persistent-layout[data-inspector-open=true][data-context=inspector] .fp-stage-layout,
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-layout{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){
+  position:relative!important;top:auto!important;right:auto!important;
+  bottom:auto!important;left:auto!important;z-index:10!important;
+  min-width:0!important;width:100%!important;min-height:0!important;
+  height:auto!important;max-height:none!important;
+  border-radius:9px!important;box-shadow:none!important;
+  padding-bottom:0!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-inspector .fp-flow-inspector{
+  height:auto;min-height:200px;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-inspector .fp-flow-inspector-body{
+  overflow:visible;max-height:none;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-flow-nav{position:relative!important;top:auto!important;z-index:20}
+ .fp-stage-workspace.fp-persistent-layout:not(.fp-operator-mode){
+  padding-bottom:115px;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-source-launchpad{
+  grid-template-columns:1fr!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview:not([hidden]){
+  grid-template-columns:minmax(0,1fr) minmax(170px,.7fr)!important;
+ }
+}
+@media(max-width:700px){
+ .fp-stage-workspace.fp-persistent-layout[data-screen=live] .fp-stage-overview:not([hidden]),
+ .fp-stage-workspace.fp-persistent-layout[data-screen=source] .fp-stage-overview:not([hidden]),
+ .fp-stage-workspace.fp-persistent-layout[data-screen=preparing] .fp-stage-overview:not([hidden]),
+ .fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview:not([hidden]){
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto auto auto;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews{
+  grid-column:1;grid-row:2;grid-template-columns:1fr;
+  grid-template-rows:auto repeat(2,minmax(0,1fr))!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-toolbar{
+  grid-row:1;grid-column:1;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-preview-floor{
+  grid-column:1;grid-row:2;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-preview-body{
+  grid-column:1;grid-row:3;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews[data-preview-mode=floor] .fp-preview-floor,
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews[data-preview-mode=body] .fp-preview-body{
+  grid-column:1;grid-row:2;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-overview .fp-stage-video,
+ .fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview .fp-stage-video{
+  grid-column:1;grid-row:3;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-video-content{min-height:165px!important}
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-side-previews .fp-stage-canvas-area{
+  min-height:185px!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-toolbar{gap:7px}
+ .fp-stage-workspace.fp-persistent-layout .fp-source-launchpad{
+  padding:13px!important;gap:14px!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout .fp-source-choice{min-height:53px}
+ .fp-stage-workspace.fp-persistent-layout .fp-source-led-note{display:none}
+}
+@media(max-width:420px){
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-modes button{padding:5px 7px;font-size:10px}
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-heading small{display:none}
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-toolbar{padding:6px}
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-surface-head{padding:8px}
+ .fp-stage-workspace.fp-persistent-layout .fp-source-choice-grid{gap:5px}
+ .fp-stage-workspace.fp-persistent-layout .fp-source-choice{padding:8px;gap:5px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-modes button{
+  animation:none!important;transition:none!important;
+ }
+}
