@@ -122,7 +122,7 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
  };
  const run=async()=>{
   const video=videoRef.current;
-  if(!clipUrl||!video||running||live)return;
+  if(!clipUrl||!video||running||live||analysisActive)return;
   cancelRef.current=false;setRunning(true);setError('');setProgress(0);setResults([]);
   const completed:DuetV2Benchmark[]=[];
   try{
@@ -160,7 +160,7 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
  };
  const startLive=async()=>{
   const video=sourceVideo.current;
-  if(!video||!clipUrl||running)return;
+  if(!video||!clipUrl||running||analysisActive)return;
   cancelRef.current=false;setError('');setPhase('Menyiapkan preview D4…');
   try{
    const worker=ensureWorker();
@@ -216,13 +216,17 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
    <div className="duet-v2-actions">
     <label><input type="checkbox" checked={include33} disabled={running||live}
      onChange={e=>setInclude33(e.target.checked)}/> Jalankan D3 untuk 512</label>
-    <button type="button" disabled={!clipUrl||running||live}
+    <button type="button" disabled={!clipUrl||running||live||analysisActive}
      onClick={()=>void run()}>D1 · Uji 192 frame (384 vs 512)</button>
-    <button type="button" disabled={!clipUrl||running}
+    <button type="button" disabled={!clipUrl||running||analysisActive}
      onClick={()=>live?stop():void startLive()}>
      {live?'Hentikan preview D4':'D4 · Preview live A/B'}</button>
     {(running||live)&&<button type="button" onClick={stop}>Hentikan semua</button>}
    </div>
+   {analysisActive&&<p className="duet-v2-error">
+    Hentikan analisis Pose / Gait lama sebelum menguji Duet V2 agar
+    dua worker tidak berebut CPU dan hasil latency tetap dapat dibandingkan.
+   </p>}
    <p role="status">{phase} · {progress}%</p>
    {error&&<p role="alert" className="duet-v2-error">{error}</p>}
    {!!results.length&&<>
@@ -231,7 +235,7 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
       <strong>{r.resolution} px</strong>
       <span>Dua orang: {r.twoDetected}/{r.frames} ({percent(r.twoDetected,r.frames)})</span>
       <span>A/B terlacak: {percent(r.twoTracked,r.frames)}</span>
-      <span>Dua pose 33: {percent(r.twoPose33,r.frames)}</span>
+      <span>Dua pose 33: {r.resolution===384||!include33?'Belum diuji':percent(r.twoPose33,r.frames)}</span>
       <span>Detektor P95: {metric(r.detectorP95Ms)}</span>
       <span>Pipeline P95: {metric(r.totalP95Ms)}</span>
       <span>Ambigu: {r.uncertainFrames} frame</span>
