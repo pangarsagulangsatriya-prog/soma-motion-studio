@@ -262,7 +262,7 @@ export function FootprintsStageWorkspace({
     <button type="button" aria-pressed={composerOpen} onClick={()=>setComposerOpen(v=>!v)}><SlidersHorizontal size={15}/> Surface Composer</button>
    </div>
   </div>}
-  {composerOpen&&!operatorMode&&<SurfaceComposer bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} cameraOn={cameraOn} performerCount={performerCount} floorReady={floorStatus.confirmed&&cameraMatched} onClose={()=>setComposerOpen(false)}/>}
+  {composerOpen&&!operatorMode&&<SurfaceComposer bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} cameraOn={cameraOn} performerCount={performerCount} floorReady={floorStatus.confirmed&&cameraMatched} floorEvents={()=>tracker.session?.events??[]} identitySafe={!identityStatus.ambiguous} onClose={()=>setComposerOpen(false)}/>}
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
