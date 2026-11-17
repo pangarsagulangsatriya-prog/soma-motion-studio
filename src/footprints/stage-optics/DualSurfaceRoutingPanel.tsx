@@ -29,7 +29,7 @@ type Props={
  frameRef:RefObject<StageRouteInput|null>;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;
  floorCanvas:RefObject<HTMLCanvasElement|null>;
- legacyProjection:Projection;experimentLocked:boolean;
+ legacyProjection:Projection;experimentLocked?:boolean;
 };
 const labels:{[K in StageSurface]:string}={body:'BODY · paha hingga kaki',floor:'FLOOR · arsip pada pad'};
 const signal=()=>{
@@ -37,7 +37,7 @@ const signal=()=>{
  ref.current={body:new ProjectionLink(),floor:new ProjectionLink()};
  return ref.current;
 };
-export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked}:Props){
+export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false}:Props){
  const links=useRef<Record<StageSurface,ProjectionLink>|null>(null);
  if(!links.current)links.current=signal();
  const ports=links.current;
