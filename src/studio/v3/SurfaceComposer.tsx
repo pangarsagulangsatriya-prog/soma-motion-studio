@@ -29,7 +29,7 @@ type Props={
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
  identitySafe:boolean;onClose:()=>void;
 };
-export function SurfaceComposer({bodyCanvas,floorCanvas,frameRef,videoRef,router,floorTracker,projection,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose}:Props){
  const [selected,setSelected]=useState<Surface>('BODY A');
  const [composition,setComposition]=useState<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
  const [media,setMedia]=useState<Media[]>([]);
@@ -124,7 +124,7 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,frameRef,videoRef,router
    return !!item&&(item instanceof HTMLImageElement?item.complete&&item.naturalWidth>0:item.readyState>=2);
   });
  };
- const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true)=>{
+ const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true,physical=false)=>{
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
@@ -167,7 +167,8 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,frameRef,videoRef,router
     g.globalCompositeOperation='source-over';
    }
    let envelope=1;
-   const cue=effectClock.current.get(layer.id);
+   const rawCue=effectClock.current.get(layer.id);
+   const cue=physical&&rawCue?.kind.startsWith('simulation:')?undefined:rawCue;
    if(layer.recipe!=='none'){
     if(!cue)envelope=0;
     else{const age=now-cue.started;
@@ -190,10 +191,10 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,frameRef,videoRef,router
    if(preview){const ctx=preview.getContext('2d');if(ctx)render(ctx,selectedRef.current,preview.width,preview.height);}
    const body=bodyOutput.current,floor=floorOutput.current;
    if(body){const ctx=body.getContext('2d');if(ctx){
-    render(ctx,'BODY A',body.width,body.height,true);
-    if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false);
+    render(ctx,'BODY A',body.width,body.height,true,true);
+    if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false,true);
    }}
-   if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height);}
+   if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height,true,true);}
    const masks=maskCache.current;
    const live=previewLiveRef.current&&!blackoutRef.current;
    const cameraKey=floorRef.current.boundCamera;
@@ -237,7 +238,7 @@ export function SurfaceComposer({bodyCanvas,floorCanvas,frameRef,videoRef,router
  const triggerTest=(kind:'contact'|'move'|'release')=>{
   const recipe=kind==='contact'?'contact-reveal':kind==='move'?'slide-hold':'pivot-decay';
   for(const surface of surfaces)for(const item of compositionRef.current[surface])
-   if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind});
+   if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind:'simulation:'+kind});
   setTestEvent(kind);setEventInfo('SIMULASI '+kind+' (tidak dikirim ke tracking)');
  };
  const points=(e:PointerEvent<HTMLCanvasElement>)=>{if(!editMask||!layer)return;const rect=e.currentTarget.getBoundingClientRect();const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));const pts=layer.points.slice();let index=pts.findIndex(p=>Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height)<24);if(index<0){if(pts.length>=16)return;pts.push([x,y]);}else pts[index]=[x,y];patch({points:pts,mask:'polygon'});};
