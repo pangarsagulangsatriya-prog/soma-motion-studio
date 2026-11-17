@@ -323,6 +323,11 @@ export default function App(){
      onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
       setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
      onOpenLiveFloor={openLiveFloor}
+     onOpenProjection={()=>{
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(false);setModal(null);setClean(false);
+      cameraCue.close();setProjectionActive(true);
+     }}
      operatorMode={footprintsOperator}
      onExitOperator={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
       setFootprintsOperator(false);}}
