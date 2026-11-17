@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type PointerEvent,type RefObject,type ChangeEvent} from 'react';
+import {useEffect,useRef,useState,type PointerEvent,type RefObject,type ChangeEvent,type KeyboardEvent} from 'react';
 import type {MotionFrame} from '../engine/types.ts';
 import type {LiveFloorTrackingEngine} from '../footprints/live/LiveFloorTrackingEngine.ts';
 import {cameraBinding,cameraBindingKey} from '../footprints/live/LiveFloorTrackingEngine.ts';
@@ -39,7 +39,43 @@ export function GuidedStageSetup({
  const [depthM,setDepthM]=useState(()=>floorTracker.floor?.depthM??6);
  const [skipArchive,setSkipArchive]=useState(false);
  const [message,setMessage]=useState('');
+ const [compact,setCompact]=useState(false);
+ const panelRef=useRef<HTMLElement>(null);
+ const headingRef=useRef<HTMLHeadingElement>(null);
  const cameraPreview=useRef<HTMLCanvasElement>(null),bodyPreview=useRef<HTMLCanvasElement>(null),floorPreview=useRef<HTMLCanvasElement>(null);
+ useEffect(()=>{
+  const media=window.matchMedia('(max-width: 1050px)');
+  const sync=()=>setCompact(media.matches);
+  sync();media.addEventListener('change',sync);
+  return()=>media.removeEventListener('change',sync);
+ },[]);
+ useEffect(()=>{
+  if(!open)return;
+  const prior=document.activeElement;
+  const focus=window.requestAnimationFrame(()=>headingRef.current?.focus({preventScroll:true}));
+  const originalOverflow=document.body.style.overflow;
+  if(compact)document.body.style.overflow='hidden';
+  return()=>{
+   window.cancelAnimationFrame(focus);
+   if(compact)document.body.style.overflow=originalOverflow;
+   // Explicit close restores focus to the Setup button from the parent.
+   void prior;
+  };
+ },[open,compact]);
+ const panelKeyDown=(event:KeyboardEvent<HTMLElement>)=>{
+  // Prevent global stage shortcuts (including Space / emergency controls)
+  // from being triggered by interaction with setup fields.
+  event.stopPropagation();
+  if(event.key==='Escape'){event.preventDefault();onClose();return;}
+  if(!compact||event.key!=='Tab'||!panelRef.current)return;
+  const controls=Array.from(panelRef.current.querySelectorAll<HTMLElement>(
+   'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,[tabindex]:not([tabindex="-1"])'
+  )).filter(node=>node.getClientRects().length>0);
+  if(!controls.length)return;
+  const first=controls[0],last=controls[controls.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ };
  const currentSource=session.meta.source;
  // Poll for presentation only: all readiness decisions still derive from the
  // current frame, camera binding, identity router and existing floor engine.
@@ -170,12 +206,19 @@ export function GuidedStageSetup({
   else enterPerform();
  };
  const sourceLabel=currentSource==='phone'?'Kamera HP':currentSource==='laptop'?'Webcam laptop':'Simulasi';
- return <section className="soma-guided-setup soma-guided-v2" hidden={!open}
-  aria-label="Guided Stage Setup 2.0" aria-hidden={!open}>
+ return <>
+  <div className="soma-guide-mobile-scrim" hidden={!open||!compact}
+   aria-hidden="true" onPointerDown={onClose}/>
+  <section ref={panelRef} className="soma-guided-setup soma-guided-v2 soma-guided-sidecar"
+   hidden={!open} data-step={step} data-camera-ready={gate.input.ready}
+   role={compact?'dialog':'complementary'} aria-modal={compact?true:undefined}
+   aria-labelledby="soma-guide-panel-title" onKeyDown={panelKeyDown}>
   <header>
-   <div><small>SOMA / S6.5.1 · GUIDED SETUP 2.0</small><h2>Siapkan panggung</h2>
-    <p>Hubungkan sumber, periksa gerak kaki, lalu atur media panggung.</p></div>
-   <button type="button" onClick={onClose} aria-label="Tutup setup">Tutup</button>
+   <div><small>STAGE SETUP · {step+1} / 3</small>
+    <h2 id="soma-guide-panel-title" ref={headingRef} tabIndex={-1}>Siapkan panggung</h2>
+    <p>{steps[step].hint}. {step===0?'Hubungkan kamera untuk mulai.':step===1?'Periksa pijakan di preview.':'Pilih media atau latihan langsung.'}</p></div>
+   <button type="button" className="soma-guide-close" onClick={onClose}
+    aria-label="Tutup Guided Setup" title="Tutup panel (Esc)">✕</button>
   </header>
   <nav className="soma-guided-steps" aria-label="Tahap setup">
    {steps.map((item,i)=>{
@@ -273,28 +316,33 @@ export function GuidedStageSetup({
      </details>
     </div>}
    </div>
-   <aside className="soma-guide-preview" aria-label="Preview inline SOMA">
+   <aside className="soma-guide-preview" aria-label="Preview kamera pada Guided Setup">
     <div className="soma-guide-preview-head"><b>Kamera langsung</b><span data-ready={gate.input.ready}>{gate.input.ready?'LIVE':'OFFLINE'}</span></div>
     <canvas ref={cameraPreview} width={800} height={450} onPointerDown={selectPoint}
      data-editing={step===1} aria-label={step===1?'Klik sudut lantai pada video kamera mentah':'Preview kamera SOMA'}/>
     {!gate.input.ready&&<p className="soma-guide-preview-help">Pilih dan hubungkan kamera untuk melihat panggung.</p>}
-    <div className="soma-guide-preview-pair">
-     <div><small>BODY MASK</small><canvas ref={bodyPreview} width={320} height={180}
-       aria-label="Preview mask tubuh dari engine Footprints"/></div>
-     <div><small>FLOOR PAD</small><canvas ref={floorPreview} width={320} height={180}
-       aria-label="Preview lantai dari engine FloorSession"/></div>
-    </div>
+    <details className="soma-guide-extra-previews">
+     <summary>Preview tambahan · BODY / FLOOR</summary>
+     <div className="soma-guide-preview-pair">
+      <div><small>BODY MASK</small><canvas ref={bodyPreview} width={320} height={180}
+        aria-label="Preview mask tubuh dari engine Footprints"/></div>
+      <div><small>FLOOR PAD</small><canvas ref={floorPreview} width={320} height={180}
+        aria-label="Preview lantai dari engine FloorSession"/></div>
+     </div>
+    </details>
     <p className="soma-guide-preview-note">{step===1?'Klik keempat sudut pada bidang video di atas. Pastikan seluruh telapak terlihat.':'Preview berasal dari engine SOMA yang sedang berjalan, tanpa membuka kamera kedua.'}</p>
    </aside>
   </div>
   <footer className="soma-guide-footer">
    <button type="button" disabled={step===0} onClick={()=>{setStep(s=>(s-1) as 0|1|2);setMessage('');}}>Kembali</button>
    <div role="status" aria-live="polite" className="soma-guide-gate-note">
-    <span data-ready={currentGate.ready}>{currentGate.ready?'✓ Siap':currentGate.reason}</span>
+    <span data-ready={currentGate.ready}>{currentGate.ready?'✓ Siap melanjutkan':currentGate.reason}</span>
     {message&&<small>{message}</small>}
    </div>
    <button type="button" className="soma-setup-primary" disabled={!currentGate.ready}
-    onClick={next}>{step===2?'Buka Perform':'Lanjutkan'}</button>
+    title={!currentGate.ready?currentGate.reason:undefined}
+    onClick={next}>{step===2?'Buka Perform':'Lanjutkan →'}</button>
   </footer>
- </section>;
+ </section>
+ </>;
 }
