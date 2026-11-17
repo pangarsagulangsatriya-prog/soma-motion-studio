@@ -144,18 +144,37 @@ export class VideoPoseGaitEngine{
  }
  async init():Promise<void>{
   if(this.disposed)throw Error('Analisis sudah dihentikan.');
-  if(this.model)return;
+  if(this.ready)return;
+  if(!this.workerDisabled&&typeof Worker!=='undefined'&&
+   typeof createImageBitmap==='function'){
+   let worker:ReplayInferenceWorkerClient|null=null;
+   try{
+    worker=new ReplayInferenceWorkerClient();await worker.init();
+    if(this.disposed){worker.dispose();return;}
+    this.worker=worker;this.meter.setBackend('worker');
+    this.handModelStatus=worker.handReady?'ready':'unavailable';
+    this.handModelReason=worker.handReady?'Detail tangan adaptif di worker.':
+     'Worker pose aktif; tangan tidak tersedia: '+worker.handReason;
+    this.status='Analisis worker siap. Video dan AI berjalan terpisah.';
+    this.emit(true);return;
+   }catch{worker?.dispose();this.workerDisabled=true;}
+  }
+  await this.loadMainModels();
+ }
+ private async loadMainModels(){
+  if(this.disposed||this.model)return;
   const vision=await import('@mediapipe/tasks-vision');
   const files=await vision.FilesetResolver.forVisionTasks(`${import.meta.env.BASE_URL}wasm`);
   if(this.disposed)return;
-  const model=await vision.PoseLandmarker.createFromOptions(files,{
+  const pose=await vision.PoseLandmarker.createFromOptions(files,{
    baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`,delegate:'CPU'},
    runningMode:'VIDEO',numPoses:2,minPoseDetectionConfidence:.6,
    minPosePresenceConfidence:.6,minTrackingConfidence:.6,outputSegmentationMasks:false
   });
-  if(this.disposed){model.close();return;}
-  this.model=model;this.status='Model Pose siap. Putar video untuk membaca gerak.';
-  // Optional detector: if hand loading fails, pose and limbs still work.
+  if(this.disposed){pose.close();return;}
+  this.model=pose;this.meter.setBackend('main');
+  this.handModelStatus='loading';
+  this.status='Fallback CPU utama aktif; detail tangan adaptif.';
   try{
    const hand=await vision.HandLandmarker.createFromOptions(files,{
     baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/hand_landmarker.task`,delegate:'CPU'},
@@ -164,63 +183,140 @@ export class VideoPoseGaitEngine{
    });
    if(this.disposed){hand.close();return;}
    this.handModel=hand;this.handModelStatus='ready';
-   this.handModelReason='Detail 21 landmark tangan aktif.';
+   this.handModelReason='Model tangan siap (CPU).';
   }catch(error){
    this.handModelStatus='unavailable';
-   this.handModelReason='Model tangan gagal dimuat: '+
-    (error instanceof Error?error.message:'model tidak tersedia');
+   this.handModelReason='Model tangan gagal: '+(error instanceof Error?error.message:String(error));
   }
-  this.emit();
+  this.emit(true);this.consumeForced();
  }
- /** Auto is the default for every MP4. Manual override stays in the advanced lab. */
  setPerformers(choice:'auto'|1|2){
   const next=choice==='auto'?null:choice;
   if(next===this.manualCount)return;
-  this.manualCount=next;
-  this.reset('Mode jumlah aktor berubah. Analisis dimulai ulang.');
+  this.manualCount=next;this.reset('Mode aktor diubah. Analisis dimulai ulang.');
  }
  reset(reason='Seek atau loop: event lama dikosongkan agar tidak tercampur.'){
-  this.closeSegment(reason);
-  this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
-  this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
-  this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
-  this.semanticEngine.reset();
+  this.epoch++;this.queuedForced=null;
+  this.closeSegment(reason);this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
+  this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;
+  this.truncatedEvents=0;this.gaitCounts={contact:0,swing:0,slide:0,pivot:0};
+  this.feet.clear();this.actorTracker.reset();this.temporalAnalyzer.reset();
+  this.handLimbAnalyzer.reset();this.semanticEngine.reset();
+  this.meter.reset();this.handsSchedule.reset();
   this.lastHandScanAt=-Infinity;this.handFailures=0;
   this.analyzers.clear();this.processor.reset();
-  this.count=this.manualCount??1;
-  this.people=[];this.rawPoses=[];this.ambiguous=false;this.lastTime=-1;
-  this.detectedCount=0;this.visibleCount=0;
+  this.count=this.manualCount??1;this.people=[];this.rawPoses=[];
+  this.ambiguous=false;this.lastTime=-1;this.detectedCount=0;this.visibleCount=0;
   this.actorStates=[
    {id:'A',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null},
    {id:'B',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null}
   ];
-  this.status=reason;this.emit();
+  this.status=reason;this.lastEmitAt=-Infinity;this.emit(true);
  }
- private emit(){if(!this.disposed)this.report(this.snapshot);}
- process(video:HTMLVideoElement,atSeconds:number,capFPS=12,force=false){
-  if(!this.model||this.disposed||this.inProgress||video.readyState<2||video.seeking)return;
+ private emit(force=false){
+  if(this.disposed)return;
+  const now=performance.now();
+  if(!force&&now-this.lastEmitAt<140)return;
+  this.lastEmitAt=now;this.meter.observeUi(now);this.report(this.buildSnapshot(false));
+ }
+ private wristMotion(){
+  const current=this.temporalAnalyzer.latest;
+  return (current?.actors??[]).flatMap(actor=>actor.joints)
+   .filter(point=>point.index===15||point.index===16)
+   .reduce((max,point)=>Math.max(max,point.speed??0),0);
+ }
+ private consumeForced(){
+  if(this.disposed||this.inProgress||!this.ready||!this.queuedForced)return;
+  const forced=this.queuedForced;this.queuedForced=null;
+  if(forced.video.readyState>=2)this.process(
+   forced.video,forced.atSeconds,forced.capFPS,true);
+ }
+ process(video:HTMLVideoElement,atSeconds:number,capFPS=18,force=false){
+  if(this.disposed||!this.ready||video.readyState<2||video.seeking)return;
   if(!Number.isFinite(atSeconds)||atSeconds<0)return;
+  if(this.inProgress){
+   this.meter.observeBusy();
+   if(force)this.queuedForced={video,atSeconds,capFPS};
+   return;
+  }
   const atMs=atSeconds*1000;
-  if(replayDiscontinuity(this.lastTime,atMs))this.reset('Lompatan waktu video: mulai segmen baru.');
+  if(replayDiscontinuity(this.lastTime,atMs))
+   this.reset('Lompatan waktu video: segmen baru.');
   if(this.lastTime>=0){
    const diff=atMs-this.lastTime;
    if(!force&&diff<1000/Math.max(1,Math.min(30,capFPS))*.85)return;
    if(Math.abs(diff)<1)return;
   }
   this.inProgress=true;
+  const epoch=this.epoch,startedAt=performance.now();
+  const clock=Math.max(this.lastInference+1,startedAt);this.lastInference=clock;
+  const schedule=this.handsSchedule.choose(atMs,this.wristMotion(),this.meter.snapshot.poseMs);
+  if(this.worker){
+   const worker=this.worker;
+   void worker.detect(video,clock,schedule.run&&worker.handReady).then(result=>{
+    if(this.disposed||epoch!==this.epoch)return;
+    const hands=result.hands?.map((landmarks,rawIndex)=>({rawIndex,landmarks}))??null;
+    const begin=performance.now();
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS);
+    this.meter.observeInference(performance.now(),result.poseMs,result.handsMs,
+     performance.now()-begin,performance.now()-startedAt,result.handScanned,
+     schedule.intervalMs);
+    this.emit();
+   }).catch(error=>{
+    if(this.disposed||epoch!==this.epoch)return;
+    worker.dispose();if(this.worker===worker)this.worker=null;
+    this.workerDisabled=true;this.meter.setBackend('main');
+    this.reset('Inferensi worker terputus; memulihkan pelacakan CPU.');
+    void this.loadMainModels().catch(e=>{
+     this.status='Fallback CPU gagal: '+(e instanceof Error?e.message:String(e));
+     this.emit(true);
+    });
+   }).finally(()=>{this.inProgress=false;this.consumeForced();});
+   return;
+  }
   try{
-   // MediaPipe VIDEO timestamps must be strictly increasing, even after seek.
-   // Gait timelines instead use media timestamps and reset on discontinuity.
-   const clock=Math.max(this.lastInference+1,performance.now());
-   this.lastInference=clock;
-   const result=this.model.detectForVideo(video,clock);
+   const beginPose=performance.now();
+   const result=this.model!.detectForVideo(video,clock);
+   const poseMs=performance.now()-beginPose;
    try{
+    let hands:RawHandDetection[]|null=null,handsMs=0;
+    if(this.handModel&&schedule.run){
+     const beginHands=performance.now();this.lastHandScanAt=atMs;
+     try{
+      const detail=this.handModel.detectForVideo(video,clock);
+      hands=detail.landmarks.slice(0,4).map((landmarks,rawIndex)=>({
+       rawIndex,landmarks:landmarks.map(point=>({...point}))
+      }));
+      this.handFailures=0;
+      if('close' in detail&&typeof detail.close==='function')detail.close();
+     }catch(error){
+      hands=[];this.handFailures++;
+      if(this.handFailures>=3){
+       this.handModel.close();this.handModel=null;this.handModelStatus='unavailable';
+       this.handModelReason='Deteksi jari gagal: '+
+        (error instanceof Error?error.message:String(error));
+      }
+     }
+     handsMs=performance.now()-beginHands;
+    }
+    const beginAnalysis=performance.now();
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS);
+    this.meter.observeInference(performance.now(),poseMs,handsMs,
+     performance.now()-beginAnalysis,performance.now()-startedAt,
+     hands!==null,schedule.intervalMs);
+    this.emit();
+   }finally{result.close();}
+  }catch(error){this.handleError(error);}
+  finally{this.inProgress=false;this.consumeForced();}
+ }
+ private analyzeDetections(landmarks:Landmark[][],worldLandmarks:Landmark[][],
+  hands:RawHandDetection[]|null,atMs:number,capFPS:number){
     // Expose all detected skeletons before the conservative identity/gait gate.
     // If two people cross, the diagnostic overlay still shows the raw observations.
-    this.rawPoses=result.landmarks.filter(p=>p.length>=33).slice(0,2)
+    this.rawPoses=landmarks.filter(p=>p.length>=33).slice(0,2)
      .map(pose=>pose.map(point=>({...point})));
     const frame:MotionFrame=this.processor.process(null,{
-     landmarks:result.landmarks,worldLandmarks:result.worldLandmarks
+     landmarks,worldLandmarks
     },atMs,configs,capFPS);
     this.lastTime=atMs;this.frames++;
     this.firstAtMs??=atMs;
@@ -231,26 +327,6 @@ export class VideoPoseGaitEngine{
     // A visible actor continues its trace while the other is hidden.
     // This never bypasses identity QA for physical gait event generation.
     const temporal=this.temporalAnalyzer.observe(observed.assignments,observed.actors,atMs);
-    let hands:RawHandDetection[]|null=null;
-    if(this.handModel&&atMs-this.lastHandScanAt>=HAND_SCAN_INTERVAL_MS){
-     this.lastHandScanAt=atMs;
-     try{
-      const handResult=this.handModel.detectForVideo(video,clock);
-      hands=handResult.landmarks.slice(0,4).map((landmarks,rawIndex)=>({
-       rawIndex,landmarks:landmarks.map(point=>({...point}))
-      }));
-      this.handFailures=0;
-      if('close' in handResult&&typeof handResult.close==='function')handResult.close();
-     }catch(error){
-      hands=[];this.handFailures++;
-      if(this.handFailures>=3){
-       this.handModel.close();this.handModel=null;
-       this.handModelStatus='unavailable';
-       this.handModelReason='Deteksi tangan dihentikan setelah tiga frame gagal: '+
-        (error instanceof Error?error.message:'kesalahan inferensi');
-      }
-     }
-    }
     this.handLimbAnalyzer.observe(observed.assignments,observed.actors,temporal,atMs,{
      hands,handModelAvailable:this.handModel!==null
     });
@@ -282,7 +358,10 @@ export class VideoPoseGaitEngine{
        if(!sample){this.feet.delete(key);continue;}
        const previous=this.feet.get(key)??emptyReplayState();
        const changes=replayEventsForSample(sample,previous,person.id,foot,this.segment);
-       if(changes.length){this.history.push(...changes);freshGaitEvents.push(...changes);}
+       if(changes.length){
+       this.history.push(...changes);freshGaitEvents.push(...changes);
+       for(const event of changes)this.gaitCounts[event.kind]++;
+      }
        this.feet.set(key,{phase:sample.phase,motion:sample.motionKind??'unknown',confidence:sample.confidence});
       }
      }
@@ -290,20 +369,22 @@ export class VideoPoseGaitEngine{
     this.people=approved;
     // Bound memory during long takes. Position is image-relative, never metric.
     if(this.history.length>5000){this.truncatedEvents+=this.history.length-5000;this.history=this.history.slice(-5000);}
-    this.emit();
-   }finally{result.close();}
-  }catch(e){
-   this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
-   this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
-   this.actorStates=this.actorStates.map(person=>({...person,presence:'lost',rawIndex:null,confidence:0}));
-   this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
-   this.handLimbAnalyzer.reset();this.semanticEngine.reset();this.lastHandScanAt=-Infinity;
-   this.qa.observe([],this.actorStates);this.emit();
-  }finally{this.inProgress=false;}
+
+ }
+ private handleError(e:unknown){
+  this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
+  this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
+  this.actorStates=this.actorStates.map(person=>({
+   ...person,presence:'lost',rawIndex:null,confidence:0
+  }));
+  this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
+  this.handLimbAnalyzer.reset();this.semanticEngine.reset();this.lastHandScanAt=-Infinity;
+  this.qa.observe([],this.actorStates);this.emit(true);
  }
  dispose(){
   if(this.disposed)return;
-  this.disposed=true;this.model?.close();this.model=null;
+  this.disposed=true;this.epoch++;this.queuedForced=null;
+  this.worker?.dispose();this.worker=null;this.model?.close();this.model=null;
   this.handModel?.close();this.handModel=null;
   this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
   this.semanticEngine.reset();
