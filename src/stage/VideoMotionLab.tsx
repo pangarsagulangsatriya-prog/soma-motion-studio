@@ -7,6 +7,7 @@ import {MotionSemanticsInspector} from './MotionSemanticsInspector.tsx';
 import {videoActorPresenceLabel,type VideoActorId} from './videoAutoActorTracker.ts';
 import {TemporalJointInspector} from './TemporalJointInspector.tsx';
 import {ReplayPerformanceInspector} from './ReplayPerformanceInspector.tsx';
+import {DuetV2BenchmarkPanel} from './DuetV2BenchmarkPanel.tsx';
 import {subscribeReplayFrames} from './replayFrameClock.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
@@ -378,6 +379,9 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
       </select></label>
      </div>
      <ReplayPerformanceInspector performance={analysisSnapshot?.performance??null}/>
+     <DuetV2BenchmarkPanel clipUrl={clip?.url??null}
+      clipName={clip?.name??null} sourceVideo={videoRef}
+      analysisActive={analysisOn}/>
      <div className="vml-analysis-actions">
       <button type="button" className="vml-primary" disabled={!ready||analysisBusy}
        onClick={()=>analysisOn?stopAnalysis():void startAnalysis()}>

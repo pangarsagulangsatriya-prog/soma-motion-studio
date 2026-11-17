@@ -1,4 +1,5 @@
 import {defineConfig} from '@playwright/test';
+const staticPreview=process.env.SOMA_DUET_PREVIEW==='1';
 const viewports={
  'wide-1440':{width:1440,height:900},
  'laptop-1366':{width:1366,height:768},
@@ -28,7 +29,7 @@ export default defineConfig({
   name,use:{viewport}
  })),
  webServer:{
-  command:'npm run dev -- --host 127.0.0.1',
+  command:staticPreview?'npx vite preview --host 127.0.0.1 --port 4173 --strictPort':'npm run dev -- --host 127.0.0.1',
   url:'http://127.0.0.1:4173/',
   reuseExistingServer:!process.env.CI,
   timeout:120_000
