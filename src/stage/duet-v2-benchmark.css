@@ -28,3 +28,13 @@
  .duet-v2-results{grid-template-columns:1fr}
  .duet-v2-lab>summary>span{float:none;display:block;margin-top:5px}
 }
+.duet-v2-review{display:flex;align-items:center;flex-wrap:wrap;gap:7px;
+ padding:9px;border-radius:6px;background:#172b20;border:1px solid #405c49}
+.duet-v2-review label{display:flex;align-items:center;gap:6px;font-size:11px}
+.duet-v2-review select{color:#eaf3e4;background:#284332;border:1px solid #5b8065;
+ border-radius:5px;padding:5px}
+.duet-v2-review input[type=range]{flex:1;min-width:100px;accent-color:#b1d68e}
+.duet-v2-review>span{font:11px ui-monospace,monospace;color:#ddf0d4}
+.duet-v2-review button{font-size:10px;padding:6px 8px;border-radius:5px;
+ background:#263f2c;border:1px solid #5b7c60;color:#e9f2e3}
+.duet-v2-review button:disabled{opacity:.45}
