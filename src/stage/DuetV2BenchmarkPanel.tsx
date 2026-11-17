@@ -104,6 +104,9 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
  const [error,setError]=useState('');
  const [progress,setProgress]=useState(0);
  const [results,setResults]=useState<DuetV2Benchmark[]>([]);
+ const frameArchive=useRef(new Map<384|512,DuetV2Frame[]>());
+ const [reviewSize,setReviewSize]=useState<384|512>(512);
+ const [reviewIndex,setReviewIndex]=useState(0);
  const [current,setCurrent]=useState<DuetV2Frame|null>(null);
  const [skipped,setSkipped]=useState(0);
  const busyRef=useRef(false);
@@ -113,7 +116,8 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
  },[]);
  useEffect(()=>{
   cancelRef.current=true;workerRef.current?.dispose();workerRef.current=null;
-  lastRef.current=null;setResults([]);setCurrent(null);setProgress(0);setLive(false);
+  lastRef.current=null;frameArchive.current.clear();
+  setResults([]);setCurrent(null);setProgress(0);setLive(false);setReviewIndex(0);
  },[clipUrl]);
  const ensureWorker=()=>{
   workerRef.current?.dispose();
@@ -148,8 +152,10 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
      }
     }
     const summary=summarizeDuetBenchmark(size,readings);
+    frameArchive.current.set(size,readings);
     completed.push(summary);setResults([...completed]);
     const last=readings.at(-1)??null;lastRef.current=last;setCurrent(last);
+    if(size===512){setReviewSize(512);setReviewIndex(Math.max(0,readings.length-1));}
     drawFrame(canvasRef.current,video,last);
    }
    setPhase('Benchmark selesai. Data 384 dan 512 siap dibandingkan.');
@@ -204,6 +210,20 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
   });
   return ()=>{cancelled=true;unsubscribe();};
  },[live,sourceVideo]);
+ useEffect(()=>{
+  if(running||live||!results.length)return;
+  const archive=frameArchive.current.get(reviewSize);
+  const video=videoRef.current;
+  if(!archive?.length||!video)return;
+  const index=Math.min(archive.length-1,Math.max(0,reviewIndex));
+  let cancelled=false;
+  void seekFrame(video,index/FPS).then(()=>{
+   if(cancelled)return;
+   const item=archive[index]??null;
+   lastRef.current=item;setCurrent(item);drawFrame(canvasRef.current,video,item);
+  }).catch(()=>{/* Frame may disappear while switching local videos. */});
+  return()=>{cancelled=true;};
+ },[running,live,results.length,reviewSize,reviewIndex,clipUrl]);
  const decision=chooseDuetResolution(results);
  return <details className="duet-v2-lab" data-experimental="true">
   <summary>Duet V2 · D1–D4 <span>Eksperimen terpisah dari tracking produksi</span></summary>
@@ -240,6 +260,25 @@ export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActiv
       <span>Pipeline P95: {metric(r.totalP95Ms)}</span>
       <span>Ambigu: {r.uncertainFrames} frame</span>
      </div>)}
+    </div>
+    <div className="duet-v2-review">
+     <label>Periksa frame
+      <select aria-label="Resolusi frame untuk ditinjau" value={reviewSize}
+       disabled={running||live} onChange={e=>{
+        setReviewSize(Number(e.target.value) as 384|512);setReviewIndex(0);
+       }}>
+       {results.map(r=><option key={r.resolution} value={r.resolution}>{r.resolution} px</option>)}
+      </select>
+     </label>
+     <input aria-label="Frame Duet V2" type="range" min="0"
+      max={Math.max(0,(results.find(r=>r.resolution===reviewSize)?.frames??1)-1)}
+      step="1" value={reviewIndex} disabled={running||live}
+      onChange={e=>setReviewIndex(Number(e.target.value))}/>
+     <span>{reviewIndex} / {(results.find(r=>r.resolution===reviewSize)?.frames??1)-1}</span>
+     {[.5,5.5,7.5].map(second=><button key={second} type="button"
+      disabled={running||live} onClick={()=>setReviewIndex(Math.min(
+       Math.round(second*FPS),(results.find(r=>r.resolution===reviewSize)?.frames??1)-1
+      ))}>Crossing {second}s</button>)}
     </div>
     <p><b>Keputusan sementara:</b> {decision.resolution??'—'}.
      {' '}{decision.reason}</p>
