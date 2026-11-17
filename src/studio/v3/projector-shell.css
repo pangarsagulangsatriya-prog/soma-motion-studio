@@ -1,0 +1,68 @@
+/* S6.7.2.5 — shared Footprints / Projector navigation.
+ * Legacy projection.css hides the entire .workspace in projection-mode.
+ * SOMA V3 keeps just header and navigation visible, while the existing
+ * ProjectionWorkspace retains ownership of all output and safety controls. */
+.soma-v3.projection-mode{
+ --soma-projector-rail-width:60px;
+ display:grid;
+ grid-template-columns:var(--soma-projector-rail-width) minmax(0,1fr);
+ grid-template-rows:58px minmax(0,auto);
+ min-height:100dvh;
+ padding:0;
+}
+.soma-v3.projection-mode:has(>.workspace>.soma-primary-sidebar[data-expanded=true]){
+ --soma-projector-rail-width:196px;
+}
+.soma-v3.projection-mode>.workspace{
+ display:contents!important;
+}
+.soma-v3.projection-mode>.workspace>main{
+ display:none!important;
+}
+.soma-v3.projection-mode>.workspace>.soma-primary-header{
+ grid-row:1;grid-column:1/-1;
+ position:sticky;top:0;z-index:230;
+}
+.soma-v3.projection-mode>.workspace>.soma-primary-sidebar{
+ grid-column:1;grid-row:2;
+ position:sticky;top:58px;
+ height:calc(100dvh - 58px);
+ min-height:0;
+ z-index:110;
+}
+.soma-v3.projection-mode>.projection-workspace{
+ grid-column:2;grid-row:2;
+ min-width:0;width:100%;
+ min-height:calc(100dvh - 58px);
+ margin:0;
+}
+.soma-v3.projection-mode .soma-labs-panel{
+ z-index:240;
+}
+.soma-v3.projection-mode .soma-rail-tooltip{
+ z-index:245;
+}
+@media(max-width:920px) and (min-width:761px){
+ .soma-v3.projection-mode:has(>.workspace>.soma-primary-sidebar[data-expanded=true]){
+  --soma-projector-rail-width:178px;
+ }
+}
+@media(max-width:760px){
+ .soma-v3.projection-mode{
+  --soma-projector-rail-width:0px;
+  grid-template-columns:minmax(0,1fr);
+ }
+ .soma-v3.projection-mode>.workspace>.soma-primary-header{
+  grid-column:1;grid-row:1;
+ }
+ .soma-v3.projection-mode>.workspace>.soma-primary-sidebar{
+  position:fixed;top:58px;left:0;bottom:0;
+  height:calc(100dvh - 58px);
+  grid-column:1;grid-row:2;
+  z-index:220;
+ }
+ .soma-v3.projection-mode>.projection-workspace{
+  grid-column:1;grid-row:2;
+  min-height:calc(100dvh - 58px);
+ }
+}
