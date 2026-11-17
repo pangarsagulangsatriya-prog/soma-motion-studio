@@ -42,6 +42,7 @@ export class LiveFloorTrackingEngine{
  private rejection='';
  private logicalTime=-1;
  private revision=0;
+ private sessionSerial=0;
  private contactCount=0;
  private cachedSession:FloorSession|null=null;
  private cachedRevision=-1;
@@ -56,6 +57,8 @@ export class LiveFloorTrackingEngine{
   for(const listener of this.listeners)listener(update);
  }
  get eventRevision(){return this.revision;}
+ /** Increments on every FloorSession reset, separate from event revision. */
+ get sessionEpoch(){return this.sessionSerial;}
  readonly performerId='performer-1';
  get floor(){return this.calibration?.floor??null;}
  get isConfirmed(){return this.confirmed;}
@@ -94,6 +97,7 @@ export class LiveFloorTrackingEngine{
   this.rejection='';this.emitUpdate('approval');
  }
  resetSession(){
+  this.sessionSerial++;
   this.events=[];this.eventEngine?.reset();this.grounded.clear();
   this.lastPoint.clear();this.seen.clear();this.received.clear();this.motion.clear();this.logicalTime=-1;
   this.performers=new Set(['performer-1']);this.contactCount=0;
