@@ -53,11 +53,33 @@ export function replaySkeletonsCurrent(snapshot:{
 }
 /** Ordered by raw MediaPipe pose index; A/B labels are attached only to
  * reliable current-frame assignments from the video actor tracker. */
-export function replaySkeletonPresentation(snapshot:{
- atMs:number;rawPoses?:Landmark[][];
+export type ReplaySkeletonSample={atMs:number;rawPoses?:Landmark[][];
  actorStates?:Array<{id:'A'|'B';presence:string;rawIndex:number|null}>;
-},videoTimeMs:number){
+ ambiguous?:boolean};
+/** Interpolate only within two recent, unambiguous observations of the same A/B. */
+export function replaySkeletonPresentation(snapshot:ReplaySkeletonSample,videoTimeMs:number,
+ previous?:ReplaySkeletonSample|null){
  const poses=replaySkeletonsCurrent(snapshot,videoTimeMs);
+ const gap=previous?snapshot.atMs-previous.atMs:0;
+ const safe=Boolean(previous&&!previous.ambiguous&&!snapshot.ambiguous&&
+  gap>0&&gap<=220&&videoTimeMs>=previous.atMs&&videoTimeMs<=snapshot.atMs);
+ const alpha=safe?(videoTimeMs-previous!.atMs)/gap:1;
+ const smoothed=poses.map((pose,index)=>{
+  if(!safe||!previous||alpha>=1)return pose;
+  const actor=snapshot.actorStates?.find(a=>a.rawIndex===index&&a.presence==='visible');
+  const prior=previous.actorStates?.find(a=>a.id===actor?.id&&a.presence==='visible');
+  if(!actor||!prior||prior.rawIndex===null)return pose;
+  const source=previous.rawPoses?.[prior.rawIndex];
+  if(!source||source.length!==POSE_LANDMARK_COUNT)return pose;
+  return pose.map((p,j)=>{
+   const q=source[j];
+   if(!q||![p.x,p.y,q.x,q.y].every(Number.isFinite)||
+    Math.min(p.visibility??1,q.visibility??1)<.2)return p;
+   return {...p,x:q.x+(p.x-q.x)*alpha,y:q.y+(p.y-q.y)*alpha,
+    z:Number.isFinite(p.z)&&Number.isFinite(q.z)?q.z+(p.z-q.z)*alpha:p.z,
+    visibility:Math.min(p.visibility??1,q.visibility??1)};
+  });
+ });
  const labels=poses.map((_,index)=>{
   const actor=snapshot.actorStates?.find(a=>a.rawIndex===index&&a.presence==='visible');
   return actor?'ACTOR '+actor.id:'POSE '+(index+1)+' ?';
@@ -66,7 +88,7 @@ export function replaySkeletonPresentation(snapshot:{
   const actor=snapshot.actorStates?.find(a=>a.rawIndex===index&&a.presence==='visible');
   return actor?SKELETON_COLORS[actor.id==='A'?0:1]:'#b7bdba';
  });
- return {poses,labels,colors};
+ return {poses:smoothed,labels,colors};
 }
 export function drawSkeletonBodies(
  ctx:CanvasRenderingContext2D,poses:readonly (readonly Landmark[])[],

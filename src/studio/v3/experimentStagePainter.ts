@@ -22,7 +22,7 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   const w=scale*v.videoWidth,h=scale*v.videoHeight;
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
   if(skeleton&&frame.snapshot){
-   const preview=replaySkeletonPresentation(frame.snapshot,frame.timeMs);
+   const preview=replaySkeletonPresentation(frame.snapshot,frame.timeMs,frame.previousSnapshot);
    const rect={x:(768-w)/2,y:(432-h)/2,width:w,height:h};
    drawSkeletonBodies(ctx,preview.poses,rect,
     {labels:preview.labels,colors:preview.colors});
@@ -44,7 +44,7 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  const snapshot=frame.snapshot;
  if(!snapshot||!frame.ready)return;
  if(skeleton){
-  const preview=replaySkeletonPresentation(snapshot,frame.timeMs);
+  const preview=replaySkeletonPresentation(snapshot,frame.timeMs,frame.previousSnapshot);
   const rect={x:0,y:0,width:w,height:h};
   drawSkeletonBodies(ctx,preview.poses,rect,
    {labels:preview.labels,colors:preview.colors});

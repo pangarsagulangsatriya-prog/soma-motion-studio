@@ -29,6 +29,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [analysisError,setAnalysisError]=useState('');
  const [detectorOpen,setDetectorOpen]=useState(false);
  const [snapshot,setSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
+ const lastSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
+ const previousSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
  const sessionRef=useRef(model);
  const [revision,setRevision]=useState(0);
  const [foot,setFoot]=useState<FootSide>('left');
@@ -51,6 +53,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   if(kind!=='video'||!clip){setUrl(null);setVideoReady(false);setSnapshot(null);return;}
   const objectUrl=URL.createObjectURL(clip);setUrl(objectUrl);
   setVideoReady(false);setDuration(0);setPosition(0);setPlaying(false);setSnapshot(null);
+  lastSnapshot.current=null;previousSnapshot.current=null;
   setAnalysisError('');setAnalyzing(false);
   return()=>URL.revokeObjectURL(objectUrl);
  },[clip,kind]);
@@ -60,7 +63,11 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   let disposed=false;
   const generationId=++generation.current;
   const engine=new VideoPoseGaitEngine(value=>{
-   if(!disposed&&generationId===generation.current)setSnapshot(value);
+   if(!disposed&&generationId===generation.current){
+    const previous=lastSnapshot.current;
+    previousSnapshot.current=previous&&previous.segment===value.segment&&previous.atMs<value.atMs?previous:null;
+    lastSnapshot.current=value;setSnapshot(value);
+   }
   });
   // Footprints stage is a two-performer rehearsal space. Keep both actor
   // slots active, even when one person's pose is temporarily invisible.
@@ -92,7 +99,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  useEffect(()=>{
   if(kind!=='video')return;
   const el=video.current;
-  onFrame({kind:'video',snapshot,video:el,timeMs:(el?.currentTime??position)*1000,
+  onFrame({kind:'video',snapshot,previousSnapshot:previousSnapshot.current,
+   video:el,timeMs:(el?.currentTime??position)*1000,
    ready:videoReady,name:clip?.name??'Belum ada video'});
  },[kind,snapshot,clip,position,videoReady,onFrame]);
  useEffect(()=>{
@@ -164,6 +172,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     onSeeked={e=>{
      const el=e.currentTarget;
      setPosition(el.currentTime);
+     previousSnapshot.current=null;lastSnapshot.current=null;
      videoEngine.current?.process(el,el.currentTime,18,true);
     }}
     onTimeUpdate={e=>setPosition(e.currentTarget.currentTime)}
@@ -182,6 +191,19 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
       ' · '+Math.round(snapshot.performance.poseFps)+' FPS':
      clip?'Video siap, mulai analisis':'Video belum dipilih'}
    </span>
+   {snapshot&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
+    <summary>D4 · Performance <b>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
+     <span>{snapshot.performance.poseFps.toFixed(1)} FPS AI · lag {snapshot.performance.latestVideoLagMs.toFixed(0)} ms</span></summary>
+    <div className="fp-d4-metrics">
+     <span>Pipeline p50 / p95 <b>{snapshot.performance.pipelineP50Ms.toFixed(0)} / {snapshot.performance.pipelineP95Ms.toFixed(0)} ms</b></span>
+     <span>Frame drop (busy) <b>{snapshot.performance.busyDrops}</b></span>
+     <span>Hasil AI kedaluwarsa <b>{snapshot.performance.staleResults}</b></span>
+     <span>Lag maksimum <b>{snapshot.performance.maxVideoLagMs.toFixed(0)} ms</b></span>
+     <span>Backend <b>{snapshot.performance.backend}</b></span>
+    </div>
+    {snapshot.performance.fallbackReason&&<p role="status">Fallback: {snapshot.performance.fallbackReason}</p>}
+    <small>Preview video tetap mengikuti decoder. Hasil AI terlambat dibuang. D3 belum digabungkan dengan engine MediaPipe 33 yang aktif.</small>
+   </details>}
    {snapshot&&<span className="fp-video-actor-status" role="status"
     aria-label="Status masing-masing aktor MP4">
     {snapshot.actorStates.map(actor=><span key={actor.id}
