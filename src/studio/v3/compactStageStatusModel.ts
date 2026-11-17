@@ -16,7 +16,7 @@ export function compactFootprintsReadiness(input:{
  const source:ReadinessItem=input.cameraBusy?{
   id:'source',label:'Sumber',value:'Menghubungkan',level:'busy',
   detail:'Menunggu izin atau sambungan kamera.'
- }:input.cameraError&&!input.cameraOn?{
+ }:input.cameraError?{
   id:'source',label:'Sumber',value:'Periksa kamera',level:'warn',detail:input.cameraError
  }:!input.cameraOn?{
   id:'source',label:'Sumber',value:'Belum terhubung',level:'idle',
@@ -70,11 +70,15 @@ export function softwareOutputIndicator(
 ):SoftwareOutputIndicator{
  const connected=[dual.body,dual.floor].filter(s=>s.reported&&s.connected);
  if(connected.length){
-  const names=connected.map(s=>s.surface.toUpperCase()).join(' + ');
   const anyLive=connected.some(s=>s.mode==='live');
   const anyTest=connected.some(s=>s.mode==='test');
-  return {label:`${names} · ${anyLive?'LIVE diperintahkan':anyTest?'TEST diperintahkan':'Tersambung'}`,
-   detail:'Status jendela output software; cahaya fisik belum terverifikasi.',
+  const label=connected.map(s=>{
+   const action=s.mode==='live'?'LIVE diperintahkan':s.mode==='test'?'TEST diperintahkan':
+    s.mode==='blackout'?'Blackout diperintahkan':'Tersambung';
+   return `${s.surface.toUpperCase()} ${action}`;
+  }).join(' · ');
+  return {label,
+   detail:'Perintah software tiap permukaan; kondisi cahaya fisik belum diverifikasi.',
    state:anyLive||anyTest?'commanded':'connected'};
  }
  if(legacy.connected){
