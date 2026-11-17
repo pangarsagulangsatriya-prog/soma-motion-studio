@@ -77,6 +77,7 @@ export function FootprintsStageWorkspace({
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
+ useEffect(()=>{if(sourceStatus.selection!=='phone')setPhonePanelOpen(false);},[sourceStatus.selection]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('input');
  const [inspectorOpen,setInspectorOpen]=useState(false);
  const [calibrationOverlay,setCalibrationOverlay]=useState<{marks:Array<Point|null>;editing:number}|null>(null);
