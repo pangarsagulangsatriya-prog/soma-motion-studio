@@ -49,8 +49,9 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
   setMessage('Titik '+(editing+1)+' ditandai. Periksa urutan sebelum menerapkan.');
  },[cameraReady,dirty,editing]);
  useEffect(()=>{
-  onOverlay({marks:marks.map(p=>p?{...p}:null),editing});
- },[marks,editing,onOverlay]);
+  if(cameraReady)onOverlay({marks:marks.map(p=>p?{...p}:null),editing});
+  else onOverlay(null);
+ },[cameraReady,marks,editing,onOverlay]);
  useEffect(()=>()=>onOverlay(null),[onOverlay]);
  useEffect(()=>{onTap(place);},[place,onTap]);
  useEffect(()=>()=>onTap(null),[onTap]);
