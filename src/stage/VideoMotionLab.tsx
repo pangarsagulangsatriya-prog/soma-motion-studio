@@ -1,5 +1,7 @@
 import {useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
+import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
+import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {VIDEO_LAB_FPS,VIDEO_LAB_SPEEDS,clampVideoTime,finiteDuration,formatVideoTime,simpleVideoFilename,
  stepVideoTime,validLoopRange,validVideoLabFile,type LoopRange} from './videoMotionLabUtils.ts';
 import './video-motion-lab.css';
@@ -24,16 +26,98 @@ export function VideoMotionLab({onClose}:Props){
  const [resolution,setResolution]=useState({width:0,height:0});
  const [dropActive,setDropActive]=useState(false);
  const [message,setMessage]=useState('Pilih video dari perangkat untuk memulai.');
+ const [analysisOn,setAnalysisOn]=useState(false);
+ const [analysisBusy,setAnalysisBusy]=useState(false);
+ const [analysisError,setAnalysisError]=useState('');
+ const [replayPeople,setReplayPeople]=useState<1|2>(1);
+ const [analysisSnapshot,setAnalysisSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
+ const engineRef=useRef<VideoPoseGaitEngine|null>(null);
+ const generationRef=useRef(0);
+ const overlayRef=useRef<HTMLCanvasElement|null>(null);
  const videoRef=useRef<HTMLVideoElement>(null);
  const fileRef=useRef<HTMLInputElement>(null);
  const lastUrl=useRef<string|null>(null);
  const loopRef=useRef({loop,rangeStart,rangeEnd,duration});
  loopRef.current={loop,rangeStart,rangeEnd,duration};
  const filename=clip?simpleVideoFilename(clip.name):'video';
+ const analysisCounts=replayEventCounts(analysisSnapshot?.events??[]);
+ const stopAnalysis=()=>{
+  ++generationRef.current;
+  engineRef.current?.dispose();engineRef.current=null;
+  setAnalysisOn(false);setAnalysisBusy(false);setAnalysisSnapshot(null);
+ };
+ const startAnalysis=async()=>{
+  const video=videoRef.current;
+  if(!ready||!video||!clip)return;
+  stopAnalysis();setAnalysisError('');setAnalysisBusy(true);
+  const generation=++generationRef.current;
+  const engine=new VideoPoseGaitEngine(snapshot=>{
+   if(generation===generationRef.current)setAnalysisSnapshot(snapshot);
+  });
+  engineRef.current=engine;
+  try{
+   await engine.init();
+   if(generation!==generationRef.current)return;
+   engine.setPerformers(replayPeople);
+   setAnalysisOn(true);
+   engine.process(video,video.currentTime,12,true);
+   setMessage('Pose/Gait berjalan pada video lokal. Contact, Slide, dan Pivot berupa estimasi visual 2D.');
+  }catch(e){
+   if(generation!==generationRef.current)return;
+   const reason=e instanceof Error?e.message:String(e);
+   setAnalysisError('Model pose belum tersedia: '+reason);
+   engine.dispose();engineRef.current=null;
+   setAnalysisOn(false);
+  }finally{if(generation===generationRef.current)setAnalysisBusy(false);}
+ };
+ useEffect(()=>{
+  if(!analysisOn||!clip||!ready)return;
+  let raf=0;
+  const loop=()=>{
+   const video=videoRef.current;
+   if(video&&!video.paused&&!video.seeking&&video.readyState>=2){
+    engineRef.current?.process(video,video.currentTime,12);
+   }
+   raf=requestAnimationFrame(loop);
+  };
+  raf=requestAnimationFrame(loop);
+  return()=>cancelAnimationFrame(raf);
+ },[analysisOn,clip,ready]);
+ useEffect(()=>{
+  const canvas=overlayRef.current;if(!canvas)return;
+  const ctx=canvas.getContext('2d');if(!ctx)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const video=videoRef.current;
+  if(!analysisOn||!analysisSnapshot||!video?.videoWidth||!video.videoHeight)return;
+  const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
+  const width=scale*video.videoWidth,height=scale*video.videoHeight;
+  const x=(canvas.width-width)/2,y=(canvas.height-height)/2;
+  const segments=[[11,12],[11,23],[12,24],[23,24],
+   [23,25],[25,27],[27,29],[29,31],[27,31],
+   [24,26],[26,28],[28,30],[30,32],[28,32]] as const;
+  analysisSnapshot.people.forEach(person=>{
+   const color=person.id==='A'?'#d5eeae':'#7dd9df';
+   ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2;
+   for(const [a,b] of segments){
+    const p=person.landmarks[a],q=person.landmarks[b];
+    if(!p||!q||(p.visibility??1)<.5||(q.visibility??1)<.5)continue;
+    ctx.beginPath();ctx.moveTo(x+p.x*width,y+p.y*height);
+    ctx.lineTo(x+q.x*width,y+q.y*height);ctx.stroke();
+   }
+   for(const index of [23,24,25,26,27,28,29,30,31,32]){
+    const p=person.landmarks[index];if(!p||(p.visibility??1)<.5)continue;
+    ctx.beginPath();ctx.arc(x+p.x*width,y+p.y*height,3,0,Math.PI*2);ctx.fill();
+   }
+   const hip=person.landmarks[23];
+   if(hip){ctx.font='bold 16px system-ui';ctx.fillText('BODY '+person.id,x+hip.x*width,y+hip.y*height-13);}
+  });
+ },[analysisOn,analysisSnapshot]);
+
  const range=rangeStart!==null&&rangeEnd!==null?validLoopRange(rangeStart,rangeEnd,duration):null;
  const loadFile=(file:File)=>{
   const error=validVideoLabFile(file);
   if(error){setMessage(error);return;}
+  stopAnalysis();setAnalysisError('');
   const old=lastUrl.current;
   const url=URL.createObjectURL(file);
   lastUrl.current=url;
@@ -45,7 +129,7 @@ export function VideoMotionLab({onClose}:Props){
   setMessage('Membaca metadata video…');
   if(old)URL.revokeObjectURL(old);
  };
- useEffect(()=>()=>{if(lastUrl.current)URL.revokeObjectURL(lastUrl.current);},[]);
+ useEffect(()=>()=>{engineRef.current?.dispose();if(lastUrl.current)URL.revokeObjectURL(lastUrl.current);},[]);
  const changeFile=(e:ChangeEvent<HTMLInputElement>)=>{
   const file=e.target.files?.[0];if(file)loadFile(file);e.target.value='';
  };
@@ -77,7 +161,7 @@ export function VideoMotionLab({onClose}:Props){
   const el=videoRef.current;if(!el||!ready)return;
   if(!el.paused){el.pause();setPlaying(false);return;}
   if(el.ended)seek(0);
-  try{await el.play();setPlaying(true);setMessage('Video diputar secara lokal. Tracking Pose/Gait belum aktif pada tahap ini.');}
+  try{await el.play();setPlaying(true);setMessage(analysisOn?'Membaca pose dan gait dari video…':'Video diputar secara lokal. Aktifkan Pose/Gait untuk memulai analisis.');}
   catch{setMessage('Browser belum dapat memutar berkas ini. Periksa codec video atau coba MP4 H.264.');}
  };
  const mark=(kind:'in'|'out')=>{
@@ -116,8 +200,15 @@ export function VideoMotionLab({onClose}:Props){
    video:{durationSeconds:duration,width:resolution.width,height:resolution.height},
    playback:{positionSeconds:position,speed,muted,stepFpsAssumption:fps,
     loopEnabled:loop&&!!range,loopRange:range},
-   annotation:{poseTracking:false,gaitEvents:false,physicalFloorCalibrated:false},
-   notice:'S6.5.2 hanya menyimpan metadata. Berkas video tidak disertakan.'
+   annotation:{poseTracking:analysisOn&&!!analysisSnapshot,gaitEvents:analysisOn&&!!analysisSnapshot,physicalFloorCalibrated:false},
+   analysis:analysisOn&&analysisSnapshot?{
+    schema:'soma.video-pose-gait',version:1,
+    segment:analysisSnapshot.segment,frames:analysisSnapshot.sampledFrames,
+    performers:analysisSnapshot.performers,
+    counts:analysisCounts,events:analysisSnapshot.events,
+    positionBasis:'video-2d-estimate',calibration:false
+   }:null,
+   notice:'Analisis berbasis landmark video 2D, bukan kontak lantai fisik. Video tidak disertakan.'
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const href=URL.createObjectURL(blob);
@@ -133,16 +224,17 @@ export function VideoMotionLab({onClose}:Props){
   if(event.code==='ArrowRight'){event.preventDefault();event.stopPropagation();step(1);}
  };
  const removeFile=()=>{
+  stopAnalysis();setAnalysisError('');
   videoRef.current?.pause();setPlaying(false);
   setClip(null);setReady(false);setDuration(0);setPosition(0);resetMarks();
   setResolution({width:0,height:0});
   if(lastUrl.current){URL.revokeObjectURL(lastUrl.current);lastUrl.current=null;}
   setMessage('Video dilepas dari Lab. Tidak ada berkas yang diunggah ke server.');
  };
- return <section className="soma-video-lab" role="region" aria-label="S6.5.2 Video Motion Lab"
+ return <section className="soma-video-lab" role="region" aria-label="S6.5.3 Video Pose Gait Lab"
   tabIndex={0} onKeyDown={keyDown}>
   <header className="vml-heading">
-   <div><small>SOMA / S6.5.2 · EXPERIMENTAL INPUT</small><h2><Film size={22}/> Video Motion Lab</h2>
+   <div><small>SOMA / S6.5.3 · VIDEO → POSE / GAIT</small><h2><Film size={22}/> Video Motion Lab</h2>
     <p>Video rekaman sebagai sumber latihan dan penelusuran frame. File tetap di browser; kamera dan output proyektor tidak berubah.</p></div>
    <button type="button" onClick={onClose}><X size={16}/> Tutup Lab</button>
   </header>
@@ -170,7 +262,10 @@ export function VideoMotionLab({onClose}:Props){
        setMessage(length>0?'Video siap. Gunakan timeline untuk menelusuri gerak.':'Durasi video tidak terbaca. Coba berkas lain.');
        v.playbackRate=speed;
       }}
-      onTimeUpdate={syncPosition} onSeeked={syncPosition} onDurationChange={e=>{
+      onTimeUpdate={syncPosition}
+      onSeeking={()=>{if(engineRef.current){engineRef.current.reset('Seek/loop: analisis dimulai ulang dari posisi baru.');}}}
+      onSeeked={e=>{syncPosition();engineRef.current?.process(e.currentTarget,e.currentTarget.currentTime,12,true);}}
+      onDurationChange={e=>{
        const d=finiteDuration(e.currentTarget.duration);setDuration(d);if(!d)setReady(false);
       }}
       onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)}
@@ -178,6 +273,9 @@ export function VideoMotionLab({onClose}:Props){
       onEnded={()=>setPlaying(false)}
       onError={()=>{setReady(false);setPlaying(false);setMessage('Browser gagal membaca video. Coba MP4 H.264/AAC atau WebM VP8/VP9.');}}
       aria-label="Video rekaman lokal"/>
+     <canvas ref={overlayRef} className="vml-pose-overlay" width={960} height={540}
+      aria-label="Overlay pose kaki hasil analisis video"/>
+     {analysisOn&&<span className="vml-overlay-badge">POSE / GAIT · {replayPeople} PERFORMER</span>}
      {clip&&!ready&&<div className="vml-player-empty">Membuka video…</div>}
      {buffering&&ready&&<div className="vml-buffer">Memuat frame…</div>}
     </div>
@@ -190,6 +288,10 @@ export function VideoMotionLab({onClose}:Props){
        aria-label="Geser timeline video"/>
       {duration>0&&rangeStart!==null&&<span className="vml-range-mark" style={{left:(rangeStart/duration*100)+'%'}} aria-hidden="true"/>}
       {duration>0&&rangeEnd!==null&&<span className="vml-range-mark end" style={{left:(rangeEnd/duration*100)+'%'}} aria-hidden="true"/>}
+      {duration>0&&analysisOn&&analysisSnapshot?.events.slice(-120).map(event=>
+       <span key={event.id} className={'vml-event-mark vml-event-'+event.kind}
+        style={{left:(event.atMs/1000/duration*100)+'%'}} title={event.kind+' '+event.performer}
+        aria-hidden="true"/> )}
      </div>
      <div className="vml-transport">
       <button type="button" disabled={!ready} onClick={()=>seek(0)} title="Kembali ke awal" aria-label="Kembali ke awal"><RotateCcw size={17}/></button>
@@ -212,6 +314,47 @@ export function VideoMotionLab({onClose}:Props){
      <button type="button" disabled={rangeStart===null&&rangeEnd===null} onClick={resetMarks}>Hapus rentang</button>
      <small>{range?'Rentang '+formatVideoTime(range.start)+' – '+formatVideoTime(range.end):'Tandai awal dan akhir untuk loop latihan'}</small>
     </div>
+    <section className="vml-analysis" aria-label="Analisis Pose dan Gait dari video">
+     <div className="vml-analysis-head">
+      <div><h3>Pose / Gait Analysis</h3>
+       <p>Deteksi lokal dari MP4 menggunakan MediaPipe dan gait analyzer SOMA.</p></div>
+      <label>Performer<select value={replayPeople}
+       onChange={e=>{const count=Number(e.target.value) as 1|2;setReplayPeople(count);
+        engineRef.current?.setPerformers(count);}}>
+       <option value={1}>1 performer</option><option value={2}>2 performer (A/B)</option>
+      </select></label>
+     </div>
+     <div className="vml-analysis-actions">
+      <button type="button" className="vml-primary" disabled={!ready||analysisBusy}
+       onClick={()=>analysisOn?stopAnalysis():void startAnalysis()}>
+       {analysisBusy?'Memuat model…':analysisOn?'Hentikan analisis':'Mulai analisis Pose / Gait'}</button>
+      <button type="button" disabled={!analysisOn} onClick={()=>{
+       engineRef.current?.reset('Analisis direset oleh pengguna.');
+       const v=videoRef.current;if(v)engineRef.current?.process(v,v.currentTime,12,true);
+      }}>Reset identitas & event</button>
+     </div>
+     {analysisError&&<div role="alert" className="vml-analysis-error">{analysisError}</div>}
+     <p className="vml-analysis-status" role="status">
+      {analysisOn?(analysisSnapshot?.status??'Model siap, menunggu frame video.'):
+       'Analisis belum aktif. Putar video atau gunakan frame stepping setelah mengaktifkan model.'}
+     </p>
+     <div className="vml-analysis-counters">
+      <span><small>Frame dianalisis</small><b>{analysisSnapshot?.sampledFrames??0}</b></span>
+      <span><small>Contact*</small><b>{analysisCounts.contact}</b></span>
+      <span><small>Swing*</small><b>{analysisCounts.swing}</b></span>
+      <span><small>Slide*</small><b>{analysisCounts.slide}</b></span>
+      <span><small>Pivot*</small><b>{analysisCounts.pivot}</b></span>
+     </div>
+     {analysisOn&&<div className="vml-events">
+      <strong>Event terdeteksi</strong>
+      {analysisSnapshot?.events.length?analysisSnapshot.events.slice(-8).reverse().map(e=>
+       <div key={e.id}><span>{formatVideoTime(e.atMs/1000)}</span>
+        <b>BODY {e.performer} · {e.foot}</b><em>{e.kind}</em>
+        <small>{Math.round(e.confidence*100)}%</small></div>):
+       <p>Belum ada event. Rekam pijakan dengan kedua telapak terlihat.</p>}
+     </div>}
+     <small className="vml-analysis-disclaimer">*Estimasi berbasis gambar 2D. Tidak mengukur tekanan, gaya kontak, atau koordinat lantai dalam meter. Seeking dan looping menghapus histori analisis agar urutan gerak tetap valid.</small>
+    </section>
     <div className="vml-status" role="status" aria-live="polite">{message}</div>
    </div>
    <aside className="vml-inspector">
@@ -231,9 +374,9 @@ export function VideoMotionLab({onClose}:Props){
     <button type="button" disabled={!clip} onClick={removeFile}>Lepas video</button>
     <div className="vml-limits">
      <h3>Analisis gerak</h3>
-     <p><strong>S6.5.2 · Playback siap.</strong> Pose/Gait, event Contact, identitas A/B, dan transformasi BODY/FLOOR dari video belum dihitung pada sprint ini.</p>
+     <p><strong>S6.5.3 · Pose/Gait Video.</strong> Pose A/B, estimasi fase kaki, serta Contact/Swing/Slide/Pivot dapat dianalisis setelah model diaktifkan. Semua tetap di browser.</p>
      <p>Frame stepping menggunakan asumsi fps yang Anda pilih. HTML video dapat seek ke frame terdekat; hasilnya belum frame-accurate.</p>
-     <p>Video lokal tidak memberi persetujuan kalibrasi panggung atau membuka keluaran proyektor fisik.</p>
+     <p>Video lokal tidak memberi persetujuan kalibrasi panggung atau membuka keluaran proyektor fisik. Integrasi komposisi BODY/FLOOR dari replay masuk S6.5.4.</p>
     </div>
    </aside>
   </div>
