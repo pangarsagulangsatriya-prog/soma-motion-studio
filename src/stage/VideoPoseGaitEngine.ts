@@ -257,7 +257,8 @@ export class VideoPoseGaitEngine{
     if(this.disposed||epoch!==this.epoch)return;
     const hands=result.hands?.map((landmarks,rawIndex)=>({rawIndex,landmarks}))??null;
     const begin=performance.now();
-    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS);
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS,
+     video.videoWidth/Math.max(1,video.videoHeight));
     this.meter.observeInference(performance.now(),result.poseMs,result.handsMs,
      performance.now()-begin,performance.now()-startedAt,result.handScanned,
      schedule.intervalMs);
@@ -300,7 +301,8 @@ export class VideoPoseGaitEngine{
      handsMs=performance.now()-beginHands;
     }
     const beginAnalysis=performance.now();
-    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS);
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS,
+     video.videoWidth/Math.max(1,video.videoHeight));
     this.meter.observeInference(performance.now(),poseMs,handsMs,
      performance.now()-beginAnalysis,performance.now()-startedAt,
      hands!==null,schedule.intervalMs);
@@ -310,7 +312,7 @@ export class VideoPoseGaitEngine{
   finally{this.inProgress=false;this.consumeForced();}
  }
  private analyzeDetections(landmarks:Landmark[][],worldLandmarks:Landmark[][],
-  hands:RawHandDetection[]|null,atMs:number,capFPS:number){
+  hands:RawHandDetection[]|null,atMs:number,capFPS:number,aspect:number){
     // Expose all detected skeletons before the conservative identity/gait gate.
     // If two people cross, the diagnostic overlay still shows the raw observations.
     this.rawPoses=landmarks.filter(p=>p.length>=33).slice(0,2)
@@ -354,7 +356,7 @@ export class VideoPoseGaitEngine{
       const single={...frame,pose:person.landmarks,tracked:true};
       for(const side of [0,1] as const){
        const foot=sideName(side),key=person.id+':'+foot;
-       const sample:GaitSample|null=analyzer.observe(single,side,atMs,video.videoWidth/video.videoHeight);
+       const sample:GaitSample|null=analyzer.observe(single,side,atMs,aspect);
        if(!sample){this.feet.delete(key);continue;}
        const previous=this.feet.get(key)??emptyReplayState();
        const changes=replayEventsForSample(sample,previous,person.id,foot,this.segment);
