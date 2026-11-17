@@ -7,7 +7,7 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Activity,Camera,ChevronRight,Film,ShieldAlert,Video,Smartphone,Box,Monitor,ArrowUpRight} from 'lucide-react';
+import {Activity,Camera,ChevronRight,Film,ShieldAlert,Video,Smartphone,Box} from 'lucide-react';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import {footprintsSteps,type FootprintsStep} from './footprintsFlow.ts';
 import type {StageNavigationRequest} from './stageNavigation.ts';
@@ -321,10 +321,6 @@ export function FootprintsStageWorkspace({
       {item.title}</button>)}
     </div>}
    </div>
-   <button type="button" className="fp-flow-projector-link"
-    title="Buka Projector untuk kalibrasi output dan Live" onClick={onOpenProjection}>
-    <Monitor size={15}/> Projector <ArrowUpRight size={13}/>
-   </button>
   </nav>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
