@@ -15,7 +15,7 @@ import {RehearsalPath,RehearsalTimeline,referenceFootPath} from './RehearsalVisu
 import './rehearsal-comparison-lab.css';
 type Capture={status:'complete'|'interrupted';reason:string;start:number;end:number;
  duration:number;performers:1|2;floor:FloorSpace;events:FootstepEvent[]};
-type Recording={start:number;end:number;cursor:number;performers:1|2;
+type Recording={start:number;end:number;cursor:number;sessionEpoch:number;performers:1|2;
  floor:FloorSpace;events:FootstepEvent[]};
 type Props={frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;
@@ -76,6 +76,7 @@ export function RehearsalComparisonLab({
   if(!data||!floor){setMessage('FloorSession belum siap.');return;}
   const now=performance.now();
   run.current={start:now,end:now+windowMs,cursor:data.events.length,
+   sessionEpoch:tracker.sessionEpoch,
    performers,floor:{...floor},events:[]};
   setCapture(null);setCapturedCount(0);setRecording(true);
   setMessage('Merekam event baru dari FloorSession; event historis dikecualikan.');
@@ -88,7 +89,7 @@ export function RehearsalComparisonLab({
     finish('interrupted','Kamera/identitas tidak siap: '+readiness.reason,now);return;}
    if(v.performers!==performers){finish('interrupted','Mode performer berubah.',now);return;}
    const data=tracker.session,floor=tracker.floor;
-   if(!data||!floor||data.events.length<v.cursor||
+   if(!data||!floor||tracker.sessionEpoch!==v.sessionEpoch||data.events.length<v.cursor||
     floor.widthM!==v.floor.widthM||floor.depthM!==v.floor.depthM){
     finish('interrupted','FloorSession/kalibrasi berganti.',now);return;}
    for(const e of data.events.slice(v.cursor)){
