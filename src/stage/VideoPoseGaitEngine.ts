@@ -11,6 +11,7 @@ import type {PoseLandmarker} from '@mediapipe/tasks-vision';
 export type ReplayOverlayPerson={id:ReplayPerformer;landmarks:Landmark[];confidence:number};
 export type ReplayAnalysisSnapshot={
  atMs:number;segment:number;sampledFrames:number;performers:1|2;
+ firstAtMs?:number|null;truncatedEvents?:number;
  people:ReplayOverlayPerson[];events:ReplayGaitEvent[];
  status:string;ambiguous:boolean;
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
@@ -29,6 +30,7 @@ export class VideoPoseGaitEngine{
  private archived:ReplayArchiveSegment[]=[];
  private firstAtMs:number|null=null;
  private discardedSegments=0;
+ private truncatedEvents=0;
  private analyzers=new Map<ReplayPerformer,GaitAnalyzer>();
  private feet=new Map<string,ReplayGaitState>();
  private history:ReplayGaitEvent[]=[];
@@ -54,6 +56,7 @@ export class VideoPoseGaitEngine{
   this.archived.push({
    segment:this.segment,firstAtMs:this.firstAtMs,lastAtMs:this.lastTime>=0?this.lastTime:null,
    sampledFrames:this.frames,endReason:reason,events:this.history.map(e=>({...e})),
+   truncatedEvents:this.truncatedEvents,
    identityQA:this.qa.snapshot
   });
   // Oldest segments are safely dropped to prevent unbounded browser memory.
@@ -63,6 +66,7 @@ export class VideoPoseGaitEngine{
  }
  get snapshot():ReplayAnalysisSnapshot{
   return {atMs:Math.max(0,this.lastTime),segment:this.segment,
+   firstAtMs:this.firstAtMs,truncatedEvents:this.truncatedEvents,
    sampledFrames:this.frames,performers:this.count,people:this.people.map(person=>({
     ...person,landmarks:person.landmarks.map(point=>({...point}))
    })),events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
@@ -91,7 +95,7 @@ export class VideoPoseGaitEngine{
  reset(reason='Seek atau loop: event lama dikosongkan agar tidak tercampur.'){
   this.closeSegment(reason);
   this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
-  this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.feet.clear();
+  this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
   this.identity.reset();this.analyzers.clear();this.processor.reset();
   this.people=[];this.ambiguous=false;this.lastTime=-1;
   this.status=reason;this.emit();
@@ -164,7 +168,7 @@ export class VideoPoseGaitEngine{
     }
     this.people=assigned;
     // Bound memory during long takes. Position is image-relative, never metric.
-    if(this.history.length>5000)this.history=this.history.slice(-5000);
+    if(this.history.length>5000){this.truncatedEvents+=this.history.length-5000;this.history=this.history.slice(-5000);}
     this.emit();
    }finally{result.close();}
   }catch(e){
