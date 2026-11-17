@@ -8,7 +8,7 @@ import type {LegacyOutputStatus} from '../src/studio/v3/unifiedStageStatus.ts';
 const base={
  cameraOn:false,cameraBusy:false,cameraError:'',bodySelected:false,
  frameFresh:false,visibleCount:0,performerCount:2 as 1|2,
- identityAmbiguous:false,floorCalibrated:false,floorConfirmed:false,cameraMatched:false
+ identityAmbiguous:false,identityMatchedFrame:false,floorCalibrated:false,floorConfirmed:false,cameraMatched:false
 };
 const dualState=(surface:'body'|'floor',overrides:Partial<DualSurfaceState>={}):DualSurfaceState=>({
  surface,reported:false,opened:false,connected:false,mode:'offline',qa:'incomplete',
@@ -41,7 +41,7 @@ test('camera Body alone cannot imply valid tracking or calibrated floor',()=>{
 });
 test('identity ambiguity prevents a false green tracking indicator',()=>{
  const items=compactFootprintsReadiness({...base,cameraOn:true,bodySelected:true,
-  frameFresh:true,visibleCount:2,identityAmbiguous:true,
+  frameFresh:true,visibleCount:2,identityAmbiguous:true,identityMatchedFrame:true,
   floorCalibrated:true,floorConfirmed:true,cameraMatched:true});
  assert.equal(items[1]?.value,'Identitas ambigu');
  assert.equal(items[1]?.level,'warn');
@@ -49,12 +49,12 @@ test('identity ambiguity prevents a false green tracking indicator',()=>{
 });
 test('missing second performer is explicitly called out',()=>{
  const items=compactFootprintsReadiness({...base,cameraOn:true,bodySelected:true,
-  frameFresh:true,visibleCount:1});
+  frameFresh:true,visibleCount:1,identityMatchedFrame:true});
  assert.equal(items[1]?.value,'Performer kurang');
  assert.match(items[1]?.detail??'',/1 dari 2/);
 });
 test('floor readiness requires calibration, confirmation, matching camera and fresh frame',()=>{
- const ready={...base,cameraOn:true,bodySelected:true,frameFresh:true,visibleCount:2,
+ const ready={...base,cameraOn:true,bodySelected:true,frameFresh:true,visibleCount:2,identityMatchedFrame:true,
   floorCalibrated:true,floorConfirmed:true,cameraMatched:true};
  assert.equal(compactFootprintsReadiness(ready)[2]?.level,'ok');
  assert.equal(compactFootprintsReadiness({...ready,cameraMatched:false})[2]?.level,'warn');
