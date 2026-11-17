@@ -2,7 +2,7 @@
 .fp-usability[hidden]{display:none!important}
 .fp-stage-workspace .fp-usability-launch{display:inline-flex;align-items:center;gap:6px;
  background:#21352a;color:#d7e6d1;border:1px solid #516c56;border-radius:7px;
- padding:7px 9px;min-height:33px;cursor:pointer;font:600 11px inherit}
+ padding:7px 9px;min-height:33px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit}
 .fp-stage-workspace .fp-usability-launch[aria-expanded=true]{border-color:#c6dfad;background:#304a37}
 .fp-usability{display:flex;flex-direction:column;gap:12px;margin:9px 0;padding:14px;
  background:#142019;color:#e6ede0;border:1px solid #6c826c;border-radius:10px}
