@@ -3,7 +3,6 @@ import {FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-r
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot}
  from '../../stage/VideoPoseGaitEngine.ts';
 import {videoActorPresenceLabel} from '../../stage/videoAutoActorTracker.ts';
-import {D1MoveNetBenchmark} from '../../stage/D1MoveNetBenchmark.tsx';
 import {subscribeReplayFrames} from '../../stage/replayFrameClock.ts';
 import {validVideoLabFile} from '../../stage/videoMotionLabUtils.ts';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
@@ -27,7 +26,6 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [position,setPosition]=useState(0),[duration,setDuration]=useState(0);
  const [playing,setPlaying]=useState(false),[analyzing,setAnalyzing]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
- const [detectorOpen,setDetectorOpen]=useState(false);
  const [snapshot,setSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const lastSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
  const previousSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
@@ -157,14 +155,6 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     <input aria-label="Pilih file video Footprints" type="file"
      accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg" onChange={inputVideo}/>
    </label>
-   <button type="button" className="fp-d1-open-trigger" disabled={!clip}
-    aria-expanded={detectorOpen} aria-controls="fp-d1-main-panel"
-    onClick={()=>{
-     if(!detectorOpen){video.current?.pause();setPlaying(false);}
-     setDetectorOpen(value=>!value);
-    }}>
-    {detectorOpen?'Tutup Detector':'Detector & Identity D1–D2 (384/512)'}
-   </button>
    <video ref={video} src={url??undefined} playsInline muted preload="metadata"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
     onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);setVideoReady(true);}}
@@ -186,11 +176,23 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
    <span className="fp-experiment-meta" role="status">
     {analyzing?'Menyiapkan model Pose/Gait…':analysisError?'Analisis belum aktif: '+analysisError:
-     snapshot?String(snapshot.detectedCount)+'/2 pose terbaca'+
-      (snapshot.rescueCount?' · pemindaian ulang':'')+' · '+snapshot.performance.backend+
-      ' · '+Math.round(snapshot.performance.poseFps)+' FPS':
+     snapshot?'Dual tracking · '+snapshot.detectedCount+'/2 pose · '+
+      snapshot.visibleCount+'/2 ID stabil'+
+      (snapshot.ambiguous?' · HOLD crossing':'')+
+      (snapshot.rescueCount?' · crop rescue':'')+' · '+
+      snapshot.performance.backend+' · '+Math.round(snapshot.performance.poseFps)+' FPS':
      clip?'Video siap, mulai analisis':'Video belum dipilih'}
    </span>
+   {snapshot&&<div className="fp-duet-engine-status" role="status">
+    <b>DUAL MOVEMENT ENGINE</b>
+    <span>MP4 → Pose 33 × 2 → identitas A/B → gait → BODY/FLOOR</span>
+    <span>{snapshot.ambiguous?'ID HOLD · event meragukan ditahan':
+     snapshot.visibleCount===2?'Dua aktor terpisah · analisis berjalan':
+      snapshot.visibleCount===1?'Satu aktor terlacak · pasangan dipantau':
+      'Mencari tubuh dan memulihkan ID'}</span>
+    <span>A: {snapshot.gait['A:left']?.motion??'—'} / {snapshot.gait['A:right']?.motion??'—'}
+     {' · '}B: {snapshot.gait['B:left']?.motion??'—'} / {snapshot.gait['B:right']?.motion??'—'}</span>
+   </div>}
    {snapshot&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
     <summary>D4 · Performance <b>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
      <span>{snapshot.performance.poseFps.toFixed(1)} FPS AI · lag {snapshot.performance.latestVideoLagMs.toFixed(0)} ms</span></summary>
@@ -202,7 +204,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      <span>Backend <b>{snapshot.performance.backend}</b></span>
     </div>
     {snapshot.performance.fallbackReason&&<p role="status">Fallback: {snapshot.performance.fallbackReason}</p>}
-    <small>Preview video tetap mengikuti decoder. Hasil AI terlambat dibuang. D3 belum digabungkan dengan engine MediaPipe 33 yang aktif.</small>
+    <small>MP4 → MediaPipe33 × 2 → D2 A/B berbasis gerak dan warna → gait → FOOTPRINTS. D1 MoveNet 384/512 masih benchmark terpisah dan belum menjadi detector runtime.</small>
    </details>}
    {snapshot&&<span className="fp-video-actor-status" role="status"
     aria-label="Status masing-masing aktor MP4">
@@ -223,14 +225,6 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <button type="button" onClick={reset}><RotateCcw size={15}/> Reset</button>
    <span className="fp-experiment-meta" role="status">{sessionRef.current.events.filter(e=>e.kind==='contact').length} kontak sintetis · {simTime} ms</span>
   </div>}
-  {kind==='video'&&detectorOpen&&<section id="fp-d1-main-panel"
-   className="fp-experiment-d1-panel" aria-label="Pengujian dua aktor MoveNet Footprints">
-   <div className="fp-experiment-d1-heading">
-    <strong>Detector + Identity Tracking · Footprints</strong>
-    <small>MoveNet 384/512 → pelacakan A/B dari posisi, gerak, dan warna torso pada MP4 sumber Footprints. Ketika crossing ambigu, ID ditahan. Preview BODY/FLOOR tetap memakai engine lama sampai D3.</small>
-   </div>
-   <D1MoveNetBenchmark sourceUrl={url} sourceName={clip?.name??null}/>
-  </section>}
   <details className="fp-experiment-advanced-details">
    <summary>Lanjutan</summary>
    <div className="fp-experiment-advanced-content">

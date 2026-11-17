@@ -137,3 +137,8 @@
 .fp-stage-workspace .fp-d4-metrics span{display:grid;gap:4px;font-size:10px;color:#b3c9b8}
 .fp-stage-workspace .fp-d4-metrics b{color:#e1f1e1;font:600 12px ui-monospace,monospace}
 .fp-stage-workspace .fp-d4-performance p,.fp-stage-workspace .fp-d4-performance small{display:block;margin:0;padding:5px 11px 10px;color:#d7c4a0;font-size:10px;line-height:1.5}
+
+/* Unified two-actor motion engine is always active for MP4, no separate toggle. */
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status{display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;flex:1 1 100%;padding:8px 10px;border:1px solid #4b7055;border-radius:7px;background:#101f18;font-size:10px;color:#c6d8c4;line-height:1.4}
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status b{font-size:10px;color:#d8f0cb;white-space:nowrap}
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status span{min-width:0}
