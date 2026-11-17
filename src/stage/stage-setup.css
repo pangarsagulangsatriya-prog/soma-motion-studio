@@ -85,3 +85,62 @@
  .soma-phone-qr{width:min(65vw,240px);max-width:min(65vw,240px)}
  .soma-auto-pair-code{flex-direction:column}
 }
+
+/* S6.1.2 — progressively disclosed, field-ready mobile camera validation. */
+.soma-device-qa-disclosure{width:100%;border:1px solid #51705a;border-radius:8px;
+ background:#17291c;margin-top:12px}
+.soma-device-qa-disclosure>summary{cursor:pointer;padding:13px;
+ color:#d6e9ca;font-size:12px;min-height:40px}
+.soma-device-qa-disclosure[open]>summary{border-bottom:1px solid #55705a}
+.soma-device-qa{display:flex;flex-direction:column;align-items:flex-start;
+ width:100%;gap:12px;padding:13px;box-sizing:border-box;max-width:100%;
+ border:1px solid #374f3a;background:#101a13;border-radius:8px}
+.soma-device-qa header{display:flex;justify-content:space-between;align-items:flex-start;
+ gap:12px;flex-wrap:wrap;width:100%}
+.soma-device-qa h3{margin:3px 0;font-size:15px}
+.soma-device-qa header small{font:600 9px ui-monospace,monospace;letter-spacing:.09em}
+.soma-device-qa header>span{display:inline-block;padding:7px 9px;border:1px solid #536651;
+ background:#29382a;border-radius:5px;font:600 10px ui-monospace,monospace}
+.soma-device-qa header>span[data-state=connected]{border-color:#83ad76;color:#cceabe}
+.soma-device-qa header>span[data-state=interrupted]{border-color:#be826a;color:#f3c5b2}
+.soma-device-qa-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:8px;width:100%;min-width:0}
+.soma-device-qa-metrics>div{border:1px solid #394c3d;border-radius:6px;
+ background:#1d2c21;min-width:0;padding:10px;display:flex;gap:6px;
+ flex-direction:column;align-items:flex-start}
+.soma-device-qa-metrics small{font-size:10px;color:#9cae9d;
+ letter-spacing:0}
+.soma-device-qa-metrics strong{color:#e9f4de;font:600 15px ui-monospace,monospace;
+ max-width:100%;overflow-wrap:anywhere}
+.soma-device-qa-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;width:100%}
+.soma-device-qa :is(input,textarea,select){font-size:12px;max-width:100%;
+ background:#19291b;border:1px solid #637b62;color:#e7f0dd;border-radius:6px;
+ min-height:40px;padding:9px;width:100%;box-sizing:border-box}
+.soma-device-qa label{display:flex;flex-direction:column;gap:5px;color:#c3d3c4;font-size:11px;
+ max-width:100%}
+.soma-device-qa button{background:#2a3a2c;border:1px solid #5c755c;color:#edf2dd;
+ min-height:40px;border-radius:6px;padding:9px 12px;cursor:pointer}
+.soma-device-qa button.soma-setup-primary{background:#c9dea6;color:#122014;
+ font-weight:700}
+.soma-device-qa button.soma-setup-secondary{background:#442e27;border-color:#99685a}
+.soma-device-qa button:disabled{opacity:.4;cursor:not-allowed}
+.soma-device-qa :is(button,input,select,textarea,summary):focus-visible{
+ outline:2px solid #e2efb2;outline-offset:2px}
+.soma-device-qa-checklist{border:1px solid #455c48;border-radius:6px;padding:11px;width:100%;
+ display:flex;flex-direction:column;gap:8px;box-sizing:border-box}
+.soma-device-qa-checklist legend{font-size:11px;color:#d2e2c9;padding:0 5px}
+.soma-device-qa-checklist label{flex-direction:row;align-items:center;gap:10px}
+.soma-device-qa-checklist input[type=checkbox]{width:16px;height:16px;min-height:16px}
+.soma-device-qa-assessment{width:100%;background:#202e23;
+ border-left:3px solid #809b77;padding:12px;box-sizing:border-box;
+ color:#cfddcb;font-size:11px;line-height:1.5}
+.soma-device-qa-assessment p{margin:6px 0}
+.soma-device-qa-error{color:#ffdbd0;border:1px solid #c88b78;padding:9px;
+ background:#4a2926;border-radius:5px}
+.soma-device-qa>small{font-size:10px;color:#a1b5a2;line-height:1.55}
+@media(max-width:760px){
+ .soma-device-qa{padding:9px}
+ .soma-device-qa-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .soma-device-qa-fields{grid-template-columns:1fr}
+}
