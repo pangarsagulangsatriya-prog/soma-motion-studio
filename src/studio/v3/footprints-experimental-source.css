@@ -100,3 +100,30 @@
 .fp-stage-workspace.fp-persistent-layout .fp-video-actor-status>span[data-presence=reacquiring]{
  border-style:dashed;color:#efd7a5;
 }
+
+/* D1 embedded in the active Footprints video source, not a duplicate Lab. */
+.fp-stage-workspace.fp-persistent-layout .fp-d1-open-trigger[aria-expanded=true]{
+ background:#34503c;border-color:#bbd79e;color:#f2ffe7;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-d1-panel{
+ min-width:0;width:100%;max-height:min(70vh,760px);overflow:auto;
+ border:1px solid #496a51;border-radius:9px;padding:12px;
+ background:#101d17;overscroll-behavior:contain;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-d1-heading{
+ display:flex;align-items:flex-start;flex-wrap:wrap;gap:7px 14px;margin:0 0 12px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-d1-heading strong{
+ font-size:13px;color:#e7f6d5;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-d1-heading small{
+ font-size:11px;color:#adc4ae;line-height:1.45;flex:1 1 320px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-experiment-d1-panel .soma-d1{
+ border-color:#405847;background:#14231b;padding:11px;
+}
+@media(max-width:700px){
+ .fp-stage-workspace.fp-persistent-layout .fp-experiment-d1-panel{
+  max-height:64vh;padding:8px;
+ }
+}

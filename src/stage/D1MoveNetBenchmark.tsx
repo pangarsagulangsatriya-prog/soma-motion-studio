@@ -71,9 +71,9 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
  const [count,setCount]=useState(0),[running,setRunning]=useState(false),[completed,setCompleted]=useState(0);
  const [rows,setRows]=useState<Row[]>([]),[selected,setSelected]=useState(0);
  const [marks,setMarks]=useState<Record<number,Mark>>({}),[threshold,setThreshold]=useState(.3);
- const [status,setStatus]=useState('Pilih video pada Video Motion Lab, lalu buka D1.'),[environment,setEnvironment]=useState<Record<string,string>>({});
+ const [status,setStatus]=useState('Pilih MP4 langsung di Footprints utama untuk memulai D1.'),[environment,setEnvironment]=useState<Record<string,string>>({});
  useEffect(()=>()=>{stop.current=true;},[]);
- useEffect(()=>{stop.current=true;latest.current=[];setRows([]);setCompleted(0);setSelected(0);setMarks({});},[sourceUrl]);
+ useEffect(()=>{stop.current=true;files.current=[];setCount(0);latest.current=[];setRows([]);setCompleted(0);setSelected(0);setMarks({});},[sourceUrl]);
  const enabled=count===192||Boolean(sourceUrl);
  const capture=async(i:number)=>{
   const c=buffer.current??document.createElement('canvas');buffer.current=c;
@@ -98,7 +98,7 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
   const list=Array.from(e.target.files??[]).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
   if(list.length&&list.length!==192){setStatus('Pilih tepat 192 gambar. Saat ini '+list.length+'.');return;}
   files.current=list;setCount(list.length);latest.current=[];setRows([]);setCompleted(0);setMarks({});
-  setStatus(list.length?'192 frame siap.':'Menggunakan MP4 di Video Motion Lab.');
+  setStatus(list.length?'192 frame siap.':'Menggunakan MP4 pada sumber Footprints utama.');
  };
  const start=async()=>{
   if(busy.current||!enabled)return;
@@ -153,7 +153,7 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
  };
  return <section className="soma-d1" aria-label="D1 MoveNet MultiPose benchmark">
   <video key={sourceUrl??'none'} ref={video} src={sourceUrl??undefined} preload="auto" muted playsInline hidden/>
-  <p className="soma-d1-explain">D1 · Dua aktor · 192 frame pada 24 FPS. MP4 diambil dari Video Motion Lab. Gunakan 192 PNG/JPEG untuk hasil lebih presisi; frame seek MP4 dapat meleset.</p>
+  <p className="soma-d1-explain">D1 · Dua aktor · 192 frame pada 24 FPS. Sumber MP4 mengikuti Footprints utama. Gunakan 192 PNG/JPEG untuk hasil pengukuran frame yang lebih presisi; seek MP4 dapat meleset.</p>
   <div className="soma-d1-controls">
    <label>Paket 192 frame (opsional)<input type="file" accept="image/png,image/jpeg" multiple disabled={running} onChange={changeImages}/></label>
    <label>Ambang skor<select value={threshold} disabled={running} onChange={e=>setThreshold(Number(e.target.value))}>
