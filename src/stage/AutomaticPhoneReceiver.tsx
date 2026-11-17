@@ -20,9 +20,12 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
  const roomRef=useRef<PairRoom|null>(null),pcRef=useRef<RTCPeerConnection|null>(null);
  const controllerRef=useRef<AbortController|null>(null);
  const generation=useRef(0),streamRef=useRef<MediaStream|null>(null);
+ const heartbeatTimer=useRef<ReturnType<typeof setInterval>|null>(null);
  const callback=useRef({onStream,onDisconnect});callback.current={onStream,onDisconnect};
  const terminate=(feedback=true)=>{
   ++generation.current;controllerRef.current?.abort();controllerRef.current=null;
+  if(heartbeatTimer.current)clearInterval(heartbeatTimer.current);
+  heartbeatTimer.current=null;
   const existing=roomRef.current;roomRef.current=null;
   const hadStream=!!streamRef.current;
   pcRef.current?.close();pcRef.current=null;
@@ -60,6 +63,22 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
      offerSent=true;setPhase('negotiating');setStatus('HP terhubung ke ruang. Menyiapkan WebRTC…');
      const pc=new RTCPeerConnection(ICE_SERVERS);pcRef.current=pc;
      pc.addTransceiver('video',{direction:'recvonly'});
+     // Phone sends a local WebRTC heartbeat while capture remains visible.
+     // A frozen phone/tab must trigger the same fail-closed disconnect as a dropped peer.
+     let lastHeartbeat=performance.now();
+     const channel=pc.createDataChannel('soma-stage-health');
+     channel.addEventListener('message',e=>{
+      if(e.data==='pulse')lastHeartbeat=performance.now();
+     });
+     heartbeatTimer.current=setInterval(()=>{
+      if(generation.current!==version)return;
+      if(pc.connectionState==='connected'&&
+       (channel.readyState!=='open'||performance.now()-lastHeartbeat>4500)){
+       setPhase('error');
+       setStatus('Kamera HP berhenti mengirim heartbeat. Blackout dan kalibrasi ulang.');
+       terminate(false);
+      }
+     },850);
      pc.addEventListener('track',event=>{
       if(pcRef.current!==pc||generation.current!==version)return;
       const stream=event.streams[0]??new MediaStream([event.track]);
