@@ -413,10 +413,27 @@ export function FootprintsStageWorkspace({
   frameFresh,performerCount,visibleCount:identityStatus.visible.length,
   identityAmbiguous:identityStatus.ambiguous,
   identityMatchedFrame:identityStatus.observedFrameTime===frameRef.current.time,
-  floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched
+  floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched,
+  experiment:experimentalKind?{
+   ready:!!experimentFrame&&(experimentFrame.kind!=='video'||experimentFrame.ready),
+   name:experimentFrame?.name??'Belum ada berkas',
+   events:experimentFrame?.kind==='simulator'?experimentFrame.session.events.length:
+    experimentFrame?.kind==='video'?experimentFrame.snapshot?.events.length??0:0,
+   contacts:experimentFrame?.kind==='simulator'?
+    experimentFrame.session.events.filter(e=>e.kind==='contact').length:
+    experimentFrame?.kind==='video'?
+    experimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0:0
+  }:undefined
  });
  const handleAssistantAction=(action:InlineSetupAction)=>{
   switch(action){
+   case 'experiment':{
+    if(experimentalKind==='video')document.querySelector<HTMLInputElement>(
+     '.fp-experiment-upload input[type=file]')?.click();
+    else document.querySelector<HTMLButtonElement>(
+     '.fp-experiment-controls button')?.focus({preventScroll:true});
+    break;
+   }
    case 'source':{
     const trigger=document.querySelector<HTMLButtonElement>('.fp-source-switch-trigger');
     trigger?.focus({preventScroll:true});trigger?.click();break;
