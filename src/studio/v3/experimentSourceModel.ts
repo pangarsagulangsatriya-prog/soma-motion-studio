@@ -14,4 +14,10 @@ export function activeExperimentKind(choice:string|null):ExperimentInputKind|nul
 export function experimentFrameLabel(kind:ExperimentInputKind){
  return kind==='video'?'VIDEO 2D · LANTAI ILUSTRATIF':'SIMULASI 3D · LANTAI METRIK VIRTUAL';
 }
+/** Prevent stale MP4 snapshots or puppet sessions from being shown after switching. */
+export function currentExperimentFrame(
+ kind:ExperimentInputKind|null,frame:ExperimentalFrame|null
+):ExperimentalFrame|null{
+ return kind&&frame?.kind===kind?frame:null;
+}
 export function allowPhysicalOutputFromExperiment(){return false;}
