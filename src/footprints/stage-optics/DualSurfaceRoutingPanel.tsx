@@ -8,6 +8,8 @@ import {drawSurfaceTestPattern} from './SurfaceTestPattern.ts';
 import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {claimDualOutputStatus,releaseDualOutputStatus,reportDualOutputStatus} from './DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
+import {ProjectorWysiwygPreview} from './ProjectorWysiwygPreview.tsx';
+import type {PreviewView} from './projectorWysiwygModel.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
 import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceReport,
@@ -55,6 +57,7 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   floor:{connected:false,opened:false,viewport:null,mode:'blackout',reason:'Output belum dibuka.'}
  });
  const [operatorConfirm,setOperatorConfirm]=useState(false);
+ const [previewView,setPreviewView]=useState<PreviewView>('draft');
  const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm});
  latest.current={plans,proofs,requested,armed,epoch,operatorConfirm};
  const legacyRef=useRef(legacyProjection);legacyRef.current=legacyProjection;
@@ -294,6 +297,31 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     </div>;
    })}
   </div>
+  <section className="stage-wysiwyg" aria-label="Projector WYSIWYG dan Output QA">
+   <div className="stage-wysiwyg-head">
+    <div><b>PROJECTOR / WYSIWYG</b>
+     <small>BODY dan FLOOR memakai transformasi kalibrasi yang sama dengan jendela output</small>
+    </div>
+    <div className="stage-wysiwyg-switch" role="group" aria-label="Mode preview proyektor">
+     <button type="button" aria-pressed={previewView==='draft'}
+      onClick={()=>setPreviewView('draft')}>Draf lokal</button>
+     <button type="button" aria-pressed={previewView==='sent'}
+      onClick={()=>setPreviewView('sent')}>Sinyal dikirim</button>
+    </div>
+   </div>
+   <div className="stage-wysiwyg-grid">
+    {ids.map(id=><ProjectorWysiwygPreview key={id} surface={id}
+     plan={plans[id]} view={previewView} softwareMode={devices[id].mode}
+     connected={devices[id].connected} qa={assessment(id)}
+     liveCanvas={id==='body'?bodyCanvas:floorCanvas}
+     testCanvases={testCanvases} viewport={devices[id].viewport}/>)}
+   </div>
+   <p className="stage-wysiwyg-limit">Draf lokal menampilkan komposisi dengan
+    transformasi dan batas kecerahan yang dipakai output. Mode Sinyal dikirim
+    mengikuti perintah software terbaru (LIVE / TEST / BLACKOUT). Preview
+    ini belum mengukur cahaya pada kain, tubuh, lantai, atau mata penonton.
+    Pengukuran fisik, blackout nyata, dan pemeriksaan area tetap wajib.</p>
+  </section>
   <div className="stage-dual-calibration">
    <label>Bidang yang diedit<select value={selected} onChange={e=>{setSelected(e.target.value as StageSurface);setDx('');setDy('');}}>
     <option value="body">BODY</option><option value="floor">FLOOR</option>
