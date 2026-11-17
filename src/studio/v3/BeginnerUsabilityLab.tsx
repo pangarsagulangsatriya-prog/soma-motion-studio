@@ -2,9 +2,9 @@ import {useEffect,useRef,useState} from 'react';
 import {Check,ClipboardCheck,Download,RotateCcw,AlertTriangle,X} from 'lucide-react';
 import type {FootprintsInputStatus} from './sourceSwitchModel.ts';
 import type {InlineSetupHint} from './inlineSetupModel.ts';
-import {BEGINNER_TASKS,beginnerUsabilityReport,classifySourceTransition,
+import {BEGINNER_TASKS,beginnerUsabilityReport,observeBeginnerSource,
  summarizeBeginnerUsability,type BeginnerOutcome,type BeginnerEvent,
- type BeginnerTaskResult} from './beginnerUsabilityModel.ts';
+ type BeginnerTaskResult,type BeginnerObservationState} from './beginnerUsabilityModel.ts';
 import {download} from '../../engine/recording.ts';
 import './beginner-usability.css';
 
@@ -23,25 +23,29 @@ export function BeginnerUsabilityLab({hidden,status,hint,previewReady,onClose}:P
  const [events,setEvents]=useState<BeginnerEvent[]>([]);
  const sessionStartRef=useRef(0);
  const taskStartRef=useRef(0);
- const previousRef=useRef({selection:status.selection,phase:status.phase});
+ const sourceObservationRef=useRef<BeginnerObservationState>({
+  previous:{selection:status.selection,phase:status.phase},pendingErrorSource:null
+ });
  const snapshot={selection:status.selection,phase:status.phase};
  const task=BEGINNER_TASKS[taskIndex];
  const summary=summarizeBeginnerUsability(results,events);
 
  useEffect(()=>{
-  const previous=previousRef.current;
-  previousRef.current={selection:status.selection,phase:status.phase};
-  if(!running)return;
-  const next=classifySourceTransition(previous,
-   {selection:status.selection,phase:status.phase},
-   performance.now()-sessionStartRef.current);
-  if(next.length)setEvents(old=>[...old,...next].slice(-200));
+  const current={selection:status.selection,phase:status.phase};
+  if(!running){
+   sourceObservationRef.current={previous:current,pendingErrorSource:null};
+   return;
+  }
+  const observed=observeBeginnerSource(sourceObservationRef.current,
+   current,performance.now()-sessionStartRef.current);
+  sourceObservationRef.current=observed.state;
+  if(observed.events.length)setEvents(old=>[...old,...observed.events].slice(-200));
  },[status.selection,status.phase,running]);
 
  const start=()=>{
   const now=performance.now();
   sessionStartRef.current=now;taskStartRef.current=now;
-  previousRef.current=snapshot;
+  sourceObservationRef.current={previous:snapshot,pendingErrorSource:null};
   setStartedAt(new Date().toISOString());
   setResults([]);setEvents([]);
   setTaskIndex(0);setAssisted(false);setNote('');
