@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-test('S6.8.8.7 video lab exposes real performance profiler and adaptive hand controls',async({page})=>{
+test('Video Lab profiler stays available without hand inference controls',async({page})=>{
  await page.goto('/');
  await page.locator('.fp-source-switch-trigger').click();
  await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
@@ -9,15 +9,11 @@ test('S6.8.8.7 video lab exposes real performance profiler and adaptive hand con
  await expect(panel).toBeVisible();
  await expect(panel.locator('summary')).toContainText('Performance Profiler');
  await panel.locator('summary').click();
- const hand=page.getByRole('combobox',{name:'Frekuensi deteksi tangan'});
- await expect(hand).toHaveValue('adaptive');
- await hand.selectOption('detail');await expect(hand).toHaveValue('detail');
- await hand.selectOption('off');await expect(hand).toHaveValue('off');
- await hand.selectOption('adaptive');
- await expect(panel.locator('.vml-perf-metrics>span')).toHaveCount(9);
+ await expect(page.getByRole('combobox',{name:'Frekuensi deteksi tangan'})).toHaveCount(0);
+ await expect(panel.locator('.vml-perf-metrics>span')).toHaveCount(7);
  await expect(panel).toContainText('Frame dilewati');
  await expect(panel).toContainText('Pose AI');
- await expect(panel).toContainText('Hands AI');
+ await expect(panel).not.toContainText('Hands AI');
  await expect(panel).toContainText('Analisis event');
  await expect(panel).toContainText('Render');
 });

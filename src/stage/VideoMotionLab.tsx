@@ -2,14 +2,12 @@ import {useCallback,useEffect,useRef,useState,type ChangeEvent,type DragEvent,ty
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
 import {drawSkeletonBodies,replaySkeletonPresentation} from './fullBodySkeleton.ts';
-import {drawHandDetailOverlay} from './videoHandLimbOverlay.ts';
 import {HandLimbInspector} from './HandLimbInspector.tsx';
 import {MotionSemanticsInspector} from './MotionSemanticsInspector.tsx';
 import {videoActorPresenceLabel,type VideoActorId} from './videoAutoActorTracker.ts';
 import {TemporalJointInspector} from './TemporalJointInspector.tsx';
 import {ReplayPerformanceInspector} from './ReplayPerformanceInspector.tsx';
 import {subscribeReplayFrames} from './replayFrameClock.ts';
-import type {HandDetailMode} from './replayPerformance.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
@@ -46,7 +44,6 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
  const [analysisSnapshot,setAnalysisSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const snapshotRef=useRef<ReplayAnalysisSnapshot|null>(null);
  snapshotRef.current=analysisSnapshot;
- const [handMode,setHandMode]=useState<HandDetailMode>('adaptive');
  const engineRef=useRef<VideoPoseGaitEngine|null>(null);
  const getTemporalTrace=useCallback((actor:VideoActorId,joint:number)=>
   engineRef.current?.getTemporalTrace(actor,joint)??[],[]);
@@ -111,7 +108,6 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
    await engine.init();
    if(generation!==generationRef.current)return;
    engine.setPerformers(replayPeople);
-   engine.setHandDetailMode(handMode);
    setAnalysisOn(true);
    engine.process(video,video.currentTime,18,true);
    setMessage('Analisis tujuh event gerak berjalan pada video lokal. Semua pengukuran memakai estimasi gambar 2D.');
@@ -147,7 +143,6 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
      const x=(canvas.width-width)/2,y=(canvas.height-height)/2,rect={x,y,width,height};
      const overlay=replaySkeletonPresentation(snapshot,video.currentTime*1000);
      drawSkeletonBodies(ctx,overlay.poses,rect,{labels:overlay.labels,colors:overlay.colors});
-     drawHandDetailOverlay(ctx,snapshot.handLimb,rect,video.currentTime*1000);
     }
     if(analysisOn)engineRef.current?.recordRender(performance.now()-started);
    }
@@ -382,10 +377,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        <option value={2}>2 aktor (manual)</option>
       </select></label>
      </div>
-     <ReplayPerformanceInspector performance={analysisSnapshot?.performance??null}
-      mode={handMode} onModeChange={mode=>{
-       setHandMode(mode);engineRef.current?.setHandDetailMode(mode);
-      }}/>
+     <ReplayPerformanceInspector performance={analysisSnapshot?.performance??null}/>
      <div className="vml-analysis-actions">
       <button type="button" className="vml-primary" disabled={!ready||analysisBusy}
        onClick={()=>analysisOn?stopAnalysis():void startAnalysis()}>
@@ -415,8 +407,6 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        revision={analysisSnapshot?.sampledFrames??0}
        segment={analysisSnapshot?.segment??0}/>
       <HandLimbInspector frame={analysisSnapshot?.handLimb??null}
-       modelStatus={analysisSnapshot?.handModelStatus??'loading'}
-       modelReason={analysisSnapshot?.handModelReason??'Model belum dimuat.'}
        getHistory={getHandLimbWindow} segment={analysisSnapshot?.segment??0}/>
       <MotionSemanticsInspector events={analysisSnapshot?.semanticEvents??[]}
        totals={analysisSnapshot?.semanticTotals}

@@ -6,13 +6,13 @@ async function chooseVideo(page){
  await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
 }
-test('S6.8.8.4 hand & limb panel exposes independent actors and safe empty state',async({page})=>{
+test('Pose-based arms and legs panel retains independent actors without finger tracking',async({page})=>{
  await chooseVideo(page);
  const panel=page.locator('.vml-hand-limb');
  await expect(panel).toBeVisible();
- await expect(panel.locator('summary')).toContainText('Hands & Limbs');
+ await expect(panel.locator('summary')).toContainText('Arms & Legs');
  await panel.locator('summary').click();
- const buttons=panel.getByRole('group',{name:'Pilih aktor detail tangan dan kaki'});
+ const buttons=panel.getByRole('group',{name:'Pilih aktor detail lengan dan kaki'});
  await expect(buttons.getByRole('button',{name:'Actor A'})).toHaveAttribute('aria-pressed','true');
  await buttons.getByRole('button',{name:'Actor B'}).click();
  await expect(buttons.getByRole('button',{name:'Actor B'})).toHaveAttribute('aria-pressed','true');
@@ -21,7 +21,7 @@ test('S6.8.8.4 hand & limb panel exposes independent actors and safe empty state
  await expect(page.getByRole('combobox',{name:'Mode jumlah aktor video'})).toHaveValue('auto');
 });
 
-test('S6.8.8.4 switching to MP4 with detailed hand overlays retains physical projector lock',async({page})=>{
+test('MP4 pose-based limb tracking keeps physical projector outputs locked',async({page})=>{
  await page.goto('/');
  await page.locator('.fp-source-switch-trigger').click();
  await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();

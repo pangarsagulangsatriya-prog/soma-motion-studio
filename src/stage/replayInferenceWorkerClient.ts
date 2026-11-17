@@ -1,8 +1,6 @@
 import type {Landmark} from '../engine/types.ts';
 export type ReplayWorkerResult={
- landmarks:Landmark[][];worldLandmarks:Landmark[][];
- hands:Landmark[][]|null;poseMs:number;handsMs:number;
- handScanned:boolean;handReady:boolean;
+ landmarks:Landmark[][];worldLandmarks:Landmark[][];poseMs:number;
 };
 type Pending={
  id:number;resolve:(data:ReplayWorkerResult)=>void;reject:(e:Error)=>void;
@@ -13,8 +11,6 @@ export class ReplayInferenceWorkerClient{
  private pending:Pending|null=null;
  private stopped=false;
  private serial=0;
- handReady=false;
- handReason='';
  constructor(){
   this.worker=new Worker(new URL('./replayInferenceWorker.ts',import.meta.url),{type:'module'});
  }
@@ -28,7 +24,6 @@ export class ReplayInferenceWorkerClient{
     if(data.type!=='ready'&&data.type!=='error')return;
     clearTimeout(timeout);this.worker.removeEventListener('message',receive);
     if(data.type==='error'){reject(Error(data.message??'Worker gagal'));return;}
-    this.handReady=!!data.handsReady;this.handReason=data.handReason??'';
     this.worker.onmessage=message=>this.receive(message.data);
     this.worker.onerror=()=>this.fail(Error('Worker inference terputus.'));
     resolve();
@@ -38,7 +33,7 @@ export class ReplayInferenceWorkerClient{
    this.worker.postMessage({type:'init',base:import.meta.env.BASE_URL});
   });
  }
- async detect(video:HTMLVideoElement,clock:number,hands:boolean):Promise<ReplayWorkerResult>{
+ async detect(video:HTMLVideoElement,clock:number):Promise<ReplayWorkerResult>{
   if(this.stopped||this.pending)throw Error('Worker inference masih sibuk.');
   const bitmap=await createImageBitmap(video);
   if(this.stopped){bitmap.close();throw Error('Worker telah dihentikan.');}
@@ -46,7 +41,7 @@ export class ReplayInferenceWorkerClient{
    const id=++this.serial;
    const timeout=setTimeout(()=>this.fail(Error('Worker inference melebihi 2 detik.')),2000);
    this.pending={id,resolve,reject,timeout};
-   try{this.worker.postMessage({type:'frame',id,bitmap,clock,hands},[bitmap]);}
+   try{this.worker.postMessage({type:'frame',id,bitmap,clock},[bitmap]);}
    catch(e){bitmap.close();this.fail(e instanceof Error?e:Error(String(e)));}
   });
  }
