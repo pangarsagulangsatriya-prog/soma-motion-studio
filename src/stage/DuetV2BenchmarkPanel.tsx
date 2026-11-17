@@ -88,8 +88,9 @@ function drawFrame(canvas:HTMLCanvasElement|null,video:HTMLVideoElement|null,
   }
  }
 }
-export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo}:{
+export function DuetV2BenchmarkPanel({clipUrl,clipName,sourceVideo,analysisActive}:{
  clipUrl:string|null;clipName:string|null;sourceVideo:RefObject<HTMLVideoElement|null>;
+ analysisActive:boolean;
 }){
  const videoRef=useRef<HTMLVideoElement|null>(null);
  const canvasRef=useRef<HTMLCanvasElement|null>(null);
