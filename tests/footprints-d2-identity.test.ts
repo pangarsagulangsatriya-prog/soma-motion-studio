@@ -64,10 +64,12 @@ test('D2 refuses uncertain single pose and rejects backward video time',()=>{
  t.reset();
  assert.equal(t.observe([a.pose,b.pose],imageFrame([a,b]),10).assignments.length,2);
 });
-test('D2 stays attached to Footprints primary input, no duplicate lab',()=>{
+test('D2 is attached to real Footprints movement engine; benchmark stays isolated',()=>{
  const root=readFileSync(new URL('../src/studio/v3/FootprintsExperimentalSource.tsx',import.meta.url),'utf8');
+ const engine=readFileSync(new URL('../src/stage/VideoPoseGaitEngine.ts',import.meta.url),'utf8');
  const panel=readFileSync(new URL('../src/stage/D1MoveNetBenchmark.tsx',import.meta.url),'utf8');
- assert.match(root,/D1MoveNetBenchmark sourceUrl=\{url\}/);
+ assert.doesNotMatch(root,/D1MoveNetBenchmark/);
+ assert.match(engine,/new MoveNetIdentityTracker/);
+ assert.match(engine,/this.qa.observe\(candidates,observed.actors\)/);
  assert.match(panel,/new MoveNetIdentityTracker\(\)/);
- assert.match(panel,/trackers\[index\]\.observe/);
 });

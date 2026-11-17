@@ -1,6 +1,7 @@
 import type {Landmark} from '../engine/types.ts';
 export type ReplayWorkerResult={
  landmarks:Landmark[][];worldLandmarks:Landmark[][];poseMs:number;rescuedCount?:number;
+ appearance?:(number[]|null)[];
 };
 type Pending={
  id:number;resolve:(data:ReplayWorkerResult)=>void;reject:(e:Error)=>void;

@@ -6,13 +6,13 @@ const source=readFileSync(new URL('../src/studio/v3/FootprintsExperimentalSource
 const lab=readFileSync(new URL('../src/stage/VideoMotionLab.tsx',import.meta.url),'utf8');
 const benchmark=readFileSync(new URL('../src/stage/D1MoveNetBenchmark.tsx',import.meta.url),'utf8');
 
-test('D1 MoveNet runs inside primary Footprints video source with its existing MP4',()=>{
- assert.match(source,/import \{D1MoveNetBenchmark\}/);
- assert.match(source,/kind==='video'&&detectorOpen/);
- assert.match(source,/sourceUrl=\{url\}/);
- assert.match(source,/sourceName=\{clip\?\.name\?\?null\}/);
- assert.match(source,/fp-d1-main-panel/);
- assert.match(source,/video\.current\?\.pause\(\)/);
+test('Footprints has one active MP4 movement engine with built-in D2, no diagnostic toggle',()=>{
+ const engine=readFileSync(new URL('../src/stage/VideoPoseGaitEngine.ts',import.meta.url),'utf8');
+ assert.match(source,/new VideoPoseGaitEngine/);
+ assert.match(source,/fp-duet-engine-status/);
+ assert.doesNotMatch(source,/D1MoveNetBenchmark/);
+ assert.match(engine,/new MoveNetIdentityTracker/);
+ assert.match(engine,/observeDescriptors\(mapped,descriptors,width,height,atMs\)/);
 });
 
 test('D1 is no longer duplicated in the advanced Video Motion Lab',()=>{
