@@ -21,8 +21,10 @@ export function inlineSetupHint(input:{
  const {source,cameraOn,cameraBusy,cameraError,bodySelected,videoReady,
   frameFresh,performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
   floorCalibrated,floorConfirmed,cameraMatched}=input;
- if(source.selection==='video'||source.selection==='simulator')
-  return hint('lab','Sumber eksperimen','Video dan simulasi memakai Lab terpisah. Kembali ke sumber live untuk tracking kamera.','source','Ganti sumber','idle');
+ if(source.selection==='video')
+  return hint('video-input','Video Footprints','Pilih rekaman MP4/WebM pada panel input. BODY dan FLOOR membaca hasil analisis video 2D; kalibrasi lantai fisik tidak digunakan.','source','Ganti sumber','idle');
+ if(source.selection==='simulator')
+  return hint('simulator-input','Lantai virtual siap','Buat langkah dengan puppet. Stage Preview menampilkan data sintetis dalam meter virtual.','source','Ganti sumber','idle');
  if(source.selection===null)
   return hint('source','Pilih sumber gerak','Hubungkan webcam atau kamera HP. Semua pengaturan visual Footprints tetap tersedia.','source','Pilih sumber','idle');
  if(source.phase==='error'||cameraError&&source.selection==='webcam')
