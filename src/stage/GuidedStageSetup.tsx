@@ -47,7 +47,7 @@ export function GuidedStageSetup({
  const headingRef=useRef<HTMLHeadingElement>(null);
  const cameraPreview=useRef<HTMLCanvasElement>(null),bodyPreview=useRef<HTMLCanvasElement>(null),floorPreview=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
-  const media=window.matchMedia(embedded?'(max-width: 760px)':'(max-width: 1250px)');
+  const media=window.matchMedia(embedded?'(max-width: 1200px)':'(max-width: 1250px)');
   const sync=()=>setCompact(media.matches);
   sync();media.addEventListener('change',sync);
   return()=>media.removeEventListener('change',sync);
