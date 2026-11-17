@@ -15,6 +15,7 @@ const corners=['Kiri atas','Kanan atas','Kanan bawah','Kiri bawah'] as const;
 const sizes=[{label:'4 × 3 m',w:4,d:3},{label:'6 × 4 m',w:6,d:4},{label:'8 × 6 m',w:8,d:6},{label:'10 × 8 m',w:10,d:8}] as const;
 type Props={
  open:boolean;onClose:()=>void;session:StageSessionController;embedded?:boolean;
+ phoneManaged?:boolean;onSelectPhone?:()=>void;onShowPhoneManager?:()=>void;
  onCalibrationState?:(state:{marks:Array<Point|null>;editing:number}|null)=>void;
  onBindCalibrationTap?:(handler:((x:number,y:number)=>void)|null)=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
@@ -28,7 +29,8 @@ type Props={
 };
 const emptyCorners=():Array<Point|null>=>[null,null,null,null];
 export function GuidedStageSetup({
- open,onClose,session,embedded=false,onCalibrationState,onBindCalibrationTap,
+ open,onClose,session,embedded=false,phoneManaged=false,onSelectPhone,onShowPhoneManager,
+ onCalibrationState,onBindCalibrationTap,
  onStartLaptop,onPhoneStream,onPhoneDisconnect,
  onCalibrate,onSimulator,onArchive,onComposer,onVideoLab,onPerform,onBlackout,cameraOn,
  calibrated,confirmed,contacts,frameRef,videoRef,bodyPreviewRef,floorPreviewRef,
@@ -263,10 +265,19 @@ export function GuidedStageSetup({
      <div className="soma-setup-choice">
       <button type="button" aria-pressed={currentSource==='laptop'} onClick={()=>{session.patch({source:'laptop'});onStartLaptop();setMessage('Menyambungkan webcam laptop…');}}>
        <b>Webcam laptop</b><small>Gunakan kamera komputer</small></button>
-      <button type="button" aria-pressed={currentSource==='phone'} onClick={()=>{session.patch({source:'phone'});setMessage('Buka QR, lalu arahkan kamera HP ke panggung.');}}>
+      <button type="button" aria-pressed={currentSource==='phone'} onClick={()=>{
+       if(onSelectPhone)onSelectPhone();
+       else session.patch({source:'phone'});
+       setMessage('Buka QR, lalu arahkan kamera HP ke panggung.');
+      }}>
        <b>Kamera HP</b><small>Scan QR untuk video langsung</small></button>
      </div>
-     {currentSource==='phone'&&
+     {currentSource==='phone'&&phoneManaged?
+      <div className="soma-guide-pair">
+       <p>Pairing HP dikelola dari panel sumber Footprints supaya koneksi tetap berjalan ketika panduan ditutup.</p>
+       <button type="button" onClick={onShowPhoneManager}>Buka pairing kamera HP</button>
+      </div>:
+      currentSource==='phone'&&
       <div className="soma-guide-pair"><PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/></div>}
      {currentSource==='phone'&&phoneActive&&<div className="soma-setup-status">Kamera HP tersambung. Periksa preview di samping.</div>}
      <div className="soma-guide-experiments">
