@@ -38,7 +38,7 @@ export type HandMatchResult={matches:HandMatch[];ambiguous:HandSlot[];unassigned
 export const HAND_LIMB_MAX_FRAMES=360;
 export const HAND_SCAN_INTERVAL_MS=130;
 export const HAND_RECENT_MS=220;
-const GATE=.16;
+const GATE=.12;
 const AMBIGUITY=.042;
 const FINGERS=[
  {name:'thumb' as const,mcp:2,pip:3,dip:4,tip:4},
