@@ -25,7 +25,7 @@ test('Crop coordinates unproject into full video coordinates',()=>{
   {x:.5,y:.5,z:.2,visibility:.95}],region);
  assert.equal(remapped[0].x,.4);
  assert.equal(remapped[0].y,.5);
- assert.equal(remapped[0].z,.08);
+ assert.ok(Math.abs(remapped[0].z-.08)<1e-9);
 });
 test('Rescue accepts a second well-observed actor and keeps the original raw pose',()=>{
  const original=pose(.25),second=pose(.73);
