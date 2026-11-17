@@ -1,14 +1,17 @@
-name: Deploy SOMA to GitHub Pages
-# SOMA production runs on Vercel. Optional GitHub Pages deployment is manual only.
-# Enable GitHub Pages in repository settings before running this workflow.
+name: Preview SOMA on GitHub Pages
+# Independent browser preview when Vercel production deployments are rate-limited.
+# A one-time Settings → Pages → Source: GitHub Actions is required if not enabled.
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: pages
+  group: soma-pages-preview
   cancel-in-progress: true
 jobs:
   build:
@@ -17,12 +20,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run setup:assets
       - run: npm test
       - run: npm run build -- --mode githubpages
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
