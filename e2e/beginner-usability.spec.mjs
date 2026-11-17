@@ -15,7 +15,6 @@ test('S6.8.6 beginner study: first visit → switching → observer tasks → ex
  await open.click();
  const lab=page.getByRole('region',{name:'S6.8.6 — Uji penggunaan pertama'});
  await expect(lab).toBeVisible();
- await expect(lab).toContainText('Menemukan sumber pertama').catch(()=>{});
  await lab.getByRole('button',{name:'Mulai sesi observasi'}).click();
  await expect(lab.locator('.fp-usability-task')).toHaveAttribute('data-task','select');
 
