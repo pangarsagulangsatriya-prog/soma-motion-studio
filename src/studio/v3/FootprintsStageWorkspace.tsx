@@ -379,7 +379,7 @@ export function FootprintsStageWorkspace({
       aria-current={flowStep===item.id?'step':undefined}
       aria-expanded={flowStep===item.id&&inspectorOpen}
       aria-controls={flowStep===item.id&&inspectorOpen?'fp-context-panel':undefined}
-      onClick={event=>selectFlowStep(item.id,event.currentTarget)}
+      onClick={event=>selectFlowStep(item.id,event.currentTarget,true)}
       onKeyDown={event=>{
        if(shouldEnterInspectorByArrow(event,flowStep===item.id&&inspectorOpen)){
         event.preventDefault();
