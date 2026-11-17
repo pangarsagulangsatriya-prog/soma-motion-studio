@@ -8,7 +8,8 @@ export function shouldOpenInspector(options:{
  sameStep:boolean;panelOpen:boolean;cameraOn:boolean;step:'input'|'process'|'compose'|'output';
  forceOpen?:boolean;
 }){
- if(!options.forceOpen&&options.sameStep&&options.panelOpen)return false;
+ if(options.forceOpen)return true;
+ if(options.sameStep&&options.panelOpen)return false;
  return options.step==='input'?options.cameraOn:true;
 }
 export function shouldEnterInspectorByArrow(event:{key:string},selectedAndOpen:boolean){
