@@ -15,12 +15,18 @@ import {archiveSessionReport,compositeArchivalFrame,DEFAULT_ARCHIVE_PLAYBACK,
 import './archival-mapping.css';
 
 type Props={frameRef:RefObject<MotionFrame>;cameraOn:boolean;performerCount:1|2;
- router:MultiPoseGaitRouter;projection:Projection};
+ router:MultiPoseGaitRouter;projection:Projection;
+ stageMedia:{A:File|null;B:File|null};
+ onStageMedia:(slot:ArchiveSlot,file:File|null)=>Promise<boolean>;
+ stageSettings:ArchiveSettings;onStageSettings:(settings:ArchiveSettings)=>void;
+ stageHoldMs:number;onStageHoldMs:(value:number)=>void;
+};
 const slots=['A','B'] as const;
 const allowedTypes=new Set(['video/mp4','video/webm','video/ogg','video/quicktime']);
 const maxBytes=300*1024*1024;
 const percentage=(x:number)=>Math.round(x*100);
-export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,projection}:Props){
+export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,projection,
+ stageMedia,onStageMedia,stageSettings,onStageSettings,stageHoldMs,onStageHoldMs}:Props){
  const canvas=useRef<HTMLCanvasElement>(null);
  const padCanvas=useRef<HTMLCanvasElement>(null);
  const stageRoute=useRef<StageRouteInput|null>(null);
@@ -34,19 +40,19 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
  const lastHold=useRef({A:false,B:false});
  const videoRefs=useRef<{A:HTMLVideoElement|null;B:HTMLVideoElement|null}>({A:null,B:null});
  const urls=useRef<{A:string|null;B:string|null}>({A:null,B:null});
+ const attached=useRef<{A:File|null;B:File|null}>({A:null,B:null});
  const imageCanvases=useRef<{A:HTMLCanvasElement|null;B:HTMLCanvasElement|null}>({A:null,B:null});
  const phase=useRef(0),lastTime=useRef(0),renderCount=useRef(0);
  const [files,setFiles]=useState<{A:string|null;B:string|null}>({A:null,B:null});
  const [source,setSource]=useState<'simulation'|'live'>('simulation');
  const [playing,setPlaying]=useState(false);
  const [bridgeEnabled,setBridgeEnabled]=useState(false);
- const [bridgeHoldMs,setBridgeHoldMs]=useState(BRIDGE_DEFAULTS.holdMs);
+ const [bridgeHoldMs,setBridgeHoldMs]=useState(stageHoldMs);
  const [bridgeView,setBridgeView]=useState({
   contacts:0,fragments:0,drags:0,skipped:0,heldA:false,heldB:false,
   recent:'' as string,status:'Matikan/aktifkan Bridge untuk memulai simulasi.'});
  const [overlap,setOverlap]=useState(false);
- const [settings,setSettings]=useState<ArchiveSettings>({
-  A:{...DEFAULT_ARCHIVE_PLAYBACK},B:{...DEFAULT_ARCHIVE_PLAYBACK,zoom:1.35,contrast:1.3}});
+ const [settings,setSettings]=useState<ArchiveSettings>(stageSettings);
  const [status,setStatus]=useState('Unggah video arsip untuk performer A dan B.');
  const [renderStatus,setRenderStatus]=useState<'blackout'|'partial'|'ready'>('blackout');
  const [lit,setLit]=useState(0);
@@ -82,8 +88,17 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   setFiles(prev=>({...prev,[slot]:file.name}));
   setPlaying(false);setStatus('Video '+slot+' dimuat secara lokal; klik Putar.');
  };
+ useEffect(()=>{
+  for(const slot of slots){
+   if(attached.current[slot]===stageMedia[slot])continue;
+   attached.current[slot]=stageMedia[slot];
+   setVideo(slot,stageMedia[slot]);
+  }
+ },[stageMedia.A,stageMedia.B]);
  const selectFile=(slot:ArchiveSlot,e:ChangeEvent<HTMLInputElement>)=>{
-  setVideo(slot,e.target.files?.[0]??null);e.target.value='';
+  const file=e.target.files?.[0]??null;
+  e.target.value='';
+  if(file)void onStageMedia(slot,file);
  };
  const resetBridge=()=>{
   stageRoute.current=null; // old pad must not be reused for a new take
@@ -113,7 +128,10 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   }else{setPlaying(true);setStatus('Video arsip diputar di preview lokal.');}
  };
  const patch=(slot:ArchiveSlot,key:keyof ArchivePlayback,value:number|boolean)=>{
-  setSettings(prev=>({...prev,[slot]:{...prev[slot],[key]:value}}));
+  setSettings(prev=>{
+   const next={...prev,[slot]:{...prev[slot],[key]:value}};
+   onStageSettings(next);return next;
+  });
  };
  useEffect(()=>{contactBridge.configure({...BRIDGE_DEFAULTS,holdMs:bridgeHoldMs});},
   [contactBridge,bridgeHoldMs]);
@@ -287,7 +305,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
      <label>Arsip lokal untuk {slot}<input type="file" accept="video/mp4,video/webm,video/ogg,video/quicktime,.mov"
       onChange={e=>selectFile(slot,e)}/></label>
      <div className="archive-map-file"><span>{files[slot]??'Belum memilih arsip'}</span>
-      <button type="button" onClick={()=>setVideo(slot,null)} disabled={!files[slot]} aria-label={'Lepas video '+slot}><Trash2 size={14}/></button></div>
+      <button type="button" onClick={()=>void onStageMedia(slot,null)} disabled={!files[slot]} aria-label={'Lepas video '+slot}><Trash2 size={14}/></button></div>
      {([
       ['speed','Kecepatan',.25,2,.05,'×'],
       ['zoom','Crop / zoom',1,3,.05,'×'],
