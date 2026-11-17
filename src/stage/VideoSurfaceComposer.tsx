@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type ChangeEvent,type RefObject} from 'react';
+import {useEffect,useRef,useState,type ChangeEvent,type PointerEvent,type RefObject} from 'react';
 import type {Landmark} from '../engine/types.ts';
 import type {ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
 import {
@@ -87,12 +87,15 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
  const [livePresets,setLivePresets]=useState<LivePreset[]>(getLivePresets);
  const [presetName,setPresetName]=useState('Replay composition');
  const [preview,setPreview]=useState(true);
+ const [drawingPolygon,setDrawingPolygon]=useState(false);
  const [notice,setNotice]=useState('Preview eksperimen memakai koordinat video 2D; tidak tersambung ke proyektor.');
  const buffers=useRef(new Map<string,HTMLCanvasElement>());
  const loaded=useRef(new Map<string,HTMLImageElement|HTMLVideoElement>());
  const urls=useRef(new Set<string>());
  const canvases=useRef<Record<ReplaySurface,HTMLCanvasElement|null>>({'BODY A':null,'BODY B':null,FLOOR:null});
  const snapshotRef=useRef(snapshot),compositionRef=useRef(composition),activeRef=useRef(active),previewRef=useRef(preview);
+ const surfaceRef=useRef(surface),indexRef=useRef(layerIndex),drawingRef=useRef(drawingPolygon);
+ surfaceRef.current=surface;indexRef.current=layerIndex;drawingRef.current=drawingPolygon;
  const performersRef=useRef(performers);
  snapshotRef.current=snapshot;compositionRef.current=composition;activeRef.current=active;
  previewRef.current=preview;performersRef.current=performers;
@@ -136,7 +139,17 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
   if(id===mediaSourceId)return videoRef.current;
   const source=loaded.current.get(id);
   if(source instanceof HTMLImageElement)return source.complete&&source.naturalWidth?source:null;
-  if(source instanceof HTMLVideoElement)return source.readyState>=2?source:null;
+  if(source instanceof HTMLVideoElement){
+   const master=videoRef.current;
+   if(source.readyState<2||!master)return null;
+   if(Number.isFinite(source.duration)&&source.duration>0){
+    const at=((master.currentTime%source.duration)+source.duration)%source.duration;
+    if(Math.abs(at-source.currentTime)>.17){try{source.currentTime=at;}catch{/* decoder seek pending */}}
+   }
+   if(master.paused&&!source.paused)source.pause();
+   else if(!master.paused&&source.paused)void source.play().catch(()=>{});
+   return source.readyState>=2?source:null;
+  }
   return null;
  };
  const renderSurface=(target:HTMLCanvasElement,s:ReplaySurface)=>{
@@ -148,16 +161,23 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
   if(!previewRef.current||!video||video.seeking||
    !safeReplayFrame(activeRef.current,snap,currentMs,performersRef.current))return;
   if(!snap)return;
-  if(s==='FLOOR')drawFloor(ctx,snap,w,h,currentMs);
   const id=s==='BODY A'?'A':s==='BODY B'?'B':null;
   const person=id?snap.people.find(p=>p.id===id):null;
   if(id&&!person)return;
   for(const layer of compositionRef.current[s]){
-   if(!layer.visible||!layer.assetId)continue;
-   const media=findAsset(layer.assetId);
-   if(!media)continue;
+   if(!layer.visible)continue;
    const alpha=replayEventEnvelope(snap.events,s,layer.recipe,currentMs)*layer.opacity/100;
    if(alpha<=0)continue;
+   if(s==='FLOOR'&&!layer.assetId){
+    ctx.save();ctx.globalAlpha=alpha;
+    if(layer.mask==='polygon'&&layer.points.length>=3){
+     ctx.beginPath();layer.points.forEach(([x,y],i)=>i?ctx.lineTo(x*w,y*h):ctx.moveTo(x*w,y*h));ctx.closePath();ctx.clip();
+    }
+    drawFloor(ctx,snap,w,h,currentMs);ctx.restore();continue;
+   }
+   if(!layer.assetId)continue;
+   const media=findAsset(layer.assetId);
+   if(!media)continue;
    const cacheKey=s+':'+layer.id;
    let off=buffers.current.get(cacheKey);
    if(!off){off=document.createElement('canvas');buffers.current.set(cacheKey,off);}
@@ -191,6 +211,25 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
    ctx.save();ctx.globalAlpha=alpha;ctx.globalCompositeOperation=layer.blend;
    ctx.drawImage(off,0,0);ctx.restore();
   }
+  if(drawingRef.current&&surfaceRef.current===s){
+   const layer=compositionRef.current[s][indexRef.current];
+   if(layer){
+    ctx.save();ctx.lineWidth=2;ctx.strokeStyle='#90f6de';ctx.fillStyle='#c9ffef';
+    ctx.beginPath();layer.points.forEach(([x,y],i)=>{
+     if(i===0)ctx.moveTo(x*w,y*h);else ctx.lineTo(x*w,y*h);
+    });ctx.stroke();
+    for(const [x,y] of layer.points){ctx.beginPath();ctx.arc(x*w,y*h,5,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+   }
+  }
+ };
+ const editPolygonPoint=(e:PointerEvent<HTMLCanvasElement>,target:ReplaySurface)=>{
+  if(!drawingPolygon||target!==surface||selected.points.length>=12)return;
+  e.stopPropagation();e.preventDefault();
+  const rect=e.currentTarget.getBoundingClientRect();
+  const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
+  patch({mask:'polygon',points:[...selected.points,[x,y]]});
  };
  useEffect(()=>{
   let raf=0,last=-1;
@@ -255,9 +294,10 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
   </div>
   <div className="vsc-previews">
    {replaySurfaces.map(s=><button type="button" key={s} className={surface===s?'selected':''}
-    onClick={()=>{setSurface(s);setLayerIndex(0);}}>
+    onClick={()=>{setSurface(s);setLayerIndex(0);setDrawingPolygon(false);}}>
     <span>{s} <small>{composition[s].length} layer</small></span>
-    <canvas ref={node=>{canvases.current[s]=node;}} width={640} height={360}
+    <canvas ref={node=>{canvases.current[s]=node;}} onPointerDown={e=>editPolygonPoint(e,s)}
+     width={640} height={360}
      aria-label={'Preview '+s+' dari replay MP4'}/>
    </button>)}
   </div>
@@ -310,6 +350,16 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
      <option value="polygon">Custom polygon</option>
      <option value="none">None (BODY tetap dibatasi)</option>
     </select></label>
+    <div className="vsc-actions">
+     <button type="button" aria-pressed={drawingPolygon}
+      onClick={()=>{
+       if(!drawingPolygon){patch({mask:'polygon',points:[]});setDrawingPolygon(true);}
+       else if(selected.points.length>=3)setDrawingPolygon(false);
+       else setNotice('Mask polygon memerlukan minimal 3 titik.');
+      }}>{drawingPolygon?'Selesai gambar polygon':'Gambar polygon di preview'}</button>
+     {drawingPolygon&&<button type="button" onClick={()=>patch({points:[]})}>Hapus titik</button>}
+    </div>
+    {drawingPolygon&&<small>Klik preview {surface} untuk menambahkan 3–12 titik. Saat memilih preview lain, editor berhenti. Saat ini: {selected.points.length} titik.</small>}
     {(['opacity','scale','x','y','rotation','feather'] as const).map(field=>
      <label key={field}>{field} <input type="number" value={selected[field]}
       step={field==='opacity'?5:1}
