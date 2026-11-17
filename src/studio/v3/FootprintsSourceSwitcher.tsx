@@ -13,9 +13,11 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
  const trigger=useRef<HTMLButtonElement>(null),panel=useRef<HTMLDivElement>(null);
  useEffect(()=>{
   if(!open)return;
-  const raf=requestAnimationFrame(()=>panel.current?.querySelector<HTMLButtonElement>(
-   '[aria-current="true"]')?.focus({preventScroll:true})??
-   panel.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true}));
+  const raf=requestAnimationFrame(()=>{
+   const preferred=panel.current?.querySelector<HTMLButtonElement>('[aria-current="true"]');
+   (preferred??panel.current?.querySelector<HTMLButtonElement>('.fp-source-switch-option'))
+    ?.focus({preventScroll:true});
+  });
   const key=(e:KeyboardEvent)=>{
    if(e.key==='Escape'&&!e.shiftKey){
     e.preventDefault();e.stopPropagation();setOpen(false);
@@ -31,8 +33,8 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    document.removeEventListener('pointerdown',outside);};
  },[open]);
  const choose=async(choice:FootprintsInputChoice)=>{
-  if(busy||status.phase==='connecting')return;
-  if(choice===status.selection){
+  if(busy)return;
+  if(choice===status.selection&&(status.phase==='ready'||choice==='phone'||status.phase==='lab')){
    setOpen(false);trigger.current?.focus({preventScroll:true});
    if(choice==='phone')onPhoneManager();
    return;
@@ -64,7 +66,7 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    {SOURCE_CHOICES.map(item=>{
     const ItemIcon=icons[item.id],selected=selection===item.id;
     return <button type="button" role="menuitem" key={item.id} aria-current={selected?'true':undefined}
-     disabled={busy||status.phase==='connecting'}
+     disabled={busy}
      className="fp-source-switch-option" onClick={()=>void choose(item.id)}>
      <span className="fp-switch-option-icon"><ItemIcon size={18}/></span>
      <span><strong>{item.label}</strong><small>{item.description}</small></span>
