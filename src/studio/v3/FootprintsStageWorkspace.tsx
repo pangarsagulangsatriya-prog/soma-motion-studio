@@ -238,13 +238,18 @@ export function FootprintsStageWorkspace({
   cameraOn,frameFresh,floorConfirmed:floorStatus.confirmed,cameraMatched,
   dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
- const closeSetup=()=>{
-  setSetupOpen(false);
+ const setupTrigger=useRef<HTMLElement|null>(null);
+ const restoreFlowFocus=()=>{
   window.requestAnimationFrame(()=>{
-   document.querySelector<HTMLButtonElement>('.fp-flow-nav button[aria-current="step"]')
+   const target=setupTrigger.current;
+   if(target?.isConnected)target.focus({preventScroll:true});
+   else document.querySelector<HTMLButtonElement>('.fp-flow-local-tabs button[aria-current="step"]')
     ?.focus({preventScroll:true});
+   setupTrigger.current=null;
   });
  };
+ const closeSetup=()=>{setSetupOpen(false);setInspectorOpen(false);restoreFlowFocus();};
+ const closeInspector=()=>{setSetupOpen(false);setInspectorOpen(false);restoreFlowFocus();};
  useEffect(()=>{
   const request=navigationRequest;
   if(!request||lastNavRequest.current===request.id)return;
@@ -289,6 +294,7 @@ export function FootprintsStageWorkspace({
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
  };
  const openPhoneInput=()=>{
+  setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
   stageSession.patch({source:'phone'});
   setFlowStep('input');setView('stage');setInspectorOpen(true);setSetupOpen(true);
   setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
@@ -306,13 +312,14 @@ export function FootprintsStageWorkspace({
   {!operatorMode&&<nav className="fp-flow-nav" aria-label="Pengaturan Footprints">
    <div className="fp-flow-nav-left">
     <span className="fp-flow-name">FOOTPRINTS</span>
+    {setupOpen?<span className="fp-flow-guide-label">Guided Setup · Kamera dan kalibrasi</span>:
     <div className="fp-flow-local-tabs" role="group" aria-label="Bagian kerja Footprints">
      {footprintsSteps.map(item=><button type="button" key={item.id}
       aria-current={flowStep===item.id?'step':undefined}
       aria-expanded={flowStep===item.id&&inspectorOpen}
       onClick={()=>selectFlowStep(item.id)} title={item.hint}>
       {item.title}</button>)}
-    </div>
+    </div>}
    </div>
    <button type="button" className="fp-flow-projector-link"
     title="Buka Projector untuk kalibrasi output dan Live" onClick={onOpenProjection}>
@@ -471,12 +478,12 @@ export function FootprintsStageWorkspace({
    onArchive={()=>{onBlackout();showArchive();setSetupOpen(false);}}
    onComposer={()=>{onBlackout();setSetupOpen(false);setVideoLabOpen(false);setView('stage');setComposerOpen(true);}}
    onBlackout={onBlackout}
-   onVideoLab={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(true);}}
+   onVideoLab={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(true);}}
    onPerform={onEnterOperator}
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
     {!setupOpen&&<FootprintsFlowInspector
-     step={flowStep} onClose={()=>setInspectorOpen(false)}
+     step={flowStep} onClose={closeInspector}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      cameraLabel={cameraLabel}
      floorConfirmed={floorStatus.confirmed} floorCalibrated={floorStatus.calibrated}
@@ -491,7 +498,10 @@ export function FootprintsStageWorkspace({
      floorReady={floorStatus.confirmed&&cameraMatched}
      projectionReason={legacyGate.reason}
      onStartBody={onStartBody}
-     onGuidedSetup={()=>{setSetupOpen(true);setInspectorOpen(true);}}
+     onGuidedSetup={()=>{
+      setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
+      setSetupOpen(true);setInspectorOpen(true);
+     }}
      onVideo={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setView('stage');setVideoLabOpen(true);}}
      onSimulation={onOpenSimulator}
      onCalibration={onOpenLiveFloor}
