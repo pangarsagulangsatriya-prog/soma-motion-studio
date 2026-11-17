@@ -20,6 +20,10 @@ export function ReplayPerformanceInspector({performance:stats}:{
      {name:'Update UI',value:fps(stats?.uiFps??0)}
     ].map(item=><span key={item.name}><small>{item.name}</small><b>{item.value}</b></span>)}
    </div>
+   {stats?.backend==='main'&&stats.fallbackReason&&
+    <p className="vml-perf-fallback" role="status">
+     Alasan Worker tidak aktif: {stats.fallbackReason}
+    </p>}
    <small>Pengukuran langsung dari browser perangkat ini. Frame yang terlambat dapat dilewati
     agar video tetap lancar. Inferensi Pose memakai worker bila tersedia; CPU utama
     digunakan sebagai fallback.</small>
