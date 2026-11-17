@@ -21,19 +21,19 @@ test('S6.8.8.5 crossing: motion-informed A/B recover without swapping raw indice
  tracker.observe([pose(.34),pose(.66)],100);
  const meeting=tracker.observe([pose(.47),pose(.53)],200);
  assert.equal(meeting.detectedCount,2);
- assert.equal(meeting.visibleCount,0);
- assert.equal(meeting.ambiguous,true);
- assert.deepEqual(meeting.actors.map(a=>a.presence),['uncertain','uncertain']);
+ // Known movement directions separate A/B even at close range.
+ assert.equal(meeting.visibleCount,2);
+ assert.equal(meeting.ambiguous,false);
+ assert.deepEqual(meeting.actors.map(a=>a.presence),['visible','visible']);
  const preview=replaySkeletonPresentation({
   atMs:200,rawPoses:[pose(.47),pose(.53)],actorStates:meeting.actors
  },200);
- assert.deepEqual(preview.labels,['POSE 1 ?','POSE 2 ?']);
+ assert.deepEqual(preview.labels,['ACTOR A','ACTOR B']);
  const first=tracker.observe([pose(.40),pose(.60)],300);
- assert.deepEqual(first.assignments,[]);
- assert.deepEqual(first.actors.map(a=>a.presence),['reacquiring','reacquiring']);
- assert.deepEqual(first.actors.map(a=>a.recoveryFrames),[1,1]);
+ assert.equal(first.visibleCount,2);
+ assert.deepEqual(first.assignments.map(a=>[a.id,a.rawIndex]),[['A',1],['B',0]]);
  const second=tracker.observe([pose(.30),pose(.70)],400);
- assert.deepEqual(second.actors.map(a=>a.recoveryFrames),[2,2]);
+ assert.equal(second.visibleCount,2);
  const released=tracker.observe([pose(.22),pose(.78)],500);
  assert.equal(released.visibleCount,2);
  assert.equal(released.ambiguous,false);

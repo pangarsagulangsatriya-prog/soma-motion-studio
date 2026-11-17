@@ -21,7 +21,7 @@ export type ReplayAnalysisSnapshot={
  people:ReplayOverlayPerson[];events:ReplayGaitEvent[];
  /** Independent diagnostic output from MediaPipe; not an identity or gait approval. */
  rawPoses:Landmark[][];
- actorStates:VideoActorState[];detectedCount:number;visibleCount:number;
+ actorStates:VideoActorState[];detectedCount:number;visibleCount:number;rescueCount?:number;
  performerMode:'auto'|'manual';
  temporal:TemporalFrame|null;temporalFrameCount:number;
  handLimb:HandLimbFrame|null;handLimbFrameCount:number;
@@ -75,6 +75,7 @@ export class VideoPoseGaitEngine{
  ];
  private detectedCount=0;
  private visibleCount=0;
+ private rescueCount=0;
  private manualCount:1|2|null=null;
  private status='Belum dimulai';
  private ambiguous=false;
@@ -119,7 +120,7 @@ export class VideoPoseGaitEngine{
     ...person,landmarks:person.landmarks.map(point=>({...point}))
    })),rawPoses:this.rawPoses.map(pose=>pose.map(p=>({...p}))),
    actorStates:this.actorStates.map(actor=>({...actor})),
-   detectedCount:this.detectedCount,visibleCount:this.visibleCount,
+   detectedCount:this.detectedCount,visibleCount:this.visibleCount,rescueCount:this.rescueCount,
    performerMode:this.manualCount===null?'auto':'manual',
    temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
    handLimb:this.handLimbAnalyzer.latest,handLimbFrameCount:this.handLimbAnalyzer.frameCount,
@@ -155,8 +156,8 @@ export class VideoPoseGaitEngine{
   if(this.disposed)return;
   const pose=await vision.PoseLandmarker.createFromOptions(files,{
    baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`,delegate:'CPU'},
-   runningMode:'VIDEO',numPoses:2,minPoseDetectionConfidence:.6,
-   minPosePresenceConfidence:.6,minTrackingConfidence:.6,outputSegmentationMasks:false
+   runningMode:'VIDEO',numPoses:2,minPoseDetectionConfidence:.48,
+   minPosePresenceConfidence:.46,minTrackingConfidence:.52,outputSegmentationMasks:false
   });
   if(this.disposed){pose.close();return;}
   this.model=pose;this.meter.setBackend('main');
@@ -179,6 +180,7 @@ export class VideoPoseGaitEngine{
   this.analyzers.clear();this.processor.reset();
   this.count=this.manualCount??1;this.people=[];this.rawPoses=[];
   this.ambiguous=false;this.lastTime=-1;this.detectedCount=0;this.visibleCount=0;
+  this.rescueCount=0;
   this.actorStates=[
    {id:'A',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null},
    {id:'B',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null}
@@ -218,8 +220,10 @@ export class VideoPoseGaitEngine{
   const clock=Math.max(this.lastInference+1,startedAt);this.lastInference=clock;
   if(this.worker){
    const worker=this.worker;
-   void worker.detect(video,clock).then(result=>{
+   void worker.detect(video,clock,this.manualCount??
+    (this.actorStates.some(a=>a.id==='B'&&a.lastSeenAtMs!==null)?2:1)).then(result=>{
     if(this.disposed||epoch!==this.epoch)return;
+    this.rescueCount=result.rescuedCount??0;
     const begin=performance.now();
     this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,capFPS,
      video.videoWidth/Math.max(1,video.videoHeight));
@@ -282,7 +286,8 @@ export class VideoPoseGaitEngine{
      .filter(person=>this.count===2||person.id==='A')
      .map(person=>({id:person.id,landmarks:person.pose,confidence:person.confidence}));
     const approved=this.qa.observe(candidates,observed.actors);
-    this.status=observed.reason+(approved.length?
+    this.status=(this.rescueCount?'Pose kedua ditemukan lewat pemeriksaan area khusus. ':'')+
+     observed.reason+(approved.length?
      ' Event gait aktor yang lolos QA tetap aktif.':
      ' Event gait ditahan sampai identitas stabil.');
     // Reset only the actor that disappeared, never both event chains.

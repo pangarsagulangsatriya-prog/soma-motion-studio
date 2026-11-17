@@ -25,6 +25,7 @@ type Track={center:Center;velocity:Center;atMs:number;confidence:number;velocity
 type Pending={center:Center;atMs:number;streak:number};
 const IDS:VideoActorId[]=['A','B'];
 const SEPARATION=.105;
+const MOTION_CROSSING_MARGIN=.085;
 const GATE=.265;
 const AMBIGUITY=.055;
 const OCCLUSION_MS=900;
@@ -34,7 +35,7 @@ const RECOVERY_FRAMES=3;
 const d=(a:Center,b:Center)=>Math.hypot(a.x-b.x,a.y-b.y);
 const valid=(point:Landmark|undefined)=>!!point&&Number.isFinite(point.x)&&
  Number.isFinite(point.y)&&point.x>=0&&point.x<=1&&point.y>=0&&point.y<=1&&
- (point.visibility===undefined||Number.isFinite(point.visibility)&&point.visibility>=.4);
+ (point.visibility===undefined||Number.isFinite(point.visibility)&&point.visibility>=.27);
 
 function locate(pose:Landmark[],rawIndex:number):Candidate|null{
  if(pose.length<33)return null;
@@ -42,7 +43,7 @@ function locate(pose:Landmark[],rawIndex:number):Candidate|null{
  if(!shoulders.length||!hips.length)return null;
  const used=[...shoulders,...hips];
  const confidence=used.reduce((sum,i)=>sum+(pose[i].visibility??.7),0)/used.length;
- if(confidence<.5)return null;
+ if(confidence<.43)return null;
  const avg=(indices:number[],axis:'x'|'y')=>
   indices.reduce((sum,i)=>sum+pose[i][axis],0)/indices.length;
  return {rawIndex,pose,confidence,center:{
@@ -140,7 +141,17 @@ export class VideoAutoActorTracker{
      this.unresolvedCrossing.add(id);
    }
   };
-  if(found.length===2&&d(found[0].center,found[1].center)<SEPARATION){
+  const near=found.length===2&&
+   d(found[0].center,found[1].center)<SEPARATION;
+  const canSeparateCrossing=near&&this.tracks.size===2&&
+   IDS.every(id=>(this.tracks.get(id)?.velocitySamples??0)>0)&&
+   (()=>{const score=(id:VideoActorId,i:number)=>
+    d(this.predicted(id,atMs),found[i].center);
+    return Math.abs(score('A',0)+score('B',1)-
+     score('A',1)-score('B',0))>=MOTION_CROSSING_MARGIN;})();
+  // Keep both measured trajectories when the pre-crossing motion supports
+  // independent A/B assignments. With weak evidence, hold the labels.
+  if(near&&this.tracks.size>0&&!canSeparateCrossing){
    hold(IDS,true);
   }else if(this.tracks.size===0){
    const sorted=found.map((p,i)=>({p,i})).sort((a,b)=>a.p.center.x-b.p.center.x);
