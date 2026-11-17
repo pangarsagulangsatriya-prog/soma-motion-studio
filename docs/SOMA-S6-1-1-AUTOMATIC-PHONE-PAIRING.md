@@ -37,8 +37,9 @@ The paired room store is **Upstash for Redis** via Vercel Marketplace, with no d
 
 1. Open Vercel project **soma-motion-studio** → **Storage / Marketplace** → **Upstash Redis** → connect/provision a resource (free-tier may be available).
 2. Verify Vercel environment variables for the **Preview** environment:
-   - `UPSTASH_REDIS_REST_URL` (server-only HTTPS URL)
-   - `UPSTASH_REDIS_REST_TOKEN` (server-only secret)
+   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (Vercel Upstash integration defaults), or
+   - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (standalone integration names).
+   - All remain **server-side secrets**, with Preview access; do not copy values to ChatGPT or Vite.
 3. Redeploy the preview branch after the environment variables are available. **Do not put these values in any `VITE_*` variable** or in public GitHub files.
 4. Confirm `POST /api/phone-pair` returns `503 NO_SIGNALING_STORAGE` when variables are deliberately absent. When configured, requesting a QR through the SOMA UI should create a three-minute room.
 5. Keep physical BODY/FLOOR output opt-in disabled until stage QA. Any network source change revokes old calibration.
@@ -77,3 +78,7 @@ Laptop:
 - Simulated API test: unauthorized role, second phone attempting same QR, revoked/expired room, cross-origin reject, storage missing.
 - Real device rehearsal: compare webcam laptop vs HP 720p, frame freshness, foot contact, A/B crossing, network disconnection, repeated setup, and hardware Blackout.
 - Production merge **blocked** until physical and browser checks plus required Redis preview configuration succeed.
+
+## Verified November 17, 2026
+
+Upstash integration was installed on the Vercel project, with the `KV_REST_API_*` keys visible in Preview metadata. The existing Vercel Function was fixed to use the available keys and to avoid an unresolved cross-folder TypeScript import. A temporary **Preview-only** diagnostic executed a real Redis room lifecycle (create → join → poll → close) and returned `200 {"ok":true,"diagnostic":"upstash-room-cycle","stages":4}`. The temporary GET diagnostic was removed immediately after verification; only the original POST pairing API remains. **This verifies the signaling backend only**. No real smartphone-to-laptop WebRTC/foot tracking or optical acceptance has been witnessed.
