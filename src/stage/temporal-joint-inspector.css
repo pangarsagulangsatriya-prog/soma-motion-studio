@@ -1,0 +1,44 @@
+/* S6.8.8.3 — optional, local-only joint time-series diagnostic. */
+.vml-temporal{margin:10px 0;border:1px solid #537459;border-radius:9px;
+ background:#16251c;overflow:hidden}
+.vml-temporal>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;
+ gap:15px;padding:12px 13px;color:#e7f3de;cursor:pointer;font-size:12px;font-weight:700}
+.vml-temporal>summary::-webkit-details-marker{display:none}
+.vml-temporal>summary span{color:#a9c7a4;font-size:10px;font-weight:400}
+.vml-temporal>summary::before{content:'+';font:bold 17px ui-monospace,monospace;color:#a6d29c}
+.vml-temporal[open]>summary::before{content:'−'}
+.vml-temporal>summary:focus-visible{outline:2px solid #d2e9b0;outline-offset:-3px}
+.vml-temporal-body{display:flex;flex-direction:column;gap:10px;padding:12px;border-top:1px solid #425d48}
+.vml-temporal-selectors{display:grid;grid-template-columns:minmax(90px,.65fr) minmax(160px,1.4fr)
+ minmax(125px,1fr);gap:8px}
+.vml-temporal-selectors label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#b8cfb5}
+.vml-temporal-selectors select{background:#1f3326;color:#e8f1e4;
+ border:1px solid #5f7a61;border-radius:5px;min-height:34px;padding:6px;max-width:100%}
+.vml-temporal-chart{border:1px solid #37533f;background:#0c1711;
+ border-radius:7px;padding:9px 7px;min-height:145px}
+.vml-temporal-chart svg{display:block;width:100%;height:166px;overflow:visible}
+.vml-temporal-chart p{font-size:11px;color:#b5c7b1;text-align:center;padding:35px 5px}
+.vml-temporal-axes{stroke:#667e69;stroke-width:1}
+.vml-temporal-grid{stroke:#405949;stroke-width:1;stroke-dasharray:3 4}
+.vml-temporal-series{stroke:#c2e3a0}
+.vml-temporal-chart[data-actor=B] .vml-temporal-series{stroke:#85cfde}
+.vml-temporal-tick{font:10px ui-monospace,monospace;fill:#a5bbaa}
+.vml-temporal-cursor{stroke:#f0eed6;stroke-width:1;stroke-dasharray:3 3}
+.vml-temporal-scrub{display:flex;gap:9px;align-items:center}
+.vml-temporal-scrub label{min-width:105px;font-size:11px;color:#cde2c4}
+.vml-temporal-scrub input[type=range]{flex:1;min-width:0}
+.vml-temporal-scrub button{padding:6px 9px;min-height:31px}
+.vml-temporal-readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.vml-temporal-readout span{background:#1d3024;border:1px solid #375842;
+ border-radius:5px;padding:7px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.vml-temporal-readout small{color:#adcaab;font-size:10px}
+.vml-temporal-readout b{font:600 11px ui-monospace,monospace;white-space:nowrap;color:#f0f4e9}
+.vml-temporal-export{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vml-temporal-export button{min-height:33px}
+.vml-temporal-export small{flex:1 1 100%;color:#aac2ab;font-size:10px;line-height:1.5}
+@media(max-width:680px){
+ .vml-temporal-selectors{grid-template-columns:1fr 1fr}
+ .vml-temporal-selectors label:nth-child(2){grid-column:1 / -1;grid-row:2}
+ .vml-temporal-readout{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .vml-temporal>summary{align-items:flex-start;flex-wrap:wrap}
+}
