@@ -43,9 +43,16 @@ test('identity ambiguity prevents a false green tracking indicator',()=>{
  const items=compactFootprintsReadiness({...base,cameraOn:true,bodySelected:true,
   frameFresh:true,visibleCount:2,identityAmbiguous:true,identityMatchedFrame:true,
   floorCalibrated:true,floorConfirmed:true,cameraMatched:true});
- assert.equal(items[1]?.value,'Identitas ambigu');
+ assert.equal(items[1]?.value,'Periksa identitas');
  assert.equal(items[1]?.level,'warn');
  assert.equal(items[2]?.level,'ok');
+});
+test('a tracked body with unmatched identity frame stays in warning state',()=>{
+ const items=compactFootprintsReadiness({...base,cameraOn:true,bodySelected:true,
+  frameFresh:true,visibleCount:2,identityMatchedFrame:false,
+  floorCalibrated:true,floorConfirmed:true,cameraMatched:true});
+ assert.equal(items[1]?.level,'warn');
+ assert.equal(items[1]?.value,'Periksa identitas');
 });
 test('missing second performer is explicitly called out',()=>{
  const items=compactFootprintsReadiness({...base,cameraOn:true,bodySelected:true,
