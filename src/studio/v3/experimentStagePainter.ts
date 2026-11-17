@@ -3,6 +3,7 @@ import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {floorRasterPoint} from '../../footprints/simulator/floorCanvas.ts';
 import {drawPuppetScene} from '../../footprints/simulator/draw3d.ts';
 import {drawSkeletonBodies,replaySkeletonPresentation} from '../../stage/fullBodySkeleton.ts';
+import {drawHandDetailOverlay} from '../../stage/videoHandLimbOverlay.ts';
 
 function context(canvas:HTMLCanvasElement,w:number,h:number){
  if(canvas.width!==w)canvas.width=w;
@@ -23,9 +24,10 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
   if(skeleton&&frame.snapshot){
    const preview=replaySkeletonPresentation(frame.snapshot,frame.timeMs);
-   drawSkeletonBodies(ctx,preview.poses,
-    {x:(768-w)/2,y:(432-h)/2,width:w,height:h},
+   const rect={x:(768-w)/2,y:(432-h)/2,width:w,height:h};
+   drawSkeletonBodies(ctx,preview.poses,rect,
     {labels:preview.labels,colors:preview.colors});
+   drawHandDetailOverlay(ctx,frame.snapshot.handLimb,rect,frame.timeMs);
   }
   return;
  }
@@ -45,9 +47,10 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  if(!snapshot||!frame.ready)return;
  if(skeleton){
   const preview=replaySkeletonPresentation(snapshot,frame.timeMs);
-  drawSkeletonBodies(ctx,preview.poses,
-   {x:0,y:0,width:w,height:h},
+  const rect={x:0,y:0,width:w,height:h};
+  drawSkeletonBodies(ctx,preview.poses,rect,
    {labels:preview.labels,colors:preview.colors});
+  drawHandDetailOverlay(ctx,snapshot.handLimb,rect,frame.timeMs);
   return;
  }
  for(const person of snapshot.people){
