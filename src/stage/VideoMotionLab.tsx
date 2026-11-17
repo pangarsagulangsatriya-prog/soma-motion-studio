@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
+import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {VIDEO_LAB_FPS,VIDEO_LAB_SPEEDS,clampVideoTime,finiteDuration,formatVideoTime,simpleVideoFilename,
  stepVideoTime,validLoopRange,validVideoLabFile,type LoopRange} from './videoMotionLabUtils.ts';
@@ -27,6 +28,7 @@ export function VideoMotionLab({onClose}:Props){
  const [dropActive,setDropActive]=useState(false);
  const [message,setMessage]=useState('Pilih video dari perangkat untuk memulai.');
  const [analysisOn,setAnalysisOn]=useState(false);
+ const [composerOpen,setComposerOpen]=useState(false);
  const [analysisBusy,setAnalysisBusy]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
  const [replayPeople,setReplayPeople]=useState<1|2>(1);
@@ -117,7 +119,7 @@ export function VideoMotionLab({onClose}:Props){
  const loadFile=(file:File)=>{
   const error=validVideoLabFile(file);
   if(error){setMessage(error);return;}
-  stopAnalysis();setAnalysisError('');
+  stopAnalysis();setAnalysisError('');setComposerOpen(false);
   const old=lastUrl.current;
   const url=URL.createObjectURL(file);
   lastUrl.current=url;
@@ -224,7 +226,7 @@ export function VideoMotionLab({onClose}:Props){
   if(event.code==='ArrowRight'){event.preventDefault();event.stopPropagation();step(1);}
  };
  const removeFile=()=>{
-  stopAnalysis();setAnalysisError('');
+  stopAnalysis();setAnalysisError('');setComposerOpen(false);
   videoRef.current?.pause();setPlaying(false);
   setClip(null);setReady(false);setDuration(0);setPosition(0);resetMarks();
   setResolution({width:0,height:0});
@@ -234,7 +236,7 @@ export function VideoMotionLab({onClose}:Props){
  return <section className="soma-video-lab" role="region" aria-label="S6.5.3 Video Pose Gait Lab"
   tabIndex={0} onKeyDown={keyDown}>
   <header className="vml-heading">
-   <div><small>SOMA / S6.5.3 · VIDEO → POSE / GAIT</small><h2><Film size={22}/> Video Motion Lab</h2>
+   <div><small>SOMA / S6.5.4 · VIDEO → SURFACE COMPOSER</small><h2><Film size={22}/> Video Motion Lab</h2>
     <p>Video rekaman sebagai sumber latihan dan penelusuran frame. File tetap di browser; kamera dan output proyektor tidak berubah.</p></div>
    <button type="button" onClick={onClose}><X size={16}/> Tutup Lab</button>
   </header>
@@ -332,6 +334,8 @@ export function VideoMotionLab({onClose}:Props){
        engineRef.current?.reset('Analisis direset oleh pengguna.');
        const v=videoRef.current;if(v)engineRef.current?.process(v,v.currentTime,12,true);
       }}>Reset identitas & event</button>
+      <button type="button" disabled={!ready} aria-expanded={composerOpen}
+       onClick={()=>setComposerOpen(current=>!current)}>{composerOpen?'Tutup BODY/FLOOR Composer':'Buka BODY/FLOOR Composer'}</button>
      </div>
      {analysisError&&<div role="alert" className="vml-analysis-error">{analysisError}</div>}
      <p className="vml-analysis-status" role="status">
@@ -355,6 +359,8 @@ export function VideoMotionLab({onClose}:Props){
      </div>}
      <small className="vml-analysis-disclaimer">*Estimasi berbasis gambar 2D. Tidak mengukur tekanan, gaya kontak, atau koordinat lantai dalam meter. Seeking dan looping menghapus histori analisis agar urutan gerak tetap valid.</small>
     </section>
+    {composerOpen&&clip&&<VideoSurfaceComposer videoRef={videoRef} snapshot={analysisSnapshot}
+     active={analysisOn&&ready} performers={replayPeople} fileKey={clip.url}/>}
     <div className="vml-status" role="status" aria-live="polite">{message}</div>
    </div>
    <aside className="vml-inspector">
@@ -376,7 +382,7 @@ export function VideoMotionLab({onClose}:Props){
      <h3>Analisis gerak</h3>
      <p><strong>S6.5.3 · Pose/Gait Video.</strong> Pose A/B, estimasi fase kaki, serta Contact/Swing/Slide/Pivot dapat dianalisis setelah model diaktifkan. Semua tetap di browser.</p>
      <p>Frame stepping menggunakan asumsi fps yang Anda pilih. HTML video dapat seek ke frame terdekat; hasilnya belum frame-accurate.</p>
-     <p>Video lokal tidak memberi persetujuan kalibrasi panggung atau membuka keluaran proyektor fisik. Integrasi komposisi BODY/FLOOR dari replay masuk S6.5.4.</p>
+     <p>S6.5.4 memberi preview BODY A/B dan FLOOR lokal dengan layer, mask perkiraan, media arsip, preset, dan event recipe. Jalur ini tidak terhubung ke proyektor fisik.</p>
     </div>
    </aside>
   </div>
