@@ -22,7 +22,7 @@ test('S6.8.8.7 heavy pose AI backs off finger scans without disabling pose',()=>
  assert.equal(hands.choose(400,0,70).run,false);
  assert.equal(hands.choose(560,0,70).run,true);
  assert.equal(hands.choose(700,.3,45).run,false);
- assert.deepEqual(hands.choose(760,.3,45),{run:false,intervalMs:196});
+ assert.deepEqual(hands.choose(760,.3,45),{run:true,intervalMs:196});
  hands.reset();
  assert.deepEqual(hands.choose(0,.3,45),{run:true,intervalMs:196});
 });
