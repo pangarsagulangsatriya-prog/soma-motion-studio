@@ -49,6 +49,30 @@ export function expandedDuetRoi(box:DuetBox,padX=.21,padY=.18):DuetBox{
  const y=clamp(box.y-box.height*padY);
  return {x:Math.min(x,1-w),y:Math.min(y,1-h),width:w,height:h};
 }
+/** Letterbox source ROI into fixed model input without stretching a dancer.
+ * p.x/y are normalized in the letterboxed model image.
+ */
+export type DuetLetterbox={x:number;y:number;width:number;height:number;
+ imageWidth:number;imageHeight:number};
+export function duetLetterbox(roi:DuetBox,sourceWidth:number,sourceHeight:number,
+ targetWidth=480,targetHeight=640):DuetLetterbox{
+ const sourceW=roi.width*sourceWidth,sourceH=roi.height*sourceHeight;
+ const scale=Math.min(targetWidth/sourceW,targetHeight/sourceH);
+ const width=sourceW*scale,height=sourceH*scale;
+ return {x:(targetWidth-width)/2,y:(targetHeight-height)/2,width,height,
+  imageWidth:targetWidth,imageHeight:targetHeight};
+}
+export function remapDuetLetterboxLandmarks(
+ points:readonly {x:number;y:number;z:number;visibility?:number}[],
+ roi:DuetBox,pad:DuetLetterbox
+){
+ return points.map(p=>({
+  ...p,
+  x:roi.x+((p.x*pad.imageWidth-pad.x)/pad.width)*roi.width,
+  y:roi.y+((p.y*pad.imageHeight-pad.y)/pad.height)*roi.height,
+  z:p.z*roi.width*pad.imageWidth/pad.width
+ }));
+}
 export function sampleTorsoColor(pixels:ImageData,person:DuetPerson):[number,number,number]|null{
  const {box}=person;
  const w=pixels.width,h=pixels.height;
