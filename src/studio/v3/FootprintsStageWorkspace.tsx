@@ -517,9 +517,9 @@ export function FootprintsStageWorkspace({
       onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}/>
     </div>}
    </div>
-   {!operatorMode&&(inspectorOpen||sourceStatus.selection==='phone')&&<aside id="fp-context-panel"
-    className="fp-stage-inspector" data-phone-visible={phonePanelOpen}
-    data-panel-hidden={!inspectorOpen&&!phonePanelOpen}
+   {((!operatorMode&&inspectorOpen)||sourceStatus.selection==='phone')&&<aside id="fp-context-panel"
+    className="fp-stage-inspector" data-phone-visible={phonePanelOpen&&!operatorMode}
+    data-panel-hidden={operatorMode||(!inspectorOpen&&!phonePanelOpen)}
     data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}
     onKeyDown={event=>{
      if(isDismissEscape(event)){
@@ -528,7 +528,7 @@ export function FootprintsStageWorkspace({
      }
     }}>
     {sourceStatus.selection==='phone'&&<div className="fp-phone-source-panel"
-     hidden={!phonePanelOpen} aria-hidden={!phonePanelOpen}>
+     hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}>
       <header className="fp-phone-source-heading">
        <div><small>INPUT / KAMERA HP</small><h2>Hubungkan kamera HP</h2>
         <p>Pairing tetap berjalan ketika panel ditutup.</p></div>
@@ -537,7 +537,7 @@ export function FootprintsStageWorkspace({
       </header>
       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
      </div>}
-    {setupOpen&&!phonePanelOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
+    {!operatorMode&&setupOpen&&!phonePanelOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
      phoneManaged={true} onSelectPhone={openPhoneInput}
      onShowPhoneManager={openPhoneInput}
    onCalibrationState={setCalibrationOverlay}
@@ -555,7 +555,7 @@ export function FootprintsStageWorkspace({
    onPerform={onEnterOperator}
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
-    {!setupOpen&&!phonePanelOpen&&inspectorOpen&&<FootprintsFlowInspector
+    {!operatorMode&&!setupOpen&&!phonePanelOpen&&inspectorOpen&&<FootprintsFlowInspector
      key={flowStep} step={flowStep} onClose={closeInspector}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      cameraLabel={cameraLabel}
