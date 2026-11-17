@@ -241,7 +241,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
    }
    const effectiveSettings=s.recipeEnabled?{
     A:{...s.settings.A,opacity:s.settings.A.opacity*effect.body.A},
-    B:{...s.settings.B,opacity:s.settings.B*effect.body.B}
+    B:{...s.settings.B,opacity:s.settings.B.opacity*effect.body.B}
    }:s.settings;
    const composed=compositeArchivalFrame(safeMask,images,effectiveSettings,identity,renderCount.current);
    let bridgeSafe=false;
