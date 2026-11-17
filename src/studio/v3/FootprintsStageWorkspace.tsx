@@ -41,6 +41,7 @@ import './compact-stage.css';
 import './interaction-refinement.css';
 import './source-switcher-layout.css';
 import './persistent-stage-workspace.css';
+import './persistent-stage-workspace.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
