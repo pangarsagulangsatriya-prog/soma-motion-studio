@@ -3,7 +3,7 @@ import {Activity,AlertTriangle,Camera,CheckCircle2,ChevronRight,
 import type {InlineSetupHint,InlineSetupAction} from './inlineSetupModel.ts';
 import './inline-setup-assistant.css';
 const actionIcons={
- source:Camera,webcam:Camera,phone:Smartphone,body:Activity,
+ source:Camera,webcam:Camera,phone:Smartphone,experiment:Activity,body:Activity,
  tracking:Activity,calibrate:SlidersHorizontal,projector:Monitor
 } as const;
 /** Always one next step, inside the same workspace. No wizard, countdown, or step gating. */
