@@ -99,7 +99,7 @@ export class TemporalJointAnalyzer{
   // A discontinuity cannot carry velocities between unrelated video frames.
   if(this.lastTime>=0&&atMs-this.lastTime>TEMPORAL_MAX_GAP_MS)
    this.previous.clear();
-  const actorSamples=ACTORS.map(id:VideoActorId):TemporalActorSample=>{
+  const actorSamples=ACTORS.map((id:VideoActorId):TemporalActorSample=>{
    const a=assignments.find(item=>item.id===id);
    const state=actorStates.find(item=>item.id===id);
    const presence=a?'visible':state?.presence??'not-detected';
