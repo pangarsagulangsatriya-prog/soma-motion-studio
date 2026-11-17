@@ -1,4 +1,7 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
+import {STAGE_INSPECTOR_TABS,moveOperatorCue,
+ operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
+import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
@@ -17,7 +20,6 @@ import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatu
 import {FootprintsStageTransport,UnifiedStageStatusStrip} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 
-type InspectorTab='tracking'|'visual'|'mapping'|'output';
 type WorkspaceView='stage'|'archive';
 type Props={
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
@@ -26,14 +28,11 @@ type Props={
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
+ operatorMode:boolean;onExitOperator:()=>void;
  videoRecording:boolean;canRecordVideo:boolean;
  footprint:FootprintConfig;
  updateFootprint:(value:Partial<FootprintConfig>)=>void;
 };
-const inspectorTabs:{id:InspectorTab;label:string}[]=[
- {id:'tracking',label:'Tracking'},{id:'visual',label:'Visual'},
- {id:'mapping',label:'Mapping'},{id:'output',label:'Output'}
-];
 const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
@@ -41,7 +40,7 @@ export function FootprintsStageWorkspace({
  frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
- footprint,updateFootprint
+ operatorMode,onExitOperator,footprint,updateFootprint
 }:Props){
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
@@ -49,7 +48,8 @@ export function FootprintsStageWorkspace({
  const [view,setView]=useState<WorkspaceView>('stage');
  const previewHoldRef=useRef(footprint.hold);
  previewHoldRef.current=footprint.hold;
- const [inspector,setInspector]=useState<InspectorTab>('tracking');
+ const [inspector,setInspector]=useState<StageInspectorTab>('tracking');
+ const [operatorCue,setOperatorCue]=useState(0);
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
  const [maskStatus,setMaskStatus]=useState('Kamera belum terhubung');
@@ -61,8 +61,34 @@ export function FootprintsStageWorkspace({
   import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
  useEffect(()=>watchDualOutputStatus(()=>setDualRaw(readDualOutputStatus())),[]);
  const showArchive=()=>{
-  setView('archive');setInspector('mapping');
+  setView('archive');setInspector('archive');
  };
+ useEffect(()=>{
+  if(!operatorMode)return;
+  // Archive unmounts when entering Perform; its dual windows are also
+  // disarmed by the App-level global Blackout before the mode is changed.
+  setView('stage');setOperatorCue(0);
+ },[operatorMode]);
+ const nextCue=()=>setOperatorCue(index=>moveOperatorCue(index,1));
+ const previousCue=()=>setOperatorCue(index=>moveOperatorCue(index,-1));
+ const onBlackoutRef=useRef(onBlackout);
+ onBlackoutRef.current=onBlackout;
+ useEffect(()=>{
+  if(!operatorMode)return;
+  const handle=(event:KeyboardEvent)=>{
+   const el=event.target as HTMLElement|null;
+   const editing=!!el?.closest('input,textarea,select,button,summary,[contenteditable="true"],dialog')||
+    !!document.querySelector('dialog[open]')||event.isComposing;
+   const action=operatorShortcut(event.code,editing,event.ctrlKey,event.altKey,event.metaKey);
+   if(!action||event.repeat)return;
+   event.preventDefault();
+   if(action==='blackout')onBlackoutRef.current();
+   if(action==='next')setOperatorCue(index=>moveOperatorCue(index,1));
+   if(action==='previous')setOperatorCue(index=>moveOperatorCue(index,-1));
+  };
+  window.addEventListener('keydown',handle);
+  return()=>window.removeEventListener('keydown',handle);
+ },[operatorMode]);
  useEffect(()=>{
   const sync=()=>{setFloorStatus(tracker.status);setIdentityStatus(router.status);};
   const offFloor=tracker.subscribe(sync),offRouter=router.subscribe(sync);
@@ -174,17 +200,26 @@ export function FootprintsStageWorkspace({
   if(next==='archive')showArchive();
   else{onBlackout();setView('stage');}
  };
- return <section className="fp-stage-workspace" aria-label="Workspace utama SOMA Footprints">
-  <header className="fp-stage-heading">
+ return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')}
+  data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
+  {!operatorMode&&<header className="fp-stage-heading">
    <div className="fp-stage-brand">
     <span className="fp-stage-eyebrow">SOMA / MOTION INTELLIGENCE</span>
     <h1><Footprints size={23}/> Footprints <small>Stage Workspace</small></h1>
     <p>Gerak kaki, arsip tubuh, dan pad lantai dalam satu ruang kerja.</p>
    </div>
    <span className="fp-stage-heading-note">Studio · Live Stage</span>
-  </header>
-  <UnifiedStageStatusStrip units={units} legacy={legacy}/>
-  <div className="fp-stage-toolbar" role="group" aria-label="Tampilan Footprints">
+  </header>}
+  {operatorMode?
+   <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
+    onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
+    held={footprint.hold} onHold={()=>updateFootprint({hold:true})}
+    onResume={()=>updateFootprint({hold:false})}
+    videoRecording={videoRecording} canRecordVideo={canRecordVideo}
+    onRecordVideo={onRecordVideo} units={units}
+    contacts={floorStatus.contacts} performerCount={performerCount}/>
+   :<UnifiedStageStatusStrip units={units} legacy={legacy}/>}
+  {!operatorMode&&<div className="fp-stage-toolbar" role="group" aria-label="Tampilan Footprints">
    <div className="fp-stage-view-switch">
     <button type="button" aria-pressed={view==='stage'} onClick={()=>changeView('stage')}>
      <Waypoints size={15}/> Live Stage</button>
@@ -195,7 +230,7 @@ export function FootprintsStageWorkspace({
     <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulasi 3D</button>
     <button type="button" onClick={onOpenLiveFloor}><SlidersHorizontal size={15}/> Kalibrasi & QA</button>
    </div>
-  </div>
+  </div>}
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
@@ -259,12 +294,13 @@ export function FootprintsStageWorkspace({
      <button type="button" onClick={onOpenLiveFloor}>Atur tracking <ChevronRight size={14}/></button>
     </div>}
    </div>
-   <aside className="fp-stage-inspector" aria-label="Inspector kontekstual Footprints">
+   {!operatorMode&&<aside className="fp-stage-inspector" aria-label="Inspector kontekstual Footprints">
     <div className="fp-stage-inspector-title"><span>CONTEXT INSPECTOR</span><h2>{
      inspector==='tracking'?'Tracking':inspector==='visual'?'Footprint Visual':
-     inspector==='mapping'?'Archive Mapping':'Projection Output'}</h2></div>
+     inspector==='archive'?'Archival Mapping':inspector==='projection'?'Projection Output':'QA & Engineering'}</h2></div>
     <div className="fp-stage-inspector-tabs" role="group" aria-label="Bagian inspector">
-     {inspectorTabs.map(tab=><button key={tab.id} type="button" aria-pressed={inspector===tab.id}
+     {STAGE_INSPECTOR_TABS.map(tab=><button key={tab.id} type="button"
+      title={tab.description} aria-pressed={inspector===tab.id}
       onClick={()=>setInspector(tab.id)}>{tab.label}</button>)}
     </div>
     <div className="fp-stage-inspector-content">
@@ -282,9 +318,13 @@ export function FootprintsStageWorkspace({
       {performerCount===2&&<p className="fp-stage-hint">Identitas A/B: {identityStatus.ambiguous?
        'Bersilangan / belum pasti':identityStatus.visible.length===2?'Dua tubuh terbaca':
        'Menunggu dua tubuh'}</p>}
-      <div className="fp-stage-inspector-divider"/>
-      <div className="fp-stage-inspector-kv"><span>Kontak tercatat</span><strong>{floorStatus.contacts}</strong></div>
-      <div className="fp-stage-inspector-kv"><span>Jumlah event</span><strong>{floorStatus.events}</strong></div>
+      <details className="fp-stage-progressive">
+       <summary>Diagnostik kaki dan event</summary>
+       <div className="fp-stage-progressive-body">
+        <div className="fp-stage-inspector-kv"><span>Kontak tercatat</span><strong>{floorStatus.contacts}</strong></div>
+        <div className="fp-stage-inspector-kv"><span>Jumlah event</span><strong>{floorStatus.events}</strong></div>
+       </div>
+      </details>
       <button type="button" className="fp-stage-primary-action" disabled={cameraBusy}
        onClick={onStartBody}><Camera size={15}/>{cameraBusy?'Memuat kamera…':
        cameraOn?'Periksa kamera Body':'Hubungkan kamera Body'}</button>
@@ -299,7 +339,10 @@ export function FootprintsStageWorkspace({
         <button key={style} type="button" aria-pressed={footprint.style===style}
          onClick={()=>updateFootprint({style})}>{style}</button>)}
       </div>
-      <label className="fp-stage-field">Ukuran jejak · {footprint.size}px
+      <details className="fp-stage-progressive">
+       <summary>Detail visual · ukuran, durasi, palet</summary>
+       <div className="fp-stage-progressive-body">
+        <label className="fp-stage-field">Ukuran jejak · {footprint.size}px
        <input type="range" min="12" max="90" value={footprint.size}
         onChange={e=>updateFootprint({size:Number(e.target.value)})}/></label>
       <label className="fp-stage-field">Umur jejak · {footprint.life} detik
@@ -311,9 +354,11 @@ export function FootprintsStageWorkspace({
         updateFootprint({palette:idx,colors:{background:p[1],left:p[2],right:p[3]}});
        }}>{palettes.map((p,i)=><option key={p[0]} value={i}>{p[0]}</option>)}</select>
       </label>
-      <p className="fp-stage-hint">Gaya berlaku pada visual jejak Studio. BODY mask dan pad terkalibrasi punya kontrol masing-masing.</p>
+        <p className="fp-stage-hint">Gaya ini hanya memengaruhi jejak Studio. BODY mask dan pad terkalibrasi memakai kontrol masing-masing.</p>
+       </div>
+      </details>
      </>}
-     {inspector==='mapping'&&<>
+     {inspector==='archive'&&<>
       <p className="fp-stage-label">DUA PERMUKAAN</p>
       <div className="fp-stage-inspector-kv"><span>BODY</span><strong>{maskStatus}</strong></div>
       <div className="fp-stage-inspector-kv"><span>FLOOR</span>
@@ -325,7 +370,7 @@ export function FootprintsStageWorkspace({
        <SlidersHorizontal size={15}/> Stage Optics & QA</button>
       <p className="fp-stage-hint">Buka Mapping untuk preview video. Body Mask pada Live Stage hanya menampilkan geometri kaki.</p>
      </>}
-     {inspector==='output'&&<>
+     {inspector==='projection'&&<>
       <p className="fp-stage-label">STATUS PROYEKTOR</p>
       <div className="fp-stage-inspector-kv"><span>Legacy output</span>
        <strong>{projectionState}</strong></div>
@@ -336,26 +381,43 @@ export function FootprintsStageWorkspace({
       <p className="fp-stage-hint">Kontrol output fisik tetap di Dual-Surface Calibration dan membutuhkan persetujuan terpisah.</p>
       <p className="fp-stage-hint">Output tunggal: {legacyGate.reason}</p>
       <button type="button" className="fp-stage-primary-action" onClick={()=>{
-       setView('archive');setInspector('output');
+       setView('archive');setInspector('projection');
       }}><SlidersHorizontal size={15}/> Atur output BODY / FLOOR</button>
       <button type="button" onClick={onOpenLiveFloor}>
        <SlidersHorizontal size={15}/> Kalibrasi Footprints</button>
       <p className="fp-stage-hint"><ShieldAlert size={14}/> Blackout browser belum menggantikan pemutus daya proyektor fisik.</p>
      </>}
+     {inspector==='qa'&&<>
+      <p className="fp-stage-label">REHEARSAL / QA</p>
+      <p className="fp-stage-hint">Periksa gerak, koordinat lantai, simulasi dan bukti fisik dari sumber data yang sama.</p>
+      <button type="button" className="fp-stage-primary-action" onClick={onOpenLiveFloor}>
+       <SlidersHorizontal size={15}/> Calibration & Physical QA</button>
+      <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulation Lab · 3D</button>
+      <details className="fp-stage-progressive">
+       <summary>Engineering diagnostics</summary>
+       <div className="fp-stage-progressive-body">
+        <div className="fp-stage-inspector-kv"><span>Floor events</span><strong>{floorStatus.events}</strong></div>
+        <div className="fp-stage-inspector-kv"><span>Contacts</span><strong>{floorStatus.contacts}</strong></div>
+        <div className="fp-stage-inspector-kv"><span>Body mask</span><strong>{maskStatus}</strong></div>
+        <div className="fp-stage-inspector-kv"><span>Renderer</span><strong>{projection.status.reason}</strong></div>
+        <p className="fp-stage-hint">Kalibrasi dan pengukuran optik asli tetap dikerjakan lewat panel QA.</p>
+       </div>
+      </details>
+     </>}
     </div>
-   </aside>
+   </aside>}
   </div>
-  <FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
+  {!operatorMode&&<FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
    frameFresh={frameFresh} videoRecording={videoRecording} canRecordVideo={canRecordVideo}
    bodySelected={bodySelected}
    held={footprint.hold} legacy={legacy} canPreview={view==='stage'}
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={()=>{setView('archive');setInspector('output');}}/>
-  <footer className="fp-stage-footer">
+   onOutputSettings={()=>{setView('archive');setInspector('projection');}}/>}
+  {!operatorMode&&<footer className="fp-stage-footer">
    <span><Video size={14}/> Kamera dan video arsip diproses pada perangkat ini.</span>
    <span><ShieldAlert size={14}/> Status output menunjukkan perintah software, bukan pengukuran cahaya proyektor.</span>
-  </footer>
+  </footer>}
  </section>;
 }
