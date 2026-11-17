@@ -210,6 +210,45 @@ export default function App(){
    cameraCue.open();
   }catch(e){notify('Gagal membuka kamera tubuh: '+(e instanceof Error?e.message:'coba lagi.'));}
  }
+ /** Switching inputs is a single fail-closed transaction.
+  * MP4/3D remain separate experimental workspaces until S6.8.4. */
+ async function switchFootprintsSource(next:FootprintsInputChoice):Promise<boolean>{
+  if(sourceChangeLock.current)return false;
+  if(next===requestedFootprintsChoice.current&&
+   (next==='phone'||(next==='webcam'&&cameraOn&&!cameraBusy)))return true;
+  if(footprintRecording&&!window.confirm(
+   'Rekaman Footprints masih berjalan. Simpan rekaman dan ganti sumber?'))return false;
+  sourceChangeLock.current=true;setSourceSwitchBusy(true);setSourceSwitchError('');
+  try{
+   requestStageBlackout(()=>projection.setTransport('blackout'));
+   if(footprintRecording)footprintRef.current?.toggleVideo();
+   requestedFootprintsChoice.current=next;
+   liveFloorEngine.revoke('Sumber gerak diganti; periksa ulang kalibrasi.');
+   multiPoseRouter.reset();setLiveFloorApproval(null);
+   updateFootprint({hold:false});
+   stopCamera();
+   clearInputFrame('body');setCameraError('');
+   setFootprintsChoice(next);
+   stageSession.patch({source:next==='phone'?'phone':
+    next==='simulator'?'simulation':'laptop'});
+   if(next==='webcam'){
+    if(sr.current.input!=='body')update({
+     input:'body',
+     mappings:defaultMappings(sr.current.mode,'body'),
+     visual:{...sr.current.visual,mappings:defaultVisualMappings('body')}
+    });
+    await startCamera();
+   }
+   return true;
+  }catch(error){
+   const message=error instanceof Error?error.message:String(error);
+   setSourceSwitchError('Gagal mengganti sumber: '+message);
+   notify('Sumber belum terhubung: '+message);
+   return false;
+  }finally{
+   sourceChangeLock.current=false;setSourceSwitchBusy(false);
+  }
+ }
  function changeLiveFloorCount(count:1|2){
   if(count===liveFloorCount)return;
   projection.setTransport('blackout');setLiveFloorApproval(null);
@@ -354,12 +393,14 @@ export default function App(){
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
      phoneActive={activeCameraMode.current==='phone'&&cameraOn}
+     sourceStatus={deriveFootprintsInputStatus({
+      selection:footprintsChoice,cameraOn,cameraBusy,cameraError,
+      phoneActive:activeCameraMode.current==='phone'&&cameraOn,
+      switchBusy:sourceSwitchBusy,switchError:sourceSwitchError
+     })}
+     onSwitchSource={switchFootprintsSource}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
-     onStartBody={()=>{
-      if(activeCameraMode.current==='phone'){
-       stopPhoneCamera();void startCamera();
-      }else void acceptFootprintsBody();
-     }}
+     onStartBody={()=>{void switchFootprintsSource('webcam');}}
      onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
      onEnterOperator={()=>{
       requestStageBlackout(()=>projection.setTransport('blackout'));
