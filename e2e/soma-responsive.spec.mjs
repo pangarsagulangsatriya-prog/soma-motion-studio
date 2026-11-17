@@ -246,7 +246,7 @@ test('S6.8.2 stage preview layout remains mounted when source changes to phone p
  await noOverflow(page);
 });
 
-test('S6.8.2 guided calibration keeps preview canvases and enlarges camera in same workspace',async({page})=>{
+test('S6.8.2 guided calibration keeps preview canvases and enlarges camera in same workspace',async({page},testInfo)=>{
  await ready(page);
  const tracking=tab(page,'Tracking');
  await tracking.click();
@@ -258,5 +258,14 @@ test('S6.8.2 guided calibration keeps preview canvases and enlarges camera in sa
  await expect(page.locator('.fp-preview-floor canvas')).toHaveCount(1);
  await expect(page.locator('.soma-guided-setup')).toBeVisible();
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ if(testInfo.project.name==='mobile-390'){
+  const cameraBounds=await page.locator('.fp-stage-video').boundingBox();
+  const previewBounds=await page.locator('.fp-stage-side-previews').boundingBox();
+  expect(cameraBounds).not.toBeNull();
+  expect(previewBounds).not.toBeNull();
+  expect(cameraBounds.y,'Calibration camera must appear above preview on mobile')
+   .toBeLessThan(previewBounds.y);
+ }
  await noOverflow(page);
+ await screenshot(page,testInfo,'guided-calibration');
 });
