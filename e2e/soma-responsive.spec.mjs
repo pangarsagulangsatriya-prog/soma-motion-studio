@@ -30,7 +30,10 @@ test('responsive initial source screen, safety access, no horizontal overflow',a
  await expect(page.locator('.fp-source-launchpad')).toBeVisible();
  for(const label of ['Webcam laptop','Kamera HP','Video MP4','Simulasi 3D'])
   await expect(page.locator('.fp-source-launchpad').getByRole('button',{name:new RegExp(label,'i')})).toBeVisible();
- await expect(page.locator('.fp-stage-side-previews')).toBeHidden();
+ await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
+ await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
+ await expect(page.locator('.fp-stage-video')).toBeVisible();
+ await expect(page.locator('#fp-context-panel')).toBeVisible();
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
  await screenshot(page,testInfo,'source');
@@ -135,7 +138,10 @@ test('denied camera permission displays recoverable source error without project
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-source-mode','recover',{timeout:25_000});
  await expect(page.locator('.fp-source-feedback-error')).toBeVisible();
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
- await expect(page.locator('.fp-stage-side-previews')).toBeHidden();
+ await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
+ await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
+ await expect(page.locator('.fp-stage-video')).toBeVisible();
+ await expect(page.locator('#fp-context-panel')).toBeVisible();
 });
 
 test('S6.8.1 source switcher keeps phone pairing session mounted while its panel closes',async({page},testInfo)=>{
@@ -178,5 +184,76 @@ test('S6.8.1 source menu opens experimental MP4 Lab and can return to a live inp
  await expect(page.locator('.fp-phone-source-panel')).toBeVisible();
  await expect(switcher).toContainText('Kamera HP');
  await expect(page.getByText('Video Motion Lab',{exact:true})).toHaveCount(0);
+ await noOverflow(page);
+});
+
+test('S6.8.2 main workspace keeps all live preview canvases mounted across mode changes',async({page},testInfo)=>{
+ await ready(page);
+ const stage=page.locator('.fp-stage-workspace');
+ const preview=page.locator('.fp-stage-side-previews');
+ const canvasBody=page.locator('.fp-preview-body canvas');
+ const canvasFloor=page.locator('.fp-preview-floor canvas');
+ const camera=page.locator('.fp-stage-video-content canvas');
+ await expect(stage).toHaveClass(/fp-persistent-layout/);
+ await expect(preview).toHaveAttribute('data-preview-mode','split');
+ await expect(canvasBody).toBeVisible();
+ await expect(canvasFloor).toBeVisible();
+ await expect(camera).toBeVisible();
+ const body=page.locator('.fp-stage-preview-modes button').filter({hasText:'BODY'});
+ const floor=page.locator('.fp-stage-preview-modes button').filter({hasText:'FLOOR'});
+ const split=page.locator('.fp-stage-preview-modes button').filter({hasText:'Split'});
+ await floor.click();
+ await expect(preview).toHaveAttribute('data-preview-mode','floor');
+ await expect(canvasFloor).toBeVisible();
+ await expect(canvasBody).toBeHidden();
+ await expect(canvasBody).toHaveCount(1);
+ await body.click();
+ await expect(preview).toHaveAttribute('data-preview-mode','body');
+ await expect(canvasBody).toBeVisible();
+ await expect(canvasFloor).toBeHidden();
+ await expect(canvasFloor).toHaveCount(1);
+ await split.click();
+ await expect(canvasFloor).toBeVisible();
+ await expect(canvasBody).toBeVisible();
+ await expect(camera).toBeVisible();
+ await expect(page.locator('#fp-context-panel')).toBeVisible();
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ await noOverflow(page);
+ await screenshot(page,testInfo,'persistent-stage');
+});
+
+test('S6.8.2 stage preview layout remains mounted when source changes to phone pairing',async({page})=>{
+ await ready(page);
+ const body=page.locator('.fp-preview-body canvas');
+ const floor=page.locator('.fp-preview-floor canvas');
+ const camera=page.locator('.fp-stage-video-content canvas');
+ const switcher=page.locator('.fp-source-switch-trigger');
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+   .getByRole('button',{name:/Kamera HP/i}).click();
+ await expect(page.locator('.fp-phone-source-panel')).toBeVisible();
+ await expect(body).toHaveCount(1);
+ await expect(floor).toHaveCount(1);
+ await expect(camera).toHaveCount(1);
+ await page.locator('.fp-phone-source-heading button').click();
+ await expect(body).toBeVisible();
+ await expect(floor).toBeVisible();
+ await expect(camera).toBeVisible();
+ await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
+ await noOverflow(page);
+});
+
+test('S6.8.2 guided calibration keeps preview canvases and enlarges camera in same workspace',async({page})=>{
+ await ready(page);
+ const tracking=tab(page,'Tracking');
+ await tracking.click();
+ await page.getByRole('button',{name:'Bantuan setup bertahap'}).click();
+ await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-screen','setup');
+ await expect(page.locator('.fp-stage-video')).toBeVisible();
+ await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
+ await expect(page.locator('.fp-preview-body canvas')).toHaveCount(1);
+ await expect(page.locator('.fp-preview-floor canvas')).toHaveCount(1);
+ await expect(page.locator('.soma-guided-setup')).toBeVisible();
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
 });
