@@ -15,6 +15,9 @@ import {CompactFootprintsStatus} from './CompactFootprintsStatus.tsx';
 import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
 import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
+import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
+import {activeExperimentKind,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
+import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -82,6 +85,10 @@ export function FootprintsStageWorkspace({
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
  useEffect(()=>{if(sourceStatus.selection!=='phone')setPhonePanelOpen(false);},[sourceStatus.selection]);
+ const experimentalKind=activeExperimentKind(sourceStatus.selection);
+ const [experimentClip,setExperimentClip]=useState<File|null>(null);
+ const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
+ const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('compose');
  const [inspectorOpen,setInspectorOpen]=useState(true);
  const [previewMode,setPreviewMode]=useState<StagePreviewMode>(()=>{
@@ -172,6 +179,7 @@ export function FootprintsStageWorkspace({
   let raf=0,lastDraw=0,lastFloorRevision=-1,lastStatus='';
   const draw=(now:number)=>{
    raf=requestAnimationFrame(draw);
+   if(experimentalKind)return;
    if(now-lastDraw<1000/18)return;
    lastDraw=now;
    const f=frameRef.current,v=videoRef.current;
@@ -240,7 +248,24 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount]);
+ },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind]);
+ useEffect(()=>{
+  if(!experimentalKind)return;
+  const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
+  if(!experimentFrame||experimentFrame.kind!==experimentalKind){
+   for(const canvas of [cam,body,floor]){
+    if(!canvas)continue;const ctx=canvas.getContext('2d');
+    if(ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
+   }
+   return;
+  }
+  // Experimental snapshots own the existing canvas elements, never live FloorSession.
+  if(cam)paintExperimentCamera(cam,experimentFrame);
+  if(!footprint.hold){
+   if(body)paintExperimentBody(body,experimentFrame);
+   if(floor)paintExperimentFloor(floor,experimentFrame,footprint);
+  }
+ },[experimentalKind,experimentFrame,footprint]);
  const projectionState=projection.status.connected?
   projection.transport==='blackout'?'Blackout aktif':projection.transport==='hold'?'Output ditahan':'Output aktif':
   'Output belum tersambung';
@@ -349,8 +374,7 @@ export function FootprintsStageWorkspace({
   if(!accepted)return false;
   setView('stage');setCalibrationOpen(false);setInspectorOpen(true);
   setPhonePanelOpen(choice==='phone');
-  setVideoLabOpen(choice==='video');setRehearsalOpen(false);setComposerOpen(false);
-  if(choice==='simulator')onOpenSimulator();
+  setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
   return true;
  };
  const openVideoInput=()=>{void chooseSource('video');};
@@ -363,7 +387,12 @@ export function FootprintsStageWorkspace({
  const sourceMode=deriveSourceScreenMode({
   cameraOn,cameraBusy,cameraError,bodySelected,videoReady
  });
- const compactItems=compactFootprintsReadiness({
+ const compactItems=experimentalKind?[{
+  id:'source' as const,label:'Sumber',
+  value:experimentalKind==='video'?'Video 2D':'Puppet 3D',
+  level:'ok' as const,
+  detail:'Preview eksperimen lokal, proyektor fisik tetap memerlukan QA.'
+ }]:compactFootprintsReadiness({
   cameraOn,cameraBusy,cameraError,bodySelected,frameFresh,
   visibleCount:identityStatus.visible.length,performerCount,
   identityAmbiguous:identityStatus.ambiguous,
@@ -406,6 +435,7 @@ export function FootprintsStageWorkspace({
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
   data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
   data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode}
+  data-experimental={!!experimentalKind}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
   {!operatorMode&&<nav className="fp-flow-nav" aria-label="Pengaturan Footprints">
@@ -443,7 +473,7 @@ export function FootprintsStageWorkspace({
     onRecordVideo={onRecordVideo} units={units}
     contacts={floorStatus.contacts} performerCount={performerCount}/>
    :null}
-  {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab
+  {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab initialFile={experimentClip}
    onClose={()=>{onBlackout();setVideoLabOpen(false);}}
    onUseReference={report=>{
     onBlackout();setRehearsalReference(report);setVideoLabOpen(false);
@@ -467,10 +497,16 @@ export function FootprintsStageWorkspace({
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
      <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>
+     {experimentalKind&&<FootprintsExperimentalSource
+      key={experimentalKind} kind={experimentalKind} performers={performerCount}
+      clip={experimentClip} onClip={setExperimentClip} onFrame={onExperimentFrame}
+      onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
+      onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
 
      <div className="fp-stage-video">
-      <div className="fp-stage-surface-head"><span>INPUT · KAMERA</span>
-       <small>{sourceMode==='live'?'VIDEO AKTIF':sourceMode==='warming'?'MENYIAPKAN VIDEO':
+      <div className="fp-stage-surface-head"><span>{experimentalKind?
+       experimentalKind==='video'?'INPUT · VIDEO':'INPUT · PUPPET 3D':'INPUT · KAMERA'}</span>
+       <small>{experimentalKind?'EKSPERIMEN':sourceMode==='live'?'VIDEO AKTIF':sourceMode==='warming'?'MENYIAPKAN VIDEO':
         sourceMode==='switch-body'?'PERLU MODE BODY':'OFFLINE'}</small></div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
@@ -492,27 +528,29 @@ export function FootprintsStageWorkspace({
         </svg>
         <div className="fp-stage-calibration-hint">TRACKING · Pilih sudut {calibrationOverlay.editing+1}/4 pada gambar kamera</div>
        </div>}
-       {sourceMode==='switch-body'&&!operatorMode&&<div className="fp-stage-empty fp-source-correction" role="status">
+       {!experimentalKind&&sourceMode==='switch-body'&&!operatorMode&&<div className="fp-stage-empty fp-source-correction" role="status">
         <Camera size={24} aria-hidden="true"/>
         <strong>Kamera sudah terhubung</strong>
         <p>Aktifkan pelacakan Body untuk membaca gerakan kaki.</p>
         <button type="button" onClick={onStartBody}>
          <Camera size={15} aria-hidden="true"/> Gunakan mode Body</button>
        </div>}
-       {sourceMode==='warming'&&!operatorMode&&<div className="fp-stage-empty fp-source-warming" role="status">
+       {!experimentalKind&&sourceMode==='warming'&&!operatorMode&&<div className="fp-stage-empty fp-source-warming" role="status">
         <span className="fp-source-spinner" aria-hidden="true"/>
         <strong>Menyiapkan preview kamera</strong>
         <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
        </div>}
       </div>
-      <div className="fp-stage-surface-foot"><span>{frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
-       <span>{performerCount} performer</span></div>
+      <div className="fp-stage-surface-foot"><span>{experimentalKind?experimentFrame?
+       experimentFrame.kind==='video'?'Video 2D':'Puppet virtual':'Menyiapkan sumber':
+       frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
+       <span>{experimentalKind?'OUTPUT FISIK TERKUNCI':performerCount+' performer'}</span></div>
      </div>
      <div className="fp-stage-side-previews" data-preview-mode={previewMode}
       aria-label="Preview BODY dan FLOOR dari engine Footprints">
       <div className="fp-stage-preview-toolbar">
        <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> STAGE PREVIEW</span>
-        <small>{previewLabel(previewMode)} · Preview software</small></div>
+        <small>{experimentalKind?experimentFrameLabel(experimentalKind):previewLabel(previewMode)+' · Preview software'}</small></div>
        <div className="fp-stage-preview-modes" role="group" aria-label="Pilih tampilan preview">
         {STAGE_PREVIEW_MODES.map(item=><button type="button" key={item.id}
          aria-pressed={previewMode===item.id} aria-label={'Tampilkan '+item.description}
@@ -521,11 +559,12 @@ export function FootprintsStageWorkspace({
        </div>
       </div>
       <div className="fp-stage-surface fp-preview-body">
-       <div className="fp-stage-surface-head"><span>BODY · MASK PREVIEW</span><small>Lower body</small></div>
+       <div className="fp-stage-surface-head"><span>BODY · MASK PREVIEW</span><small>{experimentalKind?
+ experimentalKind==='video'?'Landmark 2D':'Rig 3D virtual':'Lower body'}</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
-        {totalFrames===0&&!footprint.hold&&
+        {!experimentalKind&&totalFrames===0&&!footprint.hold&&
          <span className="fp-stage-canvas-empty">{maskStatus}</span>}
         {footprint.hold&&<span className="fp-stage-hold-label">
          HOLD · frame BODY ditahan, tracking tetap berjalan</span>}
@@ -533,17 +572,23 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-surface-foot"><span>{maskStatus}</span><span>Mask · preview</span></div>
       </div>
       <div className="fp-stage-surface fp-preview-floor">
-       <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>Metric floor</small></div>
+       <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>{experimentalKind?
+ experimentalKind==='video'?'Estimasi video 2D':'Meter virtual':'Metric floor'}</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
-        {!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
+        {!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
         {footprint.hold&&<span className="fp-stage-hold-label">
          HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
        </div>
-       <div className="fp-stage-surface-foot"><span>{floorStatus.contacts} kontak</span>
-        <span>{floorStatus.events} event</span></div>
+       <div className="fp-stage-surface-foot"><span>{experimentFrame?
+ experimentFrame.kind==='simulator'?experimentFrame.session.events.filter(e=>e.kind==='contact').length+' kontak sintetis':
+ (experimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0)+' kontak video':
+ floorStatus.contacts+' kontak'}</span>
+        <span>{experimentFrame?experimentFrame.kind==='simulator'?
+ experimentFrame.session.events.length:experimentFrame.snapshot?.events.length??0:
+ floorStatus.events} event</span></div>
       </div>
      </div>
     </div>
