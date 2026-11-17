@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type RefObject} from 'react';
+import {useEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {STAGE_INSPECTOR_TABS,moveOperatorCue,
  operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
@@ -10,6 +10,7 @@ import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Play,ShieldAlert,SlidersHorizontal,Video} from 'lucide-react';
 import type {StageNavigationRequest} from './stageNavigation.ts';
+import type {Point} from '../../projection/geometry.ts';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -60,6 +61,9 @@ export function FootprintsStageWorkspace({
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
+ const [calibrationOverlay,setCalibrationOverlay]=useState<{marks:Array<Point|null>;editing:number}|null>(null);
+ const calibrationTap=useRef<((x:number,y:number)=>void)|null>(null);
+ useEffect(()=>{if(!setupOpen)setCalibrationOverlay(null);},[setupOpen]);
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
@@ -249,8 +253,30 @@ export function FootprintsStageWorkspace({
    case 'calibration':setView('stage');onOpenLiveFloor();break;
   }
  },[navigationRequest]);
+ const onMainCameraPoint=(event:PointerEvent<HTMLCanvasElement>)=>{
+  if(!setupOpen||!calibrationOverlay||!calibrationTap.current||!cameraOn)return;
+  const canvas=cameraCanvas.current,video=videoRef.current;
+  if(!canvas||!video||video.readyState<2||!video.videoWidth||!video.videoHeight)return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  const pixelX=(event.clientX-rect.left)*canvas.width/rect.width;
+  const pixelY=(event.clientY-rect.top)*canvas.height/rect.height;
+  const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
+  const videoWidth=video.videoWidth*scale,videoHeight=video.videoHeight*scale;
+  const nx=(pixelX-(canvas.width-videoWidth)/2)/videoWidth;
+  const ny=(pixelY-(canvas.height-videoHeight)/2)/videoHeight;
+  if(nx<0||nx>1||ny<0||ny>1)return;
+  event.preventDefault();
+  calibrationTap.current(nx,ny);
+ };
+ const rawW=videoRef.current?.videoWidth||768;
+ const rawH=videoRef.current?.videoHeight||432;
+ const camScale=Math.min(768/rawW,432/rawH);
+ const camDrawWidth=rawW*camScale,camDrawHeight=rawH*camScale;
+ const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
-  data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
+  data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
+  aria-label="Workspace utama SOMA Footprints">
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
@@ -288,7 +314,24 @@ export function FootprintsStageWorkspace({
        <small>{cameraOn?'Kamera lokal':'Offline'}</small></div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
-        aria-label="Pratinjau video kamera SOMA Body"/>
+        onPointerDown={onMainCameraPoint}
+        data-calibration-active={setupOpen&&!!calibrationOverlay}
+        aria-label={setupOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
+       {setupOpen&&calibrationOverlay&&<div className="fp-stage-calibration-overlay" aria-hidden="true">
+        <svg viewBox="0 0 768 432" preserveAspectRatio="none">
+         {calibrationOverlay.marks.every(p=>p!==null)&&<polygon
+          points={calibrationOverlay.marks.map(p=>{
+           const q=p!;return [(camLeft+q.x*camDrawWidth),(camTop+q.y*camDrawHeight)].join(',');
+          }).join(' ')} fill="#b9e4a319" stroke="#c7eba6" strokeWidth="2"/>}
+         {calibrationOverlay.marks.map((p,i)=>p&&<g key={i}>
+          <circle cx={camLeft+p.x*camDrawWidth} cy={camTop+p.y*camDrawHeight}
+           r={i===calibrationOverlay.editing?13:11} fill="#d8efbb" stroke="#273c2c" strokeWidth="2"/>
+          <text x={camLeft+p.x*camDrawWidth} y={camTop+p.y*camDrawHeight+4}
+           textAnchor="middle" fontSize="12" fontWeight="700" fill="#122217">{i+1}</text>
+         </g>)}
+        </svg>
+        <div className="fp-stage-calibration-hint">TRACKING · Pilih sudut {calibrationOverlay.editing+1}/4 pada gambar kamera</div>
+       </div>}
        {!cameraOn&&<div className="fp-stage-empty">
         <CameraOff size={28}/>
         <strong>Mulai pelacakan kaki</strong>
@@ -350,7 +393,9 @@ export function FootprintsStageWorkspace({
    </div>
    {!operatorMode&&<aside className="fp-stage-inspector" data-mode={setupOpen?'setup':'inspector'}
    aria-label={setupOpen?'Guided Setup — Inspector kanan':'Inspector kontekstual Footprints'}>
-   {setupOpen&&<GuidedStageSetup open={true} onClose={closeSetup}
+   {setupOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
+   onCalibrationState={setCalibrationOverlay}
+   onBindCalibrationTap={handler=>{calibrationTap.current=handler;}}
    session={stageSession} frameRef={frameRef} videoRef={videoRef}
    bodyPreviewRef={bodyCanvas} floorPreviewRef={floorCanvas}
    floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
