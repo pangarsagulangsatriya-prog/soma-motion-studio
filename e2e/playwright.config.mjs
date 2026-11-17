@@ -13,8 +13,8 @@ export default defineConfig({
  expect:{timeout:10_000},
  retries:0,
  workers:process.env.CI?3:undefined,
- reporter:[['list'],['json',{outputFile:'e2e/qa-result.json'}],['html',{outputFolder:'e2e/playwright-report',open:'never'}]],
- outputDir:'e2e/test-results',
+ reporter:[['list'],['json',{outputFile:'qa-result.json'}],['html',{outputFolder:'playwright-report',open:'never'}]],
+ outputDir:'test-results',
  use:{
   baseURL:'http://127.0.0.1:4173',
   browserName:'chromium',headless:true,
