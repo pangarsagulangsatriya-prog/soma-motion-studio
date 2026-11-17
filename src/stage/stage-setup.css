@@ -144,3 +144,68 @@
  .soma-device-qa-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
  .soma-device-qa-fields{grid-template-columns:1fr}
 }
+
+
+/* S6.5.1 — three-phase guided setup. Does not alter output/physical QA controls. */
+.soma-guided-v2{padding:18px 20px;border-color:#526852;background:#151f17}
+.soma-guided-v2>header{margin-bottom:15px}
+.soma-guided-v2>header p{margin:0;max-width:none}
+.soma-guided-v2 .soma-guided-steps{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.soma-guided-v2 .soma-guided-steps button{min-width:0;display:flex;flex-direction:row;justify-content:flex-start;gap:12px;text-align:left;padding:13px 16px;background:#263229}
+.soma-guided-v2 .soma-guided-steps button strong{font-size:13px;font-weight:600}
+.soma-guided-v2 .soma-guided-steps button small{margin-left:auto;letter-spacing:0;font-size:10px;color:#a8bfaa}
+.soma-guided-v2 .soma-guided-steps button[aria-current=step]{background:#354a35;border-color:#bcd69b}
+.soma-guided-v2 .soma-guided-steps button:disabled{opacity:.54}
+.soma-guide-main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:12px;min-width:0;align-items:start}
+.soma-guided-v2 .soma-setup-page{min-width:0;min-height:0;padding:18px;gap:15px;align-items:stretch}
+.soma-guided-v2 .soma-setup-page[hidden]{display:none!important}
+.soma-guide-section-top h3{margin:0 0 6px;font-size:18px}
+.soma-guide-section-top p{margin:0}
+.soma-guided-v2 .soma-setup-choice{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.soma-guided-v2 .soma-setup-choice button{min-height:84px;padding:14px}
+.soma-guide-pair{width:100%;max-width:100%;overflow-x:auto}
+.soma-guide-pair .soma-setup-phone-choices{max-width:100%}
+.soma-guide-pair .soma-auto-pair{padding:13px}
+.soma-guide-text-link{align-self:flex-start!important;background:transparent!important;border-color:transparent!important;text-decoration:underline;text-underline-offset:3px;color:#cde4ae!important;padding:8px 0!important}
+.soma-guide-advanced{width:100%;border-top:1px solid #344538;padding-top:10px;max-width:100%}
+.soma-guide-advanced summary{font-size:12px;color:#b1c5b2;cursor:pointer;padding:8px 0}
+.soma-guide-advanced p{max-width:100%}
+.soma-guide-advanced .soma-device-qa{margin-top:12px}
+.soma-guide-preview{border:1px solid #435848;border-radius:8px;background:#101812;overflow:hidden;min-width:0}
+.soma-guide-preview-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 13px;color:#dde9d8;font-size:12px}
+.soma-guide-preview-head span{font:600 10px ui-monospace,monospace;color:#b4c5b9}
+.soma-guide-preview-head span[data-ready=true]{color:#cce9a5}
+.soma-guide-preview>canvas{display:block;aspect-ratio:16/9;width:100%;height:auto;background:#030603;object-fit:contain;touch-action:none}
+.soma-guide-preview>canvas[data-editing=true]{cursor:crosshair}
+.soma-guide-preview-help{padding:8px 14px;margin:0!important}
+.soma-guide-preview-pair{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#324637}
+.soma-guide-preview-pair>div{min-width:0;padding:10px;background:#131f17}
+.soma-guide-preview-pair small{display:block;margin-bottom:7px}
+.soma-guide-preview-pair canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;background:black}
+.soma-guide-preview-note{padding:10px 13px;margin:0!important;font-size:11px!important}
+.soma-guide-corners{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.soma-guide-corners button[aria-pressed=true]{background:#48623c;border-color:#cbe6aa}
+.soma-guide-dimensions{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.soma-guide-dimensions label{flex:1;min-width:170px}
+.soma-guide-dimensions button{min-height:42px}
+.soma-guide-actions{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.soma-guide-confirm{display:flex!important;align-items:center!important;flex-direction:row!important;gap:9px!important;min-width:0;width:auto!important;font-size:12px}
+.soma-guide-confirm input{flex:0 0 auto;width:18px!important;height:18px!important;min-height:18px!important;padding:0!important;accent-color:#b8d9a5}
+.soma-guide-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.soma-guide-metrics>div{display:flex;flex-direction:column;gap:5px;padding:11px;border-radius:7px;background:#253428;border:1px solid #425a45}
+.soma-guide-metrics small{letter-spacing:0!important}
+.soma-guide-metrics b{font-size:12px}
+.soma-guide-archives{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.soma-guide-archives label{padding:13px;background:#253329;border:1px solid #52654e;border-radius:7px;min-width:0}
+.soma-guide-archives label b,.soma-guide-archives label small{display:block}
+.soma-guide-archives label small{overflow-wrap:anywhere;letter-spacing:0!important;min-height:25px}
+.soma-guide-archives input{font-size:10px!important;padding:6px!important;min-width:0}
+.soma-guide-work-links{display:flex;gap:8px;flex-wrap:wrap}
+.soma-guide-work-links button{flex:1}
+.soma-guided-v2 .soma-guide-footer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;margin-top:12px}
+.soma-guide-footer>button{min-width:100px}
+.soma-guide-gate-note{display:flex;flex-direction:column;text-align:center;gap:3px;min-width:0;color:#c9d9c9;font-size:12px;overflow-wrap:anywhere}
+.soma-guide-gate-note span[data-ready=true]{color:#c3e2ae}
+.soma-guide-gate-note small{color:#e4c5aa;letter-spacing:0}
+@media(max-width:1050px){.soma-guide-main{grid-template-columns:1fr}.soma-guide-preview{grid-row:1}.soma-guided-v2 .soma-guided-steps button{padding:10px}.soma-guided-v2 .soma-guided-steps button small{display:none}}
+@media(max-width:580px){.soma-guided-v2{padding:10px}.soma-guided-v2 .soma-guided-steps button{gap:5px;flex-direction:column;align-items:center;min-height:55px}.soma-guided-v2 .soma-guided-steps button strong{font-size:11px}.soma-guided-v2 .soma-setup-choice,.soma-guide-archives{grid-template-columns:1fr}.soma-guide-corners{grid-template-columns:repeat(2,minmax(0,1fr))}.soma-guided-v2 .soma-guide-footer{grid-template-columns:1fr 1fr}.soma-guide-gate-note{grid-column:1/-1;grid-row:1}.soma-guide-preview-head{padding:8px 10px}}
