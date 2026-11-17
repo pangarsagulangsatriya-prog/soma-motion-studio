@@ -367,3 +367,17 @@
 @media(prefers-reduced-motion:reduce){
  .fp-stage-workspace[data-context=setup] .fp-stage-inspector{animation:none}
 }
+
+
+/* S6.6.1 QA: give calibration the entire center stage, not small BODY/FLOOR thumbnails. */
+.fp-stage-workspace[data-context=setup] .fp-stage-side-previews{display:none!important}
+.fp-stage-workspace[data-context=setup] .fp-stage-overview{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+}
+.fp-stage-workspace[data-context=setup] .fp-stage-video-content{min-height:280px}
+.fp-stage-workspace[data-context=setup] .fp-stage-video-content>canvas{max-height:min(65dvh,640px)}
+@media(max-width:1200px){
+ .fp-stage-workspace[data-context=setup] .fp-stage-overview{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+}
