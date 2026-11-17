@@ -8,10 +8,11 @@ const viewports={
 export default defineConfig({
  testDir:'.',
  testMatch:'**/*.spec.mjs',
- timeout:40_000,
+ timeout:25_000,
+ maxFailures:4,
  expect:{timeout:10_000},
- retries:process.env.CI?1:0,
- workers:process.env.CI?2:undefined,
+ retries:0,
+ workers:process.env.CI?3:undefined,
  reporter:[['list'],['json',{outputFile:'e2e/qa-result.json'}],['html',{outputFolder:'e2e/playwright-report',open:'never'}]],
  outputDir:'e2e/test-results',
  use:{
