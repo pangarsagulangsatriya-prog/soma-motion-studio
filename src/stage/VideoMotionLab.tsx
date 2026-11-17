@@ -2,6 +2,8 @@ import {useCallback,useEffect,useRef,useState,type ChangeEvent,type DragEvent,ty
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
 import {drawSkeletonBodies,replaySkeletonPresentation} from './fullBodySkeleton.ts';
+import {drawHandDetailOverlay} from './videoHandLimbOverlay.ts';
+import {HandLimbInspector} from './HandLimbInspector.tsx';
 import {videoActorPresenceLabel,type VideoActorId} from './videoAutoActorTracker.ts';
 import {TemporalJointInspector} from './TemporalJointInspector.tsx';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
@@ -43,6 +45,8 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
   engineRef.current?.getTemporalTrace(actor,joint)??[],[]);
  const getTemporalWindow=useCallback(()=>
   engineRef.current?.getTemporalWindow()??[],[]);
+ const getHandLimbWindow=useCallback(()=>
+  engineRef.current?.getHandLimbWindow()??[],[]);
  const generationRef=useRef(0);
  const pendingSeekReason=useRef('Pemutaran berpindah ke waktu lain.');
  const overlayRef=useRef<HTMLCanvasElement|null>(null);
@@ -134,8 +138,10 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
   const width=scale*video.videoWidth,height=scale*video.videoHeight;
   const x=(canvas.width-width)/2,y=(canvas.height-height)/2;
   const overlay=replaySkeletonPresentation(analysisSnapshot,video.currentTime*1000);
-  drawSkeletonBodies(ctx,overlay.poses,{x,y,width,height},
+  const rect={x,y,width,height};
+  drawSkeletonBodies(ctx,overlay.poses,rect,
    {labels:overlay.labels,colors:overlay.colors});
+  drawHandDetailOverlay(ctx,analysisSnapshot.handLimb,rect,video.currentTime*1000);
  },[analysisOn,analysisSnapshot]);
 
  const range=rangeStart!==null&&rangeEnd!==null?validLoopRange(rangeStart,rangeEnd,duration):null;
@@ -387,10 +393,14 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
         <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
        </span>)}
       </div>}
-      {<TemporalJointInspector
+      <TemporalJointInspector
        getTrace={getTemporalTrace} getWindow={getTemporalWindow}
        revision={analysisSnapshot?.sampledFrames??0}
-       segment={analysisSnapshot?.segment??0}/>}
+       segment={analysisSnapshot?.segment??0}/>
+      <HandLimbInspector frame={analysisSnapshot?.handLimb??null}
+       modelStatus={analysisSnapshot?.handModelStatus??'loading'}
+       modelReason={analysisSnapshot?.handModelReason??'Model belum dimuat.'}
+       getHistory={getHandLimbWindow} segment={analysisSnapshot?.segment??0}/>
       {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
       <div className="vml-qa-top"><strong>Identity QA · {(analysisSnapshot?.performers??1)===2?'BODY A/B':'BODY A'}</strong>
        <span>{qa?.state==='stable'?'STABLE':qa?.state==='locked'?'LOCKED':qa?.state==='warming'?'WARMING':'HOLD'}</span></div>
