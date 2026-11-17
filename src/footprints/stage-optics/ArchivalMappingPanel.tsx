@@ -407,7 +407,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
    onPreview={(event:RecipeEvent,slot)=>{
     try{
      recipeEngine.preview(event,slot,simulationClock.current,
-      stateRef.current.source);
+      stateRef.current.source==='simulation'?'simulation':'camera');
      setRecipeView(recipeEngine.snapshot(simulationClock.current));
      lastRecipeView.current='';
     }catch(e){setStatus(e instanceof Error?e.message:'Cue tidak tersedia.');}
