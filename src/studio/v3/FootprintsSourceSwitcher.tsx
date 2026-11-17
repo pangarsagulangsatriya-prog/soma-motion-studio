@@ -67,7 +67,6 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    aria-label="Ganti sumber Footprints" className="fp-source-switch-menu">
    <header><span>SUMBER GERAK</span><button type="button" aria-label="Tutup pilihan sumber"
     onClick={()=>{setOpen(false);trigger.current?.focus({preventScroll:true});}}><X size={16}/></button></header>
-   <p>Pengaturan jejak dan arsip tetap tersimpan. Penggantian kamera memerlukan pemeriksaan ulang.</p>
    {SOURCE_CHOICES.map(item=>{
     const ItemIcon=icons[item.id],selected=selection===item.id;
     return <button type="button" key={item.id} aria-current={selected?'true':undefined}
@@ -79,7 +78,6 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
       <FlaskConical size={15} className="fp-switch-option-end"/>:null}
     </button>;
    })}
-   <footer>Semua sumber memakai Stage Preview yang sama. MP4 dan Simulasi tetap diisolasi dari output proyektor fisik.</footer>
   </div>}
   {(status.phase==='error'||localError)&&!open&&<span className="fp-source-switch-error"
    role="alert">
