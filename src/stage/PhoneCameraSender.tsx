@@ -1,7 +1,9 @@
 import {useEffect,useRef,useState} from 'react';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal} from './PhoneSignal.ts';
+import {parsePhoneInvite} from './PhonePairProtocol.ts';
+import {AutomaticPhoneSender} from './AutomaticPhoneSender.tsx';
 import './stage-setup.css';
-export function PhoneCameraSender(){
+function ManualPhoneCameraSender(){
  const [offer,setOffer]=useState(''),[answer,setAnswer]=useState('');
  const [status,setStatus]=useState('Buka kode sambungan dari SOMA laptop.');
  const [facing,setFacing]=useState<'environment'|'user'>('environment');
@@ -78,4 +80,12 @@ export function PhoneCameraSender(){
    <small>Gunakan Wi-Fi yang sama. Biarkan halaman HP tetap terbuka, layar menyala dan kamera menghadap seluruh tubuh aktor. Tidak ada audio yang dikirim.</small>
   </div>
  </main>;
+}
+
+export function PhoneCameraSender(){
+ const [invite]=useState(()=>parsePhoneInvite(window.location.hash));
+ useEffect(()=>{
+  if(invite)window.history.replaceState(null,'',window.location.pathname+window.location.search);
+ },[invite]);
+ return invite?<AutomaticPhoneSender invite={invite}/>:<ManualPhoneCameraSender/>;
 }

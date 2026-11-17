@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
+import {AutomaticPhoneReceiver} from './AutomaticPhoneReceiver.tsx';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal,phoneCameraUrl} from './PhoneSignal.ts';
 
-export function PhoneCameraReceiver({onStream,onDisconnect}:{
+function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
 }){
  const [offer,setOffer]=useState(''),[answer,setAnswer]=useState('');
@@ -14,8 +15,12 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
   setOffer('');setAnswer('');setBusy(false);
   setConnection('Koneksi HP ditutup.');onDisconnect();
  };
+ const onDisconnectRef=useRef(onDisconnect);onDisconnectRef.current=onDisconnect;
  useEffect(()=>()=>{generation.current++;pc.current?.close();
-  active.current?.getTracks().forEach(t=>t.stop());},[]);
+  const hadActive=!!active.current;
+  active.current?.getTracks().forEach(t=>t.stop());active.current=null;
+  if(hadActive)onDisconnectRef.current();
+ },[]);
  const begin=async()=>{
   const version=++generation.current;
   pc.current?.close();active.current?.getTracks().forEach(t=>t.stop());
@@ -84,4 +89,22 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
   <div className="soma-setup-status" role="status">{connection}</div>
   <small>WebRTC berusaha membuat jalur terenkripsi secara langsung. Pada jaringan yang memblokir koneksi peer-to-peer, TURN mungkin diperlukan; server relay belum disediakan pada MVP ini.</small>
  </section>;
+}
+
+/** QR is default; the S6.1 code-copy route remains an explicit fallback. */
+export function PhoneCameraReceiver({onStream,onDisconnect}:{
+ onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+}){
+ const [mode,setMode]=useState<'qr'|'manual'>('qr');
+ return <div className="soma-setup-phone-choices">
+  <div className="soma-setup-pair-tabs" role="group" aria-label="Pilihan pairing kamera HP">
+   <button type="button" aria-pressed={mode==='qr'} onClick={()=>setMode('qr')}>
+    Scan QR · otomatis</button>
+   <button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>
+    Kode manual · cadangan</button>
+  </div>
+  {mode==='qr'?
+   <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}/>:
+   <ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>}
+ </div>;
 }

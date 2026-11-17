@@ -7,6 +7,7 @@ import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprin
 import {MultiPoseGaitRouter} from './footprints/live/MultiPoseGaitRouter';
 import {floorCalibrationSignature} from './projection/floorBridge';
 import {useProjection} from './projection/useProjection';
+import {useStageSession} from './stage/useStageSession.ts';
 import {ProjectionWorkspace} from './projection/ProjectionWorkspace';
 import {useCameraCue} from './photos/useCameraCue';
 import {CameraFrame} from './photos/CameraFrame';
@@ -52,6 +53,7 @@ const STARTERS=[
  {name:'Pulse / Kit',description:'Kick, snare, dan clap dari sapuan.',settings:{...defaults(),mode:'percussion',mappings:defaultMappings('percussion','hands'),eventMap:defaultEvents('percussion'),visual:{...defaults().visual,style:'particles'}}}
 ].map(p=>({...p,settings:{...p.settings,hydra:{...hydraDefaults(),enabled:false}}})) as {name:string;description:string;settings:Settings}[];
 export default function App(){
+ const stageSession=useStageSession();
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
@@ -160,7 +162,11 @@ export default function App(){
  function panic(){engine.mute();setMuted(true);playback.current?.pause();setPlaying(null);notify('Semua suara dihentikan. Klik Lanjutkan audio untuk bermain lagi.');}
  function clearInputFrame(input:InputKind){const f=emptyFrame(input==='mouse'?'mouse':'camera');f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);hasPlayed.current=false;holdTrigger.reset();trackingLatchRef.current=false;setTrackingLatched(false);setTriggerProgress(0);mapper.reset();visualMapper.reset();}
  async function chooseInput(input:InputKind){
-  if(cameraBusy||input===sr.current.input)return;const wasCamera=cameraOn;mouse.current.down=false;
+  if(cameraBusy||input===sr.current.input)return;
+  if(activeCameraMode.current==='phone'){
+   stageSession.patch({source:'laptop'});stopPhoneCamera();
+  }
+  const wasCamera=cameraOn;mouse.current.down=false;
   update({input,calibration:null,mappings:defaultMappings(sr.current.mode,input),visual:{...sr.current.visual,mappings:defaultVisualMappings(input)}});clearInputFrame(input);
   if(input==='mouse'){stopCamera();setSource('mouse');sourceRef.current='mouse';setStatus('Mouse siap · tahan dan geser');}
   else{setSource('camera');sourceRef.current='camera';if(wasCamera)await startCamera();else setStatus('Kamera belum aktif');}
@@ -314,6 +320,7 @@ export default function App(){
         footprintRef.current?.toggleVideo();
        }
        requestStageBlackout(()=>projection.setTransport('blackout'));
+       if(activeCameraMode.current==='phone')stageSession.patch({source:'laptop'});
        liveFloorEngine.revoke('Kamera dihentikan; periksa kalibrasi sebelum melanjutkan.');
        multiPoseRouter.reset();setLiveFloorApproval(null);
        updateFootprint({hold:false});stopCamera();
