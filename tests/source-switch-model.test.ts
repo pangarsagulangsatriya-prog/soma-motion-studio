@@ -9,7 +9,7 @@ const base={selection:null,cameraOn:false,cameraBusy:false,cameraError:'',
 test('S6.8.1: all four source routes remain available, Labs are explicit',()=>{
  assert.deepEqual(SOURCE_CHOICES.map(x=>x.id),['webcam','phone','video','simulator']);
  assert.equal(SOURCE_CHOICES.filter(x=>x.kind==='live').length,2);
- assert.deepEqual(SOURCE_CHOICES.filter(x=>x.kind==='lab').map(x=>x.id),['video','simulator']);
+ assert.deepEqual(SOURCE_CHOICES.filter(x=>x.kind==='experiment').map(x=>x.id),['video','simulator']);
  assert.equal(SOURCE_LABELS.phone,'Kamera HP');
 });
 test('initial state does not invent an active camera',()=>{
@@ -42,8 +42,8 @@ test('disconnected phone keeps recovery error instead of ready indicator',()=>{
 test('MP4 and 3D remain labs until video and simulation enter the live input engine',()=>{
  for(const selection of ['video','simulator'] as const){
   const data=deriveFootprintsInputStatus({...base,selection});
-  assert.equal(data.phase,'lab');
-  assert.match(data.message,/eksperimen terpisah/);
+  assert.equal(data.phase,'experiment');
+  assert.match(data.message,/output fisik terkunci/);
  }
 });
 test('source changes invalidate camera-specific calibration while reselecting the same does not',()=>{
