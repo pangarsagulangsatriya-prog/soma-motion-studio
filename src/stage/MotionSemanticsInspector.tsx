@@ -27,8 +27,8 @@ function exportCsv(events:MotionSemanticEvent[],segment:number){
  link.download='SOMA-motion-semantics-segment-'+segment+'.csv';link.click();
  window.setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
-export function MotionSemanticsInspector({events,statuses,segment,durationMs}:{
- events:MotionSemanticEvent[];statuses:MotionSemanticStatus[];
+export function MotionSemanticsInspector({events,totals,statuses,segment,durationMs} :{
+ events:MotionSemanticEvent[];totals?:Record<MotionSemanticKind,number>;statuses:MotionSemanticStatus[];
  segment:number;durationMs:number;
 }){
  const [actor,setActor]=useState<'all'|'A'|'B'>('all');
@@ -36,10 +36,10 @@ export function MotionSemanticsInspector({events,statuses,segment,durationMs}:{
  const filtered=useMemo(()=>events.filter(e=>
   (actor==='all'||e.actor===actor)&&(kind==='all'||e.kind===kind)
  ),[actor,kind,events]);
- const counts=useMemo(()=>semanticEventCounts(events),[events]);
+ const counts=useMemo(()=>totals??semanticEventCounts(events),[totals,events]);
  const current=statuses.filter(s=>s.active&&(actor==='all'||s.actor===actor));
  return <details className="vml-semantics" data-motion-semantics="ready">
-  <summary>Motion Semantics <span>{events.length} event · 7 jenis</span></summary>
+  <summary>Motion Semantics <span>{totals?Object.values(totals).reduce((a,b)=>a+b,0):events.length} event · 7 jenis</span></summary>
   <div className="vml-semantic-body">
    <div className="vml-semantic-controls">
     <label>Aktor<select aria-label="Aktor Motion Semantics" value={actor}
