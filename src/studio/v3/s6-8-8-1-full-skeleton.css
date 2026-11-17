@@ -1,0 +1,27 @@
+/* S6.8.8.1 — optional visual diagnostics. Never changes BODY/FLOOR physical outputs. */
+.fp-stage-workspace.fp-persistent-layout .fp-stage-video .fp-stage-surface-head{
+ gap:8px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-full-skeleton-switch{
+ margin-left:auto;display:inline-flex;align-items:center;justify-content:center;
+ gap:7px;min-height:29px;padding:5px 8px;
+ color:#d5e8c9;background:#273c2b;border:1px solid #567355;
+ border-radius:6px;font-size:10px;font-weight:650;cursor:pointer;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-full-skeleton-switch[aria-pressed=true]{
+ background:#354b36;border-color:#91b87c;color:#edf5d8;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-full-skeleton-switch span{
+ color:#b1c8a6;font-size:9px;letter-spacing:.04em;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-full-skeleton-switch:focus-visible{
+ outline:2px solid #d6ecac;outline-offset:2px;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-full-skeleton-switch:hover{
+ border-color:#bbd79e;
+}
+@media(max-width:560px){
+ .fp-stage-workspace.fp-persistent-layout .fp-full-skeleton-switch{
+  font-size:9px;padding:5px 7px;
+ }
+}
