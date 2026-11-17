@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState,type ChangeEvent} from 'react';
+import {MoveNetIdentityTracker,d2PresenceLabel,type D2Frame,type D2Pose} from './moveNetIdentityTracker.ts';
 import './d1-movenet-benchmark.css';
 
 type Point={x:number;y:number;score?:number;name?:string};
@@ -6,7 +7,7 @@ type Pose={score?:number;box?:{xMin:number;yMin:number;width:number;height:numbe
 type Detector={estimatePoses:(image:ImageData,opts?:{maxPoses:number})=>Promise<Pose[]>;dispose:()=>void};
 type Tf={setBackend:(name:string)=>Promise<boolean>;ready:()=>Promise<void>;getBackend:()=>string;version_core?:string};
 type Poses={SupportedModels:{MoveNet:string};movenet:{modelType:{MULTIPOSE_LIGHTNING:string}};createDetector:(m:string,c:Record<string,unknown>)=>Promise<Detector>};
-type Measurement={count:number;ms:number;poses:Pose[]};
+type Measurement={count:number;ms:number;poses:Pose[];d2?:D2Frame};
 type Row={frame:number;time:number;phase:string;v384?:Measurement;v512?:Measurement;error?:string};
 type Mark='unknown'|'two'|'one'|'occluded'|'none';
 const intervals=[{label:'Mendekat 1',start:0,end:47},{label:'Crossing 1',start:48,end:71},{label:'Menjauh / kembali',start:72,end:119},{label:'Crossing 2',start:120,end:151},{label:'Menjauh 2',start:152,end:191}];
@@ -59,7 +60,11 @@ function draw(canvas:HTMLCanvasElement|null,src:HTMLCanvasElement,result?:Measur
  const g=canvas.getContext('2d');if(!g)return;g.drawImage(src,0,0);
  result?.poses.forEach((p,i)=>{
   if((p.score??0)<score)return;
-  g.strokeStyle=i%2?'#ffca75':'#6be9d0';g.fillStyle=g.strokeStyle;g.lineWidth=2;
+  const assigned=result?.d2?.assignments.find(a=>a.rawIndex===i);
+  g.strokeStyle=assigned?(assigned.id==='A'?'#7ce0a4':'#82b9ff'):'#ecc17e';
+  g.fillStyle=g.strokeStyle;g.lineWidth=2;
+  if(assigned&&p.box){g.font='bold 15px sans-serif';g.fillText(assigned.id,p.box.xMin,p.box.yMin-5);}
+  else if(result?.d2&&p.box){g.font='bold 12px sans-serif';g.fillText('HOLD',p.box.xMin,p.box.yMin-5);}
   if(p.box)g.strokeRect(p.box.xMin,p.box.yMin,p.box.width,p.box.height);
   p.keypoints.forEach(k=>{if((k.score??0)<.35)return;g.beginPath();g.arc(k.x,k.y,2.5,0,Math.PI*2);g.fill();});
  });
@@ -105,6 +110,7 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
   stop.current=false;busy.current=true;setRunning(true);setRows([]);setCompleted(0);
   const all:Row[]=Array.from({length:192},(_,i)=>({frame:i,time:(i+.5)/24,phase:phase(i)}));
   const detectors:Detector[]=[];
+  const trackers=[new MoveNetIdentityTracker(),new MoveNetIdentityTracker()];
   try{
    setStatus('Memuat TensorFlow.js dan MoveNet 384/512...');
    const {tf,lib}=await loadModels();
@@ -122,8 +128,9 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
      const input=ctx.getImageData(0,0,frame.width,frame.height);
      for(const index of (i%2?[1,0]:[0,1])){
       const begin=performance.now(),detected=await detectors[index].estimatePoses(input,{maxPoses:6});
+      const d2=trackers[index].observe(detected as D2Pose[],input,(i+.5)*1000/24,threshold);
       const value:Measurement={count:detected.filter(p=>(p.score??0)>=threshold).length,ms:performance.now()-begin,
-       poses:detected.map(p=>({score:p.score,box:p.box?{...p.box}:undefined,keypoints:p.keypoints.map(k=>({...k}))}))};
+       d2,poses:detected.map(p=>({score:p.score,box:p.box?{...p.box}:undefined,keypoints:p.keypoints.map(k=>({...k}))}))};
       if(index===0)all[i].v384=value;else all[i].v512=value;
      }
      if(i%6===0||i===191){draw(view384.current,frame,all[i].v384,threshold);draw(view512.current,frame,all[i].v512,threshold);setSelected(i);}
@@ -139,16 +146,21 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
  const valid=rows.filter(r=>r.v384&&r.v512);
  const detected=(dim:384|512)=>valid.filter(r=>((dim===384?r.v384:r.v512)?.count??0)>=2).length;
  const timing=(dim:384|512,q:number)=>fmt(percentile(valid.map(r=>(dim===384?r.v384!:r.v512!).ms),q));
+ const d2Rows=(dim:384|512)=>valid.map(r=>dim===384?r.v384?.d2:r.v512?.d2).filter((f):f is D2Frame=>Boolean(f));
+ const d2Metrics=(dim:384|512)=>{const arr=d2Rows(dim);return {both:arr.filter(f=>f.assignments.length===2).length,
+  held:arr.filter(f=>f.held).length,recovered:arr.reduce((sum,f)=>sum+f.recovered.length,0)};};
  const labelled=valid.filter(r=>marks[r.frame]==='two');
  const recall=(dim:384|512)=>labelled.length?(100*labelled.filter(r=>((dim===384?r.v384:r.v512)?.count??0)>=2).length/labelled.length).toFixed(1)+'%':'—';
  const exportData=(type:'json'|'csv')=>{
-  const payload={schema:'soma.d1.movenet.v1',status:completed===192&&!rows.some(r=>r.error)?'COMPLETE_UNREVIEWED':'PARTIAL',
+  const payload={schema:'soma.d1-d2.movenet.v2',status:completed===192&&!rows.some(r=>r.error)?'COMPLETE_UNREVIEWED':'PARTIAL',
    environment,scoreThreshold:threshold,framesRequested:192,fps:24,manualLabels:marks,results:rows};
   if(type==='json')download('soma-d1-192.json','application/json',JSON.stringify(payload,null,2));
   else download('soma-d1-192.csv','text/csv',[
-   ['frame','time_s','phase','label','count384','ms384','poses384','count512','ms512','poses512','error'].join(','),
+   ['frame','time_s','phase','label','count384','ms384','poses384','A384','B384','hold384','rawA384','rawB384','count512','ms512','poses512','A512','B512','hold512','rawA512','rawB512','error'].join(','),
    ...rows.map(r=>[r.frame,r.time,r.phase,marks[r.frame]??'unknown',r.v384?.count,r.v384?.ms,JSON.stringify(r.v384?.poses??[]),
-    r.v512?.count,r.v512?.ms,JSON.stringify(r.v512?.poses??[]),r.error??''].map(csv).join(','))
+    r.v384?.d2?.actors[0].presence,r.v384?.d2?.actors[1].presence,r.v384?.d2?.held,r.v384?.d2?.actors[0].rawIndex,r.v384?.d2?.actors[1].rawIndex,
+    r.v512?.count,r.v512?.ms,JSON.stringify(r.v512?.poses??[]),r.v512?.d2?.actors[0].presence,r.v512?.d2?.actors[1].presence,
+    r.v512?.d2?.held,r.v512?.d2?.actors[0].rawIndex,r.v512?.d2?.actors[1].rawIndex,r.error??''].map(csv).join(','))
   ].join('\n'));
  };
  return <section className="soma-d1" aria-label="D1 MoveNet MultiPose benchmark">
@@ -158,7 +170,7 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
    <label>Paket 192 frame (opsional)<input type="file" accept="image/png,image/jpeg" multiple disabled={running} onChange={changeImages}/></label>
    <label>Ambang skor<select value={threshold} disabled={running} onChange={e=>setThreshold(Number(e.target.value))}>
     <option value={.3}>0,30</option><option value={.4}>0,40</option><option value={.5}>0,50</option></select></label>
-   <button type="button" disabled={!enabled||running} onClick={()=>void start()}>Jalankan D1 — 384 vs 512</button>
+   <button type="button" disabled={!enabled||running} onClick={()=>void start()}>Jalankan D1 + D2 — 384 vs 512</button>
    <button type="button" disabled={!running} onClick={()=>{stop.current=true;}}>Hentikan</button>
    <button type="button" disabled={!completed||running} onClick={()=>exportData('json')}>JSON</button>
    <button type="button" disabled={!completed||running} onClick={()=>exportData('csv')}>CSV</button>
@@ -167,6 +179,18 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
    <div>384 · p50 / p95<strong>{timing(384,.5)} / {timing(384,.95)}</strong></div>
    <div>512 · p50 / p95<strong>{timing(512,.5)} / {timing(512,.95)}</strong></div>
    <div>2+ kandidat · 384 / 512<strong>{detected(384)} / {detected(512)}</strong></div></div>
+  <section className="soma-d2" aria-label="D2 Identity Tracking dua aktor">
+   <div className="soma-d2-heading"><strong>D2 · Identity Tracking A/B</strong><span>Bounding box · 17 keypoint · kecepatan · warna torso · 3 frame pemulihan</span></div>
+   <div className="soma-d2-grid">{([384,512] as const).map(dim=>{const m=d2Metrics(dim);
+    const current=dim===384?rows[selected]?.v384?.d2:rows[selected]?.v512?.d2;
+    return <div key={dim} className="soma-d2-score"><b>{dim}</b>
+     <div>Dual visible <strong>{m.both}</strong></div><div>Hold / recovery <strong>{m.held} / {m.recovered}</strong></div>
+     <div className="soma-d2-actors">{current?.actors.map(actor=><span key={actor.id}
+      data-presence={actor.presence}><b>{actor.id}</b> · {d2PresenceLabel(actor.presence)}{actor.presence==='reacquiring'?` ${actor.recoveryFrames}/3`:''}</span>)??<small>Jalankan benchmark untuk melihat status A/B.</small>}</div>
+     <small>{current?.reason??'Belum ada hasil frame'}</small>
+    </div>;})}</div>
+   <p>Deteksi mentah tetap tampil saat identitas ditahan. Label A/B hanya muncul di bounding box yang lolos pemeriksaan. Metrik ini belum membuktikan nol pertukaran identitas sampai inspeksi video selesai.</p>
+  </section>
   <div className="soma-d1-views"><div><b>384</b><canvas ref={view384} width={640} height={360}/></div>
    <div><b>512</b><canvas ref={view512} width={640} height={360}/></div></div>
   <div className="soma-d1-review"><label>Frame {selected+1} · {phase(selected)}
@@ -185,6 +209,6 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
      <td>{subset.filter(r=>(r.v384?.count??0)>=2).length}/{subset.length}</td>
      <td>{subset.filter(r=>(r.v512?.count??0)>=2).length}/{subset.length}</td></tr>;})}</tbody>
   </table></div>
-  <small>Benchmark lokal terisolasi; tidak menyentuh proyektor, floor mapping, atau identity gate. Model perlu internet pada pemuatan pertama. D1 belum PASS sebelum inspeksi manual.</small>
+  <small>Pipeline D1 → D2 berjalan pada hasil MoveNet dari MP4 Footprints. MediaPipe 33 dan identity gate produksi tetap berjalan terpisah sampai D3. Output fisik tetap terkunci; D1/D2 perlu inspeksi manual sebelum PASS.</small>
  </section>;
 }
