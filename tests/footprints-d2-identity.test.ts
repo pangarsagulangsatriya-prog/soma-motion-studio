@@ -56,7 +56,9 @@ test('D2 refuses uncertain single pose and rejects backward video time',()=>{
  const t=new MoveNetIdentityTracker();
  const a=sample(.2,'red'),b=sample(.8,'blue');
  t.observe([a.pose,b.pose],imageFrame([a,b]),1);
- const middle=sample(.5,'blue'),mid=t.observe([middle.pose],imageFrame([middle]),90);
+ const middle=sample(.5,'blue');
+ for(const i of [5,6,11,12])middle.pose.keypoints[i].score=.01;
+ const mid=t.observe([middle.pose],imageFrame([middle]),90);
  assert.equal(mid.assignments.length,0);
  assert.throws(()=>t.observe([middle.pose],imageFrame([middle]),80),/waktu frame/);
  t.reset();

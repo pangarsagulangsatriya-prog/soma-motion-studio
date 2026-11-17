@@ -209,6 +209,6 @@ export function D1MoveNetBenchmark({sourceUrl,sourceName}:{sourceUrl:string|null
      <td>{subset.filter(r=>(r.v384?.count??0)>=2).length}/{subset.length}</td>
      <td>{subset.filter(r=>(r.v512?.count??0)>=2).length}/{subset.length}</td></tr>;})}</tbody>
   </table></div>
-  <small>Pipeline D1 → D2 berjalan pada hasil MoveNet dari MP4 Footprints. MediaPipe 33 dan identity gate produksi tetap berjalan terpisah sampai D3. Output fisik tetap terkunci; D1/D2 perlu inspeksi manual sebelum PASS.</small>
+  <small>Pipeline D1 → D2 berjalan pada hasil MoveNet dari MP4 Footprints. MediaPipe 33 dan identity gate produksi tetap berjalan terpisah sampai D3. D1/D2 tidak menyentuh proyektor atau floor mapping; output fisik tetap terkunci. Inspeksi manual wajib sebelum PASS.</small>
  </section>;
 }
