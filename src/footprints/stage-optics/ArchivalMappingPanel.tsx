@@ -14,7 +14,7 @@ import {archiveSessionReport,compositeArchivalFrame,
  type ArchivePlayback,type ArchivePixels,type ArchiveSettings,type ArchiveSlot,type ArchiveSources} from './ArchivalCompositeEngine.ts';
 import './archival-mapping.css';
 
-type Props={frameRef:RefObject<MotionFrame>;cameraOn:boolean;performerCount:1|2;
+type Props={frameRef:RefObject<MotionFrame>;cameraOn:boolean;performerCount:1|2;experimentLocked?:boolean;
  router:MultiPoseGaitRouter;projection:Projection;
  stageMedia:{A:File|null;B:File|null};
  onStageMedia:(slot:ArchiveSlot,file:File|null)=>Promise<boolean>;
@@ -26,7 +26,7 @@ const allowedTypes=new Set(['video/mp4','video/webm','video/ogg','video/quicktim
 const maxBytes=300*1024*1024;
 const percentage=(x:number)=>Math.round(x*100);
 export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,projection,
- stageMedia,onStageMedia,stageSettings,onStageSettings,stageHoldMs,onStageHoldMs}:Props){
+ stageMedia,onStageMedia,stageSettings,onStageSettings,stageHoldMs,onStageHoldMs,experimentLocked=false}:Props){
  const canvas=useRef<HTMLCanvasElement>(null);
  const padCanvas=useRef<HTMLCanvasElement>(null);
  const stageRoute=useRef<StageRouteInput|null>(null);
@@ -351,7 +351,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
    onToggle={e=>setRouteOpen(e.currentTarget.open)}>
    <summary>04 / Dual-Surface Calibration & Output Routing <span>BODY dan FLOOR · dua jendela proyektor</span></summary>
    {routeOpen&&<DualSurfaceRoutingPanel frameRef={stageRoute}
-    bodyCanvas={canvas} floorCanvas={padCanvas} legacyProjection={projection}/>}
+    bodyCanvas={canvas} floorCanvas={padCanvas} legacyProjection={projection} experimentLocked={experimentLocked}/>}
   </details>
   <div className="archive-map-mask-controls">
    <label>Batas paha → perut · {percentage(torso)}% torso
