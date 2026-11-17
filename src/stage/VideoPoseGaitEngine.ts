@@ -3,16 +3,16 @@ import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
 import {VideoAutoActorTracker,type VideoActorState} from './videoAutoActorTracker.ts';
 import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
-import {HandLimbDetailAnalyzer,HAND_SCAN_INTERVAL_MS,type HandLimbFrame,type RawHandDetection} from './videoHandLimbDetail.ts';
+import {HandLimbDetailAnalyzer,type HandLimbFrame} from './videoHandLimbDetail.ts';
 import type {ReplayIdentityQA} from './videoReplayIdentityQA.ts';
 import {ReplayActorRecoveryGate} from './replayActorRecoveryGate.ts';
 import {MotionSemanticsEngine,type MotionSemanticEvent,type MotionSemanticStatus,type MotionSemanticKind} from './motionSemantics.ts';
 import {ReplayInferenceWorkerClient} from './replayInferenceWorkerClient.ts';
-import {ReplayPerformanceMeter,AdaptiveHandScheduler,type ReplayPerformance,type HandDetailMode} from './replayPerformance.ts';
+import {ReplayPerformanceMeter,type ReplayPerformance} from './replayPerformance.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
-import type {PoseLandmarker,HandLandmarker} from '@mediapipe/tasks-vision';
+import type {PoseLandmarker} from '@mediapipe/tasks-vision';
 
 export type ReplayOverlayPerson={id:ReplayPerformer;landmarks:Landmark[];confidence:number};
 export type ReplayAnalysisSnapshot={
@@ -25,7 +25,6 @@ export type ReplayAnalysisSnapshot={
  performerMode:'auto'|'manual';
  temporal:TemporalFrame|null;temporalFrameCount:number;
  handLimb:HandLimbFrame|null;handLimbFrameCount:number;
- handModelStatus:'loading'|'ready'|'unavailable';handModelReason:string;
  /** Image-space semantic events only, never physical projector actions. */
  semanticEvents?:MotionSemanticEvent[];semanticStatuses?:MotionSemanticStatus[];
  status:string;ambiguous:boolean;
@@ -45,16 +44,10 @@ export class VideoPoseGaitEngine{
  private worker:ReplayInferenceWorkerClient|null=null;
  private workerDisabled=false;
  private meter=new ReplayPerformanceMeter();
- private handsSchedule=new AdaptiveHandScheduler();
  private epoch=0;
  private lastEmitAt=-Infinity;
  private queuedForced:{video:HTMLVideoElement;atSeconds:number;capFPS:number}|null=null;
  private gaitCounts={contact:0,swing:0,slide:0,pivot:0};
- private handModel:HandLandmarker|null=null;
- private lastHandScanAt=-Infinity;
- private handFailures=0;
- private handModelStatus:'loading'|'ready'|'unavailable'='loading';
- private handModelReason='Menyiapkan Hand Landmarker';
  private processor=new MotionProcessor();
  private actorTracker=new VideoAutoActorTracker();
  private temporalAnalyzer=new TemporalJointAnalyzer();
@@ -89,8 +82,6 @@ export class VideoPoseGaitEngine{
  constructor(private readonly report:Listener){}
  get ready(){return (!!this.model||!!this.worker)&&!this.disposed;}
  get performance(){return this.meter.snapshot;}
- get handDetailMode(){return this.handsSchedule.mode;}
- setHandDetailMode(mode:HandDetailMode){this.handsSchedule.setMode(mode);this.emit(true);}
  recordPresentedFrame(count:number|null){if(count!==null)this.meter.observePresented(count);}
  recordRender(ms:number){this.meter.observeRender(ms);}
  /** Current replay segment's bounded temporal data; never a physical gait output. */
@@ -132,7 +123,6 @@ export class VideoPoseGaitEngine{
    performerMode:this.manualCount===null?'auto':'manual',
    temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
    handLimb:this.handLimbAnalyzer.latest,handLimbFrameCount:this.handLimbAnalyzer.frameCount,
-   handModelStatus:this.handModelStatus,handModelReason:this.handModelReason,
    semanticEvents:full?this.semanticEngine.history:this.semanticEngine.getRecentEvents(64),
    semanticStatuses:this.semanticEngine.statuses,
    events:full?this.history.slice():this.history.slice(-64),
@@ -152,9 +142,6 @@ export class VideoPoseGaitEngine{
     worker=new ReplayInferenceWorkerClient();await worker.init();
     if(this.disposed){worker.dispose();return;}
     this.worker=worker;this.meter.setBackend('worker');
-    this.handModelStatus=worker.handReady?'ready':'unavailable';
-    this.handModelReason=worker.handReady?'Detail tangan adaptif di worker.':
-     'Worker pose aktif; tangan tidak tersedia: '+worker.handReason;
     this.status='Analisis worker siap. Video dan AI berjalan terpisah.';
     this.emit(true);return;
    }catch{worker?.dispose();this.workerDisabled=true;}
@@ -173,21 +160,7 @@ export class VideoPoseGaitEngine{
   });
   if(this.disposed){pose.close();return;}
   this.model=pose;this.meter.setBackend('main');
-  this.handModelStatus='loading';
-  this.status='Fallback CPU utama aktif; detail tangan adaptif.';
-  try{
-   const hand=await vision.HandLandmarker.createFromOptions(files,{
-    baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/hand_landmarker.task`,delegate:'CPU'},
-    runningMode:'VIDEO',numHands:4,minHandDetectionConfidence:.55,
-    minHandPresenceConfidence:.55,minTrackingConfidence:.55
-   });
-   if(this.disposed){hand.close();return;}
-   this.handModel=hand;this.handModelStatus='ready';
-   this.handModelReason='Model tangan siap (CPU).';
-  }catch(error){
-   this.handModelStatus='unavailable';
-   this.handModelReason='Model tangan gagal: '+(error instanceof Error?error.message:String(error));
-  }
+  this.status='Fallback CPU utama aktif; pelacakan tubuh dan anggota badan.';
   this.emit(true);this.consumeForced();
  }
  setPerformers(choice:'auto'|1|2){
@@ -202,8 +175,7 @@ export class VideoPoseGaitEngine{
   this.truncatedEvents=0;this.gaitCounts={contact:0,swing:0,slide:0,pivot:0};
   this.feet.clear();this.actorTracker.reset();this.temporalAnalyzer.reset();
   this.handLimbAnalyzer.reset();this.semanticEngine.reset();
-  this.meter.reset();this.handsSchedule.reset();
-  this.lastHandScanAt=-Infinity;this.handFailures=0;
+  this.meter.reset();
   this.analyzers.clear();this.processor.reset();
   this.count=this.manualCount??1;this.people=[];this.rawPoses=[];
   this.ambiguous=false;this.lastTime=-1;this.detectedCount=0;this.visibleCount=0;
@@ -218,12 +190,6 @@ export class VideoPoseGaitEngine{
   const now=performance.now();
   if(!force&&now-this.lastEmitAt<140)return;
   this.lastEmitAt=now;this.meter.observeUi(now);this.report(this.buildSnapshot(false));
- }
- private wristMotion(){
-  const current=this.temporalAnalyzer.latest;
-  return (current?.actors??[]).flatMap(actor=>actor.joints)
-   .filter(point=>point.index===15||point.index===16)
-   .reduce((max,point)=>Math.max(max,point.speed??0),0);
  }
  private consumeForced(){
   if(this.disposed||this.inProgress||!this.ready||!this.queuedForced)return;
@@ -250,18 +216,15 @@ export class VideoPoseGaitEngine{
   this.inProgress=true;
   const epoch=this.epoch,startedAt=performance.now();
   const clock=Math.max(this.lastInference+1,startedAt);this.lastInference=clock;
-  const schedule=this.handsSchedule.choose(atMs,this.wristMotion(),this.meter.snapshot.poseMs);
   if(this.worker){
    const worker=this.worker;
-   void worker.detect(video,clock,schedule.run&&worker.handReady).then(result=>{
+   void worker.detect(video,clock).then(result=>{
     if(this.disposed||epoch!==this.epoch)return;
-    const hands=result.hands?.map((landmarks,rawIndex)=>({rawIndex,landmarks}))??null;
     const begin=performance.now();
-    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS,
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,capFPS,
      video.videoWidth/Math.max(1,video.videoHeight));
-    this.meter.observeInference(performance.now(),result.poseMs,result.handsMs,
-     performance.now()-begin,performance.now()-startedAt,result.handScanned,
-     schedule.intervalMs);
+    this.meter.observeInference(performance.now(),result.poseMs,0,
+     performance.now()-begin,performance.now()-startedAt,false,0);
     this.emit();
    }).catch(error=>{
     if(this.disposed||epoch!==this.epoch)return;
@@ -280,39 +243,18 @@ export class VideoPoseGaitEngine{
    const result=this.model!.detectForVideo(video,clock);
    const poseMs=performance.now()-beginPose;
    try{
-    let hands:RawHandDetection[]|null=null,handsMs=0;
-    if(this.handModel&&schedule.run){
-     const beginHands=performance.now();this.lastHandScanAt=atMs;
-     try{
-      const detail=this.handModel.detectForVideo(video,clock);
-      hands=detail.landmarks.slice(0,4).map((landmarks,rawIndex)=>({
-       rawIndex,landmarks:landmarks.map(point=>({...point}))
-      }));
-      this.handFailures=0;
-      if('close' in detail&&typeof detail.close==='function')detail.close();
-     }catch(error){
-      hands=[];this.handFailures++;
-      if(this.handFailures>=3){
-       this.handModel.close();this.handModel=null;this.handModelStatus='unavailable';
-       this.handModelReason='Deteksi jari gagal: '+
-        (error instanceof Error?error.message:String(error));
-      }
-     }
-     handsMs=performance.now()-beginHands;
-    }
     const beginAnalysis=performance.now();
-    this.analyzeDetections(result.landmarks,result.worldLandmarks,hands,atMs,capFPS,
+    this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,capFPS,
      video.videoWidth/Math.max(1,video.videoHeight));
-    this.meter.observeInference(performance.now(),poseMs,handsMs,
-     performance.now()-beginAnalysis,performance.now()-startedAt,
-     hands!==null,schedule.intervalMs);
+    this.meter.observeInference(performance.now(),poseMs,0,
+     performance.now()-beginAnalysis,performance.now()-startedAt,false,0);
     this.emit();
    }finally{result.close();}
   }catch(error){this.handleError(error);}
   finally{this.inProgress=false;this.consumeForced();}
  }
  private analyzeDetections(landmarks:Landmark[][],worldLandmarks:Landmark[][],
-  hands:RawHandDetection[]|null,atMs:number,capFPS:number,aspect:number){
+  atMs:number,capFPS:number,aspect:number){
     // Expose all detected skeletons before the conservative identity/gait gate.
     // If two people cross, the diagnostic overlay still shows the raw observations.
     this.rawPoses=landmarks.filter(p=>p.length>=33).slice(0,2)
@@ -330,7 +272,7 @@ export class VideoPoseGaitEngine{
     // This never bypasses identity QA for physical gait event generation.
     const temporal=this.temporalAnalyzer.observe(observed.assignments,observed.actors,atMs);
     this.handLimbAnalyzer.observe(observed.assignments,observed.actors,temporal,atMs,{
-     hands,handModelAvailable:this.handModel!==null
+     hands:null,handModelAvailable:false
     });
     // A continues when B enters, leaves, crosses or is reacquiring.
     // A count change does not reset the other actor's gait continuity.
@@ -380,14 +322,13 @@ export class VideoPoseGaitEngine{
    ...person,presence:'lost',rawIndex:null,confidence:0
   }));
   this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
-  this.handLimbAnalyzer.reset();this.semanticEngine.reset();this.lastHandScanAt=-Infinity;
+  this.handLimbAnalyzer.reset();this.semanticEngine.reset();
   this.qa.observe([],this.actorStates);this.emit(true);
  }
  dispose(){
   if(this.disposed)return;
   this.disposed=true;this.epoch++;this.queuedForced=null;
   this.worker?.dispose();this.worker=null;this.model?.close();this.model=null;
-  this.handModel?.close();this.handModel=null;
   this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
   this.semanticEngine.reset();
   this.analyzers.clear();this.feet.clear();
