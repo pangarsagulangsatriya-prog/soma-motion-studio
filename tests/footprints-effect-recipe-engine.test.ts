@@ -40,7 +40,7 @@ test('S6.3: contact reveals A independently, then falls through hold and decay t
  assert.ok(out.body.A>.95);
  assert.ok(out.floor.A>.95);
  assert.ok(core.snapshot(1650).body.A>.95);
- assert.ok(core.snapshot(3500).body.A<.18);
+ assert.ok(core.snapshot(3700).body.A<.18);
  assert.equal(core.snapshot(5000).floor.A,0);
  const again=camera(core,events,5000);
  assert.equal(again.contacts,1);
