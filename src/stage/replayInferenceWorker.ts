@@ -2,7 +2,7 @@ import {FilesetResolver,PoseLandmarker} from '@mediapipe/tasks-vision';
 import type {Landmark} from '../engine/types.ts';
 import {descriptorsFor33} from './mediaPipeD2Bridge.ts';
 import {d3MatchGuides,d3AcceptRefinement,type D3Guide,type D3Report} from './duetPose33.ts';
-import {duetSearchRegions,remapPoseFromCrop,rescuePoseQuality,
+import {duetSearchRegions,cropInferenceSize,remapPoseFromCrop,rescuePoseQuality,
  mergeRescueDetections,type RescuedPose} from './duetPoseRescue.ts';
 
 type Init={type:'init';base:string};
@@ -15,7 +15,7 @@ let basePath='';
 let files:Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>|null=null;
 let lastClock=-1,lastRescueClock=-Infinity,lastGuidedClock=-Infinity;
 let rescueFailure='';
-const RESCUE_INTERVAL_MS=480;
+const RESCUE_INTERVAL_MS=360;
 const send=(data:unknown)=>self.postMessage(data);
 function prepareRescue():Promise<void>{
  if(rescueLoading)return rescueLoading;
@@ -42,10 +42,12 @@ function recover(bitmap:ImageBitmap,landmarks:Landmark[][],
  const crops=duetSearchRegions(landmarks);
  const candidates:RescuedPose[]=[];
  for(const region of crops){
-  const surface=new OffscreenCanvas(480,640);
+  const size=cropInferenceSize(bitmap.width,bitmap.height,region);
+  const surface=new OffscreenCanvas(size.width,size.height);
   const ctx=surface.getContext('2d');if(!ctx)continue;
   ctx.drawImage(bitmap,region.x*bitmap.width,region.y*bitmap.height,
-   region.width*bitmap.width,region.height*bitmap.height,0,0,480,640);
+   region.width*bitmap.width,region.height*bitmap.height,
+   0,0,size.width,size.height);
   const sample=surface.transferToImageBitmap();
   try{
    const result=rescue.detect(sample);
@@ -105,10 +107,12 @@ function guidedDual33(bitmap:ImageBitmap,poses:Landmark[][],guides:D3Guide[],
  for(const match of matches){
   if(performance.now()-startMs>210)break;
   const {region,rawIndex,id}=match;
-  const canvas=new OffscreenCanvas(384,512),ctx=canvas.getContext('2d');
+  const size=cropInferenceSize(bitmap.width,bitmap.height,region);
+  const canvas=new OffscreenCanvas(size.width,size.height),ctx=canvas.getContext('2d');
   if(!ctx)continue;
   ctx.drawImage(bitmap,region.x*bitmap.width,region.y*bitmap.height,
-   region.width*bitmap.width,region.height*bitmap.height,0,0,384,512);
+   region.width*bitmap.width,region.height*bitmap.height,
+   0,0,size.width,size.height);
   const sample=canvas.transferToImageBitmap();
   try{
    report.attempted++;

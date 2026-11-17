@@ -24,8 +24,8 @@ test('S0 waits for MediaPipe pose and D3 crop model, preserving primary fallback
  assert.match(client,/this\.boot=\{/);
  assert.match(client,/this\.worker\.terminate\(\)/);
 });
-test('S0 exposes real crop diagnostics in primary Tracking, including 0/N and reason',()=>{
- assert.match(ui,/D3 · Crop A\/B:/);
+test('S0 retains real crop diagnostics inside opt-in QA Lab, outside default Tracking',()=>{
+ assert.match(ui,/showTechnicalLab&&<details className="fp-d4-performance"/);
  assert.match(ui,/snapshot\.d3\?\.reason/);
  assert.match(ui,/D3 waktu crop/);
 });

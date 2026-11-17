@@ -21,6 +21,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const video=useRef<HTMLVideoElement>(null);
  const videoEngine=useRef<VideoPoseGaitEngine|null>(null);
  const generation=useRef(0);
+ const userPaused=useRef(false);
+ const showTechnicalLab=typeof window!=='undefined'&&new URLSearchParams(window.location.search).has('lab');
  const [url,setUrl]=useState<string|null>(null);
  const [videoReady,setVideoReady]=useState(false);
  const [position,setPosition]=useState(0),[duration,setDuration]=useState(0);
@@ -51,7 +53,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   if(kind!=='video'||!clip){setUrl(null);setVideoReady(false);setSnapshot(null);return;}
   const objectUrl=URL.createObjectURL(clip);setUrl(objectUrl);
   setVideoReady(false);setDuration(0);setPosition(0);setPlaying(false);setSnapshot(null);
-  lastSnapshot.current=null;previousSnapshot.current=null;
+  lastSnapshot.current=null;previousSnapshot.current=null;userPaused.current=false;
   setAnalysisError('');setAnalyzing(false);
   return()=>URL.revokeObjectURL(objectUrl);
  },[clip,kind]);
@@ -76,6 +78,12 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    if(disposed||generationId!==generation.current)return;
    engine.process(el,el.currentTime,18,true);
    setAnalyzing(false);
+   // Muted inline video can start itself. Tracking stays on the same stage,
+   // and the user retains Pause/Play as a normal transport control.
+   if(!userPaused.current&&el.paused){
+    void el.play().then(()=>{if(!disposed)setPlaying(true);})
+     .catch(()=>{if(!disposed)setStatus('Video siap. Tekan Putar untuk mulai.');});
+   }
   }).catch(error=>{
    if(disposed||generationId!==generation.current)return;
    setAnalyzing(false);
@@ -120,9 +128,9 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  };
  const play=()=>{
   const el=video.current;if(!el||!videoReady)return;
-  if(el.paused){void el.play().then(()=>setPlaying(true))
+  if(el.paused){userPaused.current=false;void el.play().then(()=>setPlaying(true))
    .catch(()=>setStatus('Codec video tidak dapat diputar. Coba MP4 H.264.'));}
-  else{el.pause();setPlaying(false);}
+  else{userPaused.current=true;el.pause();setPlaying(false);}
  };
  const seek=(seconds:number)=>{
   const el=video.current;if(!el||!videoReady)return;
@@ -155,7 +163,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     <input aria-label="Pilih file video Footprints" type="file"
      accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg" onChange={inputVideo}/>
    </label>
-   <video ref={video} src={url??undefined} playsInline muted preload="metadata"
+   <video ref={video} src={url??undefined} playsInline muted loop preload="metadata"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
     onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);setVideoReady(true);}}
     onSeeking={()=>videoEngine.current?.reset('Timeline diubah: identitas dan peristiwa diulang.')}
@@ -175,32 +183,28 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     aria-label="Geser waktu video" disabled={!videoReady} onChange={e=>seek(+e.target.value)}/>
    <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
    <span className="fp-experiment-meta" role="status">
-    {analyzing?'Menyiapkan model Pose/Gait…':analysisError?'Analisis belum aktif: '+analysisError:
-     snapshot?'Dual tracking · '+snapshot.detectedCount+'/2 pose · '+
-      snapshot.visibleCount+'/2 ID stabil'+
-      (snapshot.ambiguous?' · HOLD crossing':'')+
-      (snapshot.rescueCount?' · crop rescue':'')+' · '+
-      snapshot.performance.backend+' · '+Math.round(snapshot.performance.poseFps)+' FPS':
-     clip?'Video siap, mulai analisis':'Video belum dipilih'}
+    {analysisError?'Tracking belum siap. '+analysisError:
+     analyzing?'Mengaktifkan pelacakan otomatis…':
+     snapshot?snapshot.visibleCount===2?'Dua aktor terbaca':
+       snapshot.visibleCount===1?'Satu aktor terbaca · mencari pasangan':
+       'Mencari dua aktor pada video':
+     clip?'Menyiapkan pelacakan otomatis':'Pilih video untuk mulai'}
    </span>
-   {snapshot&&<div className="fp-duet-engine-status" role="status">
-    <b>DUAL MOVEMENT ENGINE</b>
-    <span>MP4 → Pose 33 × 2 → identitas A/B → gait → BODY/FLOOR</span>
-    <span>{snapshot.ambiguous?'ID HOLD · event meragukan ditahan':
-     snapshot.visibleCount===2?'Dua aktor terpisah · analisis berjalan':
-      snapshot.visibleCount===1?'Satu aktor terlacak · pasangan dipantau':
-      'Mencari tubuh dan memulihkan ID'}</span>
-    <span>A: {snapshot.gait['A:left']?.motion??'—'} / {snapshot.gait['A:right']?.motion??'—'}
-     {' · '}B: {snapshot.gait['B:left']?.motion??'—'} / {snapshot.gait['B:right']?.motion??'—'}</span>
-    <span data-d3-status={snapshot.d3?.status??'warming'}>
-     D3 · Crop A/B: {snapshot.d3Total?.accepted??0}/{snapshot.d3Total?.attempted??0}
-     {' · '}{snapshot.d3?.status==='active'?'Model siap':
-      snapshot.d3?.status==='fallback'?'Fallback multipose':'Memuat model crop'}
-     {snapshot.d3?.refined.length?' · Baru: '+snapshot.d3.refined.join(', '):''}
-     {snapshot.d3?.reason?' · '+snapshot.d3.reason:''}
+   {snapshot&&<div className="fp-duet-engine-status" role="status"
+    aria-label="Pelacakan otomatis dua aktor">
+    <b>TRACKING OTOMATIS</b>
+    <span>{snapshot.visibleCount===2?'A dan B terlacak':
+     snapshot.detectedCount>=2?'Memastikan identitas kedua aktor':
+      snapshot.visibleCount===1?'Memindai ulang tubuh yang belum terbaca':
+      'Mencari aktor A dan B'}</span>
+    <span className="fp-video-actor-status" aria-label="Status masing-masing aktor MP4">
+     {snapshot.actorStates.map(actor=><span key={actor.id}
+      data-actor={actor.id} data-presence={actor.presence}>
+      <b>{actor.id}</b> {actor.presence==='visible'?'Terdeteksi':'Dicari'}
+     </span>)}
     </span>
    </div>}
-   {snapshot&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
+   {snapshot&&showTechnicalLab&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
     <summary>D4 · Performance <b>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
      <span>{snapshot.performance.poseFps.toFixed(1)} FPS AI · lag {snapshot.performance.latestVideoLagMs.toFixed(0)} ms</span></summary>
     <div className="fp-d4-metrics">
@@ -213,15 +217,10 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      <span>D3 waktu crop <b>{(snapshot.d3?.elapsedMs??0).toFixed(0)} ms</b></span>
     </div>
     {snapshot.performance.fallbackReason&&<p role="status">Fallback: {snapshot.performance.fallbackReason}</p>}
+    {snapshot.d3?.reason&&<p role="status">D3: {snapshot.d3.reason}</p>}
     <small>MediaPipe multipose → D2 A/B → D3 crop 33 per aktor saat ID aman → gait → BODY/FLOOR. Crop gagal QA tetap memakai pose utama. MoveNet 384/512 masih benchmark terpisah.</small>
    </details>}
-   {snapshot&&<span className="fp-video-actor-status" role="status"
-    aria-label="Status masing-masing aktor MP4">
-    {snapshot.actorStates.map(actor=><span key={actor.id}
-     data-actor={actor.id} data-presence={actor.presence}>
-     <b>{actor.id}</b> {videoActorPresenceLabel(actor.presence)}
-    </span>)}
-   </span>}
+
   </div>:<div className="fp-experiment-controls">
    <label>Pilih kaki <select aria-label="Kaki simulasi aktif" value={foot}
     onChange={e=>setFoot(e.target.value as FootSide)}>
@@ -234,7 +233,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <button type="button" onClick={reset}><RotateCcw size={15}/> Reset</button>
    <span className="fp-experiment-meta" role="status">{sessionRef.current.events.filter(e=>e.kind==='contact').length} kontak sintetis · {simTime} ms</span>
   </div>}
-  <details className="fp-experiment-advanced-details">
+  {(kind==='simulator'||showTechnicalLab)&&<details className="fp-experiment-advanced-details">
    <summary>Lanjutan</summary>
    <div className="fp-experiment-advanced-content">
     <button type="button" className="fp-experiment-advanced" onClick={handleAdvanced}>
@@ -243,6 +242,6 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     <small>{kind==='video'?'Analisis pose dan gait di lab.':'Kontrol puppet 3D di lab.'}</small>
     <small>{status}</small>
    </div>
-  </details>
+  </details>}
  </section>;
 }

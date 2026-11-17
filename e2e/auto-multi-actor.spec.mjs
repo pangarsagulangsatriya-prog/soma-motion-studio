@@ -9,7 +9,7 @@ async function selectSource(page,name){
 }
 
 test('S6.8.8.2 video defaults to automatic actor count and exposes manual override only in Lab',async({page})=>{
- await page.goto('/');
+ await page.goto('/?lab=1');
  await selectSource(page,'Video MP4');
  await expect(page.locator('.fp-source-switch-trigger')).toContainText('Video MP4');
  await expect(page.locator('.fp-preview-body')).toBeVisible();

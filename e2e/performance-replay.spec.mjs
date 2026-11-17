@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 test('Video Lab profiler stays available without hand inference controls',async({page})=>{
- await page.goto('/');
+ await page.goto('/?lab=1');
  await page.locator('.fp-source-switch-trigger').click();
  await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
  await page.locator('.fp-experiment-advanced-details summary').click();

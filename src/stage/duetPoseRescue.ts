@@ -21,17 +21,37 @@ const torso=(pose:readonly Landmark[])=>{
 };
 const distance=(a:{x:number;y:number},b:{x:number;y:number})=>
  Math.hypot(a.x-b.x,a.y-b.y);
+/**
+ * Search the space NOT covered by the first detected body.
+ * Previous ±0.16 torso search repeatedly cropped the SAME right-hand
+ * performer, missing the left actor in wide/diagonal stage recordings.
+ * Two non-overlapping-priority regions, no synthetic pose or new detector.
+ */
 export function duetSearchRegions(poses:readonly (readonly Landmark[])[]):PoseSearchRegion[]{
- const center=poses.length?torso(poses[0]):null;
- const centers=center?[
-  {x:center.x-.16,y:center.y+.07},
-  {x:center.x+.16,y:center.y+.07}
- ]:[{x:.32,y:.49},{x:.68,y:.49}];
- return centers.map(c=>{
-  const width=.40,height=.82;
-  return {x:clamp(c.x-width/2,0,1-width),
-   y:clamp(c.y-height/2,0,1-height),width,height};
- });
+ const occupied=poses.length?torso(poses[0]):null;
+ const height=.92,y=.04;
+ const width=.56;
+ if(!occupied)return [
+  {x:0,y,width,height},{x:1-width,y,width,height}
+ ];
+ const opposite=occupied.x>=.5?0:1-width;
+ const middle=clamp(.5-width/2,0,1-width);
+ return [
+  {x:opposite,y,width,height},
+  {x:middle,y,width,height}
+ ];
+}
+/** Keep full-body crop's original aspect ratio before pose inference.
+ * The old fixed 480×640 stretch could distort legs in wide 16:9 inputs.
+ */
+export function cropInferenceSize(
+ frameWidth:number,frameHeight:number,region:PoseSearchRegion,maxSide=512
+):{width:number;height:number}{
+ const w=Math.max(1,frameWidth*region.width);
+ const h=Math.max(1,frameHeight*region.height);
+ const scale=Math.min(3,maxSide/Math.max(w,h));
+ return {width:Math.max(48,Math.round(w*scale)),
+  height:Math.max(48,Math.round(h*scale))};
 }
 export function remapPoseFromCrop(
  points:readonly Landmark[],region:PoseSearchRegion

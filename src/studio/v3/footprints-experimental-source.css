@@ -142,3 +142,12 @@
 .fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status{display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;flex:1 1 100%;padding:8px 10px;border:1px solid #4b7055;border-radius:7px;background:#101f18;font-size:10px;color:#c6d8c4;line-height:1.4}
 .fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status b{font-size:10px;color:#d8f0cb;white-space:nowrap}
 .fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status span{min-width:0}
+
+/* Default Tracking: compact automatic A/B status, all technical controls in Labs. */
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status{
+ flex:1 1 320px;min-width:0;padding:6px 9px;gap:7px;
+ background:transparent;border-color:#3d6245;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status>b{font-size:10px}
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status>.fp-video-actor-status{margin-left:auto}
+.fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status>.fp-video-actor-status>span{padding:3px 6px}

@@ -27,7 +27,7 @@ test('S6.8.7 one source switcher and no beginner observation in production',asyn
  await expect(page.locator('.fp-source-switch-menu')).toHaveCount(0);
 });
 
-test('S6.8.7 video uses compact controls, preview first and disclosure for lab',async({page})=>{
+test('S6.8.7 video hides advanced config and prioritizes previews',async({page})=>{
  await page.goto('/');
  await selectSource(page,'Video MP4');
  const stage=page.locator('.fp-stage-workspace');
@@ -38,24 +38,17 @@ test('S6.8.7 video uses compact controls, preview first and disclosure for lab',
  await expect(page.locator('.fp-experiment-intro')).toHaveCount(0);
  await expect(page.locator('.fp-preview-body')).toBeVisible();
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
- const disclosure=page.locator('.fp-experiment-advanced-details');
- await expect(disclosure).not.toHaveAttribute('open','');
- await expect(page.getByRole('button',{name:/Buka Video Motion Lab/})).toBeHidden();
+ await expect(page.locator('.fp-experiment-advanced-details')).toHaveCount(0);
+ await expect(page.locator('.fp-d4-performance')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/Buka Video Motion Lab/})).toHaveCount(0);
  const style=await page.locator('.fp-experiment-dock').evaluate(el=>getComputedStyle(el).flexDirection);
  expect(style).toBe('row');
 
  const preview=await page.locator('.fp-stage-side-previews').boundingBox();
  const camera=await page.locator('.fp-stage-video').boundingBox();
  expect(preview?.width).toBeGreaterThan((camera?.width??10000)*1.7);
- await disclosure.locator('summary').click();
- await expect(page.getByRole('button',{name:/Buka Video Motion Lab/})).toBeVisible();
-
- // Keep stage available after visiting the optional Inspector.
+ // Clicking Tracking in MP4 mode must NOT introduce a second setup flow.
  await page.locator('.fp-flow-local-tabs').getByRole('button',{name:'Tracking'}).click();
- await expect(stage).toHaveAttribute('data-inspector-open','true');
- await expect(page.locator('#fp-context-panel')).toBeVisible();
- await expect(page.locator('.fp-preview-floor')).toBeVisible();
- await page.getByRole('button',{name:'Tutup pengaturan'}).click();
  await expect(stage).toHaveAttribute('data-inspector-open','false');
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
 });
