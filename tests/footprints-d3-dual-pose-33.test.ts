@@ -73,5 +73,6 @@ test('D3 worker uses independent crop inference but same A/B gait engine and out
  assert.match(engine,/this\.cropGuides\(video,atMs\)/);
  assert.match(engine,/this\.actorTracker\.observeDescriptors/);
  assert.match(engine,/this\.qa\.observe\(candidates,observed\.actors\)/);
- assert.match(ui,/D3 · Crop A\/B/);
+ assert.match(ui,/showTechnicalLab&&<details className="fp-d4-performance"/);
+ assert.match(ui,/snapshot\.d3\?\.accepted/);
 });

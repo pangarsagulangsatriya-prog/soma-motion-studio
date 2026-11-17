@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 test('S6.8.8.3 temporal inspector exposes all 33 joints, metrics, and safe export controls',async({page})=>{
- await page.goto('/');
+ await page.goto('/?lab=1');
  await page.locator('.fp-source-switch-trigger').click();
  await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
  await page.locator('.fp-experiment-advanced-details summary').click();

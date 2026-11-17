@@ -184,8 +184,9 @@ test('S6.8.1 source switcher keeps phone pairing session mounted while its panel
  await noOverflow(page);
 });
 
-test('S6.8.4 MP4 selection stays in Stage Preview and advanced Lab remains accessible',async({page})=>{
+test('S6.8.4 MP4 Stage Preview keeps Labs available through QA route',async({page})=>{
  await ready(page);
+ await page.goto('/?lab=1');
  const switcher=page.locator('.fp-source-switch-trigger');
  await switcher.click();
  await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Video MP4/i}).click();
@@ -195,6 +196,7 @@ test('S6.8.4 MP4 selection stays in Stage Preview and advanced Lab remains acces
  await expect(page.locator('.fp-preview-body canvas')).toHaveCount(1);
  await expect(page.locator('.fp-preview-floor canvas')).toHaveCount(1);
  await expect(page.locator('.fp-experiment-controls input[type=file]')).toHaveCount(1);
+ await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
  await expect(page.locator('.soma-video-lab')).toBeVisible();
  await page.getByRole('button',{name:'Tutup Lab'}).click();
