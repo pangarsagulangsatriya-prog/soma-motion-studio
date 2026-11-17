@@ -4,6 +4,7 @@ import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEn
 import {drawSkeletonBodies,replaySkeletonPresentation} from './fullBodySkeleton.ts';
 import {drawHandDetailOverlay} from './videoHandLimbOverlay.ts';
 import {HandLimbInspector} from './HandLimbInspector.tsx';
+import {MotionSemanticsInspector} from './MotionSemanticsInspector.tsx';
 import {videoActorPresenceLabel,type VideoActorId} from './videoAutoActorTracker.ts';
 import {TemporalJointInspector} from './TemporalJointInspector.tsx';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
@@ -106,7 +107,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
    engine.setPerformers(replayPeople);
    setAnalysisOn(true);
    engine.process(video,video.currentTime,12,true);
-   setMessage('Pose/Gait berjalan pada video lokal. Contact, Slide, dan Pivot berupa estimasi visual 2D.');
+   setMessage('Analisis tujuh event gerak berjalan pada video lokal. Semua pengukuran memakai estimasi gambar 2D.');
   }catch(e){
    if(generation!==generationRef.current)return;
    const reason=e instanceof Error?e.message:String(e);
@@ -401,6 +402,9 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        modelStatus={analysisSnapshot?.handModelStatus??'loading'}
        modelReason={analysisSnapshot?.handModelReason??'Model belum dimuat.'}
        getHistory={getHandLimbWindow} segment={analysisSnapshot?.segment??0}/>
+      <MotionSemanticsInspector events={analysisSnapshot?.semanticEvents??[]}
+       statuses={analysisSnapshot?.semanticStatuses??[]}
+       segment={analysisSnapshot?.segment??0} durationMs={duration*1000}/>
       {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
       <div className="vml-qa-top"><strong>Identity QA · {(analysisSnapshot?.performers??1)===2?'BODY A/B':'BODY A'}</strong>
        <span>{qa?.perActor?.some(a=>a.approved)?

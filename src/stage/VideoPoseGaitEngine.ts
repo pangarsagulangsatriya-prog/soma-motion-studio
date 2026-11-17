@@ -6,6 +6,7 @@ import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from '
 import {HandLimbDetailAnalyzer,HAND_SCAN_INTERVAL_MS,type HandLimbFrame,type RawHandDetection} from './videoHandLimbDetail.ts';
 import type {ReplayIdentityQA} from './videoReplayIdentityQA.ts';
 import {ReplayActorRecoveryGate} from './replayActorRecoveryGate.ts';
+import {MotionSemanticsEngine,type MotionSemanticEvent,type MotionSemanticStatus} from './motionSemantics.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
@@ -23,6 +24,8 @@ export type ReplayAnalysisSnapshot={
  temporal:TemporalFrame|null;temporalFrameCount:number;
  handLimb:HandLimbFrame|null;handLimbFrameCount:number;
  handModelStatus:'loading'|'ready'|'unavailable';handModelReason:string;
+ /** Image-space semantic events only, never physical projector actions. */
+ semanticEvents?:MotionSemanticEvent[];semanticStatuses?:MotionSemanticStatus[];
  status:string;ambiguous:boolean;
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
@@ -43,6 +46,7 @@ export class VideoPoseGaitEngine{
  private actorTracker=new VideoAutoActorTracker();
  private temporalAnalyzer=new TemporalJointAnalyzer();
  private handLimbAnalyzer=new HandLimbDetailAnalyzer();
+ private semanticEngine=new MotionSemanticsEngine();
  private qa=new ReplayActorRecoveryGate();
  private archived:ReplayArchiveSegment[]=[];
  private firstAtMs:number|null=null;
@@ -77,6 +81,7 @@ export class VideoPoseGaitEngine{
  }
  getTemporalWindow():TemporalFrame[]{return this.temporalAnalyzer.window;}
  getHandLimbWindow():HandLimbFrame[]{return this.handLimbAnalyzer.window;}
+ getSemanticEvents():MotionSemanticEvent[]{return this.semanticEngine.history;}
  get archivedSegments():ReplayArchiveSegment[]{
   return this.archived.map(s=>({...s,events:s.events.map(e=>({...e})),
    identityQA:{...s.identityQA,visible:[...s.identityQA.visible]}}));
@@ -109,6 +114,7 @@ export class VideoPoseGaitEngine{
    temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
    handLimb:this.handLimbAnalyzer.latest,handLimbFrameCount:this.handLimbAnalyzer.frameCount,
    handModelStatus:this.handModelStatus,handModelReason:this.handModelReason,
+   semanticEvents:this.semanticEngine.history,semanticStatuses:this.semanticEngine.statuses,
    events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
    gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
    qa:this.qa.snapshot,archivedSegments:this.archived.length};
@@ -155,6 +161,7 @@ export class VideoPoseGaitEngine{
   this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
   this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
+  this.semanticEngine.reset();
   this.lastHandScanAt=-Infinity;this.handFailures=0;
   this.analyzers.clear();this.processor.reset();
   this.count=this.manualCount??1;
@@ -241,6 +248,7 @@ export class VideoPoseGaitEngine{
      this.analyzers.delete(id);
      this.feet.delete(id+':left');this.feet.delete(id+':right');
     }
+    const freshGaitEvents:ReplayGaitEvent[]=[];
     for(const person of approved){
       let analyzer=this.analyzers.get(person.id);
       if(!analyzer){analyzer=new GaitAnalyzer();this.analyzers.set(person.id,analyzer);}
@@ -251,10 +259,11 @@ export class VideoPoseGaitEngine{
        if(!sample){this.feet.delete(key);continue;}
        const previous=this.feet.get(key)??emptyReplayState();
        const changes=replayEventsForSample(sample,previous,person.id,foot,this.segment);
-       if(changes.length)this.history.push(...changes);
+       if(changes.length){this.history.push(...changes);freshGaitEvents.push(...changes);}
        this.feet.set(key,{phase:sample.phase,motion:sample.motionKind??'unknown',confidence:sample.confidence});
       }
      }
+    this.semanticEngine.observe(temporal,approved,freshGaitEvents,this.segment);
     this.people=approved;
     // Bound memory during long takes. Position is image-relative, never metric.
     if(this.history.length>5000){this.truncatedEvents+=this.history.length-5000;this.history=this.history.slice(-5000);}
@@ -265,7 +274,7 @@ export class VideoPoseGaitEngine{
    this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
    this.actorStates=this.actorStates.map(person=>({...person,presence:'lost',rawIndex:null,confidence:0}));
    this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
-   this.handLimbAnalyzer.reset();this.lastHandScanAt=-Infinity;
+   this.handLimbAnalyzer.reset();this.semanticEngine.reset();this.lastHandScanAt=-Infinity;
    this.qa.observe([],this.actorStates);this.emit();
   }finally{this.inProgress=false;}
  }
@@ -274,6 +283,7 @@ export class VideoPoseGaitEngine{
   this.disposed=true;this.model?.close();this.model=null;
   this.handModel?.close();this.handModel=null;
   this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
+  this.semanticEngine.reset();
   this.analyzers.clear();this.feet.clear();
   this.history=[];this.archived=[];this.people=[];this.rawPoses=[];
   this.actorStates=[];this.lastTime=-1;
