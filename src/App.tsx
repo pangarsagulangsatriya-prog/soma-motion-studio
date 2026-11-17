@@ -60,6 +60,7 @@ export default function App(){
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
  const [footprintsOperator,setFootprintsOperator]=useState(false);
  const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
+ const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('live');
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
@@ -276,6 +277,7 @@ export default function App(){
     onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
+     setSelectedStageTool('live');
      setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'live'}));}}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);selectScene(scene);}}
@@ -286,10 +288,10 @@ export default function App(){
     onStageTool={(tool:StageNavigationTool)=>{
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
-     setClean(false);selectScene('footprints');
+     setClean(false);selectScene('footprints');setSelectedStageTool(tool);
      setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
     }}
-    selectedTool={stageNavigation?.tool??'live'}
+    selectedTool={selectedStageTool}
     onPreset={()=>setModal('presets')}
     onPerform={()=>{
      if(footprintsActive){
@@ -301,7 +303,7 @@ export default function App(){
    <main>
 
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
-     navigationRequest={stageNavigation}
+     navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
