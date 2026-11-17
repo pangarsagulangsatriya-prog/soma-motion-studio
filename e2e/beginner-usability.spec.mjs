@@ -86,14 +86,14 @@ test('S6.8.6 camera permission denial shows recovery and alternative-source fall
  await lab.getByRole('button',{name:'Mulai sesi observasi'}).click();
  await chooseSource(page,'Webcam laptop');
  await expect(page.locator('.fp-source-switch-trigger')).toHaveAttribute('data-phase','error');
- await expect(page.getByRole('button',{name:'Coba lagi'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Coba lagi',exact:true})).toBeVisible();
  await expect(lab.locator('.fp-usability-summary')).toContainText('Error / pemulihan');
 
  // Safe recovery by choosing a working local source, with no physical projector access.
  await chooseSource(page,'Simulasi 3D');
  await expect(page.locator('.fp-source-switch-trigger')).toHaveAttribute('data-phase','experiment');
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-experimental','true');
- await expect(lab.locator('.fp-usability-summary')).toContainText('Error / pemulihan');
+ await expect(lab.locator('.fp-usability-summary')).toContainText(/Error \/ pemulihan\s+1\s*\/\s*1/);
  await expect(lab.locator('.fp-usability-task')).toHaveAttribute('data-task','select');
  const reportDownload=page.waitForEvent('download');
  await lab.getByRole('button',{name:'Ekspor hasil JSON'}).click();
