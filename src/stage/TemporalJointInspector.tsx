@@ -51,7 +51,7 @@ export function TemporalJointInspector({getTrace,getWindow,revision,segment}:{
  const chart=useMemo(()=>plotTrace(trace,metric),[trace,metric]);
  const index=cursor<0?trace.length-1:Math.min(cursor,trace.length-1);
  const current=trace[Math.max(0,index)];
- const hasData=trace.some(point=>point.x!==null);
+ const hasData=trace.some(point=>point[metric]!==null);
  const metricName=metrics.find(m=>m.key===metric)!.name;
  const download=(filename:string,mime:string,body:string)=>{
   const url=URL.createObjectURL(new Blob([body],{type:mime}));
@@ -64,7 +64,7 @@ export function TemporalJointInspector({getTrace,getWindow,revision,segment}:{
  const exportWindow=()=>download(
   'SOMA-temporal-all-joints-segment-'+segment+'.json','application/json',
   JSON.stringify({schema:'soma.temporal-joints',version:1,
-   segment,windowFrames:revision,sampleCount:trace.length,
+   segment,windowFrames:getWindow().length,sampleCount:trace.length,
    coordinateBasis:'MediaPipe image normalized (relative z)',
    measurement:'Observed 2D angles; normalized-image velocity/acceleration, not physical meters or forces',
    retainedFrames:getWindow()},null,2));
