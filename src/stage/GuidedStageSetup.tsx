@@ -44,7 +44,7 @@ export function GuidedStageSetup({
  const headingRef=useRef<HTMLHeadingElement>(null);
  const cameraPreview=useRef<HTMLCanvasElement>(null),bodyPreview=useRef<HTMLCanvasElement>(null),floorPreview=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
-  const media=window.matchMedia('(max-width: 1050px)');
+  const media=window.matchMedia('(max-width: 1250px)');
   const sync=()=>setCompact(media.matches);
   sync();media.addEventListener('change',sync);
   return()=>media.removeEventListener('change',sync);
@@ -73,7 +73,7 @@ export function GuidedStageSetup({
   )).filter(node=>node.getClientRects().length>0);
   if(!controls.length)return;
   const first=controls[0],last=controls[controls.length-1];
-  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  if(event.shiftKey&&(document.activeElement===first||document.activeElement===headingRef.current)){event.preventDefault();last.focus();}
   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
  };
  const currentSource=session.meta.source;
@@ -209,7 +209,7 @@ export function GuidedStageSetup({
  return <>
   <div className="soma-guide-mobile-scrim" hidden={!open||!compact}
    aria-hidden="true" onPointerDown={onClose}/>
-  <section ref={panelRef} className="soma-guided-setup soma-guided-v2 soma-guided-sidecar"
+  <section id="soma-guide-drawer" ref={panelRef} className="soma-guided-setup soma-guided-v2 soma-guided-sidecar"
    hidden={!open} data-step={step} data-camera-ready={gate.input.ready}
    role={compact?'dialog':'complementary'} aria-modal={compact?true:undefined}
    aria-labelledby="soma-guide-panel-title" onKeyDown={panelKeyDown}>
@@ -226,6 +226,7 @@ export function GuidedStageSetup({
     return <button key={item.name} type="button" disabled={i>gate.maxStep}
      aria-current={step===i?'step':undefined}
      aria-label={item.name+' — '+(phase.ready?'Siap':phase.reason)}
+     title={i>gate.maxStep?(i===1?gate.input.reason:gate.tracking.reason):undefined}
      onClick={()=>changeStep(i as 0|1|2)}>
      <span>{i+1<10?'0'+(i+1):i+1}</span>
      <strong>{item.name}</strong>
@@ -259,10 +260,7 @@ export function GuidedStageSetup({
     {step===1&&<div className="soma-setup-page">
      <div className="soma-guide-section-top"><h3>Kalibrasi & cek langkah</h3>
       <p>Klik empat sudut lantai pada preview kamera, sesuai urutan. Gambar kamera tidak dicerminkan.</p></div>
-     <div className="soma-guide-corners" role="group" aria-label="Sudut lantai yang diedit">
-      {corners.map((corner,i)=><button type="button" key={corner} aria-pressed={editing===i}
-       onClick={()=>setEditing(i)}>{i+1}. {corner} {marks[i]?'✓':''}</button>)}
-     </div>
+
      <div className="soma-guide-dimensions">
       <label>Ukuran lantai
        <select value={sizes.find(s=>s.w===widthM&&s.d===depthM)?.label??'custom'}
@@ -317,7 +315,12 @@ export function GuidedStageSetup({
     </div>}
    </div>
    <aside className="soma-guide-preview" aria-label="Preview kamera pada Guided Setup">
-    <div className="soma-guide-preview-head"><b>Kamera langsung</b><span data-ready={gate.input.ready}>{gate.input.ready?'LIVE':'OFFLINE'}</span></div>
+    <div className="soma-guide-preview-head"><b>{step===1?'Tandai sudut lantai':'Kamera langsung'}</b>
+     <span data-ready={gate.input.ready}>{gate.input.ready?'LIVE':'OFFLINE'}</span></div>
+    {step===1&&<div className="soma-guide-corners" role="group" aria-label="Sudut lantai yang diedit">
+     {corners.map((corner,i)=><button type="button" key={corner} aria-pressed={editing===i}
+      onClick={()=>setEditing(i)} title={'Pilih titik '+(i+1)}>{i+1}. {corner} {marks[i]?'✓':''}</button>)}
+    </div>}
     <canvas ref={cameraPreview} width={800} height={450} onPointerDown={selectPoint}
      data-editing={step===1} aria-label={step===1?'Klik sudut lantai pada video kamera mentah':'Preview kamera SOMA'}/>
     {!gate.input.ready&&<p className="soma-guide-preview-help">Pilih dan hubungkan kamera untuk melihat panggung.</p>}
