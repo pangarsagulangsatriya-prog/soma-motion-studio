@@ -10,7 +10,7 @@ on:
       - 'package-lock.json'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: soma-browser-qa
   cancel-in-progress: true
@@ -34,6 +34,8 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run browser acceptance tests
+        id: browser_tests
+        continue-on-error: true
         run: npx playwright test -c e2e/playwright.config.mjs
       - name: Upload screen captures and failure traces
         if: always()
@@ -44,5 +46,15 @@ jobs:
             e2e/artifacts
             e2e/test-results
             e2e/playwright-report
+            e2e/qa-result.json
           if-no-files-found: ignore
           retention-days: 10
+      - name: Publish QA outcome for review
+        if: always()
+        continue-on-error: true
+        env:
+          QA_OUTCOME: ${{ steps.browser_tests.outcome }}
+        run: node scripts/publish-browser-qa.mjs
+      - name: Fail CI when browser acceptance fails
+        if: steps.browser_tests.outcome != 'success'
+        run: exit 1
