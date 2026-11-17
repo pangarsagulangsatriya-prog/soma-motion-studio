@@ -4,6 +4,8 @@ import {STAGE_INSPECTOR_TABS,moveOperatorCue,
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {GuidedStageSetup} from '../../stage/GuidedStageSetup.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
+import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
+import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
@@ -58,6 +60,8 @@ export function FootprintsStageWorkspace({
  const [setupOpen,setSetupOpen]=useState(false);
  const [composerOpen,setComposerOpen]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
+ const [rehearsalOpen,setRehearsalOpen]=useState(false);
+ const [rehearsalReference,setRehearsalReference]=useState<ReplayReport|null>(null);
  const restoredPerformers=useRef(false);
  useEffect(()=>{
   if(!stageSession.loaded||restoredPerformers.current)return;
@@ -217,7 +221,7 @@ export function FootprintsStageWorkspace({
   dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
  const changeView=(next:WorkspaceView)=>{
-  setVideoLabOpen(false);
+  setVideoLabOpen(false);setRehearsalOpen(false);
   if(next==='archive'){onBlackout();setComposerOpen(false);showArchive();}
   else{onBlackout();setView('stage');}
  };
@@ -264,13 +268,28 @@ export function FootprintsStageWorkspace({
    <div className="fp-stage-top-actions">
     <button type="button" onClick={()=>{setVideoLabOpen(false);setComposerOpen(false);setSetupOpen(open=>!open);}}>
      <SlidersHorizontal size={15}/> Guided Setup</button>
-    <button type="button" aria-pressed={videoLabOpen} onClick={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(v=>!v);}}><Film size={15}/> Video Motion Lab</button>
+    <button type="button" aria-pressed={videoLabOpen} onClick={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setRehearsalOpen(false);setView('stage');setVideoLabOpen(v=>!v);}}><Film size={15}/> Video Motion Lab</button>
+    <button type="button" aria-pressed={rehearsalOpen} onClick={()=>{
+     onBlackout();setSetupOpen(false);setComposerOpen(false);setVideoLabOpen(false);
+     setView('stage');setRehearsalOpen(v=>!v);
+    }}><Activity size={15}/> Rehearsal Lab</button>
     <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulasi 3D</button>
     <button type="button" onClick={onOpenLiveFloor}><SlidersHorizontal size={15}/> Kalibrasi & QA</button>
     <button type="button" aria-pressed={composerOpen} onClick={()=>{setVideoLabOpen(false);setComposerOpen(v=>!v);}}><SlidersHorizontal size={15}/> Surface Composer</button>
    </div>
   </div>}
-  {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab onClose={()=>{onBlackout();setVideoLabOpen(false);}}/>}
+  {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab
+   onClose={()=>{onBlackout();setVideoLabOpen(false);}}
+   onUseReference={report=>{
+    onBlackout();setRehearsalReference(report);setVideoLabOpen(false);
+    setComposerOpen(false);setRehearsalOpen(true);setView('stage');
+   }}/>}
+  {rehearsalOpen&&!operatorMode&&view==='stage'&&<RehearsalComparisonLab
+   frameRef={frameRef} videoRef={videoRef} tracker={tracker} router={router}
+   cameraOn={cameraOn} bodySelected={bodySelected} performers={performerCount}
+   initialReference={rehearsalReference}
+   onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
+   onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
   {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer
    bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
    router={router} floorTracker={tracker} projection={projection}
