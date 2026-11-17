@@ -19,7 +19,7 @@ const limit=(value:number,a:number,b:number)=>Math.min(b,Math.max(a,value));
 const number=(raw:unknown,fallback:number)=>typeof raw==='number'&&Number.isFinite(raw)?raw:fallback;
 export function makeReplayLayer(surface:ReplaySurface,id:string):ReplayLayer{
  return {id,name:surface==='FLOOR'?'Footprint layer':'Archive '+surface,
-  assetId:mediaSourceId,visible:true,opacity:90,scale:100,x:0,y:0,rotation:0,
+  assetId:surface==='FLOOR'?'':mediaSourceId,visible:true,opacity:90,scale:100,x:0,y:0,rotation:0,
   blend:'source-over',mask:surface==='FLOOR'?'none':'silhouette',
   feather:surface==='FLOOR'?0:8,
   points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'};
@@ -41,7 +41,7 @@ export function normalizeReplayLayer(raw:unknown,surface:ReplaySurface,idx:numbe
  return {...d,id:typeof x.id==='string'&&x.id.length<=100&&x.id.length>0?x.id:d.id,
   name:typeof x.name==='string'?x.name.slice(0,72):d.name,
   // S6.4 browser object URLs are session-only; use the video as a valid fallback.
-  assetId:mediaSourceId,
+  assetId:x.assetId===''?'':surface==='FLOOR'?'':mediaSourceId,
   visible:x.visible!==false,opacity:limit(number(x.opacity,90),0,100),
   scale:limit(number(x.scale,100),20,300),
   x:limit(number(x.x,0),-150,150),y:limit(number(x.y,0),-150,150),
