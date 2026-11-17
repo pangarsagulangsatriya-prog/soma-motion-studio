@@ -1,0 +1,30 @@
+name: SOMA Duet V2 D1-D4 Experimental QA
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  duet-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build -- --mode githubpages
+      - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 duet-v2-experiment.spec.mjs
+      - name: Upload browser failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duet-v2-experiment-traces
+          path: e2e/test-results/
+          if-no-files-found: ignore
