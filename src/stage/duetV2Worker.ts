@@ -4,7 +4,8 @@ import {setWasmPaths} from '@tensorflow/tfjs-backend-wasm';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import {FilesetResolver,PoseLandmarker} from '@mediapipe/tasks-vision';
 import type {Landmark} from '../engine/types.ts';
-import {DuetIdentityManager,expandedDuetRoi,sampleTorsoColor,type DuetActor,
+import {DuetIdentityManager,expandedDuetRoi,sampleTorsoColor,duetLetterbox,
+ remapDuetLetterboxLandmarks,type DuetActor,
  type DuetBox,type DuetIdentityFrame,type DuetPerson} from './duetV2Identity.ts';
 
 export type DuetV2Point={x:number;y:number;score:number};
@@ -61,9 +62,6 @@ async function ensureDetail(){
   minPosePresenceConfidence:.46,minTrackingConfidence:.5,outputSegmentationMasks:false
  });
 }
-const remap=(points:readonly Landmark[],roi:DuetBox):Landmark[]=>
- points.map(p=>({...p,
-  x:roi.x+p.x*roi.width,y:roi.y+p.y*roi.height,z:p.z*roi.width}));
 const quality=(points:readonly Landmark[])=>{
  if(points.length!==33)return 0;
  const indices=[11,12,23,24,25,26,27,28];
@@ -110,14 +108,17 @@ function detailForActor(bitmap:ImageBitmap,actor:DuetActor):DuetV2Pose|null{
  const w=480,h=640;
  const canvas=new OffscreenCanvas(w,h);
  const ctx=canvas.getContext('2d');if(!ctx)return null;
+ const pad=duetLetterbox(roi,bitmap.width,bitmap.height,w,h);
+ ctx.fillStyle='#050707';ctx.fillRect(0,0,w,h);
  ctx.drawImage(bitmap,roi.x*bitmap.width,roi.y*bitmap.height,
-  roi.width*bitmap.width,roi.height*bitmap.height,0,0,w,h);
+  roi.width*bitmap.width,roi.height*bitmap.height,
+  pad.x,pad.y,pad.width,pad.height);
  const cropped=canvas.transferToImageBitmap();
  try{
   const result=detail.detect(cropped);
   const first=result.landmarks[0];
   if(!first||first.length!==33){result.close();return null;}
-  const mapped=remap(first.map(p=>({...p})) as Landmark[],roi);
+  const mapped=remapDuetLetterboxLandmarks(first.map(p=>({...p})),roi,pad) as Landmark[];
   const confidence=quality(mapped);
   const world=(result.worldLandmarks[0]??[]).map(p=>({...p})) as Landmark[];
   result.close();
