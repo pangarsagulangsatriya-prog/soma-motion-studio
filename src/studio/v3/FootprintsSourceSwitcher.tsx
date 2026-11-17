@@ -10,6 +10,7 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
  onPhoneManager:()=>void;
 }){
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
+ const [localError,setLocalError]=useState('');
  const trigger=useRef<HTMLButtonElement>(null),panel=useRef<HTMLDivElement>(null);
  useEffect(()=>{
   if(!open)return;
@@ -40,10 +41,12 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    if(choice==='phone')onPhoneManager();
    return;
   }
-  setBusy(true);
+  setBusy(true);setLocalError('');
   try{
    const accepted=await onChoose(choice);
    if(accepted){setOpen(false);trigger.current?.focus({preventScroll:true});}
+  }catch(error){
+   setLocalError(error instanceof Error?error.message:'Gagal mengganti sumber. Coba lagi.');
   }finally{setBusy(false);}
  };
  const selection=status.selection;
@@ -77,7 +80,12 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    })}
    <footer>Semua sumber memakai Stage Preview yang sama. MP4 dan Simulasi tetap diisolasi dari output proyektor fisik.</footer>
   </div>}
-  {status.phase==='error'&&<span className="fp-source-switch-error" role="alert">
-    <AlertTriangle size={13}/>{status.message}</span>}
+  {(status.phase==='error'||localError)&&!open&&<span className="fp-source-switch-error"
+   role="alert">
+    <AlertTriangle size={13} aria-hidden="true"/>
+    <span>{localError||status.message}</span>
+    {selection&&<button type="button" disabled={busy}
+     onClick={()=>void choose(selection)}>Coba lagi</button>}
+   </span>}
  </div>;
 }
