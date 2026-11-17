@@ -275,7 +275,8 @@ export default function App(){
     perform={footprintsActive?footprintsOperator:clean}
     onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
-     setClean(false);selectScene('footprints');}}
+     setClean(false);selectScene('footprints');
+     setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'live'}));}}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);selectScene(scene);}}
     onArchive={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
