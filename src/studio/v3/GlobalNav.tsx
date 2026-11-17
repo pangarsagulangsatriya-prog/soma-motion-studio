@@ -5,6 +5,7 @@ import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCir
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
 import {LABS_ITEM_COUNT,searchLabs,type LabsId} from './labsCatalog.ts';
+import {isDismissEscape,RAIL_TOOLTIP_DELAY_MS} from './interactionPolicy.ts';
 import './workspace-navigation.css';
 
 export type Workspace='studio'|'archive'|'projection';
@@ -66,7 +67,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     railRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});
   });
   const keydown=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'&&!e.shiftKey){e.preventDefault();setExpanded(false);toggleRef.current?.focus({preventScroll:true});return;}
+   if(isDismissEscape(e)){e.preventDefault();setExpanded(false);toggleRef.current?.focus({preventScroll:true});return;}
    if(e.key!=='Tab'||!railRef.current)return;
    const buttons=Array.from(railRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
     .filter(node=>node.getClientRects().length>0);
@@ -85,7 +86,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   const beforeOverflow=document.body.style.overflow;
   if(mobile)document.body.style.overflow='hidden';
   const onKey=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'&&!e.shiftKey){
+   if(isDismissEscape(e)){
     e.preventDefault();e.stopPropagation();
     setLabsOpen(false);labsRef.current?.focus({preventScroll:true});return;
    }
@@ -121,7 +122,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   const rect=node.getBoundingClientRect();
   const top=Math.max(69,Math.min(window.innerHeight-52,rect.top+rect.height/2));
   if(mode==='focus')setTip({label,top});
-  else tipTimer.current=setTimeout(()=>{setTip({label,top});tipTimer.current=null;},260);
+  else tipTimer.current=setTimeout(()=>{setTip({label,top});tipTimer.current=null;},RAIL_TOOLTIP_DELAY_MS);
  };
  const navigate=(target:'footprints'|'projector')=>{
   setLabsOpen(false);clearTip();
