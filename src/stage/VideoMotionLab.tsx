@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type ChangeEvent,type DragEvent,type KeyboardEvent} from 'react';
 import {Download,Film,Image as ImageIcon,Pause,Play,RotateCcw,SkipBack,SkipForward,UploadCloud,Volume2,VolumeX,X} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot} from './VideoPoseGaitEngine.ts';
+import {drawSkeletonBodies,replaySkeletonsCurrent} from './fullBodySkeleton.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
@@ -126,25 +127,8 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
   const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
   const width=scale*video.videoWidth,height=scale*video.videoHeight;
   const x=(canvas.width-width)/2,y=(canvas.height-height)/2;
-  const segments=[[11,12],[11,23],[12,24],[23,24],
-   [23,25],[25,27],[27,29],[29,31],[27,31],
-   [24,26],[26,28],[28,30],[30,32],[28,32]] as const;
-  analysisSnapshot.people.forEach(person=>{
-   const color=person.id==='A'?'#d5eeae':'#7dd9df';
-   ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2;
-   for(const [a,b] of segments){
-    const p=person.landmarks[a],q=person.landmarks[b];
-    if(!p||!q||(p.visibility??1)<.5||(q.visibility??1)<.5)continue;
-    ctx.beginPath();ctx.moveTo(x+p.x*width,y+p.y*height);
-    ctx.lineTo(x+q.x*width,y+q.y*height);ctx.stroke();
-   }
-   for(const index of [23,24,25,26,27,28,29,30,31,32]){
-    const p=person.landmarks[index];if(!p||(p.visibility??1)<.5)continue;
-    ctx.beginPath();ctx.arc(x+p.x*width,y+p.y*height,3,0,Math.PI*2);ctx.fill();
-   }
-   const hip=person.landmarks[23];
-   if(hip){ctx.font='bold 16px system-ui';ctx.fillText('BODY '+person.id,x+hip.x*width,y+hip.y*height-13);}
-  });
+  drawSkeletonBodies(ctx,replaySkeletonsCurrent(analysisSnapshot,video.currentTime*1000),
+   {x,y,width,height},{labels:true});
  },[analysisOn,analysisSnapshot]);
 
  const range=rangeStart!==null&&rangeEnd!==null?validLoopRange(rangeStart,rangeEnd,duration):null;
@@ -316,8 +300,8 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
       onError={()=>{setReady(false);setPlaying(false);setMessage('Browser gagal membaca video. Coba MP4 H.264/AAC atau WebM VP8/VP9.');}}
       aria-label="Video rekaman lokal"/>
      <canvas ref={overlayRef} className="vml-pose-overlay" width={960} height={540}
-      aria-label="Overlay pose kaki hasil analisis video"/>
-     {analysisOn&&<span className="vml-overlay-badge">POSE / GAIT · {replayPeople} PERFORMER</span>}
+      aria-label="Overlay skeleton seluruh tubuh 33 landmark dari video"/>
+     {analysisOn&&<span className="vml-overlay-badge">FULL BODY · {analysisSnapshot?.rawPoses.length??0} POSE TERDETEKSI</span>}
      {clip&&!ready&&<div className="vml-player-empty">Membuka video…</div>}
      {buffering&&ready&&<div className="vml-buffer">Memuat frame…</div>}
     </div>

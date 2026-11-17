@@ -13,6 +13,8 @@ export type ReplayAnalysisSnapshot={
  atMs:number;segment:number;sampledFrames:number;performers:1|2;
  firstAtMs?:number|null;truncatedEvents?:number;
  people:ReplayOverlayPerson[];events:ReplayGaitEvent[];
+ /** Independent diagnostic output from MediaPipe; not an identity or gait approval. */
+ rawPoses:Landmark[][];
  status:string;ambiguous:boolean;
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
@@ -41,6 +43,7 @@ export class VideoPoseGaitEngine{
  private disposed=false;
  private inProgress=false;
  private people:ReplayOverlayPerson[]=[];
+ private rawPoses:Landmark[][]=[];
  private status='Belum dimulai';
  private ambiguous=false;
  private count:1|2=1;
@@ -71,7 +74,8 @@ export class VideoPoseGaitEngine{
    firstAtMs:this.firstAtMs,truncatedEvents:this.truncatedEvents,
    sampledFrames:this.frames,performers:this.count,people:this.people.map(person=>({
     ...person,landmarks:person.landmarks.map(point=>({...point}))
-   })),events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
+   })),rawPoses:this.rawPoses.map(pose=>pose.map(p=>({...p}))),
+   events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
    gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
    qa:this.qa.snapshot,archivedSegments:this.archived.length};
  }
@@ -99,7 +103,7 @@ export class VideoPoseGaitEngine{
   this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
   this.identity.reset();this.analyzers.clear();this.processor.reset();
-  this.people=[];this.ambiguous=false;this.lastTime=-1;
+  this.people=[];this.rawPoses=[];this.ambiguous=false;this.lastTime=-1;
   this.status=reason;this.emit();
  }
  private emit(){if(!this.disposed)this.report(this.snapshot);}
@@ -121,6 +125,10 @@ export class VideoPoseGaitEngine{
    this.lastInference=clock;
    const result=this.model.detectForVideo(video,clock);
    try{
+    // Expose all detected skeletons before the conservative identity/gait gate.
+    // If two people cross, the diagnostic overlay still shows the raw observations.
+    this.rawPoses=result.landmarks.filter(p=>p.length>=33).slice(0,2)
+     .map(pose=>pose.map(point=>({...point})));
     const frame:MotionFrame=this.processor.process(null,{
      landmarks:result.landmarks,worldLandmarks:result.worldLandmarks
     },atMs,configs,capFPS);
@@ -175,7 +183,7 @@ export class VideoPoseGaitEngine{
    }finally{result.close();}
   }catch(e){
    this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
-   this.people=[];this.analyzers.clear();this.feet.clear();
+   this.people=[];this.rawPoses=[];this.analyzers.clear();this.feet.clear();
    this.qa.observe([],this.count,false);this.emit();
   }finally{this.inProgress=false;}
  }
@@ -183,6 +191,6 @@ export class VideoPoseGaitEngine{
   if(this.disposed)return;
   this.disposed=true;this.model?.close();this.model=null;
   this.identity.reset();this.analyzers.clear();this.feet.clear();
-  this.history=[];this.archived=[];this.people=[];this.lastTime=-1;
+  this.history=[];this.archived=[];this.people=[];this.rawPoses=[];this.lastTime=-1;
  }
 }
