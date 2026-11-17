@@ -1,7 +1,7 @@
 export type InferenceBackend='worker'|'main'|'pending';
 export type HandDetailMode='adaptive'|'detail'|'off';
 export type ReplayPerformance={
- backend:InferenceBackend;poseMs:number;handsMs:number;analysisMs:number;
+ backend:InferenceBackend;fallbackReason?:string;poseMs:number;handsMs:number;analysisMs:number;
  renderMs:number;pipelineMs:number;skippedFrames:number;processedFrames:number;
  presentedFrames:number;poseFps:number;handFps:number;uiFps:number;
  handIntervalMs:number;lastFrameAtMs:number;
@@ -16,12 +16,17 @@ export class ReplayPerformanceMeter{
  };
  private lastPoseAt=-1;private lastHandsAt=-1;private lastUiAt=-1;
  reset(){
-  const backend=this.data.backend;this.data={backend,poseMs:0,handsMs:0,
+  const {backend,fallbackReason}=this.data;
+  this.data={backend,fallbackReason,poseMs:0,handsMs:0,
    analysisMs:0,renderMs:0,pipelineMs:0,skippedFrames:0,processedFrames:0,
    presentedFrames:0,poseFps:0,handFps:0,uiFps:0,handIntervalMs:0,lastFrameAtMs:0};
   this.lastPoseAt=-1;this.lastHandsAt=-1;this.lastUiAt=-1;
  }
- setBackend(backend:InferenceBackend){this.data.backend=backend;}
+ setBackend(backend:InferenceBackend,reason?:string){
+  this.data.backend=backend;
+  // Never silently bury the reason the faster worker backend is unavailable.
+  this.data.fallbackReason=backend==='worker'?undefined:reason??this.data.fallbackReason;
+ }
  get snapshot():ReplayPerformance{return {...this.data};}
  observePresented(frame:number){
   if(!Number.isFinite(frame)||frame<0)return;
