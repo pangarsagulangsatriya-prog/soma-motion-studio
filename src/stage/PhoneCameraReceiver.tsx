@@ -15,8 +15,12 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
   setOffer('');setAnswer('');setBusy(false);
   setConnection('Koneksi HP ditutup.');onDisconnect();
  };
+ const onDisconnectRef=useRef(onDisconnect);onDisconnectRef.current=onDisconnect;
  useEffect(()=>()=>{generation.current++;pc.current?.close();
-  active.current?.getTracks().forEach(t=>t.stop());},[]);
+  const hadActive=!!active.current;
+  active.current?.getTracks().forEach(t=>t.stop());active.current=null;
+  if(hadActive)onDisconnectRef.current();
+ },[]);
  const begin=async()=>{
   const version=++generation.current;
   pc.current?.close();active.current?.getTracks().forEach(t=>t.stop());
