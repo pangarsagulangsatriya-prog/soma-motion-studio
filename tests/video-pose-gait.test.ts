@@ -44,3 +44,16 @@ test('seeking backward or dropping frames resets temporal continuity',()=>{
  assert.equal(replayDiscontinuity(1000,1600),true);
  assert.equal(replayDiscontinuity(1000,NaN),true);
 });
+
+import {replayNeedsIdentityReset,replayNeedsGaitWarmup}
+ from '../src/stage/videoGaitAnalysis.ts';
+test('Slow Worker/CPU sampling gaps preserve actor identity but invalidate gait derivatives',()=>{
+ assert.equal(replayNeedsIdentityReset(1000,1500),false);
+ assert.equal(replayNeedsGaitWarmup(1000,1500),true);
+ assert.equal(replayNeedsIdentityReset(1500,1510),false);
+ assert.equal(replayNeedsGaitWarmup(1500,1510),false);
+ assert.equal(replayNeedsIdentityReset(1500,1000),true);
+ assert.equal(replayNeedsIdentityReset(-1,800),false);
+ assert.equal(replayNeedsIdentityReset(1500,NaN),true);
+ assert.equal(replayNeedsGaitWarmup(1500,NaN),false);
+});

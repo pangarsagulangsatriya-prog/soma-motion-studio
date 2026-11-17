@@ -29,6 +29,19 @@ export function replayEventsForSample(sample:GaitSample,previous:ReplayGaitState
 export function replayDiscontinuity(previousMs:number,nextMs:number,maxGapMs=350){
  return previousMs>=0&&(!Number.isFinite(nextMs)||nextMs<previousMs-4||nextMs-previousMs>maxGapMs);
 }
+/**
+ * Separates a real timeline jump from a deliberate inference frame drop.
+ * Asynchronous workers may skip >350ms of video while the player continues.
+ * That gap must invalidate gait derivative samples, NOT erase A/B identity.
+ */
+export function replayNeedsIdentityReset(previousMs:number,nextMs:number){
+ return previousMs>=0&&(!Number.isFinite(nextMs)||nextMs<previousMs-4);
+}
+export function replayNeedsGaitWarmup(previousMs:number,nextMs:number,maxGapMs=350){
+ return previousMs>=0&&Number.isFinite(nextMs)&&
+  nextMs-previousMs>maxGapMs;
+}
+
 export function replayEventCounts(events:ReplayGaitEvent[]){
  const result={contact:0,swing:0,slide:0,pivot:0};
  for(const event of events)result[event.kind]++;

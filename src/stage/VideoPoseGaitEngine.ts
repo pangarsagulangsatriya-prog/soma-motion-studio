@@ -10,7 +10,7 @@ import {MotionSemanticsEngine,type MotionSemanticEvent,type MotionSemanticStatus
 import {ReplayInferenceWorkerClient} from './replayInferenceWorkerClient.ts';
 import {ReplayPerformanceMeter,type ReplayPerformance} from './replayPerformance.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
-import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
+import {emptyReplayState,replayNeedsIdentityReset,replayNeedsGaitWarmup,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
 import type {PoseLandmarker} from '@mediapipe/tasks-vision';
 
@@ -43,6 +43,7 @@ export class VideoPoseGaitEngine{
  private model:PoseLandmarker|null=null;
  private worker:ReplayInferenceWorkerClient|null=null;
  private workerDisabled=false;
+ private workerFailureReason='';
  private meter=new ReplayPerformanceMeter();
  private epoch=0;
  private lastEmitAt=-Infinity;
@@ -142,11 +143,17 @@ export class VideoPoseGaitEngine{
    try{
     worker=new ReplayInferenceWorkerClient();await worker.init();
     if(this.disposed){worker.dispose();return;}
-    this.worker=worker;this.meter.setBackend('worker');
+    this.worker=worker;this.workerFailureReason='';this.meter.setBackend('worker');
     this.status='Analisis worker siap. Video dan AI berjalan terpisah.';
     this.emit(true);return;
-   }catch{worker?.dispose();this.workerDisabled=true;}
+   }catch(error){
+    worker?.dispose();this.workerDisabled=true;
+    this.workerFailureReason=error instanceof Error?error.message:String(error);
+   }
   }
+  if(!this.workerDisabled&&!this.workerFailureReason)
+   this.workerFailureReason=typeof Worker==='undefined'?'Web Worker tidak didukung browser.':
+    'createImageBitmap tidak tersedia untuk memproses video di Worker.';
   await this.loadMainModels();
  }
  private async loadMainModels(){
@@ -160,8 +167,8 @@ export class VideoPoseGaitEngine{
    minPosePresenceConfidence:.46,minTrackingConfidence:.52,outputSegmentationMasks:false
   });
   if(this.disposed){pose.close();return;}
-  this.model=pose;this.meter.setBackend('main');
-  this.status='Fallback CPU utama aktif; pelacakan tubuh dan anggota badan.';
+  this.model=pose;this.meter.setBackend('main',this.workerFailureReason);
+  this.status='CPU utama aktif'+(this.workerFailureReason?': '+this.workerFailureReason:'.');
   this.emit(true);this.consumeForced();
  }
  setPerformers(choice:'auto'|1|2){
@@ -208,8 +215,13 @@ export class VideoPoseGaitEngine{
    return;
   }
   const atMs=atSeconds*1000;
-  if(replayDiscontinuity(this.lastTime,atMs))
-   this.reset('Lompatan waktu video: segmen baru.');
+  if(replayNeedsIdentityReset(this.lastTime,atMs)){
+   this.reset('Timeline mundur: identitas A/B disetel ulang.');
+  }else if(replayNeedsGaitWarmup(this.lastTime,atMs)){
+   // A skipped/slowly processed frame must NOT erase both tracked people.
+   // Discard only time-sensitive gait derivatives and reacquire gait phases.
+   this.analyzers.clear();this.feet.clear();this.processor.reset();
+  }
   if(this.lastTime>=0){
    const diff=atMs-this.lastTime;
    if(!force&&diff<1000/Math.max(1,Math.min(30,capFPS))*.85)return;
@@ -233,7 +245,9 @@ export class VideoPoseGaitEngine{
    }).catch(error=>{
     if(this.disposed||epoch!==this.epoch)return;
     worker.dispose();if(this.worker===worker)this.worker=null;
-    this.workerDisabled=true;this.meter.setBackend('main');
+    this.workerDisabled=true;
+    this.workerFailureReason=error instanceof Error?error.message:String(error);
+    this.meter.setBackend('main',this.workerFailureReason);
     this.reset('Inferensi worker terputus; memulihkan pelacakan CPU.');
     void this.loadMainModels().catch(e=>{
      this.status='Fallback CPU gagal: '+(e instanceof Error?e.message:String(e));
