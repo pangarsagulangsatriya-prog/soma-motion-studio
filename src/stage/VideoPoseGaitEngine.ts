@@ -3,11 +3,12 @@ import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
 import {VideoAutoActorTracker,type VideoActorState} from './videoAutoActorTracker.ts';
 import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
+import {HandLimbDetailAnalyzer,HAND_SCAN_INTERVAL_MS,type HandLimbFrame,type RawHandDetection} from './videoHandLimbDetail.ts';
 import {ReplayIdentityGate,type ReplayIdentityQA} from './videoReplayIdentityQA.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
-import type {PoseLandmarker} from '@mediapipe/tasks-vision';
+import type {PoseLandmarker,HandLandmarker} from '@mediapipe/tasks-vision';
 
 export type ReplayOverlayPerson={id:ReplayPerformer;landmarks:Landmark[];confidence:number};
 export type ReplayAnalysisSnapshot={
@@ -19,6 +20,8 @@ export type ReplayAnalysisSnapshot={
  actorStates:VideoActorState[];detectedCount:number;visibleCount:number;
  performerMode:'auto'|'manual';
  temporal:TemporalFrame|null;temporalFrameCount:number;
+ handLimb:HandLimbFrame|null;handLimbFrameCount:number;
+ handModelStatus:'loading'|'ready'|'unavailable';handModelReason:string;
  status:string;ambiguous:boolean;
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
@@ -30,9 +33,15 @@ const sideName=(side:0|1):ReplayFoot=>side===0?'left':'right';
  * StageSession, calibrated FloorSession, or dual projector renderer. */
 export class VideoPoseGaitEngine{
  private model:PoseLandmarker|null=null;
+ private handModel:HandLandmarker|null=null;
+ private lastHandScanAt=-Infinity;
+ private handFailures=0;
+ private handModelStatus:'loading'|'ready'|'unavailable'='loading';
+ private handModelReason='Menyiapkan Hand Landmarker';
  private processor=new MotionProcessor();
  private actorTracker=new VideoAutoActorTracker();
  private temporalAnalyzer=new TemporalJointAnalyzer();
+ private handLimbAnalyzer=new HandLimbDetailAnalyzer();
  private qa=new ReplayIdentityGate();
  private archived:ReplayArchiveSegment[]=[];
  private firstAtMs:number|null=null;
@@ -66,6 +75,7 @@ export class VideoPoseGaitEngine{
   return this.temporalAnalyzer.getTrace(actor,joint);
  }
  getTemporalWindow():TemporalFrame[]{return this.temporalAnalyzer.window;}
+ getHandLimbWindow():HandLimbFrame[]{return this.handLimbAnalyzer.window;}
  get archivedSegments():ReplayArchiveSegment[]{
   return this.archived.map(s=>({...s,events:s.events.map(e=>({...e})),
    identityQA:{...s.identityQA,visible:[...s.identityQA.visible]}}));
@@ -96,6 +106,8 @@ export class VideoPoseGaitEngine{
    detectedCount:this.detectedCount,visibleCount:this.visibleCount,
    performerMode:this.manualCount===null?'auto':'manual',
    temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
+   handLimb:this.handLimbAnalyzer.latest,handLimbFrameCount:this.handLimbAnalyzer.frameCount,
+   handModelStatus:this.handModelStatus,handModelReason:this.handModelReason,
    events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
    gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
    qa:this.qa.snapshot,archivedSegments:this.archived.length};
@@ -113,6 +125,21 @@ export class VideoPoseGaitEngine{
   });
   if(this.disposed){model.close();return;}
   this.model=model;this.status='Model Pose siap. Putar video untuk membaca gerak.';
+  // Optional detector: if hand loading fails, pose and limbs still work.
+  try{
+   const hand=await vision.HandLandmarker.createFromOptions(files,{
+    baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/hand_landmarker.task`,delegate:'CPU'},
+    runningMode:'VIDEO',numHands:4,minHandDetectionConfidence:.55,
+    minHandPresenceConfidence:.55,minTrackingConfidence:.55
+   });
+   if(this.disposed){hand.close();return;}
+   this.handModel=hand;this.handModelStatus='ready';
+   this.handModelReason='Detail 21 landmark tangan aktif.';
+  }catch(error){
+   this.handModelStatus='unavailable';
+   this.handModelReason='Model tangan gagal dimuat: '+
+    (error instanceof Error?error.message:'model tidak tersedia');
+  }
   this.emit();
  }
  /** Auto is the default for every MP4. Manual override stays in the advanced lab. */
@@ -126,7 +153,8 @@ export class VideoPoseGaitEngine{
   this.closeSegment(reason);
   this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
-  this.actorTracker.reset();this.temporalAnalyzer.reset();
+  this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
+  this.lastHandScanAt=-Infinity;this.handFailures=0;
   this.analyzers.clear();this.processor.reset();
   this.count=this.manualCount??1;
   this.people=[];this.rawPoses=[];this.ambiguous=false;this.lastTime=-1;
@@ -171,7 +199,30 @@ export class VideoPoseGaitEngine{
     this.visibleCount=observed.visibleCount;
     // A visible actor continues its trace while the other is hidden.
     // This never bypasses identity QA for physical gait event generation.
-    this.temporalAnalyzer.observe(observed.assignments,observed.actors,atMs);
+    const temporal=this.temporalAnalyzer.observe(observed.assignments,observed.actors,atMs);
+    let hands:RawHandDetection[]|null=null;
+    if(this.handModel&&atMs-this.lastHandScanAt>=HAND_SCAN_INTERVAL_MS){
+     this.lastHandScanAt=atMs;
+     try{
+      const handResult=this.handModel.detectForVideo(video,clock);
+      hands=handResult.landmarks.slice(0,4).map((landmarks,rawIndex)=>({
+       rawIndex,landmarks:landmarks.map(point=>({...point}))
+      }));
+      this.handFailures=0;
+      if('close' in handResult&&typeof handResult.close==='function')handResult.close();
+     }catch(error){
+      hands=[];this.handFailures++;
+      if(this.handFailures>=3){
+       this.handModel.close();this.handModel=null;
+       this.handModelStatus='unavailable';
+       this.handModelReason='Deteksi tangan dihentikan setelah tiga frame gagal: '+
+        (error instanceof Error?error.message:'kesalahan inferensi');
+      }
+     }
+    }
+    this.handLimbAnalyzer.observe(observed.assignments,observed.actors,temporal,atMs,{
+     hands,handModelAvailable:this.handModel!==null
+    });
     const count=this.manualCount??observed.knownCount;
     if(count!==this.count){
      this.count=count;
@@ -216,13 +267,16 @@ export class VideoPoseGaitEngine{
    this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
    this.actorStates=this.actorStates.map(person=>({...person,presence:'lost',rawIndex:null,confidence:0}));
    this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
+   this.handLimbAnalyzer.reset();this.lastHandScanAt=-Infinity;
    this.qa.observe([],this.count,false);this.emit();
   }finally{this.inProgress=false;}
  }
  dispose(){
   if(this.disposed)return;
   this.disposed=true;this.model?.close();this.model=null;
-  this.actorTracker.reset();this.temporalAnalyzer.reset();this.analyzers.clear();this.feet.clear();
+  this.handModel?.close();this.handModel=null;
+  this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
+  this.analyzers.clear();this.feet.clear();
   this.history=[];this.archived=[];this.people=[];this.rawPoses=[];
   this.actorStates=[];this.lastTime=-1;
  }

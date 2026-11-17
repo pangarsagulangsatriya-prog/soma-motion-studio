@@ -1,0 +1,44 @@
+/* S6.8.8.4 — hand & limb details: compact disclosure, no duplicate setup copy. */
+.vml-hand-limb{margin:9px 0;border:1px solid #536f59;border-radius:9px;background:#17271e;overflow:hidden}
+.vml-hand-limb>summary{display:flex;align-items:center;gap:9px;cursor:pointer;
+ padding:12px 13px;list-style:none;color:#e4f0e1;font-size:12px;font-weight:700}
+.vml-hand-limb>summary::-webkit-details-marker{display:none}
+.vml-hand-limb>summary::before{content:'+';font:bold 17px ui-monospace,monospace;color:#a8d59c}
+.vml-hand-limb[open]>summary::before{content:'−'}
+.vml-hand-limb>summary>span{margin-left:auto;font-size:10px;font-weight:400;color:#acc3aa}
+.vml-hand-limb>summary:focus-visible{outline:2px solid #d2e9b0;outline-offset:-3px}
+.vml-hand-limb-body{border-top:1px solid #435e4c;display:flex;flex-direction:column;gap:10px;padding:12px}
+.vml-hand-limb-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.vml-hand-limb-toolbar>div{display:inline-flex;align-items:center;border:1px solid #4c6b55;
+ border-radius:7px;gap:3px;padding:3px}
+.vml-hand-limb-toolbar button{min-height:32px;padding:6px 10px}
+.vml-hand-limb-toolbar button[aria-pressed=true]{background:#3c6245;color:#fff;border-color:#a8c89b}
+.vml-hand-limb-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.vml-limb-card{display:flex;flex-direction:column;gap:5px;border:1px solid #3e5945;
+ border-radius:6px;background:#102016;padding:9px;min-width:0}
+.vml-limb-card>strong{font-size:11px;color:#e6f2de}
+.vml-limb-card>span{font-size:10px;color:#aabda9}
+.vml-limb-card>div{display:flex;flex-direction:column;gap:4px}
+.vml-limb-card small{color:#a8c0a7;font-size:10px}
+.vml-limb-card b{font:600 12px ui-monospace,monospace;color:#e2eed9}
+.vml-limb-card[data-presence=partial]{border-style:dashed}
+.vml-limb-card[data-presence=missing]{opacity:.62}
+.vml-hand-limb-hands{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.vml-hand-card{display:flex;flex-direction:column;gap:9px;border:1px solid #436b57;
+ border-radius:7px;background:#102219;padding:10px;min-width:0}
+.vml-hand-card[data-presence=ambiguous]{border-color:#bba267;border-style:dashed}
+.vml-hand-card[data-presence=recent]{border-style:dashed;opacity:.8}
+.vml-hand-card-head{display:flex;justify-content:space-between;align-items:center;
+ gap:8px;flex-wrap:wrap}
+.vml-hand-card-head>strong{color:#e4f1e1;font-size:12px}
+.vml-hand-card-head>span{font-size:10px;color:#b4c9b9}
+.vml-hand-fingers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.vml-hand-fingers>span{display:flex;flex-direction:column;align-items:center;gap:7px;
+ border:1px solid #375541;border-radius:4px;padding:6px 3px;min-width:0}
+.vml-hand-fingers small{color:#acc8ac;font-size:9px;text-align:center;white-space:normal}
+.vml-hand-fingers b{color:#e6f4df;font:600 11px ui-monospace,monospace}
+.vml-hand-metrics,.vml-limb-relations{display:flex;flex-wrap:wrap;gap:9px;color:#bad2bb;font-size:10px}
+.vml-hand-metrics b,.vml-limb-relations b{color:#eaf3df;font:600 11px ui-monospace,monospace}
+.vml-hand-limb-note{font-size:10px;color:#aec5ae;line-height:1.5}
+@media(max-width:960px){.vml-hand-limb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:670px){.vml-hand-limb-hands{grid-template-columns:1fr}.vml-hand-fingers{grid-template-columns:repeat(5,minmax(0,1fr))}}
