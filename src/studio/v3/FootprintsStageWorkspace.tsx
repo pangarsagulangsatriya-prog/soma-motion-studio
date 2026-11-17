@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
-import {OPERATOR_CUES,STAGE_INSPECTOR_TABS,moveOperatorCue,
+import {STAGE_INSPECTOR_TABS,moveOperatorCue,
  operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
@@ -381,7 +381,7 @@ export function FootprintsStageWorkspace({
       <p className="fp-stage-hint">Kontrol output fisik tetap di Dual-Surface Calibration dan membutuhkan persetujuan terpisah.</p>
       <p className="fp-stage-hint">Output tunggal: {legacyGate.reason}</p>
       <button type="button" className="fp-stage-primary-action" onClick={()=>{
-       setView('archive');setInspector('output');
+       setView('archive');setInspector('projection');
       }}><SlidersHorizontal size={15}/> Atur output BODY / FLOOR</button>
       <button type="button" onClick={onOpenLiveFloor}>
        <SlidersHorizontal size={15}/> Kalibrasi Footprints</button>
