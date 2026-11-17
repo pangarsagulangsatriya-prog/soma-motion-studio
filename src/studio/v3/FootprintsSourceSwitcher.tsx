@@ -12,6 +12,7 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
  const [localError,setLocalError]=useState('');
  const trigger=useRef<HTMLButtonElement>(null),panel=useRef<HTMLDivElement>(null);
+ useEffect(()=>setLocalError(''),[status.selection,status.phase]);
  useEffect(()=>{
   if(!open)return;
   const raf=requestAnimationFrame(()=>{
