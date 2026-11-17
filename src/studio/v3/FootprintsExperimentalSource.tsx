@@ -152,16 +152,6 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,
  const handleAdvanced=kind==='video'?onAdvancedVideo:onAdvancedSimulator;
  return <section className="fp-experiment-dock" data-experiment-kind={kind}
   aria-label={kind==='video'?'Sumber video MP4 Footprints':'Sumber simulasi 3D Footprints'}>
-  <div className="fp-experiment-intro">
-   <div><span className="fp-experiment-eyebrow">INPUT / {kind==='video'?'VIDEO 2D':'SIMULASI 3D'}</span>
-    <h3>{kind==='video'?'Analisis video gerak':'Jalankan puppet virtual'}</h3>
-    <p>{kind==='video'?'Pose/Gait dari MP4 diproses secara lokal. Lantai masih berupa ilustrasi 2D.':
-     'Langkah sintetis dicatat dalam meter di lantai virtual. Tidak memakai kamera fisik.'}</p>
-   </div>
-   <button type="button" className="fp-experiment-advanced" onClick={handleAdvanced}>
-    <FlaskConical size={15}/> {kind==='video'?'Buka Video Motion Lab':'Buka Simulator 3D lengkap'}
-   </button>
-  </div>
   {kind==='video'?<div className="fp-experiment-controls">
    <label className="fp-experiment-upload"><UploadCloud size={16}/>
     {clip?'Ganti video':'Pilih MP4 / WebM'}
@@ -203,6 +193,15 @@ export function FootprintsExperimentalSource({kind,performers,clip,onClip,model,
    <button type="button" onClick={reset}><RotateCcw size={15}/> Reset</button>
    <span className="fp-experiment-meta" role="status">{sessionRef.current.events.filter(e=>e.kind==='contact').length} kontak sintetis · {simTime} ms</span>
   </div>}
-  <p className="fp-experiment-safety">{status} · Preview lokal saja. Penggantian sumber tidak mengaktifkan proyektor fisik.</p>
+  <details className="fp-experiment-advanced-details">
+   <summary>Lanjutan</summary>
+   <div className="fp-experiment-advanced-content">
+    <button type="button" className="fp-experiment-advanced" onClick={handleAdvanced}>
+     <FlaskConical size={15}/> {kind==='video'?'Buka Video Motion Lab':'Buka Simulator 3D lengkap'}
+    </button>
+    <small>{kind==='video'?'Analisis pose dan gait di lab.':'Kontrol puppet 3D di lab.'}</small>
+    <small>{status}</small>
+   </div>
+  </details>
  </section>;
 }

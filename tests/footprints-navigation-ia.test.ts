@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {footprintsSteps} from '../src/studio/v3/footprintsFlow.ts';
 import {LEGACY_INSTRUMENTS,stageBodyPreviewGate} from '../src/studio/v3/footprintsUX.ts';
 
-test('Footprints keeps only three local controls; physical output belongs to Projector',()=>{
- assert.deepEqual(footprintsSteps.map(item=>item.id),['input','process','compose']);
- assert.deepEqual(footprintsSteps.map(item=>item.title),['Source','Tracking','Visual & Archive']);
- assert.equal(new Set(footprintsSteps.map(item=>item.id)).size,3);
+test('S6.8.7 Footprints uses one source switcher plus two optional local controls',()=>{
+ assert.deepEqual(footprintsSteps.map(item=>item.id),['process','compose']);
+ assert.deepEqual(footprintsSteps.map(item=>item.title),['Tracking','Visual']);
+ assert.equal(new Set(footprintsSteps.map(item=>item.id)).size,2);
  assert.equal(footprintsSteps.some(item=>String(item.id)==='output'),false);
 });
 

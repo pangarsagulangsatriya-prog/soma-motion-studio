@@ -73,6 +73,7 @@ test('Source E2E: webcam → phone → video → simulator → webcam',async({pa
  await page.getByRole('button',{name:'Langkah kiri'}).click();
  await expect(page.locator('.fp-preview-floor .fp-stage-surface-foot'))
   .toContainText('kontak sintetis');
+ await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:/Buka Simulator 3D lengkap/}).click();
  const dialog=page.locator('dialog.puppet-dialog');
  await expect(dialog).toBeVisible();

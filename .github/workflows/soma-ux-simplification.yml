@@ -1,4 +1,4 @@
-name: SOMA Beginner Usability QA
+name: SOMA S6.8.7 Simplified Stage QA
 on:
   pull_request:
     branches: [main]
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  browser-beginner:
+  browser-ux:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -20,11 +20,11 @@ jobs:
       - run: npm run build -- --mode githubpages
       - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 beginner-usability.spec.mjs
+      - run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 simplified-stage.spec.mjs
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: soma-beginner-usability-failures
+          name: soma-ux-simplification-failures
           path: e2e/test-results/
           if-no-files-found: ignore

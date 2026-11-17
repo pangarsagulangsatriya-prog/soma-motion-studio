@@ -19,9 +19,9 @@ type Props={
  onProjector:()=>void;onOutputQA:()=>void;
 };
 const headings={
- input:['Input','Dari mana geraknya?'],
- process:['Process','Baca gerak kaki'],
- compose:['Compose','Atur bentuk & arsip'],
+ input:['Input','Sumber gerak'],
+ process:['Tracking','Pelacakan kaki'],
+ compose:['Visual','Bentuk & arsip'],
  output:['Output','Hubungkan ke Projector']
 } as const;
 
@@ -56,7 +56,6 @@ export function FootprintsFlowInspector({
     {cameraError&&<p role="alert" className="fp-flow-warning">{cameraError}</p>}
    </>}
    {step==='process'&&<>
-    <p className="fp-flow-note">Periksa identitas, kontak kaki, dan bidang lantai sebelum mengirim hasil ke komposisi.</p>
     <p className="fp-flow-label">JUMLAH PERFORMER</p>
     <div className="fp-flow-choices">
      {([1,2] as const).map(value=><button type="button" key={value}
@@ -82,7 +81,6 @@ export function FootprintsFlowInspector({
     </details>
    </>}
    {step==='compose'&&<>
-    <p className="fp-flow-note">Tentukan respons terhadap pijakan, lalu pilih arsip yang akan ditempatkan pada tubuh atau lantai.</p>
     <p className="fp-flow-label">BENTUK JEJAK</p>
     <div className="fp-flow-choices">
      {(['Campuran','Tapak','Garis','Titik'] as FootprintStyle[]).map(style=>
