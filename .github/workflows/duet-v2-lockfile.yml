@@ -1,0 +1,31 @@
+name: Duet V2 - synchronize experimental npm lockfile
+on:
+  push:
+    branches:
+      - feat/duet-v2-d1-d4-experimental
+permissions:
+  contents: write
+jobs:
+  sync-lockfile:
+    runs-on: ubuntu-24.04
+    if: github.repository == 'pangarsagulangsatriya-prog/soma-motion-studio'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate deterministic npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Push lockfile only if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "D1-D4: synchronize MoveNet npm dependency lock"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
