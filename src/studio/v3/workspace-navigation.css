@@ -305,6 +305,22 @@
  .soma-labs-head{padding-top:18px}
  .soma-rail-tooltip{display:none}
 }
+/* When mobile navigation is open it must sit above the fixed Footprints
+   software-safety dock. Once the rail closes, the dock stays accessible. */
+@media(max-width:760px){
+ .soma-v3 .workspace>.soma-primary-sidebar[data-expanded=true]{
+  z-index:360!important;
+ }
+ .soma-v3 .workspace>.soma-rail-scrim{
+  z-index:350!important;
+ }
+ .soma-v3 .workspace>.soma-labs-backdrop{
+  z-index:370!important;
+ }
+ .soma-v3 .workspace>.soma-labs-panel{
+  z-index:380!important;
+ }
+}
 @media(prefers-reduced-motion:reduce){
  .soma-primary-sidebar,.soma-primary-sidebar .soma-rail-item,
  .soma-v3 .soma-primary-header .soma-nav-toggle,
