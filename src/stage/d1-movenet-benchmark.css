@@ -24,4 +24,15 @@
 .vml-d1-toggle{border:1px solid #486850;border-radius:10px;background:#18271e;padding:11px;margin:8px 0}
 .vml-d1-toggle>summary{cursor:pointer;font-weight:700;color:#d4edbc;font-size:13px;padding:6px;outline-offset:3px}
 .vml-d1-toggle[open]>summary{margin-bottom:12px}
-@media(max-width:760px){.soma-d1-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.soma-d1-views,.soma-d1-review{grid-template-columns:1fr}}
+ .soma-d2{border:1px solid #4c6b56;border-radius:8px;padding:12px;background:#101e17;display:grid;gap:10px}
+.soma-d2-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.soma-d2-heading strong{font-size:13px;color:#e2f1d8}
+.soma-d2-heading span,.soma-d2 p{font-size:11px;color:#b1c6b7;line-height:1.5;margin:0}
+.soma-d2-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.soma-d2-score{border:1px solid #344e3a;border-radius:7px;padding:10px;display:grid;gap:8px;min-width:0}
+.soma-d2-score>div:not(.soma-d2-actors){display:flex;justify-content:space-between;gap:7px;font-size:11px}
+.soma-d2-actors{display:flex;gap:6px;flex-wrap:wrap}
+.soma-d2-actors span{padding:5px 7px;background:#26382b;border:1px solid #537057;border-radius:5px;font-size:10px}
+.soma-d2-actors [data-presence=uncertain],.soma-d2-actors [data-presence=reacquiring]{border-style:dashed;color:#efc994}
+.soma-d2-score small{font-size:10px;color:#9db9a4}
+@media(max-width:760px){.soma-d1-metrics{grid-template-columns:repeat(2,minmax(0,1fr))} .soma-d1-views,.soma-d1-review,.soma-d2-grid{grid-template-columns:1fr}}

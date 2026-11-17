@@ -155,7 +155,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      if(!detectorOpen){video.current?.pause();setPlaying(false);}
      setDetectorOpen(value=>!value);
     }}>
-    {detectorOpen?'Tutup Detector':'Detector MultiPose · D1 (384/512)'}
+    {detectorOpen?'Tutup Detector':'Detector & Identity D1–D2 (384/512)'}
    </button>
    <video ref={video} src={url??undefined} playsInline muted preload="metadata"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
@@ -204,8 +204,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   {kind==='video'&&detectorOpen&&<section id="fp-d1-main-panel"
    className="fp-experiment-d1-panel" aria-label="Pengujian dua aktor MoveNet Footprints">
    <div className="fp-experiment-d1-heading">
-    <strong>Detector MultiPose · Footprints</strong>
-    <small>Benchmark 384/512 pada MP4 yang sama dengan preview BODY/FLOOR. Pemutaran dihentikan selama inspeksi. Hasil belum mengganti identity gate sebelum lulus QA.</small>
+    <strong>Detector + Identity Tracking · Footprints</strong>
+    <small>MoveNet 384/512 → pelacakan A/B dari posisi, gerak, dan warna torso pada MP4 sumber Footprints. Ketika crossing ambigu, ID ditahan. Preview BODY/FLOOR tetap memakai engine lama sampai D3.</small>
    </div>
    <D1MoveNetBenchmark sourceUrl={url} sourceName={clip?.name??null}/>
   </section>}
