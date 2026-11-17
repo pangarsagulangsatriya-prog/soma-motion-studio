@@ -131,7 +131,7 @@ test('denied camera permission displays recoverable source error without project
   });
  });
  await ready(page);
- await page.locator('.fp-source-launchpad').getByRole('button',{name:/Webcam laptop/}).click();
+ await page.locator('.fp-source-launchpad').getByRole('button',{name:/webcam laptop/i}).click();
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-source-mode','recover',{timeout:25_000});
  await expect(page.locator('.fp-source-feedback-error')).toBeVisible();
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
