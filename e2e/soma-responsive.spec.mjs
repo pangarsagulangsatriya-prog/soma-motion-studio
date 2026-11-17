@@ -158,6 +158,7 @@ test('S6.8.1 source switcher keeps phone pairing session mounted while its panel
  await expect(manager.locator('.soma-setup-phone-choices')).toHaveCount(1);
  await manager.getByRole('button',{name:'Tutup panel kamera HP'}).click();
  await expect(manager).toBeHidden();
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
  // Closing the controls must not unmount the WebRTC receiver.
  await expect(manager.locator('.soma-setup-phone-choices')).toHaveCount(1);
  await switcher.click();
@@ -168,6 +169,7 @@ test('S6.8.1 source switcher keeps phone pairing session mounted while its panel
  await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Webcam laptop/i}).click();
  await expect(switcher).toContainText('Webcam laptop');
  await expect(page.locator('.fp-phone-source-panel')).toHaveCount(0);
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
 });
@@ -199,6 +201,7 @@ test('S6.8.2 main workspace keeps all live preview canvases mounted across mode 
  await expect(canvasBody).toBeVisible();
  await expect(canvasFloor).toBeVisible();
  await expect(camera).toBeVisible();
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
  const body=page.locator('.fp-stage-preview-modes button').filter({hasText:'BODY'});
  const floor=page.locator('.fp-stage-preview-modes button').filter({hasText:'FLOOR'});
  const split=page.locator('.fp-stage-preview-modes button').filter({hasText:'Split'});
