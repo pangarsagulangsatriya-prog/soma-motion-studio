@@ -166,44 +166,4 @@ export async function POST(request:Request):Promise<Response>{
    code:'SIGNALING_UNAVAILABLE'},503);
  }
 }
-// Preview-only diagnostic. Never merge this endpoint into the feature/Production branch.
-// Exercises the same POST room transitions against installed Upstash without
-// sending any capability tokens or SDP back to the caller.
-export async function GET(request:Request):Promise<Response>{
- if(process.env.VERCEL_ENV!=='preview'||
-  new URL(request.url).searchParams.get('diagnostic')!=='s6-1-1')
-  return json({ok:false,error:'Not found'},404);
- const origin=new URL(request.url).origin;
- const invoke=async(payload:Record<string,unknown>)=>{
-  const req=new Request(request.url,{
-   method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
-   body:JSON.stringify(payload)});
-  const res=await POST(req);
-  return {status:res.status,body:await res.json() as Record<string,unknown>};
- };
- let stage='create';
- try{
-  const created=await invoke({action:'create'});
-  if(!created.body.ok) return json({ok:false,stage,
-   errorCode:created.body.code??'REDIS_REJECTED'},503);
-  const room=created.body.room as string;
-  const desktopToken=created.body.desktopToken as string;
-  const ticket=created.body.ticket as string;
-  stage='join';
-  const joined=await invoke({action:'join',room,ticket});
-  if(!joined.body.ok)return json({ok:false,stage,
-   errorCode:joined.body.code??'JOIN_REJECTED'},503);
-  stage='poll';
-  const checked=await invoke({action:'poll',room,token:desktopToken});
-  if(checked.body.state!=='joined')return json({ok:false,stage,
-   errorCode:checked.body.code??'STATE_MISMATCH'},503);
-  stage='close';
-  const closed=await invoke({action:'close',room,token:desktopToken});
-  if(!closed.body.ok)return json({ok:false,stage,
-   errorCode:closed.body.code??'CLOSE_REJECTED'},503);
-  return json({ok:true,diagnostic:'upstash-room-cycle',stages:4});
- }catch{
-  return json({ok:false,stage,errorCode:'SMOKE_UNAVAILABLE'},503);
- }
-}
 export const config={runtime:'nodejs'};
