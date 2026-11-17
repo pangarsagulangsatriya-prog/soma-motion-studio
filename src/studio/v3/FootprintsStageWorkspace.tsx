@@ -12,6 +12,9 @@ import {CompactFootprintsStatus} from './CompactFootprintsStatus.tsx';
 import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
 import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceScreen} from './FootprintsSourceScreen.tsx';
+import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
+import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
+import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import {footprintsSteps,type FootprintsStep} from './footprintsFlow.ts';
@@ -43,7 +46,8 @@ type Props={
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
- phoneActive:boolean;
+ phoneActive:boolean;sourceStatus:FootprintsInputStatus;
+ onSwitchSource:(choice:FootprintsInputChoice)=>Promise<boolean>;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onOpenProjection:()=>void;
@@ -60,7 +64,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
  navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
- phoneActive,
+ phoneActive,sourceStatus,onSwitchSource,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
  onPhoneStream,onPhoneDisconnect,onEnterOperator,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
@@ -71,6 +75,7 @@ export function FootprintsStageWorkspace({
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
+ const [phonePanelOpen,setPhonePanelOpen]=useState(false);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('input');
  const [inspectorOpen,setInspectorOpen]=useState(false);
  const [calibrationOverlay,setCalibrationOverlay]=useState<{marks:Array<Point|null>;editing:number}|null>(null);
@@ -318,17 +323,18 @@ export function FootprintsStageWorkspace({
    else document.getElementById('fp-flow-inspector-title')?.focus({preventScroll:true});
   });
  };
- const openPhoneInput=()=>{
-  setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
-  stageSession.patch({source:'phone'});
-  setFlowStep('input');setView('stage');setInspectorOpen(true);setSetupOpen(true);
-  setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
+ const chooseSource=async(choice:FootprintsInputChoice):Promise<boolean>=>{
+  const accepted=await onSwitchSource(choice);
+  if(!accepted)return false;
+  setFlowStep('input');setView('stage');setSetupOpen(false);setInspectorOpen(false);
+  setPhonePanelOpen(choice==='phone');
+  setVideoLabOpen(choice==='video');setRehearsalOpen(false);setComposerOpen(false);
+  if(choice==='simulator')onOpenSimulator();
+  return true;
  };
- const openVideoInput=()=>{
-  onBlackout();setFlowStep('input');setView('stage');
-  setInspectorOpen(false);setSetupOpen(false);setComposerOpen(false);setRehearsalOpen(false);
-  setVideoLabOpen(true);
- };
+ const openPhoneInput=()=>{void chooseSource('phone');};
+ const openVideoInput=()=>{void chooseSource('video');};
+ const openSimulatorInput=()=>{void chooseSource('simulator');};
  const sourceMode=deriveSourceScreenMode({
   cameraOn,cameraBusy,cameraError,bodySelected,videoReady
  });
@@ -345,7 +351,7 @@ export function FootprintsStageWorkspace({
   gaitPreviewVisible?'live':'preparing';
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
-  data-inspector-open={inspectorOpen&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
+  data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
   data-screen={screenMode} data-source-mode={sourceMode}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
@@ -369,7 +375,9 @@ export function FootprintsStageWorkspace({
       {item.title}</button>)}
     </div>}
    </div>
-   {!setupOpen&&<CompactFootprintsStatus items={compactItems}
+   <FootprintsSourceSwitcher status={sourceStatus} onChoose={chooseSource}
+    onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(false);setSetupOpen(false);}}/>
+   {!setupOpen&&<CompactFootprintsStatus
     onSource={trigger=>openFromStatus('input',trigger)}
     onProcess={trigger=>openFromStatus('process',trigger)}/>}
 
@@ -406,9 +414,18 @@ export function FootprintsStageWorkspace({
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
-     {sourcePickerVisible&&<FootprintsSourceScreen mode={sourceMode as 'select'|'connecting'|'recover'}
-      cameraError={cameraError} onWebcam={onStartBody} onPhone={openPhoneInput}
-      onVideo={openVideoInput} onSimulator={onOpenSimulator}/>}
+     {sourcePickerVisible&&sourceStatus.selection==='phone'?
+      <section className="fp-phone-wait" aria-label="Kamera HP menunggu sambungan">
+       <span>INPUT / KAMERA HP</span><h2>Hubungkan kamera HP</h2>
+       <p>Scan QR di panel pairing. Menu INPUT di atas tetap bisa digunakan untuk berganti sumber.</p>
+       <button type="button" onClick={()=>{setPhonePanelOpen(true);setInspectorOpen(false);setSetupOpen(false);}}>
+        Buka pairing HP</button>
+      </section>:
+      sourcePickerVisible&&<FootprintsSourceScreen mode={sourceMode as 'select'|'connecting'|'recover'}
+       cameraError={cameraError} onWebcam={()=>{void chooseSource('webcam');}}
+       onPhone={openPhoneInput} onVideo={openVideoInput}
+       onSimulator={openSimulatorInput}/>}
+
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>KAMERA · LIVE INPUT</span>
        <small>{sourceMode==='live'?'VIDEO AKTIF':sourceMode==='warming'?'MENYIAPKAN VIDEO':
@@ -493,14 +510,28 @@ export function FootprintsStageWorkspace({
       onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}/>
     </div>}
    </div>
-   {!operatorMode&&inspectorOpen&&<aside id="fp-context-panel" className="fp-stage-inspector"
+   {!operatorMode&&(inspectorOpen||sourceStatus.selection==='phone')&&<aside id="fp-context-panel"
+    className="fp-stage-inspector" data-phone-visible={phonePanelOpen}
+    data-panel-hidden={!inspectorOpen&&!phonePanelOpen}
     data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}
     onKeyDown={event=>{
      if(isDismissEscape(event)){
       event.preventDefault();event.stopPropagation();closeInspector();
      }
     }}>
-    {setupOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
+    {sourceStatus.selection==='phone'&&<div className="fp-phone-source-panel"
+     hidden={!phonePanelOpen} aria-hidden={!phonePanelOpen}>
+      <header className="fp-phone-source-heading">
+       <div><small>INPUT / KAMERA HP</small><h2>Hubungkan kamera HP</h2>
+        <p>Pairing tetap berjalan ketika panel ditutup.</p></div>
+       <button type="button" aria-label="Tutup panel kamera HP"
+        onClick={()=>setPhonePanelOpen(false)}>✕</button>
+      </header>
+      <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
+     </div>}
+    {setupOpen&&!phonePanelOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
+     phoneManaged={true} onSelectPhone={openPhoneInput}
+     onShowPhoneManager={()=>{setSetupOpen(false);setPhonePanelOpen(true);setInspectorOpen(false);}}
    onCalibrationState={setCalibrationOverlay}
    onBindCalibrationTap={handler=>{calibrationTap.current=handler;}}
    session={stageSession} frameRef={frameRef} videoRef={videoRef}
@@ -516,7 +547,7 @@ export function FootprintsStageWorkspace({
    onPerform={onEnterOperator}
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
-    {!setupOpen&&<FootprintsFlowInspector
+    {!setupOpen&&!phonePanelOpen&&inspectorOpen&&<FootprintsFlowInspector
      key={flowStep} step={flowStep} onClose={closeInspector}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      cameraLabel={cameraLabel}
@@ -531,13 +562,13 @@ export function FootprintsStageWorkspace({
      bodyReady={totalFrames>0&&frameFresh}
      floorReady={floorStatus.confirmed&&cameraMatched}
      projectionReason={legacyGate.reason}
-     onStartBody={onStartBody}
+     onStartBody={()=>{void chooseSource('webcam');}}
      onGuidedSetup={()=>{
       setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
       setSetupOpen(true);setInspectorOpen(true);
      }}
-     onVideo={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setView('stage');setVideoLabOpen(true);}}
-     onSimulation={onOpenSimulator}
+     onVideo={openVideoInput}
+     onSimulation={openSimulatorInput}
      onCalibration={onOpenLiveFloor}
      onRehearsal={()=>{onBlackout();setSetupOpen(false);setInspectorOpen(false);setView('stage');setRehearsalOpen(true);}}
      onMapping={showArchive}
