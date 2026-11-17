@@ -322,6 +322,7 @@ export function FootprintsStageWorkspace({
   cameraOn,cameraBusy,cameraError,bodySelected,frameFresh,
   visibleCount:identityStatus.visible.length,performerCount,
   identityAmbiguous:identityStatus.ambiguous,
+  identityMatchedFrame:identityStatus.observedFrameTime===frameRef.current.time,
   floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched
  });
  const sourcePickerVisible=!operatorMode&&!setupOpen&&showsSourcePicker(sourceMode);
