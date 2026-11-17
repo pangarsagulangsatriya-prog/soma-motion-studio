@@ -1,11 +1,12 @@
 import {DEFAULT_ARCHIVE_PLAYBACK,validateArchivePlayback,type ArchiveSettings} from '../footprints/stage-optics/ArchivalCompositeEngine.ts';
+import {defaultEffectRecipe,validateEffectRecipe,type EffectRecipeConfig} from '../footprints/stage-optics/EffectRecipeEngine.ts';
 
 export type StageSource='laptop'|'phone'|'simulation';
 export type StageMediaSlot='A'|'B';
 export type StageProjectMeta={
  schema:'soma.stage-session';version:1;id:'local-stage';
  name:string;source:StageSource;performers:1|2;updatedAt:string;
- archiveSettings:ArchiveSettings;bridgeHoldMs:number;
+ archiveSettings:ArchiveSettings;bridgeHoldMs:number;effectRecipe:EffectRecipeConfig;
 };
 export const STAGE_DB='soma-stage-session-v1';
 export const STAGE_MEDIA_LIMIT=300*1024*1024;
@@ -16,7 +17,7 @@ export function defaultStageMeta():StageProjectMeta{
   archiveSettings:{
    A:{...DEFAULT_ARCHIVE_PLAYBACK},
    B:{...DEFAULT_ARCHIVE_PLAYBACK,zoom:1.35,contrast:1.3}
-  },bridgeHoldMs:1400};
+  },bridgeHoldMs:1400,effectRecipe:defaultEffectRecipe()};
 }
 export function validateStageMeta(raw:unknown):StageProjectMeta{
  const r=raw as Partial<StageProjectMeta>|null;
@@ -30,7 +31,9 @@ export function validateStageMeta(raw:unknown):StageProjectMeta{
   throw new Error('Data proyek Stage tidak valid.');
  validateArchivePlayback(r.archiveSettings.A);
  validateArchivePlayback(r.archiveSettings.B);
- return r as StageProjectMeta;
+ // Existing V1 sessions predate S6.3. Migrate in-memory with a disabled recipe,
+ // preserving the archived media files and all original session properties.
+ return {...r,effectRecipe:validateEffectRecipe(r.effectRecipe??defaultEffectRecipe())} as StageProjectMeta;
 }
 function openDB():Promise<IDBDatabase>{
  return new Promise((resolve,reject)=>{
