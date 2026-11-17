@@ -10,7 +10,7 @@ import {BRIDGE_DEFAULTS,ContactArchiveBridge,makeBridgeSimulationEvents,bridgeEx
  type BridgeSnapshot} from './ContactArchiveBridge.ts';
 import {paintContactArchivePad} from './ContactArchivePadPreview.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS,sampleLowerBodyFrame} from './LowerBodyMaskEngine.ts';
-import {archiveSessionReport,compositeArchivalFrame,DEFAULT_ARCHIVE_PLAYBACK,
+import {archiveSessionReport,compositeArchivalFrame,
  type ArchivePlayback,type ArchivePixels,type ArchiveSettings,type ArchiveSlot,type ArchiveSources} from './ArchivalCompositeEngine.ts';
 import './archival-mapping.css';
 
@@ -48,11 +48,13 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
  const [playing,setPlaying]=useState(false);
  const [bridgeEnabled,setBridgeEnabled]=useState(false);
  const [bridgeHoldMs,setBridgeHoldMs]=useState(stageHoldMs);
+ useEffect(()=>setBridgeHoldMs(stageHoldMs),[stageHoldMs]);
  const [bridgeView,setBridgeView]=useState({
   contacts:0,fragments:0,drags:0,skipped:0,heldA:false,heldB:false,
   recent:'' as string,status:'Matikan/aktifkan Bridge untuk memulai simulasi.'});
  const [overlap,setOverlap]=useState(false);
  const [settings,setSettings]=useState<ArchiveSettings>(stageSettings);
+ useEffect(()=>setSettings(stageSettings),[stageSettings]);
  const [status,setStatus]=useState('Unggah video arsip untuk performer A dan B.');
  const [renderStatus,setRenderStatus]=useState<'blackout'|'partial'|'ready'>('blackout');
  const [lit,setLit]=useState(0);
@@ -128,10 +130,8 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   }else{setPlaying(true);setStatus('Video arsip diputar di preview lokal.');}
  };
  const patch=(slot:ArchiveSlot,key:keyof ArchivePlayback,value:number|boolean)=>{
-  setSettings(prev=>{
-   const next={...prev,[slot]:{...prev[slot],[key]:value}};
-   onStageSettings(next);return next;
-  });
+  const next={...settings,[slot]:{...settings[slot],[key]:value}};
+  setSettings(next);onStageSettings(next);
  };
  useEffect(()=>{contactBridge.configure({...BRIDGE_DEFAULTS,holdMs:bridgeHoldMs});},
   [contactBridge,bridgeHoldMs]);
@@ -336,8 +336,8 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
     </button>
    </div>
    <label>Kontak menahan video · {bridgeHoldMs} ms
-    <input type="range" min="0" max="1500" step="30" value={bridgeHoldMs}
-     onChange={e=>setBridgeHoldMs(Number(e.target.value))}/>
+    <input type="range" min="100" max="1500" step="30" value={bridgeHoldMs}
+     onChange={e=>{const ms=Number(e.target.value);setBridgeHoldMs(ms);onStageHoldMs(ms);}}/>
    </label>
    <div className="archive-bridge-metrics" role="status">
     <span>Kontak: <b>{bridgeView.contacts}</b></span>
