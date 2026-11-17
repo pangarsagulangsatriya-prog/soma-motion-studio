@@ -6,21 +6,23 @@ import {replayEventCounts} from './videoGaitAnalysis.ts';
 export type ReplayArchiveSegment={
  segment:number;firstAtMs:number|null;lastAtMs:number|null;sampledFrames:number;
  endReason:string;events:ReplayGaitEvent[];identityQA:ReplayIdentityQA;
+ truncatedEvents?:number;
 };
 export type ReplayExportInput={
  file:{name:string;bytes:number;mime:string;lastModified:number};
  video:{durationSeconds:number;width:number;height:number};
  snapshot:ReplayAnalysisSnapshot;archives:ReplayArchiveSegment[];
- requestedAt:string;
+ requestedAt:string;discardedSegments?:number;
 };
 const validTime=(value:number)=>Number.isFinite(value)&&value>=0?Math.round(value):0;
 export function buildReplayEventExport(input:ReplayExportInput){
  const {file,video,snapshot,archives,requestedAt}=input;
  const current:ReplayArchiveSegment={
   segment:snapshot.segment,firstAtMs:snapshot.sampledFrames>0?
-   Math.max(0,snapshot.atMs):null,
+   Math.max(0,snapshot.firstAtMs??snapshot.atMs):null,
   lastAtMs:snapshot.sampledFrames>0?Math.max(0,snapshot.atMs):null,
   sampledFrames:snapshot.sampledFrames,endReason:'current-active-segment',
+  truncatedEvents:snapshot.truncatedEvents??0,
   events:snapshot.events.map(e=>({...e})),
   identityQA:snapshot.qa??{
    state:'waiting',reason:'Belum ada pemeriksaan QA.',
@@ -47,14 +49,19 @@ export function buildReplayEventExport(input:ReplayExportInput){
    dimensionsPx:{width:video.width,height:video.height}},
   flags:{coordinateBasis:'video-2d-estimate',physicalFloorCalibrated:false,
    physicalProjectionAuthorized:false,fullFrameCoverageGuaranteed:false,
-   identityAmbiguityMaySuppressEvents:true},
-  summary:{segments:segments.length,sampledFrames:segments.reduce((s,x)=>s+x.sampledFrames,0),
+   identityAmbiguityMaySuppressEvents:true,
+   archiveOverflow:Boolean(input.discardedSegments),
+   eventHistoryOverflow:segments.some(s=>(s.truncatedEvents??0)>0)}, 
+  summary:{segments:segments.length,discardedSegments:input.discardedSegments??0,
+   truncatedEvents:segments.reduce((n,s)=>n+(s.truncatedEvents??0),0),
+   sampledFrames:segments.reduce((s,x)=>s+x.sampledFrames,0),
    events:cleaned.length,counts:replayEventCounts(cleaned.map(e=>({
     ...e,basis:'video-2d-estimate' as const
    })))},
   segments:segments.map(s=>({
    segment:s.segment,firstAtMs:s.firstAtMs,lastAtMs:s.lastAtMs,
    sampledFrames:s.sampledFrames,eventCount:s.events.length,endReason:s.endReason,
+   truncatedEvents:s.truncatedEvents??0,
    identityQA:s.identityQA
   })),
   events:cleaned,
