@@ -10,7 +10,9 @@ async function openVideoLab(page){
 
 test('S6.8.8.5 recovery QA visibly tracks actor A and B independently',async({page})=>{
  await openVideoLab(page);
- await expect(page.locator('.vml-identity-qa')).toBeVisible();
+ // Identity QA appears once a video is loaded and analysis starts.
+ // In the empty lab it must not claim a body was detected.
+ await expect(page.locator('.vml-identity-qa')).toHaveCount(0);
  await expect(page.locator('.vml-actor-readout')).toHaveCount(0);
  await expect(page.locator('.vml-temporal')).toBeVisible();
  await expect(page.locator('.vml-hand-limb')).toBeVisible();
