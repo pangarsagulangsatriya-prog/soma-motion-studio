@@ -85,7 +85,6 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
       streamRef.current=stream;
       event.track.addEventListener('ended',()=>{
        if(generation.current!==version)return;
-       callback.current.onDisconnect();
        setPhase('error');setStatus('Track video HP berhenti. Periksa kamera dan sambungkan ulang.');
        terminate(false);
       },{once:true});
