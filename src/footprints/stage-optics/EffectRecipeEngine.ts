@@ -111,7 +111,7 @@ export class EffectRecipeEngine{
  private primed=false;
  private lastTime=-1;
  private started=false;
- private voices:Record<RecipeSurface extends never?never:'body'|'floor',Record<RecipeChannel,Envelope|null>>={
+ private voices:Record<'body'|'floor',Record<RecipeChannel,Envelope|null>>={
   body:{A:null,B:null},floor:{A:null,B:null}
  };
  private videoHeldUntil={A:0,B:0};
