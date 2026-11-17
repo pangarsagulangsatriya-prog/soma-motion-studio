@@ -6,7 +6,7 @@ export type D2Box={xMin:number;yMin:number;width:number;height:number};
 export type D2Pose={score?:number;box?:D2Box;keypoints:D2Point[]};
 export type D2Center={x:number;y:number};
 export type D2Match={id:D2Id;rawIndex:number;box:D2Box|null;center:D2Center;confidence:number;appearanceDistance:number|null};
-export type D2State={id:D2Id;presence:D2Presence;rawIndex:number|null;confidence:number;recoveryFrames:number};
+export type D2State={id:D2Id;presence:D2Presence;rawIndex:number|null;confidence:number;recoveryFrames:number;lastSeenAtMs:number|null};
 export type D2Frame={atMs:number;detectedCount:number;held:boolean;reason:string;actors:D2State[];assignments:D2Match[];recovered:D2Id[]};
 type Candidate={rawIndex:number;box:D2Box|null;center:D2Center;confidence:number;appearance:number[]|null};
 type Track={center:D2Center;velocity:D2Center;box:D2Box|null;appearance:number[]|null;atMs:number};
@@ -62,16 +62,16 @@ function colorDistance(a:number[]|null,b:number[]|null):number|null{
  const bc=a.reduce((s,v,i)=>s+Math.sqrt(v*b[i]),0);
  return Math.sqrt(Math.max(0,1-Math.min(1,bc)));
 }
-function candidate(pose:D2Pose,index:number,image:ImageData,threshold:number):Candidate|null{
+function candidate(pose:D2Pose,index:number,width:number,height:number,appearance:number[]|null,threshold:number):Candidate|null{
  if(pose.keypoints.length<13||(pose.score??0)<threshold)return null;
  const box=boxFor(pose);if(!box)return null;
  const ids=[5,6,11,12].filter(i=>valid(pose.keypoints[i]));
  const center=ids.length>=2?{
-  x:ids.reduce((s,i)=>s+pose.keypoints[i].x,0)/ids.length/image.width,
-  y:ids.reduce((s,i)=>s+pose.keypoints[i].y,0)/ids.length/image.height
- }:{x:(box.xMin+box.width/2)/image.width,y:(box.yMin+box.height/2)/image.height};
+  x:ids.reduce((s,i)=>s+pose.keypoints[i].x,0)/ids.length/width,
+  y:ids.reduce((s,i)=>s+pose.keypoints[i].y,0)/ids.length/height
+ }:{x:(box.xMin+box.width/2)/width,y:(box.yMin+box.height/2)/height};
  return {rawIndex:index,box,center,confidence:pose.score??0,
-  appearance:moveNetTorsoAppearance(pose,image)};
+  appearance};
 }
 export const d2PresenceLabel=(s:D2Presence):string=>({
  'not-detected':'Belum terdeteksi',visible:'Visible',occluded:'Occluded',
@@ -126,9 +126,15 @@ export class MoveNetIdentityTracker{
    confidence:c.confidence,appearanceDistance:old?colorDistance(old.appearance,c.appearance):null});
  }
  observe(poses:D2Pose[],image:ImageData,time:number,threshold=.3):D2Frame{
+  const descriptors=poses.map(pose=>moveNetTorsoAppearance(pose,image));
+  return this.observeDescriptors(poses,descriptors,image.width,image.height,time,threshold);
+ }
+ /** One matching rule across benchmark and primary stage video. */
+ observeDescriptors(poses:D2Pose[],descriptors:(number[]|null)[],width:number,height:number,time:number,threshold=.3):D2Frame{
+  if(!finite(width)||!finite(height)||width<=0||height<=0)throw Error('D2: dimensi video invalid.');
   if(!finite(time)||time<=this.lastTime)throw Error('D2: waktu frame harus bergerak maju.');
   this.lastTime=time;
-  const seen=poses.map((p,i)=>candidate(p,i,image,threshold))
+  const seen=poses.map((p,i)=>candidate(p,i,width,height,descriptors[i]??null,threshold))
    .filter((c):c is Candidate=>c!==null)
    .sort((a,b)=>b.confidence-a.confidence).slice(0,2);
   const assigned:D2Match[]=[],recovered:D2Id[]=[];
@@ -188,7 +194,7 @@ export class MoveNetIdentityTracker{
     this.pending.has(id)?'reacquiring':
     held&&this.holdSet.has(id)?'uncertain':age>1100?'lost':'occluded';
    return {id,presence,rawIndex:a?.rawIndex??null,confidence:a?.confidence??0,
-    recoveryFrames:this.pending.get(id)?.streak??0};
+    recoveryFrames:this.pending.get(id)?.streak??0,lastSeenAtMs:t?.atMs??null};
   });
   return {atMs:time,detectedCount:seen.length,
    held:held||actors.some(a=>a.presence==='reacquiring'),
