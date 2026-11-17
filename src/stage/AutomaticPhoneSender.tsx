@@ -15,8 +15,11 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
  const video=useRef<HTMLVideoElement>(null),pc=useRef<RTCPeerConnection|null>(null);
  const stream=useRef<MediaStream|null>(null),ctrl=useRef<AbortController|null>(null);
  const generation=useRef(0),phoneToken=useRef('');
+ const pulseTimer=useRef<ReturnType<typeof setInterval>|null>(null);
  const terminate=(show=true)=>{
   generation.current++;ctrl.current?.abort();ctrl.current=null;
+  if(pulseTimer.current)clearInterval(pulseTimer.current);
+  pulseTimer.current=null;
   const key=phoneToken.current;phoneToken.current='';
   if(key)void phonePairRequest('close',{room:invite.room,token:key}).catch(()=>{});
   pc.current?.close();pc.current=null;
@@ -46,6 +49,23 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
    phoneToken.current=reply.phoneToken;
    const peer=new RTCPeerConnection(ICE_SERVERS);pc.current=peer;
    for(const track of media.getVideoTracks())peer.addTrack(track,media);
+   peer.addEventListener('datachannel',event=>{
+    if(event.channel.label!=='soma-stage-health')return;
+    const channel=event.channel;
+    channel.addEventListener('open',()=>{
+     if(pulseTimer.current)clearInterval(pulseTimer.current);
+     pulseTimer.current=setInterval(()=>{
+      // Browsers may suspend mobile camera capture in the background. Fail closed.
+      const capturing=media.getVideoTracks().some(t=>t.readyState==='live'&&t.enabled&&!t.muted);
+      if(channel.readyState==='open'&&document.visibilityState==='visible'&&capturing)
+       channel.send('pulse');
+     },700);
+    });
+    channel.addEventListener('close',()=>{
+     if(pulseTimer.current)clearInterval(pulseTimer.current);
+     pulseTimer.current=null;
+    });
+   });
    peer.addEventListener('connectionstatechange',()=>{
     if(pc.current!==peer||version!==generation.current)return;
     if(peer.connectionState==='connected'){
