@@ -10,14 +10,15 @@ import type {TemporalActorSample,TemporalFrame,TemporalJoint} from './temporalJo
  */
 export type MotionSemanticKind='contact'|'swing'|'pivot'|'reach'|'bend'|'turn'|'hold';
 export type MotionSemanticSource='gait-2d-estimate'|'joint-2d-estimate';
+export type SemanticSide='left'|'right'|'body'|'left-arm'|'right-arm'|'left-leg'|'right-leg';
 export type MotionSemanticEvent={
  id:string;segment:number;atMs:number;actor:VideoActorId;kind:MotionSemanticKind;
- side:'left'|'right'|'body';confidence:number;durationMs:number;
+ side:SemanticSide;confidence:number;durationMs:number;
  value:number;threshold:number;unit:string;evidence:string;
  source:MotionSemanticSource;
 };
 export type MotionSemanticStatus={
- actor:VideoActorId;kind:MotionSemanticKind;side:'left'|'right'|'body';
+ actor:VideoActorId;kind:MotionSemanticKind;side:SemanticSide;
  active:boolean;sinceMs:number|null;value:number|null;threshold:number;unit:string;
 };
 type Metric={value:number;threshold:number;unit:string;confidence:number;
@@ -36,12 +37,10 @@ const norm=(x:number,y:number)=>Math.hypot(x,y);
 const finite=(v:number|null|undefined):v is number=>v!==null&&
  v!==undefined&&Number.isFinite(v);
 const clamp=(x:number)=>Math.max(0,Math.min(1,x));
-const radians=(n:number)=>n*Math.PI/180;
 const degrees=(n:number)=>n*180/Math.PI;
 const deltaAngle=(a:number,b:number)=>((a-b+540)%360)-180;
 const get=(s:TemporalActorSample,i:number):TemporalJoint|undefined=>
  s.joints.find(j=>j.index===i);
-const xy=(p:TemporalJoint)=>({x:p.smoothX,y:p.smoothY});
 const distance=(a:TemporalJoint,b:TemporalJoint)=>norm(
  a.smoothX-b.smoothX,a.smoothY-b.smoothY);
 const confidence=(...joints:TemporalJoint[])=>clamp(
@@ -78,11 +77,12 @@ function bend(s:TemporalActorSample,joint:number,previous:Map<number,{angle:numb
  if(bendRate===null)return null;
  const jointName=joint===13?'siku kiri':joint===14?'siku kanan':
   joint===25?'lutut kiri':'lutut kanan';
+ const indices=joint===13?[11,13,15]:joint===14?[12,14,16]:
+  joint===25?[23,25,27]:[24,26,28];
+ const visible=s.joints.filter(j=>indices.includes(j.index));
+ if(visible.length!==3)return null;
  return {value:180-angle,threshold:48,unit:'derajat fleksi 2D',
-  confidence:clamp(Math.min(...s.joints.filter(j=>
-   (joint===13||joint===14?[11,13,15,12,14,16]:
-    [23,25,27,24,26,28]).includes(j.index))
-   .map(j=>j.visibility))),
+  confidence:confidence(...visible),
   evidence:jointName+' fleksi '+(180-angle).toFixed(1)+'°; perubahan '+
    bendRate.toFixed(1)+'°/dtk',
   active:180-angle>=48&&bendRate>=16,
@@ -110,7 +110,7 @@ function hold(s:TemporalActorSample):Metric|null{
  const legs=[27,28].map(i=>get(s,i)).filter((j):j is TemporalJoint=>
   !!j&&finite(j.speed));
  if(legs.length<1)return null;
- const present=[...anchors as TemporalJoint[],...legs];
+ const present=[...(anchors as TemporalJoint[]),...legs];
  const speed=Math.max(...present.map(j=>j.speed!));
  return {value:speed,threshold:.035,unit:'unit gambar/dtk',
   confidence:confidence(...present),
@@ -118,9 +118,9 @@ function hold(s:TemporalActorSample):Metric|null{
    speed.toFixed(3)+' unit gambar/dtk',
   active:speed<=.035,released:speed>.07,minMs:SEMANTIC_HOLD_MIN_MS};
 }
-const label=(kind:MotionSemanticKind,side:'left'|'right'|'body')=>
+const label=(kind:MotionSemanticKind,side:SemanticSide)=>
  kind+':'+side;
-const threshold=(value:number,metric:Metric,person:ReplayOverlayPerson)=>
+const threshold=(metric:Metric,person:ReplayOverlayPerson)=>
  ({...metric,confidence:clamp(Math.min(metric.confidence,person.confidence))});
 export class MotionSemanticsEngine{
  private transitions=new Map<VideoActorId,Map<string,Transition>>();
@@ -156,14 +156,14 @@ export class MotionSemanticsEngine{
    this.caches.set(id,cache);
    const current=this.transitions.get(id)??new Map<string,Transition>();
    this.transitions.set(id,current);
-   const examine=(kind:MotionSemanticKind,side:'left'|'right'|'body',
+   const examine=(kind:MotionSemanticKind,side:SemanticSide,
     measurement:Metric|null)=>{
     const key=label(kind,side);
     const old=current.get(key)??{active:false,startMs:-1,streak:0,lastEmitMs:-Infinity};
     if(!measurement||measurement.confidence<MIN_EVENT_CONFIDENCE){
      current.delete(key);return;
     }
-    const m=threshold(measurement.value,measurement,person);
+    const m=threshold(measurement,person);
     if(!m.active){
      if(m.released){old.active=false;old.startMs=-1;old.streak=0;}
      else if(!old.active){old.streak=0;old.startMs=-1;}
@@ -191,8 +191,9 @@ export class MotionSemanticsEngine{
    for(const side of ['left','right'] as const){
     examine('reach',side,reach(sample,side));
    }
-   for(const idx of [13,14,25,26]){
-    examine('bend',idx===13||idx===25?'left':'right',bend(sample,idx,cache.angleValues,now));
+   for(const [idx,side] of [[13,'left-arm'],[14,'right-arm'],
+    [25,'left-leg'],[26,'right-leg']] as const){
+    examine('bend',side,bend(sample,idx,cache.angleValues,now));
    }
    examine('turn','body',turn(sample,cache,dt));
    examine('hold','body',hold(sample));
