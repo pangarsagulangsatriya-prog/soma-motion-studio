@@ -294,7 +294,7 @@ export function VideoSurfaceComposer({videoRef,active,snapshot,performers,fileKe
   </div>
   <div className="vsc-previews">
    {replaySurfaces.map(s=><button type="button" key={s} className={surface===s?'selected':''}
-    onClick={()=>{setSurface(s);setLayerIndex(0);setDrawingPolygon(false);}}>
+    onClick={()=>{if(drawingPolygon&&s===surface)return;setSurface(s);setLayerIndex(0);setDrawingPolygon(false);}}>
     <span>{s} <small>{composition[s].length} layer</small></span>
     <canvas ref={node=>{canvases.current[s]=node;}} onPointerDown={e=>editPolygonPoint(e,s)}
      width={640} height={360}
