@@ -175,10 +175,16 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
    <span className="fp-experiment-meta" role="status">
     {analyzing?'Menyiapkan model Pose/Gait…':analysisError?'Analisis belum aktif: '+analysisError:
-     snapshot?String(snapshot.detectedCount)+' pose · '+
-      snapshot.actorStates.map(actor=>actor.id+' '+videoActorPresenceLabel(actor.presence)).join(' · '):
+     snapshot?String(snapshot.detectedCount)+' pose':
      clip?'Video siap, mulai analisis':'Video belum dipilih'}
    </span>
+   {snapshot&&<span className="fp-video-actor-status" role="status"
+    aria-label="Status masing-masing aktor MP4">
+    {snapshot.actorStates.map(actor=><span key={actor.id}
+     data-actor={actor.id} data-presence={actor.presence}>
+     <b>{actor.id}</b> {videoActorPresenceLabel(actor.presence)}
+    </span>)}
+   </span>}
   </div>:<div className="fp-experiment-controls">
    <label>Pilih kaki <select aria-label="Kaki simulasi aktif" value={foot}
     onChange={e=>setFoot(e.target.value as FootSide)}>
