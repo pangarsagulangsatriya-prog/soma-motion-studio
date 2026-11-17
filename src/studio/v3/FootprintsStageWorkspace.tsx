@@ -515,7 +515,7 @@ export function FootprintsStageWorkspace({
     <div className="fp-stage-overview" hidden={view!=='stage'}>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource
-      key={experimentalKind} kind={experimentalKind} performers={performerCount}
+      key={experimentalKind} kind={experimentalKind}
       model={experimentPuppet} externalRevision={experimentPuppetRevision}
       clip={experimentClip} onClip={setExperimentClip} onFrame={onExperimentFrame}
       onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
