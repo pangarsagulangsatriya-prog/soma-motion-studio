@@ -133,6 +133,20 @@ test('S6.8.8.4 no fabricated hand on unscanned frame; recent sample clearly mark
  assert.equal(stale.actors[0].hands[0].landmarks.length,0);
 });
 
+test('S6.8.8.4 identity gap discards recent hand before same A label reappears',()=>{
+ const engine=new HandLimbDetailAnalyzer(),temporal=new TemporalJointAnalyzer();
+ const people=[actor('A',pose(.3))],slot=findActorHandSlots(people)[0];
+ observe(engine,temporal,people,status(false),0,[hand(slot.wristX,slot.wristY)]);
+ // Occlusion clears both temporal joint continuity and last-hand cache.
+ observe(engine,temporal,[],[
+  {id:'A',presence:'uncertain',confidence:0,rawIndex:null,lastSeenAtMs:0},
+  {id:'B',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null}
+ ],80,null);
+ const recovered=observe(engine,temporal,people,status(false),130,null);
+ assert.equal(recovered.actors[0].hands[0].presence,'missing');
+ assert.equal(recovered.actors[0].hands[0].landmarks.length,0);
+});
+
 test('S6.8.8.4 failure of optional hand model preserves both independent limbs',()=>{
  const engine=new HandLimbDetailAnalyzer(),temporal=new TemporalJointAnalyzer();
  const f=observe(engine,temporal,[actor('A',pose(.25))],status(false),0,null,false);
