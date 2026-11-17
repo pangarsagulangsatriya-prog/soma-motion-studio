@@ -318,6 +318,13 @@
  }
  .fp-stage-workspace.fp-persistent-layout .fp-source-choice{min-height:53px}
  .fp-stage-workspace.fp-persistent-layout .fp-source-led-note{display:none}
+ /* During calibration the camera is the interactive surface: show it first. */
+ .fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview .fp-stage-video{
+  grid-column:1!important;grid-row:2!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout[data-screen=setup] .fp-stage-overview .fp-stage-side-previews{
+  grid-column:1!important;grid-row:3!important;
+ }
 }
 @media(max-width:420px){
  .fp-stage-workspace.fp-persistent-layout .fp-stage-preview-modes button{padding:5px 7px;font-size:10px}
