@@ -1,4 +1,4 @@
-import type {ArchiveSettings} from '../footprints/stage-optics/ArchivalCompositeEngine.ts';
+import {DEFAULT_ARCHIVE_PLAYBACK,validateArchivePlayback,type ArchiveSettings} from '../footprints/stage-optics/ArchivalCompositeEngine.ts';
 
 export type StageSource='laptop'|'phone'|'simulation';
 export type StageMediaSlot='A'|'B';
@@ -14,11 +14,9 @@ export function defaultStageMeta():StageProjectMeta{
   name:'Unpacking / Stage',source:'laptop',performers:1,
   updatedAt:new Date(0).toISOString(),
   archiveSettings:{
-   A:{brightness:0,contrast:1,grain:0.1,zoom:1,speed:1,invert:false,
-    mirror:false,opacity:1,threshold:0},
-   B:{brightness:0,contrast:1.3,grain:0.1,zoom:1.35,speed:1,invert:false,
-    mirror:false,opacity:1,threshold:0}
-  } as ArchiveSettings,bridgeHoldMs:1400};
+   A:{...DEFAULT_ARCHIVE_PLAYBACK},
+   B:{...DEFAULT_ARCHIVE_PLAYBACK,zoom:1.35,contrast:1.3}
+  },bridgeHoldMs:1400};
 }
 export function validateStageMeta(raw:unknown):StageProjectMeta{
  const r=raw as Partial<StageProjectMeta>|null;
@@ -30,6 +28,8 @@ export function validateStageMeta(raw:unknown):StageProjectMeta{
   !r.archiveSettings?.A||!r.archiveSettings?.B||
   !Number.isFinite(r.bridgeHoldMs)||r.bridgeHoldMs!<100||r.bridgeHoldMs!>30000)
   throw new Error('Data proyek Stage tidak valid.');
+ validateArchivePlayback(r.archiveSettings.A);
+ validateArchivePlayback(r.archiveSettings.B);
  return r as StageProjectMeta;
 }
 function openDB():Promise<IDBDatabase>{
