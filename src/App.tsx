@@ -18,6 +18,7 @@ import {GlobalNav} from './studio/v3/GlobalNav';
 import type {StageNavigationRequest,StageNavigationTool} from './studio/v3/stageNavigation.ts';
 import type {SceneId} from './studio/v3/ScenePicker';
 import {FootprintsStageWorkspace} from './studio/v3/FootprintsStageWorkspace';
+import {deriveFootprintsInputStatus,type FootprintsInputChoice} from './studio/v3/sourceSwitchModel';
 import {defaultFootprintsWorkspace} from './studio/v3/footprintsUX';
 import {StudioTransport} from './studio/v3/StudioTransport';
 import {SceneInspector} from './studio/v3/SceneInspector';
@@ -96,6 +97,12 @@ export default function App(){
  const video=useRef<HTMLVideoElement>(null),stage=useRef<HTMLDivElement>(null),importRef=useRef<HTMLInputElement>(null),playback=useRef<HTMLAudioElement|null>(null);
  const frameRef=useRef<MotionFrame>(emptyFrame()),engine=useRef(new AudioEngine()).current,mapper=useRef(new MappingEngine()).current,tracker=useRef(new CameraTracker()).current,recorder=useRef(new Recorder()).current,motionLog=useRef(new MotionLog()).current;
  const activeCameraMode=useRef<'laptop'|'phone'>('laptop');
+ const [footprintsChoice,setFootprintsChoice]=useState<FootprintsInputChoice|null>(null);
+ const [sourceSwitchBusy,setSourceSwitchBusy]=useState(false);
+ const [sourceSwitchError,setSourceSwitchError]=useState('');
+ const requestedFootprintsChoice=useRef<FootprintsInputChoice|null>(null);
+ const sourceChangeLock=useRef(false);
+ const cameraOperation=useRef(0);
  const lastUI=useRef(0),cal=useRef<{end:number;xs:number[];ys:number[]}|null>(null),mouse=useRef({down:false,x:.5,y:.5,prevX:.5,prevY:.5,last:0,speed:0,acceleration:0,pinch:0,open:true,shift:false,keyPinch:false,lastHit:0,armed:true});
  const [controlsOpen,setControlsOpen]=useState(false),[hudVisible,setHudVisible]=useState(true),[isFullscreen,setIsFullscreen]=useState(false),[trackingLatched,setTrackingLatched]=useState(false),[triggerProgress,setTriggerProgress]=useState(0);
  const visualMapper=useRef(new VisualMappingEngine()).current,holdTrigger=useRef(new HoldTrigger()).current;
@@ -115,7 +122,7 @@ export default function App(){
  useEffect(()=>{tracker.setProjection(projection.running);return()=>tracker.setProjection(false);},[tracker,projection.running]);
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
- const stopCamera=useCallback(()=>{activeCameraMode.current='laptop';tracker.stop(video.current??undefined);setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
+ const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
  const processFrame=useCallback((f:MotionFrame)=>{
   frameRef.current=f;cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
   if(f.tracked)hasPlayed.current=true;
@@ -127,12 +134,24 @@ export default function App(){
   if(f.time-lastUI.current>100){lastUI.current=f.time;setFrame({...f});setTriggerProgress(hold.progress);setLogCount(motionLog.rows.length);if(motionLog.full){setLogging(false);notify('Log mencapai batas 18.000 sampel. Silakan ekspor datanya.');motionLog.full=false;}}
  },[engine,mapper,visualMapper,holdTrigger,motionLog,notify,update,cameraCue.processFrame]);
  async function startCamera(){
+  const op=++cameraOperation.current;
+  requestedFootprintsChoice.current='webcam';setFootprintsChoice('webcam');
+  setSourceSwitchError('');
   activeCameraMode.current='laptop';
   if(sr.current.input==='mouse')update({input:'hands',mappings:defaultMappings(sr.current.mode,'hands'),visual:{...sr.current.visual,mappings:defaultVisualMappings('hands')}});mouse.current.down=false;setSource('camera');sourceRef.current='camera';setCameraBusy(true);setCameraOn(true);setCameraError('');
-  await tracker.start(video.current!,()=>sr.current,processFrame,message=>{setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},message=>{setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum siap');setCameraError(message);notify(message);const f=emptyFrame();f.time=performance.now();processFrame(f);},deviceId||undefined);
+  await tracker.start(video.current!,()=>sr.current,processFrame,message=>{
+   if(op!==cameraOperation.current)return;
+   setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);
+  },message=>{
+   if(op!==cameraOperation.current)return;
+   setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum siap');
+   setCameraError(message);notify(message);
+   const f=emptyFrame();f.time=performance.now();processFrame(f);
+  },deviceId||undefined);
   if(navigator.mediaDevices)try{setDevices((await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'));}catch{}
  }
  async function startPhoneCamera(stream:MediaStream){
+  if(requestedFootprintsChoice.current!=='phone')return;
   if(!stream.active||!stream.getVideoTracks().length){
    notify('HP belum mengirim video. Ulangi sambungan WebRTC.');return;
   }
@@ -140,6 +159,7 @@ export default function App(){
   liveFloorEngine.revoke('Sumber kamera berubah ke HP; kalibrasi harus diulang.');
   multiPoseRouter.reset();setLiveFloorApproval(null);
   stopCamera();
+  const op=++cameraOperation.current;
   const next={
    input:'body' as InputKind,
    mappings:defaultMappings(sr.current.mode,'body'),
@@ -147,11 +167,14 @@ export default function App(){
   };
   update(next);clearInputFrame('body');
   activeCameraMode.current='phone';
+  setFootprintsChoice('phone');setSourceSwitchError('');
   setSource('camera');sourceRef.current='camera';setCameraBusy(true);
   setCameraOn(true);setCameraError('');
   await tracker.start(video.current!,()=>sr.current,processFrame,
-   message=>{setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
-   message=>{setCameraOn(false);setCameraBusy(false);setCameraError(message);notify(message);},
+   message=>{if(op!==cameraOperation.current)return;
+    setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
+   message=>{if(op!==cameraOperation.current)return;
+    setCameraOn(false);setCameraBusy(false);setCameraError(message);notify(message);},
    undefined,stream);
  }
  function stopPhoneCamera(){
@@ -159,6 +182,8 @@ export default function App(){
   requestStageBlackout(()=>projection.setTransport('blackout'));
   liveFloorEngine.revoke('Kamera HP terputus; ulangi kalibrasi.');
   multiPoseRouter.reset();setLiveFloorApproval(null);stopCamera();
+  if(requestedFootprintsChoice.current==='phone')
+   setSourceSwitchError('Koneksi kamera HP terputus. Buka pairing untuk mencoba lagi.');
  }
  async function enableAudio(){if(sr.current.output==='visual'&&!archiveActive){notify('Pilih keluaran Suara atau Keduanya untuk mengaktifkan audio.');return false;}try{await engine.init();setAudioOn(true);setMuted(false);return true;}catch{notify('Audio belum bisa aktif. Klik Aktifkan audio lagi atau coba browser lain.');return false;}}
  async function toggleAudio(){if(audioOn&&!muted)panic();else await enableAudio();}
