@@ -331,3 +331,83 @@ test('S6.8.3 calibration editor returns focus and never authorizes projector on 
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
 });
+
+test('S6.8.4 simulator produces metric virtual contact in the same FLOOR canvas',async({page},testInfo)=>{
+ await ready(page);
+ const camera=page.locator('.fp-stage-video-content canvas');
+ const body=page.locator('.fp-preview-body canvas');
+ const floor=page.locator('.fp-preview-floor canvas');
+ const switcher=page.locator('.fp-source-switch-trigger');
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+   .getByRole('button',{name:/Simulasi 3D/i}).click();
+ const dock=page.locator('.fp-experiment-dock[data-experiment-kind=simulator]');
+ await expect(dock).toBeVisible();
+ await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-experimental','true');
+ await expect(dock).toContainText('0 kontak sintetis');
+ await dock.getByRole('button',{name:'Langkah kanan'}).click();
+ await expect(dock).toContainText('1 kontak sintetis');
+ await expect(page.locator('.fp-preview-floor .fp-stage-surface-foot')).toContainText('1 kontak sintetis');
+ await expect(camera).toBeVisible();
+ await expect(body).toBeVisible();
+ await expect(floor).toBeVisible();
+ const sizes=await page.evaluate(()=>{
+  const refs=['.fp-stage-video-content canvas','.fp-preview-body canvas','.fp-preview-floor canvas'];
+  return refs.map(s=>{const c=document.querySelector(s);return [c.width,c.height];});
+ });
+ expect(sizes).toEqual([[768,432],[640,360],[1280,720]]);
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ await noOverflow(page);
+ await screenshot(page,testInfo,'simulation-preview');
+ // Returning from another source must retain the 3D session.
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+  .getByRole('button',{name:/Video MP4/i}).click();
+ await expect(page.locator('.fp-experiment-dock[data-experiment-kind=video]')).toBeVisible();
+ await switcher.click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+  .getByRole('button',{name:/Simulasi 3D/i}).click();
+ await expect(page.locator('.fp-experiment-dock')).toContainText('1 kontak sintetis');
+});
+
+test('S6.8.4 local video input accepts real decoded WebM and keeps physical output isolated',async({page})=>{
+ await ready(page);
+ await page.locator('.fp-source-switch-trigger').click();
+ await page.getByRole('dialog',{name:'Ganti sumber Footprints'})
+  .getByRole('button',{name:/Video MP4/i}).click();
+ const dock=page.locator('.fp-experiment-dock[data-experiment-kind=video]');
+ await expect(dock).toBeVisible();
+ const canRecord=await page.evaluate(()=>typeof MediaRecorder!=='undefined'&&
+  HTMLCanvasElement.prototype.captureStream!==undefined&&
+  MediaRecorder.isTypeSupported('video/webm;codecs=vp8'));
+ test.skip(!canRecord,'Browser cannot create a local WebM recording for fixture');
+ await page.evaluate(async()=>{
+  const canvas=document.createElement('canvas');
+  canvas.width=192;canvas.height=108;
+  const ctx=canvas.getContext('2d');
+  const stream=canvas.captureStream(16);
+  const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8'});
+  const chunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  const stopped=new Promise(resolve=>{recorder.onstop=resolve;});
+  recorder.start();
+  for(let i=0;i<14;i++){
+   ctx.fillStyle=i%2?'#2d6241':'#c2da9f';ctx.fillRect(0,0,192,108);
+   ctx.fillStyle='#222';ctx.fillRect(40+i*3,38,20,35);
+   await new Promise(resolve=>setTimeout(resolve,58));
+  }
+  recorder.stop();await stopped;
+  stream.getTracks().forEach(t=>t.stop());
+  const file=new File(chunks,'footprints-qa.webm',{type:'video/webm'});
+  const control=document.querySelector('.fp-experiment-upload input[type=file]');
+  const transfer=new DataTransfer();transfer.items.add(file);
+  control.files=transfer.files;control.dispatchEvent(new Event('change',{bubbles:true}));
+ });
+ await expect(page.getByRole('button',{name:'Putar video'})).toBeEnabled({timeout:15_000});
+ await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
+ await expect(page.locator('.fp-stage-video')).toBeVisible();
+ await page.getByRole('button',{name:'Putar video'}).click();
+ await expect(page.locator('.fp-experiment-meta')).not.toContainText('Video belum dipilih');
+ await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
+ await noOverflow(page);
+});
