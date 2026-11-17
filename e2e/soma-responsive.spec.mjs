@@ -184,18 +184,26 @@ test('S6.8.1 source switcher keeps phone pairing session mounted while its panel
  await noOverflow(page);
 });
 
-test('S6.8.1 source menu opens experimental MP4 Lab and can return to a live input',async({page})=>{
+test('S6.8.4 MP4 selection stays in Stage Preview and advanced Lab remains accessible',async({page})=>{
  await ready(page);
  const switcher=page.locator('.fp-source-switch-trigger');
  await switcher.click();
  await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Video MP4/i}).click();
  await expect(switcher).toContainText('Video MP4');
- await expect(page.getByText('Video Motion Lab',{exact:true})).toBeVisible();
+ await expect(page.locator('.fp-experiment-dock[data-experiment-kind=video]')).toBeVisible();
+ await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
+ await expect(page.locator('.fp-preview-body canvas')).toHaveCount(1);
+ await expect(page.locator('.fp-preview-floor canvas')).toHaveCount(1);
+ await expect(page.locator('.fp-experiment-controls input[type=file]')).toHaveCount(1);
+ await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
+ await expect(page.locator('.soma-video-lab')).toBeVisible();
+ await page.getByRole('button',{name:'Tutup Lab'}).click();
+ await expect(page.locator('.soma-video-lab')).toHaveCount(0);
  await switcher.click();
  await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Kamera HP/i}).click();
  await expect(page.locator('.fp-phone-source-panel')).toBeVisible();
  await expect(switcher).toContainText('Kamera HP');
- await expect(page.getByText('Video Motion Lab',{exact:true})).toHaveCount(0);
+ await expect(page.locator('.fp-experiment-dock')).toHaveCount(0);
  await noOverflow(page);
 });
 
