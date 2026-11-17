@@ -1,0 +1,121 @@
+/* S6.6 — adaptive workspace navigation rail. Global controls stay in slim header. */
+.soma-v3 .workspace:has(>.soma-app-sidebar){
+ --soma-sidebar-width:72px;
+ display:grid;grid-template-columns:var(--soma-sidebar-width) minmax(0,1fr);
+ grid-template-rows:60px minmax(0,auto);min-width:0;align-items:start;
+}
+.soma-v3 .workspace:has(>.soma-app-sidebar[data-expanded=true]){
+ --soma-sidebar-width:224px;
+}
+.soma-v3 .workspace:has(>.soma-app-sidebar)>.soma-nav-header{
+ grid-column:1/-1;grid-row:1;z-index:110;
+ position:sticky;top:0;min-height:60px;height:60px;
+ display:flex;align-items:center;justify-content:space-between;
+ padding:0 17px;gap:10px;background:#121c16;
+ box-shadow:0 1px #314239;
+}
+.soma-v3 .workspace:has(>.soma-app-sidebar)>main{
+ grid-column:2;grid-row:2;min-width:0;
+ padding:12px 15px 22px;max-width:none;width:100%;margin:0;
+}
+.soma-v3 .workspace:has(>.soma-app-sidebar)>:not(.soma-nav-header):not(.soma-app-sidebar):not(main):not(.soma-rail-scrim){
+ grid-column:2;min-width:0;
+}
+.soma-nav-brand-row{display:flex;align-items:center;gap:10px;min-width:0}
+.soma-v3 .soma-nav-header .v3-brand{display:flex;align-items:baseline;gap:9px}
+.soma-v3 .soma-nav-header .v3-brand b{font-size:21px;letter-spacing:.22em}
+.soma-v3 .soma-nav-header .v3-brand span{display:inline;font-size:10px;letter-spacing:.1em;color:#9bad9d}
+.soma-v3 .soma-nav-header .soma-nav-toggle{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 40px;width:40px;height:40px;min-height:40px;
+ border:1px solid #344b3b;background:#1d2d22;color:#d8e9c9;border-radius:8px;
+ padding:0;transition:background .14s,border-color .14s;
+}
+.soma-v3 .soma-nav-header .soma-nav-toggle:hover{border-color:#a3c08e;background:#304934}
+.soma-v3 .soma-nav-header .v3-global-actions{gap:7px}
+.soma-v3 .soma-nav-header .v3-global-actions button{min-height:38px}
+.soma-v3 .soma-nav-header .v3-perform{background:#30452e;border-color:#78906d}
+.soma-app-sidebar{
+ position:sticky;top:0;grid-column:1;grid-row:2;
+ height:calc(100dvh - 60px);min-height:220px;
+ width:var(--soma-sidebar-width,72px);
+ z-index:70;overflow:hidden;
+ background:#152119;border-right:1px solid #34483a;
+ display:flex;flex-direction:column;
+ transition:width .2s cubic-bezier(.2,.7,.2,1);
+}
+.soma-app-sidebar *{box-sizing:border-box}
+.soma-rail-overview{display:flex;align-items:center;gap:12px;padding:13px 15px 12px;border-bottom:1px solid #2e4435;min-height:63px}
+.soma-rail-icon{border:1px solid #536c52;border-radius:9px;width:39px;height:37px;flex:0 0 39px;display:flex;align-items:center;justify-content:center;color:#d5ecb0;font-family:ui-monospace,monospace;font-weight:800}
+.soma-rail-copy{display:flex;flex-direction:column;gap:3px;overflow:hidden;white-space:nowrap}
+.soma-rail-copy strong{font-size:10px;letter-spacing:.1em;color:#dcead5}
+.soma-rail-copy small{font-size:9px;color:#9bab9e}
+.soma-rail-scroll{overflow-x:hidden;overflow-y:auto;flex:1;min-height:0;padding:9px 9px 12px;scrollbar-width:thin;scrollbar-color:#476148 transparent;overscroll-behavior:contain}
+.soma-rail-group{display:flex;flex-direction:column;gap:4px;padding:9px 0 12px;border-bottom:1px solid #304235}
+.soma-rail-group:last-child{border-bottom:0}
+.soma-rail-group-label{padding:0 10px 7px;font-size:9px;color:#a8baa7;letter-spacing:.1em;font-weight:700;white-space:nowrap}
+.soma-rail-item{min-width:0;width:100%;min-height:44px;display:flex;align-items:center;justify-content:flex-start;gap:12px;
+ border:1px solid transparent;background:transparent;border-radius:8px;padding:9px 13px;
+ text-align:left;cursor:pointer;color:#b9cdba;font-family:inherit;
+ transition:background .13s ease,border-color .13s ease,color .13s ease;
+}
+.soma-rail-item>svg{flex:0 0 19px}
+.soma-rail-item:hover{background:#263e2b;border-color:#48684c;color:#e8f3df}
+.soma-rail-item[aria-current=page]{background:#354a32;color:#e9f3d4;border-color:#77936a;box-shadow:inset 3px 0 #c3e5a0}
+.soma-rail-item[aria-expanded=true]{background:#294132}
+.soma-rail-item:focus-visible,.soma-rail-subnav button:focus-visible{
+ outline:2px solid #d5e8ac;outline-offset:2px;
+}
+.soma-rail-item-copy{display:flex;flex-direction:column;gap:3px;overflow:hidden;min-width:0}
+.soma-rail-item-copy b{font-size:12px;font-weight:590;white-space:nowrap}
+.soma-rail-item-copy small{font-size:10px;color:#a7bea9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.soma-rail-chevron{margin-left:auto}
+.soma-rail-subnav{margin:2px 0 3px 24px;padding-left:8px;border-left:1px solid #4f6a52;display:flex;flex-direction:column;gap:3px}
+.soma-rail-subnav button{width:100%;display:flex;align-items:center;gap:9px;min-height:36px;border:0;border-radius:5px;color:#b6cbbb;background:transparent;padding:7px 8px;text-align:left;font-size:11px}
+.soma-rail-subnav button:hover,.soma-rail-subnav button[aria-current=page]{background:#304733;color:#edf2de}
+.soma-rail-bottom{min-height:46px;border-top:1px solid #354b3b;display:flex;align-items:center;gap:15px;padding:10px 21px;color:#8ba78e;font-size:10px;white-space:nowrap}
+.soma-rail-bottom-icon{font-size:17px;line-height:1}
+.soma-app-sidebar[data-expanded=false] .soma-rail-copy,
+.soma-app-sidebar[data-expanded=false] .soma-rail-item-copy,
+.soma-app-sidebar[data-expanded=false] .soma-rail-chevron,
+.soma-app-sidebar[data-expanded=false] .soma-rail-bottom-copy{display:none}
+.soma-app-sidebar[data-expanded=false] .soma-rail-overview{padding:13px 14px}
+.soma-app-sidebar[data-expanded=false] .soma-rail-group-label{font-size:0;height:10px;padding:0 0 7px}
+.soma-app-sidebar[data-expanded=false] .soma-rail-item{justify-content:center;padding:9px}
+.soma-app-sidebar[data-expanded=false] .soma-rail-scroll{padding:9px 8px}
+.soma-app-sidebar[data-expanded=false] .soma-rail-bottom{justify-content:center;padding:10px}
+.soma-rail-scrim{display:none}
+@media(max-width:1100px) and (min-width:761px){
+ .soma-v3 .workspace:has(>.soma-app-sidebar[data-expanded=true]){--soma-sidebar-width:200px}
+}
+@media(max-width:760px){
+ .soma-v3 .workspace:has(>.soma-app-sidebar),
+ .soma-v3 .workspace:has(>.soma-app-sidebar[data-expanded=true]){
+  display:block;--soma-sidebar-width:0px;
+ }
+ .soma-v3 .workspace:has(>.soma-app-sidebar)>.soma-nav-header{
+  position:sticky;top:0;height:58px;padding:0 9px;
+ }
+ .soma-v3 .workspace:has(>.soma-app-sidebar)>main{padding:10px 9px 20px}
+ .soma-v3 .soma-nav-header .v3-brand b{font-size:18px;letter-spacing:.14em}
+ .soma-v3 .soma-nav-header .v3-brand span{display:none}
+ .soma-v3 .soma-nav-header .v3-global-actions{gap:3px}
+ .soma-v3 .soma-nav-header .v3-global-actions .v3-preset{display:none}
+ .soma-app-sidebar{
+  position:fixed;left:0;top:58px;bottom:0;height:calc(100dvh - 58px);
+  width:min(280px,86vw);z-index:220;transform:translateX(-105%);
+  transition:transform .19s ease;box-shadow:18px 0 38px #0006;
+ }
+ .soma-app-sidebar[data-expanded=true]{transform:translateX(0)}
+ .soma-app-sidebar[data-expanded=false] .soma-rail-copy,
+ .soma-app-sidebar[data-expanded=false] .soma-rail-item-copy,
+ .soma-app-sidebar[data-expanded=false] .soma-rail-bottom-copy{display:flex}
+ .soma-app-sidebar[data-expanded=false] .soma-rail-item{justify-content:flex-start}
+ .soma-rail-scrim{
+  display:block;position:fixed;inset:58px 0 0;z-index:219;
+  background:#050906b8;border:0;padding:0;cursor:pointer;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-app-sidebar,.soma-rail-item,.soma-v3 .soma-nav-header .soma-nav-toggle{transition:none!important}
+}
