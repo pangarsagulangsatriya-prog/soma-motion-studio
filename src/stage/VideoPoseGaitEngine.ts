@@ -4,6 +4,7 @@ import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts
 import type {VideoActorState} from './videoAutoActorTracker.ts';
 import {MoveNetIdentityTracker} from './moveNetIdentityTracker.ts';
 import {pose33AsD2,descriptorsFor33,d2ToVideoActorFrame} from './mediaPipeD2Bridge.ts';
+import {d3GuideForPose,type D3Guide,type D3Report} from './duetPose33.ts';
 import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
 import {HandLimbDetailAnalyzer,type HandLimbFrame} from './videoHandLimbDetail.ts';
 import type {ReplayIdentityQA} from './videoReplayIdentityQA.ts';
@@ -25,6 +26,7 @@ export type ReplayAnalysisSnapshot={
  /** Independent diagnostic output from MediaPipe; not an identity or gait approval. */
  rawPoses:Landmark[][];
  actorStates:VideoActorState[];detectedCount:number;visibleCount:number;rescueCount?:number;
+ d3?:D3Report;d3Total?:{attempted:number;accepted:number};
  performerMode:'auto'|'manual';
  temporal:TemporalFrame|null;temporalFrameCount:number;
  handLimb:HandLimbFrame|null;handLimbFrameCount:number;
@@ -81,6 +83,8 @@ export class VideoPoseGaitEngine{
  private detectedCount=0;
  private visibleCount=0;
  private rescueCount=0;
+ private d3:D3Report={status:'warming',attempted:0,accepted:0,refined:[],elapsedMs:0};
+ private d3Totals={attempted:0,accepted:0};
  private manualCount:1|2|null=null;
  private status='Belum dimulai';
  private ambiguous=false;
@@ -126,6 +130,7 @@ export class VideoPoseGaitEngine{
    })),rawPoses:this.rawPoses.map(pose=>pose.map(p=>({...p}))),
    actorStates:this.actorStates.map(actor=>({...actor})),
    detectedCount:this.detectedCount,visibleCount:this.visibleCount,rescueCount:this.rescueCount,
+    d3:{...this.d3,refined:[...this.d3.refined]},d3Total:{...this.d3Totals},
    performerMode:this.manualCount===null?'auto':'manual',
    temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
    handLimb:this.handLimbAnalyzer.latest,handLimbFrameCount:this.handLimbAnalyzer.frameCount,
@@ -192,6 +197,8 @@ export class VideoPoseGaitEngine{
   this.count=this.manualCount??1;this.people=[];this.rawPoses=[];
   this.ambiguous=false;this.lastTime=-1;this.detectedCount=0;this.visibleCount=0;
   this.rescueCount=0;
+  this.d3={status:this.worker?'warming':'fallback',attempted:0,accepted:0,refined:[],elapsedMs:0};
+  this.d3Totals={attempted:0,accepted:0};
   this.actorStates=[
    {id:'A',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null},
    {id:'B',presence:'not-detected',confidence:0,rawIndex:null,lastSeenAtMs:null}
@@ -209,6 +216,19 @@ export class VideoPoseGaitEngine{
   const forced=this.queuedForced;this.queuedForced=null;
   if(forced.video.readyState>=2)this.process(
    forced.video,forced.atSeconds,forced.capFPS,true);
+ }
+ /** Crop guides only from fresh confirmed A/B observations, never crossed actors. */
+ private cropGuides(video:HTMLVideoElement,timeMs:number):D3Guide[]{
+  if(this.ambiguous||this.lastTime<0||timeMs-this.lastTime>260||
+     timeMs<=this.lastTime||!video.videoWidth||!video.videoHeight)return [];
+  const actors=this.actorStates.filter(s=>s.presence==='visible'&&s.rawIndex!==null&&
+   s.confidence>=.55);
+  if(actors.length!==2)return [];
+  return actors.flatMap(actor=>{
+   const points=this.rawPoses[actor.rawIndex!];
+   const guide=points?d3GuideForPose(actor.id,points,video.videoWidth,video.videoHeight):null;
+   return guide?[guide]:[];
+  });
  }
  process(video:HTMLVideoElement,atSeconds:number,capFPS=18,force=false){
   if(this.disposed||!this.ready||video.readyState<2||video.seeking)return;
@@ -238,13 +258,17 @@ export class VideoPoseGaitEngine{
   if(this.worker){
    const worker=this.worker;
    void worker.detect(video,clock,this.manualCount??
-    (this.actorStates.some(a=>a.id==='B'&&a.lastSeenAtMs!==null)?2:1)).then(result=>{
+    (this.actorStates.some(a=>a.id==='B'&&a.lastSeenAtMs!==null)?2:1),
+    this.cropGuides(video,atMs)).then(result=>{
     if(this.disposed||epoch!==this.epoch)return;
     this.meter.observeVideoLag(video.currentTime*1000,atMs);
     if(video.seeking||replayResultTooLate(atMs,video.currentTime*1000)){
      this.meter.observeStaleResult();this.emit(true);return;
     }
     this.rescueCount=result.rescuedCount??0;
+    this.d3=result.d3??{status:'warming',attempted:0,accepted:0,refined:[],elapsedMs:0};
+    this.d3Totals.attempted+=this.d3.attempted;
+    this.d3Totals.accepted+=this.d3.accepted;
     const begin=performance.now();
     this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,effectiveFPS,
      video.videoWidth/Math.max(1,video.videoHeight),video.videoWidth,video.videoHeight,result.appearance);
@@ -269,6 +293,8 @@ export class VideoPoseGaitEngine{
    const beginPose=performance.now();
    const result=this.model!.detectForVideo(video,clock);
    const poseMs=performance.now()-beginPose;
+   this.d3={status:'fallback',attempted:0,accepted:0,refined:[],elapsedMs:0,
+    reason:'Worker tidak tersedia; MediaPipe multipose memakai CPU utama.'};
    try{
     const beginAnalysis=performance.now();
     this.analyzeDetections(result.landmarks,result.worldLandmarks,atMs,effectiveFPS,
