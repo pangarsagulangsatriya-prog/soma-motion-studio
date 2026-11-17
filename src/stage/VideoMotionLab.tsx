@@ -7,6 +7,9 @@ import {HandLimbInspector} from './HandLimbInspector.tsx';
 import {MotionSemanticsInspector} from './MotionSemanticsInspector.tsx';
 import {videoActorPresenceLabel,type VideoActorId} from './videoAutoActorTracker.ts';
 import {TemporalJointInspector} from './TemporalJointInspector.tsx';
+import {ReplayPerformanceInspector} from './ReplayPerformanceInspector.tsx';
+import {subscribeReplayFrames} from './replayFrameClock.ts';
+import type {HandDetailMode} from './replayPerformance.ts';
 import {VideoSurfaceComposer} from './VideoSurfaceComposer.tsx';
 import {replayEventCounts} from './videoGaitAnalysis.ts';
 import {buildReplayEventExport,replayEventsCsv} from './videoReplayExport.ts';
@@ -41,6 +44,9 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
  const [analysisError,setAnalysisError]=useState('');
  const [replayPeople,setReplayPeople]=useState<'auto'|1|2>('auto');
  const [analysisSnapshot,setAnalysisSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
+ const snapshotRef=useRef<ReplayAnalysisSnapshot|null>(null);
+ snapshotRef.current=analysisSnapshot;
+ const [handMode,setHandMode]=useState<HandDetailMode>('adaptive');
  const engineRef=useRef<VideoPoseGaitEngine|null>(null);
  const getTemporalTrace=useCallback((actor:VideoActorId,joint:number)=>
   engineRef.current?.getTemporalTrace(actor,joint)??[],[]);
@@ -57,11 +63,11 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
  const loopRef=useRef({loop,rangeStart,rangeEnd,duration});
  loopRef.current={loop,rangeStart,rangeEnd,duration};
  const filename=clip?simpleVideoFilename(clip.name):'video';
- const analysisCounts=replayEventCounts(analysisSnapshot?.events??[]);
+ const analysisCounts=analysisSnapshot?.gaitCounts??replayEventCounts(analysisSnapshot?.events??[]);
  const qa=analysisSnapshot?.qa;
  const archivedStats=engineRef.current?.archiveStats;
  const archiveCount=archivedStats?.segments??0;
- const totalEventCount=(analysisSnapshot?.events.length??0)+(archivedStats?.events??0);
+ const totalEventCount=(analysisSnapshot?.totalEventCount??0)+(archivedStats?.events??0);
  const download=(name:string,mime:string,content:string)=>{
   const blob=new Blob([content],{type:mime});
   const url=URL.createObjectURL(blob);const anchor=document.createElement('a');
@@ -73,7 +79,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
   return buildReplayEventExport({
    file:{name:clip.name,bytes:clip.size,mime:clip.type,lastModified:clip.lastModified},
    video:{durationSeconds:duration,width:resolution.width,height:resolution.height},
-   snapshot:analysisSnapshot,archives:engineRef.current?.archivedSegments??[],
+   snapshot:engineRef.current?.snapshot??analysisSnapshot,archives:engineRef.current?.archivedSegments??[],
    discardedSegments:engineRef.current?.archiveOverflow??0,
    requestedAt:new Date().toISOString()
   });
@@ -105,8 +111,9 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
    await engine.init();
    if(generation!==generationRef.current)return;
    engine.setPerformers(replayPeople);
+   engine.setHandDetailMode(handMode);
    setAnalysisOn(true);
-   engine.process(video,video.currentTime,12,true);
+   engine.process(video,video.currentTime,18,true);
    setMessage('Analisis tujuh event gerak berjalan pada video lokal. Semua pengukuran memakai estimasi gambar 2D.');
   }catch(e){
    if(generation!==generationRef.current)return;
@@ -117,33 +124,38 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
   }finally{if(generation===generationRef.current)setAnalysisBusy(false);}
  };
  useEffect(()=>{
-  if(!analysisOn||!clip||!ready)return;
-  let raf=0;
-  const loop=()=>{
-   const video=videoRef.current;
-   if(video&&!video.paused&&!video.seeking&&video.readyState>=2){
-    engineRef.current?.process(video,video.currentTime,12);
-   }
-   raf=requestAnimationFrame(loop);
-  };
-  raf=requestAnimationFrame(loop);
-  return()=>cancelAnimationFrame(raf);
+  const video=videoRef.current;
+  if(!analysisOn||!clip||!ready||!video)return;
+  return subscribeReplayFrames(video,(mediaTime,presentedFrames)=>{
+   engineRef.current?.recordPresentedFrame(presentedFrames);
+   engineRef.current?.process(video,mediaTime,18);
+  });
  },[analysisOn,clip,ready]);
  useEffect(()=>{
-  const canvas=overlayRef.current;if(!canvas)return;
+  const canvas=overlayRef.current,video=videoRef.current;
+  if(!canvas||!video)return;
   const ctx=canvas.getContext('2d');if(!ctx)return;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  const video=videoRef.current;
-  if(!analysisOn||!analysisSnapshot||!video?.videoWidth||!video.videoHeight)return;
-  const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
-  const width=scale*video.videoWidth,height=scale*video.videoHeight;
-  const x=(canvas.width-width)/2,y=(canvas.height-height)/2;
-  const overlay=replaySkeletonPresentation(analysisSnapshot,video.currentTime*1000);
-  const rect={x,y,width,height};
-  drawSkeletonBodies(ctx,overlay.poses,rect,
-   {labels:overlay.labels,colors:overlay.colors});
-  drawHandDetailOverlay(ctx,analysisSnapshot.handLimb,rect,video.currentTime*1000);
- },[analysisOn,analysisSnapshot]);
+  let raf=0,lastAt=0;
+  const draw=(now:number)=>{
+   if(now-lastAt>=1000/30||!analysisOn){
+    lastAt=now;const started=performance.now();
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const snapshot=snapshotRef.current;
+    if(analysisOn&&snapshot&&video.videoWidth&&video.videoHeight){
+     const scale=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
+     const width=scale*video.videoWidth,height=scale*video.videoHeight;
+     const x=(canvas.width-width)/2,y=(canvas.height-height)/2,rect={x,y,width,height};
+     const overlay=replaySkeletonPresentation(snapshot,video.currentTime*1000);
+     drawSkeletonBodies(ctx,overlay.poses,rect,{labels:overlay.labels,colors:overlay.colors});
+     drawHandDetailOverlay(ctx,snapshot.handLimb,rect,video.currentTime*1000);
+    }
+    if(analysisOn)engineRef.current?.recordRender(performance.now()-started);
+   }
+   raf=requestAnimationFrame(draw);
+  };
+  raf=requestAnimationFrame(draw);
+  return()=>{cancelAnimationFrame(raf);ctx.clearRect(0,0,canvas.width,canvas.height);};
+ },[analysisOn,clip,ready]);
 
  const range=rangeStart!==null&&rangeEnd!==null?validLoopRange(rangeStart,rangeEnd,duration):null;
  const loadFile=(file:File)=>{
@@ -304,7 +316,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
       }}
       onTimeUpdate={syncPosition}
       onSeeking={()=>{if(engineRef.current){engineRef.current.reset(pendingSeekReason.current);pendingSeekReason.current='Pemutaran berpindah ke waktu lain.';}}}
-      onSeeked={e=>{syncPosition();engineRef.current?.process(e.currentTarget,e.currentTarget.currentTime,12,true);}}
+      onSeeked={e=>{syncPosition();engineRef.current?.process(e.currentTarget,e.currentTarget.currentTime,18,true);}}
       onDurationChange={e=>{
        const d=finiteDuration(e.currentTarget.duration);setDuration(d);if(!d)setReady(false);
       }}
@@ -370,13 +382,17 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        <option value={2}>2 aktor (manual)</option>
       </select></label>
      </div>
+     <ReplayPerformanceInspector performance={analysisSnapshot?.performance??null}
+      mode={handMode} onModeChange={mode=>{
+       setHandMode(mode);engineRef.current?.setHandDetailMode(mode);
+      }}/>
      <div className="vml-analysis-actions">
       <button type="button" className="vml-primary" disabled={!ready||analysisBusy}
        onClick={()=>analysisOn?stopAnalysis():void startAnalysis()}>
        {analysisBusy?'Memuat model…':analysisOn?'Hentikan analisis':'Mulai analisis Pose / Gait'}</button>
       <button type="button" disabled={!analysisOn} onClick={()=>{
        engineRef.current?.reset('Identitas dan histori segmen direset secara manual oleh pengguna.');
-       const v=videoRef.current;if(v)engineRef.current?.process(v,v.currentTime,12,true);
+       const v=videoRef.current;if(v)engineRef.current?.process(v,v.currentTime,18,true);
       }}>Reset identitas & event</button>
       <button type="button" disabled={!ready} aria-expanded={composerOpen}
        onClick={()=>setComposerOpen(current=>!current)}>{composerOpen?'Tutup BODY/FLOOR Composer':'Buka BODY/FLOOR Composer'}</button>
@@ -403,6 +419,7 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        modelReason={analysisSnapshot?.handModelReason??'Model belum dimuat.'}
        getHistory={getHandLimbWindow} segment={analysisSnapshot?.segment??0}/>
       <MotionSemanticsInspector events={analysisSnapshot?.semanticEvents??[]}
+       totals={analysisSnapshot?.semanticTotals}
        statuses={analysisSnapshot?.semanticStatuses??[]}
        segment={analysisSnapshot?.segment??0} durationMs={duration*1000}/>
       {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
