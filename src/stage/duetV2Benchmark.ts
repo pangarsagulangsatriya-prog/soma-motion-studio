@@ -19,7 +19,7 @@ const percentile=(values:number[],pct:number)=>{
 export function summarizeDuetBenchmark(resolution:384|512,
  frames:readonly DuetV2Frame[]):DuetV2Benchmark{
  const samples=frames.map((frame,index)=>({
-  index,timeMs:frame.timeMs,detected:frame.people.length,
+  index,timeMs:frame.timeMs,detected:frame.identity.detectedCount,
   tracked:frame.identity.observedCount,pose33:frame.details.length,
   uncertain:frame.identity.ambiguous,
   detectorMs:frame.timings.detectorMs,crop33Ms:frame.timings.crop33Ms,
