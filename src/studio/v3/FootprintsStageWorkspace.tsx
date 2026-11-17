@@ -47,6 +47,7 @@ import './source-switcher-layout.css';
 import './persistent-stage-workspace.css';
 import './inline-setup-assistant.css';
 import './s6-8-7-simplified-stage.css';
+import './s6-8-8-1-full-skeleton.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
