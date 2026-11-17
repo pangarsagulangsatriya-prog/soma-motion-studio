@@ -107,6 +107,7 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(!calibrationOpen)setCalibrationOverlay(null);},[calibrationOpen]);
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
+ const [composerStartQA,setComposerStartQA]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
  const [rehearsalOpen,setRehearsalOpen]=useState(false);
  const [rehearsalReference,setRehearsalReference]=useState<ReplayReport|null>(null);
@@ -506,7 +507,7 @@ export function FootprintsStageWorkspace({
    initialReference={rehearsalReference}
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
-  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer
+  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer initialOutputQA={composerStartQA}
    bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
    router={router} floorTracker={tracker} projection={projection}
    cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
@@ -686,7 +687,8 @@ export function FootprintsStageWorkspace({
      onCalibration={onOpenLiveFloor}
      onRehearsal={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setRehearsalOpen(true);}}
      onMapping={showArchive}
-     onComposer={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerOpen(true);}}
+     onComposer={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerStartQA(false);setComposerOpen(true);}}
+     onOutputQA={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setView('stage');setComposerStartQA(true);setComposerOpen(true);}}
      onProjector={onOpenProjection}/>}
    </aside>}
   </div>
