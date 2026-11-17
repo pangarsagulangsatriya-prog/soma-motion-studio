@@ -1,0 +1,109 @@
+/* S6.7.2.4 — small, reliable gestures with readable keyboard focus.
+ * Stage safety commands are immediate; no animation is applied to Blackout actions. */
+.fp-stage-workspace:not(.fp-operator-mode) .fp-stage-layout{
+ transition:grid-template-columns 175ms cubic-bezier(.22,.7,.25,1);
+}
+.fp-stage-workspace:not(.fp-operator-mode)[data-context=inspector] .fp-stage-inspector{
+ animation:fp-inspector-arrive 170ms cubic-bezier(.2,.7,.25,1) both;
+ transform-origin:right center;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector{
+ min-width:0;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body{
+ animation:fp-inspector-content 145ms ease-out both;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-head h2:focus{
+ outline:none;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-head h2:focus-visible{
+ outline:2px solid #cde3a8;outline-offset:5px;border-radius:2px;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body button,
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body summary,
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body select{
+ transition:background 145ms ease,border-color 145ms ease,color 145ms ease;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body button:active:not(:disabled){
+ transform:translateY(1px);
+}
+/* Text explanations are available to mouse and keyboard; source states remain literal
+   in the buttons' accessible names even when the tooltip is not visible. */
+.fp-stage-workspace .fp-compact-status-item{
+ position:relative;
+}
+.fp-stage-workspace .fp-compact-status-item[data-tooltip]::after{
+ content:attr(data-tooltip);pointer-events:none;
+ position:absolute;top:calc(100% + 9px);right:0;z-index:150;
+ display:block;box-sizing:border-box;
+ width:max-content;max-width:min(285px,70vw);
+ padding:9px 11px;border:1px solid #66806b;border-radius:7px;
+ background:#203128;color:#e4f1de;
+ font:500 11px/1.5 system-ui,sans-serif;letter-spacing:0;
+ white-space:normal;overflow-wrap:anywhere;text-align:left;
+ opacity:0;visibility:hidden;transform:translateY(-4px);
+ box-shadow:0 12px 30px #0009;
+ transition:opacity 135ms ease,transform 135ms ease,visibility 135ms;
+}
+@media(hover:hover) and (pointer:fine){
+ .fp-stage-workspace .fp-compact-status-item[data-tooltip]:hover::after{
+  opacity:1;visibility:visible;transform:translateY(0);
+  transition-delay:190ms,190ms,190ms;
+ }
+}
+.fp-stage-workspace .fp-compact-status-item[data-tooltip]:focus-visible::after{
+ opacity:1;visibility:visible;transform:translateY(0);
+ transition-delay:0s;
+}
+/* Keep local tabs visibly actionable; active tab and open Inspector have
+   separate signals, preventing a selected-but-closed panel from looking open. */
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button[aria-current=step][aria-expanded=false]{
+ box-shadow:none;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button[aria-current=step][aria-expanded=true]{
+ box-shadow:inset 0 -2px #cfe6b0;
+}
+.fp-stage-workspace:not(.fp-operator-mode) .fp-flow-local-tabs>button:focus-visible{
+ outline:2px solid #d7e8ba;outline-offset:2px;
+}
+/* Safety call remains stable and at least 44px high for fast operation. */
+.fp-stage-workspace .fp-compact-transport .fp-transport-blackout{
+ min-height:44px;
+}
+.fp-stage-workspace .fp-compact-transport .fp-transport-blackout:active{
+ background:#5c332d;transform:none;
+}
+.soma-v3 .soma-rail-tooltip{
+ animation:soma-tooltip-in 135ms ease both;
+}
+@keyframes fp-inspector-arrive{
+ from{opacity:.65;transform:translateX(9px)}
+ to{opacity:1;transform:translateX(0)}
+}
+@keyframes fp-inspector-content{
+ from{opacity:.6;transform:translateY(3px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@media(max-width:1150px){
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-stage-layout{
+  transition:none;
+ }
+ .fp-stage-workspace:not(.fp-operator-mode)[data-context=inspector] .fp-stage-inspector{
+  animation:fp-inspector-arrive 170ms cubic-bezier(.2,.7,.25,1) both;
+ }
+}
+@media(max-width:560px){
+ .fp-stage-workspace .fp-compact-status-item[data-tooltip]::after{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-stage-layout,
+ .fp-stage-workspace:not(.fp-operator-mode)[data-context=inspector] .fp-stage-inspector,
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body,
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body button,
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body summary,
+ .fp-stage-workspace:not(.fp-operator-mode) .fp-flow-inspector-body select,
+ .fp-stage-workspace .fp-compact-status-item[data-tooltip]::after,
+ .soma-v3 .soma-rail-tooltip{
+  animation:none!important;transition:none!important;
+ }
+}
