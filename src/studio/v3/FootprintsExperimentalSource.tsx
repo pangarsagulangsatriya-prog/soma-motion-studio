@@ -197,6 +197,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      {' · '}{snapshot.d3?.status==='active'?'Model siap':
       snapshot.d3?.status==='fallback'?'Fallback multipose':'Memuat model crop'}
      {snapshot.d3?.refined.length?' · Baru: '+snapshot.d3.refined.join(', '):''}
+     {snapshot.d3?.reason?' · '+snapshot.d3.reason:''}
     </span>
    </div>}
    {snapshot&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
@@ -208,6 +209,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      <span>Hasil AI kedaluwarsa <b>{snapshot.performance.staleResults}</b></span>
      <span>Lag maksimum <b>{snapshot.performance.maxVideoLagMs.toFixed(0)} ms</b></span>
      <span>Backend <b>{snapshot.performance.backend}</b></span>
+     <span>D3 terakhir <b>{snapshot.d3?.accepted??0}/{snapshot.d3?.attempted??0} crop · {snapshot.d3?.status??'warming'}</b></span>
+     <span>D3 waktu crop <b>{(snapshot.d3?.elapsedMs??0).toFixed(0)} ms</b></span>
     </div>
     {snapshot.performance.fallbackReason&&<p role="status">Fallback: {snapshot.performance.fallbackReason}</p>}
     <small>MediaPipe multipose → D2 A/B → D3 crop 33 per aktor saat ID aman → gait → BODY/FLOOR. Crop gagal QA tetap memakai pose utama. MoveNet 384/512 masih benchmark terpisah.</small>

@@ -1,5 +1,7 @@
 import type {Landmark} from '../engine/types.ts';
 import type {D3Guide,D3Report} from './duetPose33.ts';
+export type ReplayWorkerBoot={runtime:'classic';poseReady:boolean;d3Ready:boolean;
+ initMs:number;d3Reason?:string};
 export type ReplayWorkerResult={
  landmarks:Landmark[][];worldLandmarks:Landmark[][];poseMs:number;rescuedCount?:number;
  appearance?:(number[]|null)[];d3?:D3Report;
@@ -10,28 +12,39 @@ type Pending={
 };
 export class ReplayInferenceWorkerClient{
  private worker:Worker;
+ boot:ReplayWorkerBoot|null=null;
  private pending:Pending|null=null;
  private stopped=false;
  private serial=0;
  constructor(){
-  this.worker=new Worker(new URL('./replayInferenceWorker.ts',import.meta.url),{type:'module'});
+  // Prebuilt IIFE is a classic worker in dev and production: MediaPipe WASM
+  // invokes importScripts(), which throws inside a module Worker.
+  this.worker=new Worker(import.meta.env.BASE_URL+'workers/replay-inference-classic.js',
+   {type:'classic',name:'soma-mp-pose-classic'});
  }
  init():Promise<void>{
   return new Promise((resolve,reject)=>{
    const timeout=setTimeout(()=>{
     this.worker.removeEventListener('message',receive);reject(Error('Worker inference tidak siap.'));
-   },18000);
+   },30000);
    const receive=(event:MessageEvent)=>{
     const data=event.data;
     if(data.type!=='ready'&&data.type!=='error')return;
     clearTimeout(timeout);this.worker.removeEventListener('message',receive);
     if(data.type==='error'){reject(Error(data.message??'Worker gagal'));return;}
+    this.boot={runtime:data.runtime==='classic'?'classic':'classic',
+     poseReady:data.poseReady===true,d3Ready:data.d3Ready===true,
+     initMs:Number(data.initMs)||0,d3Reason:data.d3Reason};
+    if(!this.boot.poseReady){reject(Error('Worker siap tanpa model pose.'));return;}
     this.worker.onmessage=message=>this.receive(message.data);
     this.worker.onerror=()=>this.fail(Error('Worker inference terputus.'));
     resolve();
    };
    this.worker.addEventListener('message',receive);
-   this.worker.onerror=()=>{clearTimeout(timeout);reject(Error('Worker tidak tersedia.'));};
+   this.worker.onerror=event=>{
+    clearTimeout(timeout);this.worker.removeEventListener('message',receive);
+    reject(Error('Worker classic gagal: '+(event.message||'runtime tidak tersedia.')));
+   };
    this.worker.postMessage({type:'init',base:import.meta.env.BASE_URL});
   });
  }

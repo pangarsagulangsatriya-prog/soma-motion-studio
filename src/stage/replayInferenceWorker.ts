@@ -17,8 +17,9 @@ let lastClock=-1,lastRescueClock=-Infinity,lastGuidedClock=-Infinity;
 let rescueFailure='';
 const RESCUE_INTERVAL_MS=480;
 const send=(data:unknown)=>self.postMessage(data);
-function prepareRescue(){
- if(rescueLoading||rescue||!files)return;
+function prepareRescue():Promise<void>{
+ if(rescueLoading)return rescueLoading;
+ if(rescue||!files)return Promise.resolve();
  const selected=files;
  rescueLoading=PoseLandmarker.createFromOptions(selected,{
   baseOptions:{modelAssetPath:basePath+'models/pose_landmarker_lite.task',delegate:'CPU'},
@@ -27,6 +28,7 @@ function prepareRescue(){
  }).then(model=>{rescue=model;rescueFailure='';}).catch(e=>{
   rescue=null;rescueFailure=e instanceof Error?e.message:String(e);
  });
+ return rescueLoading;
 }
 /** Rescue runs only when primary multi-person inference returns <2 humans.
  * It is deliberately bounded to two crops at most once per 480 ms.
@@ -132,6 +134,7 @@ self.onmessage=async(event:MessageEvent<Request>)=>{
  const value=event.data;
  if(value.type==='init'){
   try{
+   const initStart=performance.now();
    basePath=value.base;
    files=await FilesetResolver.forVisionTasks(value.base+'wasm');
    pose=await PoseLandmarker.createFromOptions(files,{
@@ -139,7 +142,10 @@ self.onmessage=async(event:MessageEvent<Request>)=>{
     runningMode:'VIDEO',numPoses:2,minPoseDetectionConfidence:.48,
     minPosePresenceConfidence:.46,minTrackingConfidence:.52,outputSegmentationMasks:false
    });
-   send({type:'ready'});
+   // A failure in the auxiliary crop model must not disable primary pose.
+   await prepareRescue();
+   send({type:'ready',runtime:'classic',poseReady:true,d3Ready:!!rescue,
+    initMs:Math.round(performance.now()-initStart),d3Reason:rescueFailure||undefined});
   }catch(e){send({type:'error',message:e instanceof Error?e.message:String(e)});}
   return;
  }
