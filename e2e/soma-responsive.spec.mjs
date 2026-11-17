@@ -314,7 +314,8 @@ test('S6.8.3 calibration editor returns focus and never authorizes projector on 
  await open.click();
  await expect(page.locator('.fp-inline-floor-primary')).toBeDisabled();
  await expect(page.locator('.fp-inline-floor-confirm')).toBeDisabled();
- await expect(page.locator('.fp-stage-video-content canvas')).toHaveAttribute('data-calibration-active','true');
+ await expect(page.locator('.fp-stage-video-content canvas')).toHaveAttribute('data-calibration-active','false');
+ await expect(page.locator('.fp-stage-calibration-hint')).toHaveCount(0);
  await page.locator('.fp-inline-floor-corners button').first().isDisabled();
  await page.getByRole('button',{name:'Tutup kalibrasi'}).click();
  await expect(page.locator('.fp-inline-floor-editor')).toHaveCount(0);
