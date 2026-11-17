@@ -144,3 +144,55 @@
  .soma-device-qa-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
  .soma-device-qa-fields{grid-template-columns:1fr}
 }
+
+/* S6.1.3 — guided stage, inline floor calibration, and three shared previews */
+.soma-guided-steps button:disabled{opacity:.5;cursor:not-allowed}
+.soma-guided-steps button[aria-current=step]{opacity:1}
+.soma-guided-steps button small{font-size:10px;color:#cedec1}
+.soma-inline-calibration{display:flex;flex-direction:column;align-items:stretch;
+ width:100%;max-width:100%;gap:12px}
+.soma-calib-image{position:relative;background:#000;border:1px solid #5a745a;
+ border-radius:9px;overflow:hidden;width:100%;max-width:950px}
+.soma-calib-image canvas{display:block;width:100%;height:auto;
+ aspect-ratio:16/9;object-fit:contain;touch-action:manipulation;cursor:crosshair}
+.soma-calib-legend{position:absolute;left:12px;bottom:12px;
+ background:#111d16dc;padding:7px 9px;border-radius:5px;
+ color:#d0e2c8;font:600 10px ui-monospace,monospace;pointer-events:none}
+.soma-calib-corners{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}
+.soma-calib-corners button{min-width:0;font-size:11px;text-align:left}
+.soma-calib-corners button[aria-pressed=true]{border-color:#cce5a7;background:#4b6340}
+.soma-calib-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;max-width:620px}
+.soma-calib-actions{display:flex;flex-wrap:wrap;gap:8px}
+.soma-calib-markers{padding:11px;border:1px solid #405e45;
+ border-radius:8px;background:#192a1d}
+.soma-calib-markers summary{cursor:pointer;color:#d5e8c9;font-size:12px}
+.soma-calib-markers p{font-size:11px;line-height:1.55}
+.soma-calib-swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:8px;margin:10px 0}
+.soma-calib-swatches>div{display:flex;flex-direction:column;gap:6px;align-items:start}
+.soma-calib-swatches span{width:100%;aspect-ratio:1/1;max-width:96px;
+ border:2px solid #fff;border-radius:4px}
+.soma-calib-swatches small{font-size:10px;letter-spacing:0;line-height:1.45}
+.soma-setup-previews{width:100%;display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+.soma-setup-surface{min-width:0;display:flex;flex-direction:column;
+ padding:9px;border:1px solid #3b5844;border-radius:8px;background:#121c17;gap:7px}
+.soma-setup-surface>div{display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.soma-setup-surface strong{font:700 10px ui-monospace,monospace;color:#d1e7c2}
+.soma-setup-surface small{font-size:9px;letter-spacing:0}
+.soma-setup-surface canvas{width:100%;height:auto;aspect-ratio:16/9;
+ display:block;background:#000;border-radius:4px;object-fit:contain}
+.soma-setup-surface p{font-size:11px;line-height:1.5;margin:0;color:#b8cbb5}
+.soma-setup-optional{display:flex!important;flex-direction:row!important;
+ align-items:center;gap:8px}
+.soma-setup-optional input[type=checkbox]{width:17px;height:17px;min-height:17px}
+.soma-guided-setup>footer{align-items:center;flex-wrap:wrap}
+.soma-guided-setup>footer span{max-width:52%;line-height:1.4;text-align:center}
+@media(max-width:900px){.soma-setup-previews{grid-template-columns:1fr 1fr}
+ .soma-setup-surface:first-child{grid-column:1/-1}}
+@media(max-width:680px){.soma-calib-corners{grid-template-columns:1fr 1fr}
+ .soma-calib-swatches{grid-template-columns:1fr 1fr}
+ .soma-setup-previews{grid-template-columns:1fr}
+ .soma-setup-surface:first-child{grid-column:auto}
+ .soma-guided-setup>footer span{max-width:100%;order:3;width:100%}}

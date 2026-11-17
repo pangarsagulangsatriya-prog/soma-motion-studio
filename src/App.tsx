@@ -303,6 +303,17 @@ export default function App(){
       }else void acceptFootprintsBody();
      }}
      onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
+     onSetupCalibrationDirty={()=>{
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      liveFloorEngine.revoke('Empat sudut kamera berubah. Periksa kembali.');
+      multiPoseRouter.reset();setLiveFloorApproval(null);
+      setLiveFloorRevision(v=>v+1);
+     }}
+     onSetupCameraConfirmed={()=>{
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      multiPoseRouter.reset();setLiveFloorApproval(null);
+      setLiveFloorRevision(v=>v+1);
+     }}
      onEnterOperator={()=>{
       requestStageBlackout(()=>projection.setTransport('blackout'));
       setFootprintsOperator(true);setClean(false);

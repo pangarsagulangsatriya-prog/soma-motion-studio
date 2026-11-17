@@ -32,6 +32,7 @@ type Props={
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
  onPhoneDisconnect:()=>void;onEnterOperator:()=>void;
+ onSetupCalibrationDirty:()=>void;onSetupCameraConfirmed:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  operatorMode:boolean;onExitOperator:()=>void;
  videoRecording:boolean;canRecordVideo:boolean;
@@ -46,6 +47,7 @@ export function FootprintsStageWorkspace({
  phoneActive,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
  onPhoneStream,onPhoneDisconnect,onEnterOperator,
+ onSetupCalibrationDirty,onSetupCameraConfirmed,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  operatorMode,onExitOperator,footprint,updateFootprint
 }:Props){
@@ -220,6 +222,11 @@ export function FootprintsStageWorkspace({
   data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
   <GuidedStageSetup open={setupOpen&&!operatorMode} onClose={()=>setSetupOpen(false)}
    session={stageSession} frameRef={frameRef} videoRef={videoRef}
+   cameraPreviewRef={cameraCanvas} bodyPreviewRef={bodyCanvas} floorPreviewRef={floorCanvas}
+   frameFresh={frameFresh} bodySelected={bodySelected}
+   bodyPreviewReady={frameFresh&&bodyVisible>0&&maskStatus==='Mask tubuh terbaca'&&!footprint.hold}
+   floorPreviewReady={floorStatus.confirmed&&cameraMatched&&!!tracker.session&&!footprint.hold}
+   onCalibrationDirty={onSetupCalibrationDirty} onCameraConfirmed={onSetupCameraConfirmed}
    floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
    performers={performerCount} onStartLaptop={onStartBody}
    onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
