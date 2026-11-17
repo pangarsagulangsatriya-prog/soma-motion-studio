@@ -32,6 +32,7 @@ import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatu
 import {FootprintsStageTransport} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 import './source-screen.css';
+import './compact-stage.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -347,7 +348,8 @@ export function FootprintsStageWorkspace({
     </div>}
    </div>
    {!setupOpen&&<CompactFootprintsStatus items={compactItems}
-    onSource={()=>selectFlowStep('input')} onProcess={()=>selectFlowStep('process')}/>}
+    onSource={()=>{setFlowStep('input');setInspectorOpen(cameraOn);setView('stage');}}
+    onProcess={()=>{setFlowStep('process');setInspectorOpen(true);setView('stage');}}/>}
   </nav>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
