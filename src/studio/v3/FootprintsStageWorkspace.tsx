@@ -31,6 +31,7 @@ import './footprints-stage-workspace.css';
 type WorkspaceView='stage'|'archive';
 type Props={
  navigationRequest?:StageNavigationRequest|null;
+ onActiveToolChange?:(tool:StageNavigationRequest['tool'])=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
@@ -49,7 +50,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- navigationRequest,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  phoneActive,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
  onPhoneStream,onPhoneDisconnect,onEnterOperator,
@@ -77,6 +78,12 @@ export function FootprintsStageWorkspace({
    onPerformerCount(stageSession.meta.performers);
  },[stageSession.loaded,stageSession.meta.performers,performerCount,onPerformerCount]);
  const [view,setView]=useState<WorkspaceView>('stage');
+ useEffect(()=>{
+  if(navigationRequest?.tool==='simulator'||navigationRequest?.tool==='calibration')return;
+  const tool=setupOpen?'setup':videoLabOpen?'video':rehearsalOpen?'rehearsal':
+   composerOpen?'composer':view==='archive'?'archival-mapping':'live';
+  onActiveToolChange?.(tool);
+ },[setupOpen,videoLabOpen,rehearsalOpen,composerOpen,view,onActiveToolChange,navigationRequest?.tool]);
  const previewHoldRef=useRef(footprint.hold);
  previewHoldRef.current=footprint.hold;
  const [inspector,setInspector]=useState<StageInspectorTab>('tracking');
