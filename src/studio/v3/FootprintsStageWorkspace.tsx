@@ -318,7 +318,7 @@ export function FootprintsStageWorkspace({
     title="Buka Projector untuk kalibrasi output dan Live" onClick={onOpenProjection}>
     <Monitor size={15}/> Projector <ArrowUpRight size={13}/>
    </button>
-  </nav>
+  </nav>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
