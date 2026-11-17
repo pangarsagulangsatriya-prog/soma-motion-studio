@@ -2,6 +2,7 @@ import {MotionProcessor} from '../engine/motion.ts';
 import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
 import {VideoAutoActorTracker,type VideoActorState} from './videoAutoActorTracker.ts';
+import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
 import {ReplayIdentityGate,type ReplayIdentityQA} from './videoReplayIdentityQA.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
@@ -17,6 +18,7 @@ export type ReplayAnalysisSnapshot={
  rawPoses:Landmark[][];
  actorStates:VideoActorState[];detectedCount:number;visibleCount:number;
  performerMode:'auto'|'manual';
+ temporal:TemporalFrame|null;temporalFrameCount:number;
  status:string;ambiguous:boolean;
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
@@ -30,6 +32,7 @@ export class VideoPoseGaitEngine{
  private model:PoseLandmarker|null=null;
  private processor=new MotionProcessor();
  private actorTracker=new VideoAutoActorTracker();
+ private temporalAnalyzer=new TemporalJointAnalyzer();
  private qa=new ReplayIdentityGate();
  private archived:ReplayArchiveSegment[]=[];
  private firstAtMs:number|null=null;
@@ -58,6 +61,11 @@ export class VideoPoseGaitEngine{
  private count:1|2=1;
  constructor(private readonly report:Listener){}
  get ready(){return !!this.model&&!this.disposed;}
+ /** Current replay segment's bounded temporal data; never a physical gait output. */
+ getTemporalTrace(actor:'A'|'B',joint:number):TemporalTracePoint[]{
+  return this.temporalAnalyzer.getTrace(actor,joint);
+ }
+ getTemporalWindow():TemporalFrame[]{return this.temporalAnalyzer.window;}
  get archivedSegments():ReplayArchiveSegment[]{
   return this.archived.map(s=>({...s,events:s.events.map(e=>({...e})),
    identityQA:{...s.identityQA,visible:[...s.identityQA.visible]}}));
@@ -87,6 +95,7 @@ export class VideoPoseGaitEngine{
    actorStates:this.actorStates.map(actor=>({...actor})),
    detectedCount:this.detectedCount,visibleCount:this.visibleCount,
    performerMode:this.manualCount===null?'auto':'manual',
+   temporal:this.temporalAnalyzer.latest,temporalFrameCount:this.temporalAnalyzer.frameCount,
    events:this.history.slice(),status:this.status,ambiguous:this.ambiguous,
    gait:Object.fromEntries([...this.feet].map(([id,value])=>[id,{...value}])),
    qa:this.qa.snapshot,archivedSegments:this.archived.length};
@@ -117,7 +126,8 @@ export class VideoPoseGaitEngine{
   this.closeSegment(reason);
   this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;this.truncatedEvents=0;this.feet.clear();
-  this.actorTracker.reset();this.analyzers.clear();this.processor.reset();
+  this.actorTracker.reset();this.temporalAnalyzer.reset();
+  this.analyzers.clear();this.processor.reset();
   this.count=this.manualCount??1;
   this.people=[];this.rawPoses=[];this.ambiguous=false;this.lastTime=-1;
   this.detectedCount=0;this.visibleCount=0;
@@ -159,6 +169,9 @@ export class VideoPoseGaitEngine{
     this.actorStates=observed.actors;
     this.detectedCount=observed.detectedCount;
     this.visibleCount=observed.visibleCount;
+    // A visible actor continues its trace while the other is hidden.
+    // This never bypasses identity QA for physical gait event generation.
+    this.temporalAnalyzer.observe(observed.assignments,observed.actors,atMs);
     const count=this.manualCount??observed.knownCount;
     if(count!==this.count){
      this.count=count;
@@ -202,14 +215,14 @@ export class VideoPoseGaitEngine{
    this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
    this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
    this.actorStates=this.actorStates.map(person=>({...person,presence:'lost',rawIndex:null,confidence:0}));
-   this.analyzers.clear();this.feet.clear();
+   this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
    this.qa.observe([],this.count,false);this.emit();
   }finally{this.inProgress=false;}
  }
  dispose(){
   if(this.disposed)return;
   this.disposed=true;this.model?.close();this.model=null;
-  this.actorTracker.reset();this.analyzers.clear();this.feet.clear();
+  this.actorTracker.reset();this.temporalAnalyzer.reset();this.analyzers.clear();this.feet.clear();
   this.history=[];this.archived=[];this.people=[];this.rawPoses=[];
   this.actorStates=[];this.lastTime=-1;
  }
