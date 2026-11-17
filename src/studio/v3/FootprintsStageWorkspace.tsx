@@ -27,6 +27,7 @@ type Props={
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
+ phoneActive:boolean;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
@@ -42,6 +43,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
  frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ phoneActive,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
  onPhoneStream,onPhoneDisconnect,onEnterOperator,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
@@ -217,7 +219,9 @@ export function FootprintsStageWorkspace({
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
   <GuidedStageSetup open={setupOpen&&!operatorMode} onClose={()=>setSetupOpen(false)}
-   session={stageSession} onStartLaptop={onStartBody}
+   session={stageSession} frameRef={frameRef} videoRef={videoRef}
+   floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
+   performers={performerCount} onStartLaptop={onStartBody}
    onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
    onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
    onArchive={()=>{showArchive();setSetupOpen(false);}}

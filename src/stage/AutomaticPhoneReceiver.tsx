@@ -3,6 +3,8 @@ import {collectPhoneIce,ICE_SERVERS} from './PhoneSignal.ts';
 import {phonePairRequest,pairedPhoneUrl,PHONE_PAIR_POLL_MS,
  type PairRoom} from './PhonePairProtocol.ts';
 import {PhonePairQr} from './PhonePairQr.tsx';
+import {claimPhoneTransport,reportPhoneTransport,releasePhoneTransport,
+ samplePhonePeer} from './PhoneDeviceTelemetry.ts';
 
 const wait=(signal:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  if(signal.aborted){reject(Error('Pairing dibatalkan.'));return;}
@@ -29,11 +31,16 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
  const controllerRef=useRef<AbortController|null>(null);
  const generation=useRef(0),streamRef=useRef<MediaStream|null>(null);
  const heartbeatTimer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const statsTimer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const telemetryOwner=useRef('qr-'+crypto.randomUUID()).current;
  const callback=useRef({onStream,onDisconnect});callback.current={onStream,onDisconnect};
  const terminate=(feedback=true)=>{
   ++generation.current;controllerRef.current?.abort();controllerRef.current=null;
   if(heartbeatTimer.current)clearInterval(heartbeatTimer.current);
   heartbeatTimer.current=null;
+  if(statsTimer.current)clearInterval(statsTimer.current);
+  statsTimer.current=null;
+  releasePhoneTransport(telemetryOwner);
   const existing=roomRef.current;roomRef.current=null;
   const hadStream=!!streamRef.current;
   pcRef.current?.close();pcRef.current=null;
@@ -50,6 +57,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
   terminate(false);
   const version=++generation.current;
   const controller=new AbortController();controllerRef.current=controller;
+  claimPhoneTransport(telemetryOwner,'qr');
   setPhase('creating');setStatus('Membuat ruang sementara di server SOMA…');
   try{
    const response=await phonePairRequest('create',{},controller.signal);
@@ -70,6 +78,10 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
     if(info.state==='joined'&&!offerSent){
      offerSent=true;setPhase('negotiating');setStatus('HP terhubung ke ruang. Menyiapkan WebRTC…');
      const pc=new RTCPeerConnection(ICE_SERVERS);pcRef.current=pc;
+     statsTimer.current=setInterval(()=>{
+      if(generation.current===version)
+       void samplePhonePeer(telemetryOwner,pc,'qr');
+     },1000);
      pc.addTransceiver('video',{direction:'recvonly'});
      // Phone sends a local WebRTC heartbeat while capture remains visible.
      // A frozen phone/tab must trigger the same fail-closed disconnect as a dropped peer.
@@ -104,9 +116,14 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
      pc.addEventListener('connectionstatechange',()=>{
       if(pcRef.current!==pc||generation.current!==version)return;
       if(pc.connectionState==='connected'){
+       reportPhoneTransport(telemetryOwner,{state:'connected',
+        reason:'WebRTC QR tersambung; statistik video dipantau.'});
+       void samplePhonePeer(telemetryOwner,pc,'qr');
        setPhase('connected');setRoom(null);
        setStatus('Kamera HP tersambung. Kalibrasi ulang lantai sebelum proyeksi.');
       }else if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
+       reportPhoneTransport(telemetryOwner,{state:'interrupted',
+        reason:'Koneksi HP terputus; ulangi pairing dan kalibrasi.'});
        setPhase('error');setStatus('Jaringan HP terputus. Output harus Blackout.');
        terminate(false);
       }
