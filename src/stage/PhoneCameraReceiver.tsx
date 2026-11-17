@@ -1,5 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {AutomaticPhoneReceiver} from './AutomaticPhoneReceiver.tsx';
+import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
+ samplePhonePeer} from './PhoneDeviceTelemetry.ts';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal,phoneCameraUrl} from './PhoneSignal.ts';
 
 function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
@@ -9,14 +11,21 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
  const [busy,setBusy]=useState(false),[connection,setConnection]=useState('Belum dipasangkan');
  const pc=useRef<RTCPeerConnection|null>(null);
  const active=useRef<MediaStream|null>(null),generation=useRef(0);
+ const statsTimer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const telemetryOwner=useRef('manual-'+crypto.randomUUID()).current;
  const stop=()=>{
-  generation.current++;pc.current?.close();pc.current=null;
+  generation.current++;
+  if(statsTimer.current)clearInterval(statsTimer.current);statsTimer.current=null;
+  releasePhoneTransport(telemetryOwner);
+  pc.current?.close();pc.current=null;
   active.current?.getTracks().forEach(t=>t.stop());active.current=null;
   setOffer('');setAnswer('');setBusy(false);
   setConnection('Koneksi HP ditutup.');onDisconnect();
  };
  const onDisconnectRef=useRef(onDisconnect);onDisconnectRef.current=onDisconnect;
- useEffect(()=>()=>{generation.current++;pc.current?.close();
+ useEffect(()=>()=>{generation.current++;
+  if(statsTimer.current)clearInterval(statsTimer.current);
+  releasePhoneTransport(telemetryOwner);pc.current?.close();
   const hadActive=!!active.current;
   active.current?.getTracks().forEach(t=>t.stop());active.current=null;
   if(hadActive)onDisconnectRef.current();
@@ -25,8 +34,12 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
   const version=++generation.current;
   pc.current?.close();active.current?.getTracks().forEach(t=>t.stop());
   active.current=null;pc.current=null;setBusy(true);setOffer('');setAnswer('');
+  claimPhoneTransport(telemetryOwner,'manual');
   try{
    const p=new RTCPeerConnection(ICE_SERVERS);pc.current=p;
+   statsTimer.current=setInterval(()=>{
+    if(pc.current===p)void samplePhonePeer(telemetryOwner,p,'manual');
+   },1000);
    p.addTransceiver('video',{direction:'recvonly'});
    p.addEventListener('track',e=>{
     if(pc.current!==p||generation.current!==version)return;
@@ -38,6 +51,12 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
    p.addEventListener('connectionstatechange',()=>{
     if(pc.current!==p||generation.current!==version)return;
     const state=p.connectionState;
+    if(state==='connected'){
+     reportPhoneTransport(telemetryOwner,{state:'connected',reason:'WebRTC manual tersambung.'});
+     void samplePhonePeer(telemetryOwner,p,'manual');
+    }
+    if(state==='failed'||state==='disconnected')
+     reportPhoneTransport(telemetryOwner,{state:'interrupted',reason:'Koneksi manual terputus.'});
     setConnection(state==='connected'?'Kamera HP tersambung ke engine SOMA.':
      state==='failed'?'Koneksi gagal. Coba Wi-Fi sama atau periksa firewall.':
      'Jalur HP: '+state);
