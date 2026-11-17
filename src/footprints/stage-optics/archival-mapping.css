@@ -38,3 +38,42 @@
 .archive-bridge-metrics{display:flex;flex-wrap:wrap;gap:6px}
 .archive-bridge-metrics span{font-size:11px;padding:8px;border:1px solid #536959;border-radius:4px;color:#cadac9}
 .archive-bridge-metrics b{font:700 12px ui-monospace,monospace}
+
+/* S6.3 · Effect Recipe Engine. Controls change only the local archive renderer. */
+.archive-recipes{margin:14px 0;padding:13px;border:1px solid #586d58;
+ border-radius:9px;background:#152219;color:#d6e5d0;display:flex;flex-direction:column;gap:11px}
+.archive-recipes-header{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:10px}
+.archive-recipes-header h3{font-size:15px;margin:3px 0;color:#e1edce}
+.archive-recipes-header small{font:700 9px ui-monospace,monospace;letter-spacing:.11em;color:#9db99d}
+.archive-recipes>p,.archive-recipes-sim p{font-size:11px;line-height:1.6;margin:0;color:#bfcfbd}
+.archive-recipes-presets{display:flex;flex-wrap:wrap;gap:7px}
+.archive-recipes button{min-height:38px;line-height:1.35}
+.archive-recipes button[aria-pressed=true]{outline:2px solid #d3e6ad;outline-offset:1px}
+.archive-recipes-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.archive-recipes-rule{border:1px solid #3e5a44;background:#1e2e21;
+ border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.archive-recipes-rule header{display:flex;flex-direction:column;gap:8px}
+.archive-recipes-rule header strong{font-size:11px;line-height:1.5;color:#e0ebd4}
+.archive-recipes-fields{display:grid;gap:10px}
+.archive-recipes-fields label{font-size:10px;min-width:0;color:#c0d2bd}
+.archive-recipes :is(input[type=range],select){width:100%;min-width:0;max-width:100%}
+.archive-recipes select{padding:7px;background:#132119;color:#e0efdc;
+ border:1px solid #5b7660;border-radius:5px;min-height:38px}
+.archive-recipes-status{border:1px solid #43634c;background:#101d15;
+ border-radius:7px;padding:10px;color:#d2e8d3;font-size:11px}
+.archive-recipes-status>strong{display:block;line-height:1.5;margin-bottom:7px}
+.archive-recipes-status>div{display:flex;flex-wrap:wrap;gap:7px}
+.archive-recipes-status span{display:inline-flex;gap:6px;background:#213427;
+ border:1px solid #4d6a50;border-radius:5px;padding:7px}
+.archive-recipes-actions,.archive-recipes-cues{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.archive-recipes-sim{border:1px solid #3e5a44;border-radius:7px;padding:10px;
+ background:#192a1e;color:#bfd2c1}
+.archive-recipes-sim summary{cursor:pointer;font-size:12px;color:#d1e2ce}
+.archive-recipes-cues{margin-top:9px}
+.archive-recipes-cues strong{flex:1;min-width:140px;font-size:10px;color:#dfedca}
+.archive-recipes .archive-map-caution{font-size:10px!important;line-height:1.6!important}
+@media(max-width:980px){.archive-recipes-rules{grid-template-columns:1fr}}
+@media(max-width:610px){.archive-recipes{padding:9px}.archive-recipes-presets{flex-direction:column}
+ .archive-recipes-actions{flex-direction:column;align-items:stretch}
+ .archive-recipes-cues strong{flex-basis:100%}}
