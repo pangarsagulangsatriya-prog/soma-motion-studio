@@ -51,6 +51,8 @@ export class VideoPoseGaitEngine{
    identityQA:{...s.identityQA,visible:[...s.identityQA.visible]}}));
  }
  get archiveOverflow(){return this.discardedSegments;}
+ get archiveStats(){return {segments:this.archived.length,
+  events:this.archived.reduce((sum,s)=>sum+s.events.length,0)};}
  private closeSegment(reason:string){
   if(this.frames===0&&this.history.length===0)return;
   this.archived.push({
