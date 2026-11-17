@@ -72,6 +72,11 @@ export function RehearsalComparisonLab({
  const start=()=>{
   const ready=gate();if(!ready.ready){setMessage(ready.reason);return;}
   if(!reference||windowMs<3000){setMessage('Pilih segmen video minimal 3 detik.');return;}
+  const section=selectReferenceSegment(reference,segment);
+  if(!section||contactMetrics(referenceContacts(reference,segment,person),
+   section.startMs,windowMs).count<2){
+   setMessage('Referensi memerlukan minimal dua event Contact dalam jendela terpilih.');return;
+  }
   const data=tracker.session,floor=tracker.floor;
   if(!data||!floor){setMessage('FloorSession belum siap.');return;}
   const now=performance.now();
@@ -105,6 +110,7 @@ export function RehearsalComparisonLab({
  const referenceMetrics=selected&&reference?contactMetrics(
   referenceContacts(reference,segment,person),selected.startMs,windowMs):null;
  const liveMetrics=full?contactMetrics(liveContacts(capture.events,person),capture.start,windowMs):null;
+ const enoughReference=(referenceMetrics?.count??0)>=2;
  const refMarks=selected?referenceTimeline(selected.events,selected.startMs,windowMs,person):[];
  const liveMarks=full?liveTimeline(capture.events,capture.start,windowMs,person,capture.performers):[];
  const refPath=selected?referenceFootPath(selected.events,selected.startMs,selected.startMs+windowMs,person):[];
@@ -177,7 +183,7 @@ export function RehearsalComparisonLab({
    </select></label>
    <div><small>Jendela sama</small><strong>{windowMs>=3000?(windowMs/1000).toFixed(1)+' detik':'Segmen terlalu pendek'}</strong></div>
    {!recording?<button type="button" className="rcl-primary"
-     disabled={!readiness.ready||windowMs<3000||!reference} onClick={start}>
+     disabled={!readiness.ready||windowMs<3000||!reference||!enoughReference} onClick={start}>
      <Play size={15}/> Rekam latihan</button>:
     <button type="button" onClick={()=>finish('interrupted','Dihentikan manual.',performance.now())}>
      <Square size={15}/> Hentikan</button>}
@@ -220,6 +226,7 @@ export function RehearsalComparisonLab({
     {referenceMetrics.cadence!==null&&liveMetrics.cadence!==null?
      ' Selisih '+(liveMetrics.cadence-referenceMetrics.cadence).toFixed(1)+' pijakan/menit.':''}
    </p>}
+   {!enoughReference&&reference&&<p className="rcl-warning">Cari segmen dengan setidaknya dua Contact untuk membandingkan ritme.</p>}
    <p className="rcl-note">Slide/Pivot dari video dan Move/Release dari kamera memiliki definisi berbeda.
     Keduanya tetap diberi label sendiri; lintasan tidak ditumpuk karena memakai skala berbeda.
     Contact masih estimasi visual, bukan sensor tekanan. Jeda panjang dihitung dari
