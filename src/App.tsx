@@ -55,6 +55,7 @@ export default function App(){
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
+ const [footprintsOperator,setFootprintsOperator]=useState(false);
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
@@ -159,6 +160,7 @@ export default function App(){
   projection.setTransport('blackout');setLiveFloorOpen(true);
  }
  function selectScene(scene:SceneId){
+  setFootprintsOperator(false);
   if(scene==='footprints'){
    setFootprintsActive(true);setBodyPromptDismissed(false);setTab('visual');
    if(sr.current.output==='sound')update({output:'both'});
@@ -229,14 +231,26 @@ export default function App(){
  const selectedPreset=settings.hydra?.preset;
  const currentScene:SceneId=footprintsActive?'footprints':selectedPreset==='echo'||selectedPreset==='cut'||selectedPreset==='body'?selectedPreset:'liquid';
  const archive=useArchive({pointerStart:e=>{pointer(e);mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);},pointerMove:pointer,pointerEnd:()=>{mouse.current.down=false;},active:archiveActive,engine,frameRef,videoRef:video,settings,cameraOn,cameraBusy,cameraStatus:cameraError||status,audioOn,muted,recording,recordSeconds,chooseInput,startCamera,stopCamera,enableAudio,panic,toggleRecording,openSessions:()=>{archive.setClean(false);setModal('sessions');},setMaster:master=>update({master}),exit:()=>{archive.hold();setArchiveActive(false);archive.setClean(false);}});
- return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
+ return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
-   {!archiveActive&&!projectionActive&&<GlobalNav workspace="studio" scene={currentScene} perform={clean}
-    onFootprints={()=>{projection.setTransport('blackout');setArchiveActive(false);setProjectionActive(false);setClean(false);selectScene('footprints');}}
-    onInstrument={selectScene}
-    onArchive={()=>{setModal(null);setClean(false);setArchiveActive(true);}}
-    onProjection={()=>{setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
-    onPreset={()=>setModal('presets')} onPerform={()=>setClean(v=>!v)} onHelp={()=>setModal('help')}
+   {!archiveActive&&!projectionActive&&<GlobalNav workspace="studio" scene={currentScene}
+    perform={footprintsActive?footprintsOperator:clean}
+    onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene('footprints');}}
+    onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);selectScene(scene);}}
+    onArchive={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setModal(null);setClean(false);setArchiveActive(true);}}
+    onProjection={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
+    onPreset={()=>setModal('presets')}
+    onPerform={()=>{
+     if(footprintsActive){
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(v=>!v);setClean(false);
+     }else setClean(v=>!v);
+    }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main>
 
@@ -250,6 +264,9 @@ export default function App(){
      onOpenSimulator={()=>{projection.setTransport('blackout');setLiveFloorOpen(false);
       setClean(false);setCaptureOpen(false);setAdvancedOpen(false);setSimulatorOpen(true);}}
      onOpenLiveFloor={openLiveFloor}
+     operatorMode={footprintsOperator}
+     onExitOperator={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(false);}}
      onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
      onToggleCamera={()=>{
       if(cameraOn&&settings.input==='body'){
