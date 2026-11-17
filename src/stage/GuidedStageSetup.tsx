@@ -192,7 +192,7 @@ export function GuidedStageSetup({
   </nav>
   <div className="soma-guide-main">
    <div className="soma-guide-work">
-    {step===0&&<div className="soma-setup-page">
+    <div className="soma-setup-page" hidden={step!==0}>
      <div className="soma-guide-section-top"><h3>Pilih sumber gerak</h3><p>Cukup satu kamera untuk mulai.</p></div>
      <div className="soma-setup-choice">
       <button type="button" aria-pressed={currentSource==='laptop'} onClick={()=>{session.patch({source:'laptop'});onStartLaptop();setMessage('Menyambungkan webcam laptop…');}}>
@@ -200,7 +200,7 @@ export function GuidedStageSetup({
       <button type="button" aria-pressed={currentSource==='phone'} onClick={()=>{session.patch({source:'phone'});setMessage('Buka QR, lalu arahkan kamera HP ke panggung.');}}>
        <b>Kamera HP</b><small>Scan QR untuk video langsung</small></button>
      </div>
-     {currentSource==='phone'&&!phoneActive&&
+     {currentSource==='phone'&&
       <div className="soma-guide-pair"><PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/></div>}
      {currentSource==='phone'&&phoneActive&&<div className="soma-setup-status">Kamera HP tersambung. Periksa preview di samping.</div>}
      <button type="button" className="soma-guide-text-link"
@@ -209,7 +209,7 @@ export function GuidedStageSetup({
       <p>Sumber yang dipilih: {sourceLabel}. Preview berasal dari video yang sama dengan pelacak SOMA. Tidak mengunggah video ke server.</p>
       <p>Mode input MP4 akan tersedia melalui Video Motion Lab pada sprint terpisah.</p>
      </details>
-    </div>}
+    </div>
     {step===1&&<div className="soma-setup-page">
      <div className="soma-guide-section-top"><h3>Kalibrasi & cek langkah</h3>
       <p>Klik empat sudut lantai pada preview kamera, sesuai urutan. Gambar kamera tidak dicerminkan.</p></div>
