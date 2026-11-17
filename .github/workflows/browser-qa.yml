@@ -1,0 +1,48 @@
+name: SOMA Browser QA — S6.7.2.5
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'e2e/**'
+      - '.github/workflows/browser-qa.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: soma-browser-qa
+  cancel-in-progress: true
+jobs:
+  browser-qa:
+    name: Responsive and keyboard E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned project dependencies
+        run: npm ci
+      - name: Install browser test runner without changing production lockfile
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser acceptance tests
+        run: npx playwright test -c e2e/playwright.config.mjs
+      - name: Upload screen captures and failure traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soma-s6-7-2-5-browser-qa
+          path: |
+            e2e/artifacts
+            e2e/test-results
+            e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 10
