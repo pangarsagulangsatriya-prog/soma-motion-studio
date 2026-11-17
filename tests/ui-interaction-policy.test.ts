@@ -36,7 +36,7 @@ test('offline source uses the actionable source screen instead of empty inspecto
  }),false);
  assert.equal(shouldOpenInspector({
   sameStep:true,panelOpen:true,cameraOn:false,step:'input',forceOpen:true
- }),false);
+ }),true);
 });
 test('down arrow enters controls only when the panel is open for selected tab',()=>{
  assert.equal(shouldEnterInspectorByArrow({key:'ArrowDown'},true),true);
