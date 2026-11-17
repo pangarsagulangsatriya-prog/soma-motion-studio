@@ -9,7 +9,7 @@ import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {claimDualOutputStatus,releaseDualOutputStatus,reportDualOutputStatus} from './DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
 import {ProjectorWysiwygPreview} from './ProjectorWysiwygPreview.tsx';
-import type {PreviewView} from './projectorWysiwygModel.ts';
+import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
 import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceReport,
@@ -29,7 +29,7 @@ type Props={
  frameRef:RefObject<StageRouteInput|null>;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;
  floorCanvas:RefObject<HTMLCanvasElement|null>;
- legacyProjection:Projection;
+ legacyProjection:Projection;experimentLocked:boolean;
 };
 const labels:{[K in StageSurface]:string}={body:'BODY · paha hingga kaki',floor:'FLOOR · arsip pada pad'};
 const signal=()=>{
@@ -37,7 +37,7 @@ const signal=()=>{
  ref.current={body:new ProjectionLink(),floor:new ProjectionLink()};
  return ref.current;
 };
-export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection}:Props){
+export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked}:Props){
  const links=useRef<Record<StageSurface,ProjectionLink>|null>(null);
  if(!links.current)links.current=signal();
  const ports=links.current;
@@ -58,8 +58,8 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  });
  const [operatorConfirm,setOperatorConfirm]=useState(false);
  const [previewView,setPreviewView]=useState<PreviewView>('draft');
- const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm});
- latest.current={plans,proofs,requested,armed,epoch,operatorConfirm};
+ const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked});
+ latest.current={plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked};
  const legacyRef=useRef(legacyProjection);legacyRef.current=legacyProjection;
  const testCanvases=useRef<Record<StageSurface,HTMLCanvasElement>|null>(null);
  const context=(id:StageSurface,plan=plans[id],output=devices[id]):StageOutputContext=>{
@@ -91,7 +91,8 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     const fresh=!!stage&&stage.mode==='live'&&stage.frameAtMs>0&&
      stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
      now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
-    const safe=STAGE_HARDWARE_ENABLED&&!!stage&&stage.cameraSafe&&fresh&&current.operatorConfirm;
+    const safe=dualPhysicalOutputAllowed(STAGE_HARDWARE_ENABLED,current.experimentLocked,current.operatorConfirm)&&
+     !!stage&&stage.cameraSafe&&fresh;
     const sourceSafe=id==='body'?!!stage?.bodyMediaReady:!!stage?.bridgeSafe;
     const decision=outputSurfaceDecision({
      plan,signature:key,proof:current.proofs[id],requested:current.requested[id],
@@ -177,6 +178,10 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi tidak valid.');}
  };
  const open=(id:StageSurface)=>{
+  if(experimentLocked){
+   urgentBlackout(id);
+   setMessage('MP4/3D hanya untuk preview lokal. Output fisik BODY/FLOOR dikunci.');return;
+  }
   if(!STAGE_HARDWARE_ENABLED){
    setMessage('Output proyektor fisik terkunci pada rilis Production. Gunakan preview lokal untuk QA.');
    return;
@@ -215,6 +220,10 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,external);
  },[]);
  const changeMode=(id:StageSurface,mode:Requested)=>{
+  if(experimentLocked&&mode!=='blackout'){
+   urgentBlackout(id);
+   setMessage('Eksperimen MP4/3D tidak boleh mengaktifkan output fisik.');return;
+  }
   if(!STAGE_HARDWARE_ENABLED&&mode!=='blackout'){
    urgentBlackout(id);
    setMessage('Build Production ini belum mengizinkan output fisik.');
@@ -270,14 +279,16 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   download(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}),
    'SOMA-S5-7-4-dual-surface-calibration.json');
  };
+ useEffect(()=>{if(experimentLocked){allBlackout();setOperatorConfirm(false);}},[experimentLocked]);
  const activePlan=plans[selected],proof=proofs[selected],qa=assessment(selected);
  return <section className="stage-dual" aria-label="S5.7.4 Dual-Surface Calibration & Output Routing">
   <div className="live-floor-heading"><Monitor size={15}/> 04 / DUAL-SURFACE OUTPUT ROUTING</div>
   <p>Dua jendela berbeda: satu ke tubuh, satu ke pad lantai. Setiap jendela memerlukan kalibrasi dan pengukuran sendiri. Tampilan langsung dikunci saat tracking tidak aman atau pemeriksaan perangkat berubah.</p>
   {!STAGE_HARDWARE_ENABLED&&<p role="status"><b>OUTPUT FISIK TERKUNCI DI PRODUCTION.</b> Simulasi, arsip dan pad tetap bisa digunakan. Aktifkan keluaran panggung hanya melalui build khusus dengan VITE_SOMA_STAGE_OUTPUTS=enabled setelah pengawasan operator dan pemeriksaan fisik.</p>}
-  <label className="stage-dual-check"><input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
+  <label className="stage-dual-check"><input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked} checked={operatorConfirm}
    onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
    Operator menjaga area proyeksi, menghindari sorot mata/wajah, dan siap mematikan proyektor secara fisik</label>
+  {experimentLocked&&<p role="status">SOURCE EXPERIMENT · MP4/3D hanya untuk WYSIWYG lokal. Dua output fisik terkunci.</p>}
   <button type="button" className="stage-dual-emergency" onClick={allBlackout}>
    <Square size={15}/> BLACKOUT KEDUA OUTPUT
   </button>
@@ -289,11 +300,11 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
      <p>{s.opened?(s.connected?'Jendela terhubung':'Menunggu heartbeat output'):'Jendela belum dibuka'}</p>
      <p>Pengukuran {a.count}/5 · {a.status==='within-provisional-target'?'Target sementara tercapai':a.status==='needs-adjustment'?'Perlu koreksi':'Bukti belum lengkap'}</p>
      <div className="stage-dual-buttons">
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!operatorConfirm||s.opened} onClick={()=>open(id)}>Buka output</button>
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.opened} onClick={()=>open(id)}>Buka output</button>
       <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm}
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm}
        onClick={()=>changeMode(id,'test')}><Target size={13}/> Uji terbatas</button>
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
        onClick={()=>changeMode(id,'live')}>LIVE</button>
       <button type="button" onClick={()=>changeMode(id,'blackout')}>Blackout</button>
      </div>
