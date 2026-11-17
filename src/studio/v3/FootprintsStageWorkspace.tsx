@@ -298,8 +298,9 @@ export function FootprintsStageWorkspace({
  const camScale=Math.min(768/rawW,432/rawH);
  const camDrawWidth=rawW*camScale,camDrawHeight=rawH*camScale;
  const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
- const selectFlowStep=(step:FootprintsStep)=>{
+ const selectFlowStep=(step:FootprintsStep,trigger?:HTMLElement|null)=>{
   const reselect=flowStep===step&&inspectorOpen&&!setupOpen&&view==='stage';
+  if(!reselect&&trigger)setupTrigger.current=trigger;
   setFlowStep(step);setInspectorOpen(!reselect&&(step==='input'?cameraOn:true));
   setSetupOpen(false);
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
@@ -344,13 +345,21 @@ export function FootprintsStageWorkspace({
       aria-current={flowStep===item.id?'step':undefined}
       aria-expanded={flowStep===item.id&&inspectorOpen}
       aria-controls={flowStep===item.id&&inspectorOpen?'fp-context-panel':undefined}
-      onClick={()=>selectFlowStep(item.id)} title={item.hint}>
+      onClick={event=>selectFlowStep(item.id,event.currentTarget)}
+      onKeyDown={event=>{
+       if(event.key==='ArrowDown'&&flowStep===item.id&&inspectorOpen){
+        event.preventDefault();
+        document.querySelector<HTMLElement>('#fp-context-panel .fp-flow-inspector-head button, #fp-context-panel .soma-guide-close')
+         ?.focus({preventScroll:true});
+       }
+      }} title={item.hint}>
       {item.title}</button>)}
     </div>}
    </div>
    {!setupOpen&&<CompactFootprintsStatus items={compactItems}
-    onSource={()=>{setFlowStep('input');setInspectorOpen(cameraOn);setView('stage');}}
-    onProcess={()=>{setFlowStep('process');setInspectorOpen(true);setView('stage');}}/>}
+    onSource={trigger=>selectFlowStep('input',trigger)}
+    onProcess={trigger=>selectFlowStep('process',trigger)}/>}
+
   </nav>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
@@ -472,7 +481,12 @@ export function FootprintsStageWorkspace({
     </div>}
    </div>
    {!operatorMode&&inspectorOpen&&<aside id="fp-context-panel" className="fp-stage-inspector"
-    data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}>
+    data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}
+    onKeyDown={event=>{
+     if(event.key==='Escape'&&!event.shiftKey){
+      event.preventDefault();event.stopPropagation();closeInspector();
+     }
+    }}>
     {setupOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
    onCalibrationState={setCalibrationOverlay}
    onBindCalibrationTap={handler=>{calibrationTap.current=handler;}}
