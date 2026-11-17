@@ -160,10 +160,15 @@ export class MotionSemanticsEngine{
     measurement:Metric|null)=>{
     const key=label(kind,side);
     const old=current.get(key)??{active:false,startMs:-1,streak:0,lastEmitMs:-Infinity};
-    if(!measurement||measurement.confidence<MIN_EVENT_CONFIDENCE){
+    if(!measurement){
      current.delete(key);return;
     }
     const m=threshold(measurement,person);
+    // Both the observed joint and the A/B identity must pass. A low
+    // identity confidence may never emit a semantic event.
+    if(m.confidence<MIN_EVENT_CONFIDENCE){
+     current.delete(key);return;
+    }
     if(!m.active){
      if(m.released){old.active=false;old.startMs=-1;old.streak=0;}
      else if(!old.active){old.streak=0;old.startMs=-1;}
