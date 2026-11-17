@@ -29,6 +29,7 @@ import {stageHardwareAvailable} from '../../footprints/stage-optics/StageHardwar
 import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatus} from './unifiedStageStatus.ts';
 import {FootprintsStageTransport} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
+import './source-screen.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
