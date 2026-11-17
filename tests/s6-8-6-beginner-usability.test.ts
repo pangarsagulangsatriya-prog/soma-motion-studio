@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {BEGINNER_TASKS,isSourceReady,classifySourceTransition,
+import {BEGINNER_TASKS,isSourceReady,classifySourceTransition,observeBeginnerSource,
  summarizeBeginnerUsability,beginnerUsabilityReport,type BeginnerTaskResult}
  from '../src/studio/v3/beginnerUsabilityModel.ts';
 
@@ -50,6 +50,26 @@ test('S6.8.6 record errors, same-source recovery, and safe fallback separately',
   {selection:'webcam',phase:'error'},
   {selection:'webcam',phase:'connecting'},3600
  ).length,0);
+});
+
+test('S6.8.6 preserve unresolved error across connecting until fallback is ready',()=>{
+ const start={previous:{selection:'webcam' as const,phase:'connecting' as const},
+  pendingErrorSource:null};
+ const failure=observeBeginnerSource(start,{selection:'webcam',phase:'error'},100);
+ assert.equal(failure.state.pendingErrorSource,'webcam');
+ const switching=observeBeginnerSource(failure.state,
+  {selection:'simulator',phase:'connecting'},200);
+ assert.equal(switching.state.pendingErrorSource,'webcam');
+ assert.equal(switching.events.some(e=>e.type==='fallback'),false);
+ const ready=observeBeginnerSource(switching.state,
+  {selection:'simulator',phase:'experiment'},500);
+ assert.deepEqual(ready.events.map(e=>e.type),['fallback']);
+ assert.equal(ready.state.pendingErrorSource,null);
+ const retried=observeBeginnerSource(failure.state,
+  {selection:'webcam',phase:'connecting'},250);
+ const recovered=observeBeginnerSource(retried.state,
+  {selection:'webcam',phase:'ready'},750);
+ assert.deepEqual(recovered.events.map(e=>e.type),['recovery']);
 });
 
 test('S6.8.6 local export only includes enumerated status, time, and observer observations',()=>{
