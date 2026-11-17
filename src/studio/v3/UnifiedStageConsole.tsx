@@ -23,10 +23,11 @@ export function UnifiedStageStatusStrip({units,legacy}:{
  </div>;
 }
 export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRecording,
- canRecordVideo,held,bodySelected,canPreview,legacy,dual,onCamera,onRecordVideo,onCapture,
+ canRecordVideo,held,bodySelected,canPreview,legacy,dual,experiment,onCamera,onRecordVideo,onCapture,
  onHold,onLivePreview,onBlackout,onOutputSettings}:{
  cameraOn:boolean;cameraBusy:boolean;frameFresh:boolean;videoRecording:boolean;
  canRecordVideo:boolean;held:boolean;bodySelected:boolean;canPreview:boolean;
+ experiment?:'video'|'simulator'|null;
  legacy:LegacyOutputStatus;dual:{body:DualSurfaceState;floor:DualSurfaceState};
  onCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  onHold:()=>void;onLivePreview:()=>void;onBlackout:()=>void;onOutputSettings:()=>void;
@@ -67,7 +68,9 @@ export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRe
       <Pause size={15}/><span>Hold</span>
      </button>
     </div>
-   </>:<span className="fp-transport-idle">Footprints · siap memilih sumber</span>}
+   </>:<span className="fp-transport-idle">{experiment?
+    experiment==='video'?'Footprints · sumber video 2D aktif':'Footprints · simulasi 3D aktif':
+    'Footprints · siap memilih sumber'}</span>}
   </div>
   <div className="fp-transport-safety" role="group" aria-label="Projector dan Blackout">
    <div className="fp-transport-software" data-level={output.state}
