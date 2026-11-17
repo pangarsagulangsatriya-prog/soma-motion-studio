@@ -289,6 +289,7 @@ export function FootprintsStageWorkspace({
   setView('stage');setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
  };
  const openPhoneInput=()=>{
+  stageSession.patch({source:'phone'});
   setFlowStep('input');setView('stage');setInspectorOpen(true);setSetupOpen(true);
   setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
  };
@@ -363,7 +364,7 @@ export function FootprintsStageWorkspace({
     <div className="fp-stage-overview" hidden={view!=='stage'}>
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>KAMERA · LIVE INPUT</span>
-       <small>{cameraOn?'Kamera lokal':'Offline'}</small></div>
+       <small>{cameraOn&&bodySelected?'LIVE · Kamera Body':'Menunggu Body'}</small></div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
         onPointerDown={onMainCameraPoint}
@@ -384,7 +385,7 @@ export function FootprintsStageWorkspace({
         </svg>
         <div className="fp-stage-calibration-hint">TRACKING · Pilih sudut {calibrationOverlay.editing+1}/4 pada gambar kamera</div>
        </div>}
-       {!cameraOn&&<div className="fp-stage-empty fp-source-empty">
+       {(!cameraOn||!bodySelected)&&<div className="fp-stage-empty fp-source-empty">
         <div className="fp-source-intro">
          <span>01 / SOURCE</span><h2>Pilih sumber gerak</h2>
          <p>SOMA membaca gerakan kaki dari kamera atau rekaman. Pilih satu sumber untuk mulai.</p>
