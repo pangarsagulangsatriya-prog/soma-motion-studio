@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState,type RefObject,type PointerEvent} 
 import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
+import {BeginnerUsabilityLab} from './BeginnerUsabilityLab.tsx';
 import {inlineSetupHint,type InlineSetupAction} from './inlineSetupModel.ts';
 import {InlineFloorCalibration} from './InlineFloorCalibration.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
@@ -9,7 +10,7 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Camera,Film,Layers3,MonitorPlay} from 'lucide-react';
+import {Camera,ClipboardCheck,Film,Layers3,MonitorPlay} from 'lucide-react';
 import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
 import {CompactFootprintsStatus} from './CompactFootprintsStatus.tsx';
 import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
@@ -92,7 +93,8 @@ export function FootprintsStageWorkspace({
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
- const [flowStep,setFlowStep]=useState<FootprintsStep>('compose');
+ const [flowStep,setFlowStep]=useState<FootprintsStep>(()=>sourceStatus.selection?'compose':'input');
+ const [usabilityOpen,setUsabilityOpen]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(true);
  const [previewMode,setPreviewMode]=useState<StagePreviewMode>(()=>{
   try{return parseStagePreviewMode(localStorage.getItem('soma-stage-preview-mode-v1'));}
@@ -488,8 +490,18 @@ export function FootprintsStageWorkspace({
    <CompactFootprintsStatus items={compactItems}
     onSource={trigger=>openFromStatus('input',trigger)}
     onProcess={trigger=>openFromStatus('process',trigger)}/>
+   <button type="button" className="fp-usability-launch"
+    aria-expanded={usabilityOpen} aria-controls="fp-beginner-usability"
+    onClick={()=>setUsabilityOpen(v=>!v)}>
+    <ClipboardCheck size={15} aria-hidden="true"/> Uji Pemula
+   </button>
 
   </nav>}
+  <div id="fp-beginner-usability">
+   <BeginnerUsabilityLab hidden={!usabilityOpen||operatorMode}
+    status={sourceStatus} hint={setupHint} previewReady={gaitPreviewVisible}
+    onClose={()=>setUsabilityOpen(false)}/>
+  </div>
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
