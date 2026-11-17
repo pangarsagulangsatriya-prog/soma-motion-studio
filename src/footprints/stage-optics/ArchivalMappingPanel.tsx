@@ -9,6 +9,9 @@ import {defaultFloorSpace} from '../spatial/coordinates.ts';
 import {BRIDGE_DEFAULTS,ContactArchiveBridge,makeBridgeSimulationEvents,bridgeExport,
  type BridgeSnapshot} from './ContactArchiveBridge.ts';
 import {paintContactArchivePad} from './ContactArchivePadPreview.ts';
+import {EffectRecipeEngine,defaultEffectRecipe,validateEffectRecipe,
+ type EffectRecipeConfig,type EffectRecipeSnapshot,type RecipeEvent} from './EffectRecipeEngine.ts';
+import {EffectRecipePanel} from './EffectRecipePanel.tsx';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS,sampleLowerBodyFrame} from './LowerBodyMaskEngine.ts';
 import {archiveSessionReport,compositeArchivalFrame,
  type ArchivePlayback,type ArchivePixels,type ArchiveSettings,type ArchiveSlot,type ArchiveSources} from './ArchivalCompositeEngine.ts';
@@ -20,19 +23,32 @@ type Props={frameRef:RefObject<MotionFrame>;cameraOn:boolean;performerCount:1|2;
  onStageMedia:(slot:ArchiveSlot,file:File|null)=>Promise<boolean>;
  stageSettings:ArchiveSettings;onStageSettings:(settings:ArchiveSettings)=>void;
  stageHoldMs:number;onStageHoldMs:(value:number)=>void;
+ stageRecipe:EffectRecipeConfig;onStageRecipe:(value:EffectRecipeConfig)=>void;
 };
 const slots=['A','B'] as const;
 const allowedTypes=new Set(['video/mp4','video/webm','video/ogg','video/quicktime']);
 const maxBytes=300*1024*1024;
 const percentage=(x:number)=>Math.round(x*100);
 export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,projection,
- stageMedia,onStageMedia,stageSettings,onStageSettings,stageHoldMs,onStageHoldMs}:Props){
+ stageMedia,onStageMedia,stageSettings,onStageSettings,stageHoldMs,onStageHoldMs,
+ stageRecipe,onStageRecipe}:Props){
  const canvas=useRef<HTMLCanvasElement>(null);
  const padCanvas=useRef<HTMLCanvasElement>(null);
  const stageRoute=useRef<StageRouteInput|null>(null);
  const [routeOpen,setRouteOpen]=useState(false);
  useEffect(()=>{stageRoute.current=null;},[performerCount]);
  const contactBridge=useRef(new ContactArchiveBridge()).current;
+ const recipeEngine=useRef(new EffectRecipeEngine()).current;
+ const [recipeView,setRecipeView]=useState<EffectRecipeSnapshot>(
+  ()=>recipeEngine.snapshot(0,'off','Recipe masih dimatikan.'));
+ const lastRecipeView=useRef(''),recipeViewRef=useRef(recipeView);
+ recipeViewRef.current=recipeView;
+ useEffect(()=>{
+  recipeEngine.setConfig(stageRecipe);lastRecipeView.current='';
+  setRecipeView(recipeEngine.snapshot(performance.now(),
+   stageRecipe.enabled?'active':'off',
+   stageRecipe.enabled?'Menunggu event baru.':'Recipe masih dimatikan.'));
+ },[recipeEngine,stageRecipe]);
  const thumbnails=useRef(new Map<string,HTMLCanvasElement>());
  const lastBridgeView=useRef('');
  const bridgeStateRef=useRef<BridgeSnapshot>(contactBridge.snapshot(0));
@@ -61,9 +77,9 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
  const [torso,setTorso]=useState(.19);
  const [feather,setFeather]=useState(2);
  const stateRef=useRef({source,playing,overlap,settings,torso,feather,
-  bridgeEnabled,bridgeHoldMs});
+  bridgeEnabled,bridgeHoldMs,recipeEnabled:stageRecipe.enabled});
  stateRef.current={source,playing,overlap,settings,torso,feather,
-  bridgeEnabled,bridgeHoldMs};
+  bridgeEnabled,bridgeHoldMs,recipeEnabled:stageRecipe.enabled};
  useEffect(()=>()=>{for(const key of slots){
   videoRefs.current[key]?.pause();
   if(urls.current[key])URL.revokeObjectURL(urls.current[key]!);
@@ -76,7 +92,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   if(file&&(!allowedTypes.has(file.type)||file.size<=0||file.size>maxBytes)){
    setStatus('Gunakan video MP4/WebM/Ogg/MOV berukuran maksimal 300 MB.');return;
   }
-  contactBridge.reset();thumbnails.current.clear();
+  contactBridge.reset();recipeEngine.reset();thumbnails.current.clear();
   simulationClock.current=0;bridgeStateRef.current=contactBridge.snapshot(0);
   // Switching one file should not silently leave the other player's clock running.
   slots.forEach(k=>videoRefs.current[k]?.pause());
@@ -109,7 +125,7 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
   if(playing)for(const slot of slots){
    if(lastHold.current[slot])void videoRefs.current[slot]?.play().catch(()=>{});
   }
-  contactBridge.reset();thumbnails.current.clear();simulationClock.current=0;
+  contactBridge.reset();recipeEngine.reset();thumbnails.current.clear();simulationClock.current=0;
   lastHold.current={A:false,B:false};
   bridgeStateRef.current=contactBridge.snapshot(0);
   lastBridgeView.current='';
@@ -195,35 +211,64 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
    const safeMask=stable?mask:{...mask,status:'ambiguous' as const,
     reason:'Identitas A/B belum terkonfirmasi pada frame yang sama.'};
    const images=image();
-   const composed=compositeArchivalFrame(safeMask,images,s.settings,identity,renderCount.current);
+   // The same FloorSession/gait state powers Contact Bridge and S6.3.
+   // Camera mode cannot consume simulation poses or events.
+   const floor=router.floor.floor??defaultFloorSpace(8,6);
+   const simulated=s.source==='simulation'?makeBridgeSimulationEvents(floor,performerCount):[];
+   const feed=s.source==='simulation'?simulated:router.floor.session?.events??[];
+   const clock=s.source==='simulation'?simulationClock.current%11000:now;
+   const context=s.source==='simulation'?'simulated-footprint-v1:'+performerCount:
+    JSON.stringify([router.floor.boundCamera,router.floor.calibrationData,performerCount]);
+   const trusted=mask.status==='ready'&&stable&&
+    (s.source==='simulation'||(
+     cameraOn&&router.floor.isConfirmed&&frame?.source==='camera'&&
+     frame.time<=now&&now-frame.time>=0&&now-frame.time<450));
+   const effect=recipeEngine.sync({
+    events:feed,motions:s.source==='live'?router.floor.status.footMotions:[],
+    nowMs:clock,contextKey:context,mode:s.source==='live'?'camera':'simulation',
+    trusted,primeExisting:s.source==='live'
+   });
+   if(s.recipeEnabled){
+    const fingerprint=JSON.stringify([
+     effect.status,effect.contacts,effect.slides,effect.pivots,
+     Math.round(effect.body.A*20),Math.round(effect.body.B*20),
+     Math.round(effect.floor.A*20),Math.round(effect.floor.B*20),
+     effect.holdVideo.A,effect.holdVideo.B,effect.reason
+    ]);
+    if(fingerprint!==lastRecipeView.current){
+     lastRecipeView.current=fingerprint;setRecipeView(effect);
+    }
+   }
+   const effectiveSettings=s.recipeEnabled?{
+    A:{...s.settings.A,opacity:s.settings.A.opacity*effect.body.A},
+    B:{...s.settings.B,opacity:s.settings.B.opacity*effect.body.B}
+   }:s.settings;
+   const composed=compositeArchivalFrame(safeMask,images,effectiveSettings,identity,renderCount.current);
    let bridgeSafe=false;
-   if(s.bridgeEnabled){
-    const floor=router.floor.floor??defaultFloorSpace(8,6);
-    const simulated=makeBridgeSimulationEvents(floor,performerCount);
-    const feed=s.source==='simulation'?simulated:router.floor.session?.events??[];
-    const trusted=mask.status==='ready'&&stable&&composed.status!=='blackout'&&
-     (s.source==='simulation'||(cameraOn&&router.floor.isConfirmed));
-    const context=s.source==='simulation'?'simulated-footprint-v1:'+performerCount:
-     JSON.stringify([router.floor.boundCamera,router.floor.calibrationData,performerCount]);
-    const clock=s.source==='simulation'?simulationClock.current%11000:now;
+   if(s.bridgeEnabled||s.recipeEnabled){
     const snap=contactBridge.sync(feed,clock,context,floor,images,
-     s.source==='simulation'?'simulation':'camera',trusted,s.source==='live');
+     s.source==='simulation'?'simulation':'camera',
+     trusted&&composed.status!=='blackout',s.source==='live');
     bridgeStateRef.current=snap;
     bridgeSafe=snap.status==='ready'&&trusted&&!!padCanvas.current;
     const panel=padCanvas.current;
-    if(panel)paintContactArchivePad(panel,floor,snap,trusted,thumbnails.current);
-    // Pauses are intentionally per-source: A's touchdown must not freeze B.
-    // Resume only after an explicit user-play request; no background autoplay.
+    if(panel)paintContactArchivePad(panel,floor,snap,bridgeSafe,
+     thumbnails.current,s.recipeEnabled?effect.floor:undefined);
+    // Both effects use the SAME video elements. Only one pause/resume state
+    // per performer is applied; no additional playback engine is constructed.
     for(const slot of slots){
-     const video=videoRefs.current[slot],held=snap.holdActive[slot];
+     const video=videoRefs.current[slot],
+      held=(s.bridgeEnabled&&snap.holdActive[slot])||
+       (s.recipeEnabled&&effect.holdVideo[slot]);
      if(video&&held&&!lastHold.current[slot])video.pause();
      if(video&&!held&&lastHold.current[slot]&&s.playing)
       void video.play().catch(()=>{});
      lastHold.current[slot]=held;
     }
     const preview={contacts:snap.contactCount,fragments:snap.residueCount,
-     drags:snap.dragCount,skipped:snap.skipped,heldA:snap.holdActive.A,
-     heldB:snap.holdActive.B,recent:snap.recent.at(-1)?.description??'Belum ada kontak baru.',
+     drags:snap.dragCount,skipped:snap.skipped,heldA:s.bridgeEnabled&&snap.holdActive.A,
+     heldB:s.bridgeEnabled&&snap.holdActive.B,
+     recent:snap.recent.at(-1)?.description??'Belum ada kontak baru.',
      status:snap.reason};
     const key=JSON.stringify(preview);
     if(key!==lastBridgeView.current){
@@ -232,6 +277,12 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
    }else{
     const pad=padCanvas.current;
     if(pad){const g=pad.getContext('2d');if(g){g.fillStyle='#000';g.fillRect(0,0,pad.width,pad.height);}}
+    // Switching both media processors off must release an earlier hold.
+    for(const slot of slots){
+     if(lastHold.current[slot]&&s.playing)
+      void videoRefs.current[slot]?.play().catch(()=>{});
+    }
+    lastHold.current={A:false,B:false};
    }
    // Single source of truth for the physically armed S5.7.4 dual-output gate.
    // This snapshot is never constructed from synthetic poses when in Live mode.
@@ -347,6 +398,30 @@ export function ArchivalMappingPanel({frameRef,cameraOn,performerCount,router,pr
    </div>
    <p>{bridgeEnabled?bridgeView.recent:'Bridge tidak aktif.'} {bridgeEnabled&&bridgeView.status}</p>
   </div>
+  <EffectRecipePanel config={stageRecipe} view={recipeView}
+   source={source} onChange={onStageRecipe}
+   onReset={()=>{recipeEngine.reset();lastRecipeView.current='';
+    setRecipeView(recipeEngine.snapshot(
+     source==='simulation'?simulationClock.current:performance.now(),
+     stageRecipe.enabled?'active':'off','Envelope dibersihkan; menunggu gerak berikutnya.'));}}
+   onPreview={(event:RecipeEvent,slot)=>{
+    try{
+     recipeEngine.preview(event,slot,simulationClock.current,
+      stateRef.current.source==='simulation'?'simulation':'camera');
+     setRecipeView(recipeEngine.snapshot(simulationClock.current));
+     lastRecipeView.current='';
+    }catch(e){setStatus(e instanceof Error?e.message:'Cue tidak tersedia.');}
+   }}
+   onExport={()=>{
+    const report={schema:'soma.footprints.effect-recipe-report',version:1,
+     exportedAt:new Date().toISOString(),config:validateEffectRecipe(stageRecipe),
+     mode:source,files,metrics:{contacts:recipeView.contacts,
+      slides:recipeView.slides,pivots:recipeView.pivots},
+     physicalOutputApproved:false,
+     warning:'Event gait dan kontak kamera merupakan estimasi. Laporan tidak menyimpan video, data piksel atau persetujuan Live proyektor.'};
+    download(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),
+     'SOMA-S6-3-effect-recipe-report.json');
+   }}/>
   <details className="stage-optics-mask-drawer" open={routeOpen}
    onToggle={e=>setRouteOpen(e.currentTarget.open)}>
    <summary>04 / Dual-Surface Calibration & Output Routing <span>BODY dan FLOOR · dua jendela proyektor</span></summary>

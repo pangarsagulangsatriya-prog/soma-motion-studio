@@ -230,7 +230,9 @@ export function StageOpticsPanel({floorWidthM,floorDepthM,frameRef,cameraOn,perf
     stageSettings={session.meta.archiveSettings}
     onStageSettings={settings=>session.patch({archiveSettings:settings})}
     stageHoldMs={session.meta.bridgeHoldMs}
-    onStageHoldMs={ms=>session.patch({bridgeHoldMs:ms})}/>}
+    onStageHoldMs={ms=>session.patch({bridgeHoldMs:ms})}
+    stageRecipe={session.meta.effectRecipe}
+    onStageRecipe={effectRecipe=>session.patch({effectRecipe})}/>}
   </details>
  </section>;
 }

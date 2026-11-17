@@ -326,7 +326,9 @@ export function FootprintsStageWorkspace({
       stageSettings={stageSession.meta.archiveSettings}
       onStageSettings={settings=>stageSession.patch({archiveSettings:settings})}
       stageHoldMs={stageSession.meta.bridgeHoldMs}
-      onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}/>
+      onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}
+      stageRecipe={stageSession.meta.effectRecipe}
+      onStageRecipe={effectRecipe=>stageSession.patch({effectRecipe})}/>
     </div>}
     {view==='stage'&&<div className="fp-stage-bottom-status">
      <Activity size={15}/>
