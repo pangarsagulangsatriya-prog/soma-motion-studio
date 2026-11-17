@@ -1,15 +1,21 @@
 import {useEffect,useRef,useState} from 'react';
 import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCircle,
- Layers3,Monitor,PanelLeftClose,PanelLeftOpen,Play,Save,ScanFace,Sparkles,Type,X} from 'lucide-react';
+ Layers3,Monitor,PanelLeftClose,PanelLeftOpen,Play,Save,ScanFace,Search,
+ Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
+import {LABS_ITEM_COUNT,searchLabs,type LabsId} from './labsCatalog.ts';
 import './workspace-navigation.css';
 
 export type Workspace='studio'|'archive'|'projection';
 const NAV_KEY='soma-primary-navigation-v2';
 type LegacyScene=Exclude<SceneId,'footprints'>;
+const mobileQuery='(max-width: 760px)';
+const labsIcons:Record<LabsId,typeof Footprints>={
+ liquid:Type,echo:Layers3,cut:Sparkles,body:ScanFace,hydra:Sparkles,
+ sound:AudioLines,capture:Camera,archive:BookOpen,video:Film,rehearsal:Activity,simulator:Box
+};
 
-/** Two production workspaces, with independent access to preserved experiments. */
 export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onArchive,
  onProjection,onPreset,onPerform,onHelp,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset}:{
  workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;
@@ -19,47 +25,67 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
 }){
+ const [mobile,setMobile]=useState(()=>window.matchMedia(mobileQuery).matches);
  const [expanded,setExpanded]=useState(()=>{
-  try{const saved=localStorage.getItem(NAV_KEY);return saved===null?true:saved==='true';}
-  catch{return true;}
+  try{return !window.matchMedia(mobileQuery).matches&&localStorage.getItem(NAV_KEY)==='true';}
+  catch{return false;}
  });
- const [mobile,setMobile]=useState(false),[labsOpen,setLabsOpen]=useState(false);
+ const [labsOpen,setLabsOpen]=useState(false),[labsQuery,setLabsQuery]=useState('');
+ const [activeLab,setActiveLab]=useState<LabsId|null>(null);
+ const [tip,setTip]=useState<{label:string;top:number}|null>(null);
  const toggleRef=useRef<HTMLButtonElement>(null),labsRef=useRef<HTMLButtonElement>(null);
- const labsPanelRef=useRef<HTMLElement>(null),railRef=useRef<HTMLElement>(null);
+ const labsPanelRef=useRef<HTMLElement>(null),searchRef=useRef<HTMLInputElement>(null);
+ const railRef=useRef<HTMLElement>(null);
+ const labsContext=workspace==='archive'||(workspace==='studio'&&scene!=='footprints');
  useEffect(()=>{
-  const media=window.matchMedia('(max-width: 760px)');
-  const update=()=>setMobile(media.matches);
+  const media=window.matchMedia(mobileQuery);
+  const update=()=>{
+   setMobile(media.matches);
+   if(media.matches){setExpanded(false);setTip(null);}
+  };
   update();media.addEventListener('change',update);
   return()=>media.removeEventListener('change',update);
  },[]);
- useEffect(()=>{if(!mobile)try{localStorage.setItem(NAV_KEY,String(expanded));}catch{}},[mobile,expanded]);
+ useEffect(()=>{
+  if(mobile)return;
+  try{localStorage.setItem(NAV_KEY,String(expanded));}catch{}
+ },[expanded,mobile]);
+ useEffect(()=>{if(expanded||labsOpen||mobile)setTip(null);},[expanded,labsOpen,mobile]);
+ // On mobile, the navigation rail behaves as a modal drawer with a focus loop.
  useEffect(()=>{
   if(!mobile||!expanded||labsOpen)return;
   const previous=document.activeElement;
   const raf=requestAnimationFrame(()=>railRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true}));
-  const handle=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'){e.preventDefault();setLabsOpen(false);setExpanded(false);toggleRef.current?.focus();return;}
+  const keydown=(e:KeyboardEvent)=>{
+   if(e.key==='Escape'){e.preventDefault();setExpanded(false);toggleRef.current?.focus({preventScroll:true});return;}
    if(e.key!=='Tab'||!railRef.current)return;
-   const controls=Array.from(railRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+   const buttons=Array.from(railRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
     .filter(node=>node.getClientRects().length>0);
-   const first=controls[0],last=controls[controls.length-1];
+   const first=buttons[0],last=buttons[buttons.length-1];
    if(!first||!last)return;
    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
   };
-  document.addEventListener('keydown',handle);
-  return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',handle);
+  document.addEventListener('keydown',keydown);
+  return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',keydown);
    if(previous instanceof HTMLElement&&document.contains(previous))previous.focus({preventScroll:true});};
  },[mobile,expanded,labsOpen]);
+ // Labs is a lightweight non-modal sidecar on desktop, a focused sheet on mobile.
  useEffect(()=>{
   if(!labsOpen)return;
-  const raf=requestAnimationFrame(()=>labsPanelRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true}));
+  const raf=requestAnimationFrame(()=>searchRef.current?.focus({preventScroll:true}));
+  const beforeOverflow=document.body.style.overflow;
+  if(mobile)document.body.style.overflow='hidden';
   const onKey=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setLabsOpen(false);labsRef.current?.focus();return;}
+   if(e.key==='Escape'){
+    e.preventDefault();e.stopPropagation();
+    setLabsOpen(false);labsRef.current?.focus({preventScroll:true});return;
+   }
    if(e.key==='Tab'&&mobile&&labsPanelRef.current){
-    const buttons=Array.from(labsPanelRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+    const controls=Array.from(labsPanelRef.current.querySelectorAll<HTMLElement>(
+     'button:not(:disabled),input:not(:disabled),[href],[tabindex]:not([tabindex="-1"])'))
      .filter(node=>node.getClientRects().length>0);
-    const first=buttons[0],last=buttons[buttons.length-1];
+    const first=controls[0],last=controls[controls.length-1];
     if(!first||!last)return;
     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
@@ -71,16 +97,38 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   };
   document.addEventListener('keydown',onKey);
   document.addEventListener('pointerdown',outside);
-  return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',onKey);document.removeEventListener('pointerdown',outside);};
+  return()=>{
+   cancelAnimationFrame(raf);document.body.style.overflow=beforeOverflow;
+   document.removeEventListener('keydown',onKey);
+   document.removeEventListener('pointerdown',outside);
+  };
  },[labsOpen,mobile]);
+ const showTip=(label:string,node:HTMLElement)=>{
+  if(mobile||expanded||labsOpen)return;
+  const rect=node.getBoundingClientRect();
+  setTip({label,top:Math.max(69,Math.min(window.innerHeight-52,rect.top+rect.height/2))});
+ };
  const navigate=(target:'footprints'|'projector')=>{
-  setLabsOpen(false);if(mobile)setExpanded(false);
+  setLabsOpen(false);setTip(null);if(mobile)setExpanded(false);
   if(target==='footprints')onFootprints();else onProjection();
  };
- const launch=(fn:()=>void)=>{setLabsOpen(false);if(mobile)setExpanded(false);fn();};
- const visual=(id:LegacyScene,title:string,sub:string,Icon:typeof Type)=>
-  <button type="button" key={id} aria-current={scene===id&&workspace==='studio'?'page':undefined}
-   onClick={()=>launch(()=>onInstrument(id))}><Icon size={16}/><span><b>{title}</b><small>{sub}</small></span></button>;
+ const action:Record<LabsId,()=>void>={
+  liquid:()=>onInstrument('liquid'),echo:()=>onInstrument('echo'),
+  cut:()=>onInstrument('cut'),body:()=>onInstrument('body'),
+  hydra:onHydraLab,sound:onSoundLab,capture:onCaptureLab,archive:onArchive,
+  video:()=>onStageTool('video'),rehearsal:()=>onStageTool('rehearsal'),
+  simulator:()=>onStageTool('simulator')
+ };
+ const launch=(id:LabsId)=>{
+  setActiveLab(id);setLabsOpen(false);setTip(null);
+  if(mobile)setExpanded(false);
+  action[id]();
+ };
+ const toggleLabs=()=>{
+  setLabsQuery('');setTip(null);setLabsOpen(value=>!value);
+ };
+ const filtered=searchLabs(labsQuery);
+ const selectedLab=labsContext?(activeLab??(workspace==='archive'?'archive':scene)):null;
  return <>
   <header className="v3-global-nav v3-primary-nav soma-nav-header soma-primary-header">
    <div className="soma-nav-brand-row">
@@ -88,10 +136,12 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      aria-controls="soma-workspace-rail" aria-expanded={expanded}
      aria-label={expanded?'Ciutkan navigasi':'Buka navigasi SOMA'}
      title={expanded?'Ciutkan navigasi':'Perluas navigasi'}
-     onClick={()=>{setLabsOpen(false);setExpanded(value=>!value);}}>
-     {expanded?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}
+     onClick={()=>{setLabsOpen(false);setTip(null);setExpanded(value=>!value);}}>
+     {expanded?<PanelLeftClose size={17}/>:<PanelLeftOpen size={17}/>}
     </button>
-    <div className="v3-brand"><b>SOMA</b><span> / {workspace==='projection'?'PROJECTOR':workspace==='archive'||scene!=='footprints'?'LABS':'FOOTPRINTS'}</span></div>
+    <div className="v3-brand"><b>SOMA</b>
+     <span> / {workspace==='projection'?'PROJECTOR':labsContext?'LABS':'FOOTPRINTS'}</span>
+    </div>
    </div>
    <div className="v3-global-actions">
     {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
@@ -101,72 +151,100 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      aria-pressed={perform} onClick={onPerform}>
      <Play size={15}/>{perform?'Kembali Edit':'Perform'}</button>}
     <button className="v3-help" type="button" onClick={onHelp} aria-label="Bantuan SOMA">
-     <HelpCircle size={19}/></button>
+     <HelpCircle size={18}/></button>
    </div>
   </header>
-  {mobile&&expanded&&<button className="soma-rail-scrim" type="button"
-   aria-label="Tutup navigasi" onClick={()=>{setLabsOpen(false);setExpanded(false);}}/>}
+  {mobile&&expanded&&!labsOpen&&<button className="soma-rail-scrim" type="button"
+   aria-label="Tutup navigasi" onClick={()=>setExpanded(false)}/>}
   <nav ref={railRef} className="soma-app-sidebar soma-primary-sidebar" id="soma-workspace-rail"
-   aria-label="Sistem SOMA" data-expanded={expanded} data-mobile={mobile}>
+   aria-label="Sistem SOMA" data-expanded={expanded} data-mobile={mobile}
+   data-labs-open={labsOpen}>
    <div className="soma-rail-scroll soma-primary-nav-list">
     <button type="button" className="soma-rail-item soma-primary-destination"
      aria-current={workspace==='studio'&&scene==='footprints'?'page':undefined}
-     title="Footprints · Kamera, tracking dan komposisi" onClick={()=>navigate('footprints')}>
-     <Footprints size={21}/><span className="soma-rail-item-copy"><b>Footprints</b>
-      <small>Gerak, jejak & arsip</small></span>
+     aria-label="Footprints" title={expanded?'Footprints · Kamera, tracking dan komposisi':undefined}
+     onMouseEnter={e=>showTip('Footprints',e.currentTarget)}
+     onMouseLeave={()=>setTip(null)}
+     onFocus={e=>showTip('Footprints',e.currentTarget)}
+     onBlur={()=>setTip(null)}
+     onClick={()=>navigate('footprints')}>
+     <Footprints size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>Footprints</b><small>Gerak & komposisi</small></span>
     </button>
     <button type="button" className="soma-rail-item soma-primary-destination"
      aria-current={workspace==='projection'?'page':undefined}
-     title="Projector · Mapping dan output fisik" onClick={()=>navigate('projector')}>
-     <Monitor size={21}/><span className="soma-rail-item-copy"><b>Projector</b>
-      <small>Mapping & output</small></span>
+     aria-label="Projector" title={expanded?'Projector · Mapping dan output fisik':undefined}
+     onMouseEnter={e=>showTip('Projector',e.currentTarget)}
+     onMouseLeave={()=>setTip(null)}
+     onFocus={e=>showTip('Projector',e.currentTarget)}
+     onBlur={()=>setTip(null)}
+     onClick={()=>navigate('projector')}>
+     <Monitor size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>Projector</b><small>Output & kalibrasi</small></span>
     </button>
    </div>
    <div className="soma-primary-labs-launch">
     <button ref={labsRef} type="button" className="soma-rail-item soma-labs-trigger"
-     title="SOMA Labs · Eksperimen & fitur lama"
+     aria-label="SOMA Labs" title={expanded?'Eksperimen dan instrumen lama':undefined}
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
-     aria-current={workspace==='archive'||(workspace==='studio'&&scene!=='footprints')?'page':undefined}
-     onClick={()=>setLabsOpen(v=>!v)}>
-     <FlaskConical size={20}/><span className="soma-rail-item-copy">
-      <b>SOMA Labs</b><small>Eksperimen & legacy</small></span>
+     aria-current={labsContext?'page':undefined}
+     onMouseEnter={e=>showTip('SOMA Labs',e.currentTarget)}
+     onMouseLeave={()=>setTip(null)}
+     onFocus={e=>showTip('SOMA Labs',e.currentTarget)}
+     onBlur={()=>setTip(null)}
+     onClick={toggleLabs}>
+     <FlaskConical size={19} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>SOMA Labs</b><small>Eksperimen</small></span>
+     {expanded&&<ChevronRight className="soma-labs-launch-chevron" size={15} aria-hidden="true"/>}
     </button>
    </div>
-   <div className="soma-primary-nav-note"><span aria-hidden="true">●</span>
-    <span className="soma-rail-item-copy">Output memerlukan QA</span>
-   </div>
   </nav>
+  {tip&&<div className="soma-rail-tooltip" role="tooltip" style={{top:tip.top}}>
+   {tip.label}
+  </div>}
+  {labsOpen&&mobile&&<button type="button" className="soma-labs-backdrop"
+   aria-label="Tutup SOMA Labs" onClick={()=>{setLabsOpen(false);labsRef.current?.focus({preventScroll:true});}}/>}
   {labsOpen&&<section id="soma-labs-panel" ref={labsPanelRef} role="dialog"
-   aria-modal="false" aria-labelledby="soma-labs-title"
+   aria-modal={mobile?true:undefined} aria-labelledby="soma-labs-title"
    className="soma-labs-panel" data-expanded={expanded}>
-   <header><div><small>SECONDARY WORKSPACE</small><h2 id="soma-labs-title">SOMA Labs</h2>
-    <p>Eksperimen dan instrumen lama tetap tersedia. Output panggung tidak otomatis aktif.</p></div>
-    <button type="button" onClick={()=>{setLabsOpen(false);labsRef.current?.focus();}}
-     aria-label="Tutup SOMA Labs" title="Tutup (Esc)"><X size={16}/></button>
+   <header className="soma-labs-head">
+    <div><small>EXPERIMENTAL WORKSPACE</small><h2 id="soma-labs-title">SOMA Labs</h2>
+     <p>Instrumen, riset gerak, dan percobaan visual tersimpan di sini.</p></div>
+    <button type="button" onClick={()=>{setLabsOpen(false);labsRef.current?.focus({preventScroll:true});}}
+     aria-label="Tutup SOMA Labs" title="Tutup (Esc)"><X size={17}/></button>
    </header>
-   <div className="soma-labs-scroll">
-    <h3>VISUAL EXPERIMENTS <span>LEGACY</span></h3>
-    {visual('liquid','Teks Cair','Huruf & gerak tangan',Type)}
-    {visual('echo','Jejak Berulang','Lapisan gambar yang kembali',Layers3)}
-    {visual('cut','Potongan','Pecahan ritmis',Sparkles)}
-    {visual('body','Siluet × Teks','Tubuh & tipografi',ScanFace)}
-    <button type="button" onClick={()=>launch(onHydraLab)}>
-     <Sparkles size={16}/><span><b>Hydra / Visual Generatif</b><small>Material, feedback, teks dan visual</small></span></button>
-    <h3>MOTION, SOUND & CAPTURE <span>LEGACY</span></h3>
-    <button type="button" onClick={()=>launch(onSoundLab)}>
-     <AudioLines size={16}/><span><b>Motion & Sound</b><small>Sintesis suara, mapping dan instrumen gerak</small></span></button>
-    <button type="button" onClick={()=>launch(onCaptureLab)}>
-     <Camera size={16}/><span><b>Capture Experiments</b><small>Foto dan rekaman gestur</small></span></button>
-    <button type="button" onClick={()=>launch(onArchive)}>
-     <BookOpen size={16}/><span><b>Archive Studio</b><small>Arsip performatif lama</small></span></button>
-    <h3>GAIT EXPERIMENTS <span>EXPERIMENTAL</span></h3>
-    <button type="button" onClick={()=>launch(()=>onStageTool('video'))}>
-     <Film size={16}/><span><b>Video Motion Lab</b><small>MP4 → Pose/Gait</small></span></button>
-    <button type="button" onClick={()=>launch(()=>onStageTool('rehearsal'))}>
-     <Activity size={16}/><span><b>Rehearsal Lab</b><small>Bandingkan video dan kamera</small></span></button>
-    <button type="button" onClick={()=>launch(()=>onStageTool('simulator'))}>
-     <Play size={16}/><span><b>Simulasi 3D</b><small>Latihan gerak kaki virtual</small></span></button>
+   <div className="soma-labs-search">
+    <Search size={17} aria-hidden="true"/>
+    <input ref={searchRef} type="search" value={labsQuery} maxLength={90}
+     onChange={e=>setLabsQuery(e.target.value)} placeholder="Cari eksperimen..."
+     aria-label="Cari modul SOMA Labs"/>
+    <span>{filtered.reduce((sum,group)=>sum+group.items.length,0)}/{LABS_ITEM_COUNT}</span>
    </div>
+   <div className="soma-labs-scroll">
+    {filtered.length===0&&<div className="soma-labs-empty">
+     <Search size={21} aria-hidden="true"/>
+     <strong>Tidak ada modul yang cocok</strong>
+     <p>Gunakan kata kunci lain, seperti video, suara, atau siluet.</p>
+     <button type="button" onClick={()=>{setLabsQuery('');searchRef.current?.focus();}}>Lihat semua</button>
+    </div>}
+    {filtered.map(group=><div className="soma-labs-group" key={group.id}>
+     <div className="soma-labs-group-head"><h3>{group.label}</h3>
+      <small>{group.items.length} modul</small></div>
+     {group.items.map(item=>{
+      const Icon=labsIcons[item.id],isActive=item.id===selectedLab;
+      return <button type="button" key={item.id} className="soma-labs-entry"
+       aria-current={isActive?'page':undefined}
+       onClick={()=>launch(item.id)}>
+       <span className="soma-labs-entry-icon"><Icon size={18} aria-hidden="true"/></span>
+       <span className="soma-labs-entry-copy"><b>{item.title}</b><small>{item.detail}</small></span>
+       <span className="soma-labs-entry-chevron"><ChevronRight size={15} aria-hidden="true"/></span>
+      </button>;
+     })}
+    </div>)}
+   </div>
+   <footer className="soma-labs-footer">
+    <span>Eksperimen terpisah dari output fisik.</span>
+   </footer>
   </section>}
  </>;
 }
