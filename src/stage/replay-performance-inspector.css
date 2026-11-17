@@ -17,3 +17,7 @@
  border:1px solid #57755e;border-radius:6px;padding:6px}
 .vml-perf-body>small{font-size:10px;line-height:1.5;color:#aebfaa}
 @media(max-width:650px){.vml-perf-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.vml-perf-fallback{margin:0;padding:9px 10px;border-radius:5px;
+ border:1px dashed #bb8a57;background:#33281b;color:#f1d9b7;
+ font-size:11px;line-height:1.5;overflow-wrap:anywhere}
