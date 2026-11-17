@@ -13,7 +13,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
  onBlackout,held,onHold,onResume,videoRecording,canRecordVideo,onRecordVideo,
  units,contacts,performerCount}:Props){
  const cue=operatorCueAt(index);
- const warning=units.filter(u=>u.level==='warn').map(u=>u.title+': '+u.detail);
+ const warning=units.filter(u=>['camera','identity','calibration'].includes(u.id)&&u.level!=='ok')
+  .map(u=>u.title+': '+u.detail);
  return <>
   <div className="fp-operator-heading">
    <div>
@@ -27,7 +28,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
    <span>{performerCount} performer</span>
    <span>{contacts} kontak</span>
    {warning.length>0?<strong>{warning[0]}{warning.length>1?' · +'+(warning.length-1)+' peringatan':''}</strong>
-    :<strong>Indikator software stabil</strong>}
+    :<strong>Tracking utama siap menurut telemetry software</strong>}
   </div>
   <nav className="fp-operator-cues" aria-label="Cue monitor operator">
    {OPERATOR_CUES.map((q,i)=><button key={q.id} type="button"
