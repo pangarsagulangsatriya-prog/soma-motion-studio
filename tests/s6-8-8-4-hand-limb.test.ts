@@ -80,7 +80,7 @@ test('S6.8.8.4 rejected low-visibility pose wrist does not steal a detected hand
  const result=matchHandsToActors([
   {rawIndex:0,landmarks:hand(.23,.4)}
  ],slots);
- assert.equal(result.matches.length,1===0?1:0); // left hand does not jump to right wrist
+ assert.equal(result.matches.length,0); // left hand does not jump to right wrist
 });
 
 test('S6.8.8.4 hand finger 21-joint angles, pinch and invalid coordinates are explicit',()=>{
