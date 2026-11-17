@@ -15,6 +15,7 @@ import {usePhotoArchive} from './photos/usePhotoArchive';
 import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
+import type {StageNavigationRequest,StageNavigationTool} from './studio/v3/stageNavigation.ts';
 import type {SceneId} from './studio/v3/ScenePicker';
 import {FootprintsStageWorkspace} from './studio/v3/FootprintsStageWorkspace';
 import {defaultFootprintsWorkspace} from './studio/v3/footprintsUX';
@@ -58,6 +59,7 @@ export default function App(){
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
  const [footprintsOperator,setFootprintsOperator]=useState(false);
+ const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const [simulatorApproval,setSimulatorApproval]=useState<string|null>(null);
  const [simulatorTestPattern,setSimulatorTestPattern]=useState(false);
@@ -269,7 +271,7 @@ export default function App(){
  const archive=useArchive({pointerStart:e=>{pointer(e);mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);},pointerMove:pointer,pointerEnd:()=>{mouse.current.down=false;},active:archiveActive,engine,frameRef,videoRef:video,settings,cameraOn,cameraBusy,cameraStatus:cameraError||status,audioOn,muted,recording,recordSeconds,chooseInput,startCamera,stopCamera,enableAudio,panic,toggleRecording,openSessions:()=>{archive.setClean(false);setModal('sessions');},setMaster:master=>update({master}),exit:()=>{archive.hold();setArchiveActive(false);archive.setClean(false);}});
  return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
-   {!archiveActive&&!projectionActive&&<GlobalNav workspace="studio" scene={currentScene}
+   {!clean&&!footprintsOperator&&<GlobalNav workspace={archiveActive?'archive':projectionActive?'projection':'studio'} scene={currentScene}
     perform={footprintsActive?footprintsOperator:clean}
     onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
@@ -280,6 +282,13 @@ export default function App(){
      setFootprintsOperator(false);setModal(null);setClean(false);setArchiveActive(true);}}
     onProjection={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
+    onStageTool={(tool:StageNavigationTool)=>{
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene('footprints');
+     setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
+    }}
+    selectedTool={stageNavigation?.tool??'live'}
     onPreset={()=>setModal('presets')}
     onPerform={()=>{
      if(footprintsActive){
@@ -291,6 +300,7 @@ export default function App(){
    <main>
 
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
+     navigationRequest={stageNavigation}
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
