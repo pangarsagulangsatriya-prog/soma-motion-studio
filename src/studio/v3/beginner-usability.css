@@ -1,0 +1,50 @@
+/* S6.8.6 — optional moderated study; never interrupt the stage or tracking. */
+.fp-usability[hidden]{display:none!important}
+.fp-stage-workspace .fp-usability-launch{display:inline-flex;align-items:center;gap:6px;
+ background:#21352a;color:#d7e6d1;border:1px solid #516c56;border-radius:7px;
+ padding:7px 9px;min-height:33px;cursor:pointer;font:600 11px inherit}
+.fp-stage-workspace .fp-usability-launch[aria-expanded=true]{border-color:#c6dfad;background:#304a37}
+.fp-usability{display:flex;flex-direction:column;gap:12px;margin:9px 0;padding:14px;
+ background:#142019;color:#e6ede0;border:1px solid #6c826c;border-radius:10px}
+.fp-usability-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.fp-usability-head small{font-size:10px;color:#a9c1a7;letter-spacing:.08em;font-weight:700}
+.fp-usability-head h2{margin:2px 0;font-size:18px}
+.fp-usability-head p,.fp-usability-intro p,.fp-usability-task p,.fp-usability-disclaimer{
+ margin:2px 0;line-height:1.5;color:#bfcebe;font-size:12px}
+.fp-usability-close{padding:7px!important;min-width:34px;justify-content:center}
+.fp-usability-readout{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;
+ padding:9px 11px;border-radius:7px;background:#203027;font-size:11px;color:#c2d3bf}
+.fp-usability-readout b{color:#f0f5e7}
+.fp-usability .fp-usability-primary{background:#c7dfb1!important;color:#1e2c20!important;font-weight:700!important}
+.fp-usability button{border:1px solid #526b58;background:#263d2d;color:#eaf1e4;
+ padding:9px 11px;border-radius:7px;min-height:35px;font:inherit;cursor:pointer;
+ display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.fp-usability button:focus-visible,.fp-usability textarea:focus-visible{outline:2px solid #d3f2a5;outline-offset:2px}
+.fp-usability-intro{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.fp-usability-intro p{max-width:670px}
+.fp-usability-steps{display:flex;gap:5px}
+.fp-usability-steps span{display:grid;place-items:center;width:30px;height:30px;
+ background:#293e31;border:1px solid #5e7864;border-radius:50%;font-size:12px}
+.fp-usability-steps span[data-state=done]{background:#536e55;color:white}
+.fp-usability-steps span[data-state=current]{background:#c4deb2;color:#1d2e24}
+.fp-usability-task{display:flex;flex-direction:column;gap:8px;border:1px solid #526c5b;
+ border-radius:8px;padding:12px;background:#1a2a20}
+.fp-usability-task-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fp-usability-task-title small{font-size:10px;color:#aec9ae}
+.fp-usability-task-title h3{font-size:15px;margin:0}
+.fp-usability-task>small{font-size:11px;color:#cedecb}
+.fp-usability-help,.fp-usability-note{display:flex;gap:8px;font-size:12px}
+.fp-usability-help{flex-direction:row;align-items:center}
+.fp-usability-help input{width:17px;height:17px}
+.fp-usability-note{flex-direction:column}
+.fp-usability-note textarea{min-width:0;max-width:100%;box-sizing:border-box;background:#0f1913;
+ border:1px solid #657862;border-radius:6px;color:#e7f2df;padding:9px;font:inherit;resize:vertical}
+.fp-usability-actions,.fp-usability-end{display:flex;gap:8px;flex-wrap:wrap}
+.fp-usability-summary{display:flex;gap:8px 17px;flex-wrap:wrap;border-top:1px solid #526a53;
+ padding-top:10px;font-size:11px;color:#c5d6c0}
+.fp-usability-summary b{color:#f1f5e9}
+.fp-usability-finished{padding:10px;border:1px solid #67876e;border-radius:6px;
+ background:#243e2e;font-size:12px;margin:0}
+.fp-usability-disclaimer{font-size:10px!important}
+@media(max-width:640px){.fp-usability{margin:7px 0;padding:10px}
+ .fp-usability-intro{flex-direction:column;align-items:flex-start}}
