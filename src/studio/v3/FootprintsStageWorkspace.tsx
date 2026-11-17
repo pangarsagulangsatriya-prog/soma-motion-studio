@@ -8,7 +8,8 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Activity,Camera,CameraOff,ChevronDown,ChevronRight,Film,FlaskConical,Play,Settings2,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
+import {Activity,Camera,CameraOff,ChevronRight,Film,Play,ShieldAlert,SlidersHorizontal,Video} from 'lucide-react';
+import type {StageNavigationRequest} from './stageNavigation.ts';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -28,6 +29,7 @@ import './footprints-stage-workspace.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
+ navigationRequest?:StageNavigationRequest|null;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
@@ -46,7 +48,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ navigationRequest,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  phoneActive,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
  onPhoneStream,onPhoneDisconnect,onEnterOperator,
@@ -58,30 +60,7 @@ export function FootprintsStageWorkspace({
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
- const setupTriggerRef=useRef<HTMLButtonElement>(null);
- const labsMenuRef=useRef<HTMLDetailsElement>(null);
- const toolsMenuRef=useRef<HTMLDetailsElement>(null);
- const closeToolMenus=()=>{
-  if(labsMenuRef.current)labsMenuRef.current.open=false;
-  if(toolsMenuRef.current)toolsMenuRef.current.open=false;
- };
- useEffect(()=>{
-  const outside=(event:PointerEvent)=>{
-   const target=event.target;
-   if(!(target instanceof Node))return;
-   if(!labsMenuRef.current?.contains(target)&&!toolsMenuRef.current?.contains(target))
-    closeToolMenus();
-  };
-  const keys=(event:KeyboardEvent)=>{
-   if(event.key==='Escape')closeToolMenus();
-  };
-  document.addEventListener('pointerdown',outside);
-  document.addEventListener('keydown',keys);
-  return()=>{
-   document.removeEventListener('pointerdown',outside);
-   document.removeEventListener('keydown',keys);
-  };
- },[]);
+ const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
  const [rehearsalOpen,setRehearsalOpen]=useState(false);
@@ -115,7 +94,7 @@ export function FootprintsStageWorkspace({
   if(!operatorMode)return;
   // Archive unmounts when entering Perform; its dual windows are also
   // disarmed by the App-level global Blackout before the mode is changed.
-  setSetupOpen(false);closeToolMenus();
+  setSetupOpen(false);
   setView('stage');setOperatorCue(0);
  },[operatorMode]);
  const nextCue=()=>setOperatorCue(index=>moveOperatorCue(index,1));
@@ -247,37 +226,31 @@ export function FootprintsStageWorkspace({
  });
  const closeSetup=()=>{
   setSetupOpen(false);
-  window.requestAnimationFrame(()=>setupTriggerRef.current?.focus({preventScroll:true}));
+  window.requestAnimationFrame(()=>{
+   document.querySelector<HTMLButtonElement>('.soma-rail-item[data-soma-tool="setup"]')
+    ?.focus({preventScroll:true});
+  });
  };
- const toggleSetup=()=>{
-  closeToolMenus();
-  if(setupOpen){closeSetup();return;}
+ useEffect(()=>{
+  const request=navigationRequest;
+  if(!request||lastNavRequest.current===request.id)return;
+  lastNavRequest.current=request.id;
+  setSetupOpen(false);setVideoLabOpen(false);setRehearsalOpen(false);
+  setComposerOpen(false);
   onBlackout();
-  setVideoLabOpen(false);setComposerOpen(false);setRehearsalOpen(false);
-  setView('stage');setSetupOpen(true);
- };
- const changeView=(next:WorkspaceView)=>{
-  closeToolMenus();setSetupOpen(false);
-  setVideoLabOpen(false);setRehearsalOpen(false);
-  if(next==='archive'){onBlackout();setComposerOpen(false);showArchive();}
-  else{onBlackout();setView('stage');}
- };
+  switch(request.tool){
+   case 'live':setView('stage');setInspector('tracking');break;
+   case 'setup':setView('stage');setSetupOpen(true);break;
+   case 'archival-mapping':showArchive();break;
+   case 'composer':setView('stage');setComposerOpen(true);break;
+   case 'video':setView('stage');setVideoLabOpen(true);break;
+   case 'rehearsal':setView('stage');setRehearsalOpen(true);break;
+   case 'simulator':setView('stage');onOpenSimulator();break;
+   case 'calibration':setView('stage');onOpenLiveFloor();break;
+  }
+ },[navigationRequest]);
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} aria-label="Workspace utama SOMA Footprints">
-  <GuidedStageSetup open={setupOpen&&!operatorMode} onClose={closeSetup}
-   session={stageSession} frameRef={frameRef} videoRef={videoRef}
-   bodyPreviewRef={bodyCanvas} floorPreviewRef={floorCanvas}
-   floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
-   performers={performerCount} onStartLaptop={onStartBody}
-   onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
-   onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
-   onArchive={()=>{onBlackout();showArchive();setSetupOpen(false);}}
-   onComposer={()=>{onBlackout();setSetupOpen(false);setVideoLabOpen(false);setView('stage');setComposerOpen(true);}}
-   onBlackout={onBlackout}
-   onVideoLab={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(true);}}
-   onPerform={onEnterOperator}
-   cameraOn={cameraOn} calibrated={floorStatus.calibrated}
-   confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
@@ -287,49 +260,6 @@ export function FootprintsStageWorkspace({
     onRecordVideo={onRecordVideo} units={units}
     contacts={floorStatus.contacts} performerCount={performerCount}/>
    :<UnifiedStageStatusStrip units={units} legacy={legacy}/>}
-  {!operatorMode&&<div className="fp-stage-toolbar" role="group" aria-label="Kontrol workspace SOMA">
-   <div className="fp-stage-view-switch" role="group" aria-label="Tampilan panggung">
-    <button type="button" aria-pressed={view==='stage'} onClick={()=>changeView('stage')}>
-     <Waypoints size={15}/> Live Stage</button>
-    <button type="button" aria-pressed={view==='archive'} onClick={()=>changeView('archive')}>
-     <Film size={15}/> Archive</button>
-   </div>
-   <div className="fp-stage-top-actions">
-    <button ref={setupTriggerRef} type="button" className="fp-stage-setup-action"
-     aria-expanded={setupOpen} aria-controls="soma-guide-drawer"
-     onClick={toggleSetup} title={setupOpen?'Tutup panel setup':'Buka setup kamera dan kalibrasi'}>
-     <SlidersHorizontal size={15}/> Setup <span className="fp-setup-hotkey">3 tahap</span>
-    </button>
-    <details ref={labsMenuRef} className="fp-stage-tool-menu">
-     <summary aria-label="Buka menu eksperimen SOMA"><FlaskConical size={15}/> Lab <ChevronDown size={14}/></summary>
-     <div className="fp-stage-menu-popover" role="group" aria-label="Eksperimen gerak">
-      <button type="button" aria-pressed={videoLabOpen} onClick={()=>{
-       closeToolMenus();onBlackout();setSetupOpen(false);setComposerOpen(false);
-       setRehearsalOpen(false);setView('stage');setVideoLabOpen(v=>!v);
-      }}><Film size={16}/> <span><b>Video Motion Lab</b><small>Analisis gerak MP4</small></span></button>
-      <button type="button" aria-pressed={rehearsalOpen} onClick={()=>{
-       closeToolMenus();onBlackout();setSetupOpen(false);setComposerOpen(false);
-       setVideoLabOpen(false);setView('stage');setRehearsalOpen(v=>!v);
-      }}><Activity size={16}/> <span><b>Rehearsal Lab</b><small>Bandingkan rekaman dan live</small></span></button>
-      <button type="button" onClick={()=>{closeToolMenus();setSetupOpen(false);onOpenSimulator();}}>
-       <Play size={16}/> <span><b>Simulasi 3D</b><small>Eksperimen tanpa kamera</small></span>
-      </button>
-     </div>
-    </details>
-    <details ref={toolsMenuRef} className="fp-stage-tool-menu">
-     <summary aria-label="Buka menu perangkat dan QA"><Settings2 size={15}/> Tools <ChevronDown size={14}/></summary>
-     <div className="fp-stage-menu-popover" role="group" aria-label="Perangkat panggung">
-      <button type="button" onClick={()=>{closeToolMenus();setSetupOpen(false);onOpenLiveFloor();}}>
-       <SlidersHorizontal size={16}/> <span><b>Kalibrasi & QA</b><small>Kamera, lantai dan output</small></span>
-      </button>
-      <button type="button" aria-pressed={composerOpen} onClick={()=>{
-       closeToolMenus();onBlackout();setSetupOpen(false);setVideoLabOpen(false);
-       setRehearsalOpen(false);setView('stage');setComposerOpen(v=>!v);
-      }}><Settings2 size={16}/> <span><b>Surface Composer</b><small>Media, mask dan efek</small></span></button>
-     </div>
-    </details>
-   </div>
-  </div>}
   {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab
    onClose={()=>{onBlackout();setVideoLabOpen(false);}}
    onUseReference={report=>{
@@ -418,7 +348,23 @@ export function FootprintsStageWorkspace({
      <button type="button" onClick={onOpenLiveFloor}>Atur tracking <ChevronRight size={14}/></button>
     </div>}
    </div>
-   {!operatorMode&&<aside className="fp-stage-inspector" aria-label="Inspector kontekstual Footprints">
+   {!operatorMode&&<aside className="fp-stage-inspector" data-mode={setupOpen?'setup':'inspector'}
+   aria-label={setupOpen?'Guided Setup — Inspector kanan':'Inspector kontekstual Footprints'}>
+   {setupOpen&&<GuidedStageSetup open={true} onClose={closeSetup}
+   session={stageSession} frameRef={frameRef} videoRef={videoRef}
+   bodyPreviewRef={bodyCanvas} floorPreviewRef={floorCanvas}
+   floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
+   performers={performerCount} onStartLaptop={onStartBody}
+   onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
+   onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
+   onArchive={()=>{onBlackout();showArchive();setSetupOpen(false);}}
+   onComposer={()=>{onBlackout();setSetupOpen(false);setVideoLabOpen(false);setView('stage');setComposerOpen(true);}}
+   onBlackout={onBlackout}
+   onVideoLab={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(true);}}
+   onPerform={onEnterOperator}
+   cameraOn={cameraOn} calibrated={floorStatus.calibrated}
+   confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
+
     <div className="fp-stage-inspector-title"><span>CONTEXT INSPECTOR</span><h2>{
      inspector==='tracking'?'Tracking':inspector==='visual'?'Footprint Visual':
      inspector==='archive'?'Archival Mapping':inspector==='projection'?'Projection Output':'QA & Engineering'}</h2></div>
