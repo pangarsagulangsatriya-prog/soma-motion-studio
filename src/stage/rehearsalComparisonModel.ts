@@ -118,7 +118,7 @@ export function contactMetrics(contacts:TimedContact[],startMs:number,windowMs:n
  const medianIntervalMs=positive.length?(positive.length%2?positive[mid]:(positive[mid-1]+positive[mid])/2):null;
  const pauses=intervalsMs.filter(x=>x>=2000);
  return {
-  count:times.length,cadence:safeWindow>=1000?times.length/(safeWindow/60000):null,
+  count:times.length,cadence:safeWindow>=1000&&times.length>=2?times.length/(safeWindow/60000):null,
   medianIntervalMs,pauseCount:pauses.length,
   pauseDurationMs:pauses.reduce((sum,n)=>sum+n,0),
   left:sorted.filter(x=>x.foot==='left').length,
