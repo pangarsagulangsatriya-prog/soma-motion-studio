@@ -2,6 +2,7 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {floorRasterPoint} from '../../footprints/simulator/floorCanvas.ts';
 import {drawPuppetScene} from '../../footprints/simulator/draw3d.ts';
+import {drawSkeletonBodies,replaySkeletonsCurrent} from '../../stage/fullBodySkeleton.ts';
 
 function context(canvas:HTMLCanvasElement,w:number,h:number){
  if(canvas.width!==w)canvas.width=w;
@@ -12,7 +13,7 @@ function context(canvas:HTMLCanvasElement,w:number,h:number){
  ctx.fillStyle='#040806';ctx.fillRect(0,0,w,h);
  return ctx;
 }
-export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame){
+export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame,skeleton=true){
  const ctx=context(canvas,768,432);if(!ctx)return;
  if(frame.kind==='video'){
   const v=frame.video;
@@ -20,12 +21,16 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   const scale=Math.min(768/v.videoWidth,432/v.videoHeight);
   const w=scale*v.videoWidth,h=scale*v.videoHeight;
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
+  if(skeleton&&frame.snapshot){
+   drawSkeletonBodies(ctx,replaySkeletonsCurrent(frame.snapshot,frame.timeMs),
+    {x:(768-w)/2,y:(432-h)/2,width:w,height:h});
+  }
   return;
  }
  drawPuppetScene(ctx,768,432,frame.session.floor,frame.orbit,frame.performers,
   frame.performers.length,frame.session.events,null,true);
 }
-export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame){
+export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,skeleton=true){
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
  if(frame.kind==='simulator'){
   // BODY preview zooms toward the virtual legs; INPUT retains the full stage view.
@@ -36,6 +41,11 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  }
  const snapshot=frame.snapshot;
  if(!snapshot||!frame.ready)return;
+ if(skeleton){
+  drawSkeletonBodies(ctx,replaySkeletonsCurrent(snapshot,frame.timeMs),
+   {x:0,y:0,width:w,height:h});
+  return;
+ }
  for(const person of snapshot.people){
   const points=person.landmarks;
   if(points.length<33)continue;
