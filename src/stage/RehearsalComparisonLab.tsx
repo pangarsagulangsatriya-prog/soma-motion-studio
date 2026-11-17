@@ -109,3 +109,95 @@ export function RehearsalComparisonLab({
  const refPath=selected?referenceFootPath(selected.events,selected.startMs,selected.startMs+windowMs,person):[];
  const livePath=full?normalizedLivePath(capture.events,capture.floor,person):[];
  const elapsed=run.current?Math.max(0,Math.min(windowMs,performance.now()-run.current.start)):0;
+
+ const exportResult=()=>{
+  if(!reference||!selected||!capture||!full||!referenceMetrics||!liveMetrics)return;
+  const data={
+   schema:'soma.rehearsal-comparison',version:1,exportedAt:new Date().toISOString(),
+   safety:{physicalProjectionAuthorized:false,referenceBasis:'video-2d-estimate',
+    liveBasis:'calibrated-estimate',spatialOverlayAllowed:false,slidePivotDirectlyComparable:false},
+   reference:{filename:reference.name,segment,startMs:selected.startMs,
+    durationMs:windowMs,performer:person,warnings:reference.warnings},
+   live:{startMs:capture.start,durationMs:capture.duration,
+    performers:capture.performers,status:capture.status,floor:capture.floor,
+    events:capture.events.map(e=>({...e,elapsedMs:e.timestampMs-capture.start}))},
+   summary:{reference:referenceMetrics,live:liveMetrics,
+    differenceContact:liveMetrics.count-referenceMetrics.count,
+    differenceCadence:liveMetrics.cadence!==null&&referenceMetrics.cadence!==null?
+     liveMetrics.cadence-referenceMetrics.cadence:null},
+   note:'Temporal comparison only. Independent video image coordinates and estimated physical floor positions must not be overlaid.'
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='SOMA-REHEARSAL-COMPARISON.json';link.click();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1500);
+  setMessage('Laporan perbandingan berhasil diekspor.');
+ };
+ return <section className="rcl-root" aria-label="S6.5.6 Rehearsal Comparison Lab">
+  <header className="rcl-heading">
+   <div><small>SOMA / S6.5.6 · REHEARSAL</small>
+    <h2><Activity size={21}/> Rehearsal Comparison Lab</h2>
+    <p>Bandingkan ritme pijakan MP4 dengan Footprints kamera, dengan data dan lintasan terpisah.</p></div>
+   <button type="button" onClick={()=>{if(recording)finish('interrupted','Lab ditutup.',performance.now());onClose();}}>
+    <X size={15}/> Tutup</button>
+  </header>
+  <div className="rcl-top">
+   <section className="rcl-pane"><h3>01 · Referensi MP4</h3>
+    <button type="button" disabled={recording} onClick={()=>picker.current?.click()}>
+     <UploadCloud size={15}/> Impor JSON QA</button>
+    <input hidden ref={picker} type="file" accept=".json,application/json" onChange={upload}/>
+    {reference?<><p>{reference.name}</p>
+     <label>Segmen referensi <select disabled={recording} value={segment}
+      onChange={e=>{setSegment(Number(e.target.value));setCapture(null);}}>
+      {reference.segments.map(s=><option key={s.segment} value={s.segment}>
+       #{s.segment} · {s.firstAtMs===null||s.lastAtMs===null?'belum ada waktu':
+        ((s.lastAtMs-s.firstAtMs)/1000).toFixed(1)+' detik'} · {s.eventCount} event
+      </option>)}
+     </select></label>
+     {reference.warnings.map((w,i)=><p key={i} className="rcl-warning">{w}</p>)}
+    </>:<p>Ekspor JSON QA dari Video Motion Lab atau tekan “Kirim ke Rehearsal Lab” pada video yang sudah dianalisis.</p>}
+   </section>
+   <section className="rcl-pane"><h3>02 · Kamera langsung</h3>
+    <p className={readiness.ready?'rcl-ready':'rcl-warning'}>
+     {readiness.ready?'READY · ':'HOLD · '}{readiness.reason}</p>
+    {!cameraOn&&<button type="button" onClick={onStartCamera}>Aktifkan kamera Body</button>}
+    {!tracker.isConfirmed&&<button type="button" onClick={onCalibrate}>Kalibrasi lantai</button>}
+    <p>{performers===2?'2 performer · A/B':'1 performer · A'} · {tracker.status.contacts} contact historis (dikecualikan)</p>
+   </section>
+  </div>
+  <div className="rcl-config">
+   <label>Performer <select disabled={recording} value={person}
+    onChange={e=>{setPerson(e.target.value as ReplayPerformer);setCapture(null);}}>
+    <option value="A">BODY A</option><option value="B" disabled={performers===1}>BODY B</option>
+   </select></label>
+   <label>Durasi maksimal <select value={seconds} disabled={recording}
+    onChange={e=>{setSeconds(Number(e.target.value));setCapture(null);}}>
+    {windows.map(n=><option key={n} value={n}>{n} detik</option>)}
+   </select></label>
+   <div><small>Jendela sama</small><strong>{windowMs>=3000?(windowMs/1000).toFixed(1)+' detik':'Segmen terlalu pendek'}</strong></div>
+   {!recording?<button type="button" className="rcl-primary"
+     disabled={!readiness.ready||windowMs<3000||!reference} onClick={start}>
+     <Play size={15}/> Rekam latihan</button>:
+    <button type="button" onClick={()=>finish('interrupted','Dihentikan manual.',performance.now())}>
+     <Square size={15}/> Hentikan</button>}
+  </div>
+  {recording&&<p className="rcl-status" role="status">Merekam {Math.round(elapsed/1000)} / {(windowMs/1000).toFixed(1)} detik · {capturedCount} event baru</p>}
+  {capture&&<p className={full?'rcl-ready':'rcl-warning'}>
+   {capture.reason} · {capture.events.length} event.
+   {!full&&' Hasil parsial tidak dipakai untuk menghitung selisih.'}</p>}
+  <p className="rcl-status" role="status" aria-live="polite">{message}</p>
+  <section className="rcl-results">
+   <div className="rcl-result-head">
+    <div><h3>Rhythm Comparison — BODY {person}</h3>
+     <p>Waktu 0 sejajar pada awal jendela masing-masing sesi.</p></div>
+    <button type="button" disabled={!full} onClick={exportResult}>
+     <Download size={15}/> Ekspor JSON</button>
+   </div>
+   <div className="rcl-side">
+    <div><strong>MP4 · koordinat video</strong>
+     <RehearsalTimeline marks={refMarks} title="Timeline pijakan video"/>
+     <RehearsalPath points={refPath} title="Lintasan telapak dari koordinat gambar"/></div>
+    <div><strong>Live · lantai terkalibrasi</strong>
+     <RehearsalTimeline marks={liveMarks} title="Timeline pijakan kamera"/>
+     <RehearsalPath points={livePath} title="Lintasan estimasi lantai fisik"/></div>
+   </div>
