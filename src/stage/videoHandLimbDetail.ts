@@ -196,6 +196,9 @@ export class HandLimbDetailAnalyzer{
    const limbs=LIMBS.map(spec=>getLimb(spec,joints,pose?.angles??[]));
    const hands=(['left','right'] as const).map(side=>{
     const key=id+':'+side;
+    // An uncertain/lost actor immediately invalidates any cached hand.
+    // Recent-only samples must never reappear after an identity gap.
+    if(pose?.presence!=='visible')this.lastHands.delete(key);
     const current=matched.matches.find(h=>h.actor===id&&h.side===side);
     const uncertain=matched.ambiguous.some(slot=>slot.actor===id&&slot.side===side);
     if(scan){
