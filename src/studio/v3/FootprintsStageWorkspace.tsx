@@ -3,6 +3,7 @@ import {STAGE_INSPECTOR_TABS,moveOperatorCue,
  operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {GuidedStageSetup} from '../../stage/GuidedStageSetup.tsx';
+import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Activity,Camera,CameraOff,ChevronRight,Film,Footprints,Play,ShieldAlert,SlidersHorizontal,Video,Waypoints} from 'lucide-react';
@@ -56,6 +57,7 @@ export function FootprintsStageWorkspace({
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
  const [composerOpen,setComposerOpen]=useState(false);
+ const [videoLabOpen,setVideoLabOpen]=useState(false);
  const restoredPerformers=useRef(false);
  useEffect(()=>{
   if(!stageSession.loaded||restoredPerformers.current)return;
@@ -215,6 +217,7 @@ export function FootprintsStageWorkspace({
   dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
  const changeView=(next:WorkspaceView)=>{
+  setVideoLabOpen(false);
   if(next==='archive'){onBlackout();setComposerOpen(false);showArchive();}
   else{onBlackout();setView('stage');}
  };
@@ -228,8 +231,9 @@ export function FootprintsStageWorkspace({
    onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
    onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
    onArchive={()=>{onBlackout();showArchive();setSetupOpen(false);}}
-   onComposer={()=>{onBlackout();setSetupOpen(false);setView('stage');setComposerOpen(true);}}
+   onComposer={()=>{onBlackout();setSetupOpen(false);setVideoLabOpen(false);setView('stage');setComposerOpen(true);}}
    onBlackout={onBlackout}
+   onVideoLab={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(true);}}
    onPerform={onEnterOperator}
    cameraOn={cameraOn} calibrated={floorStatus.calibrated}
    confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>
@@ -258,13 +262,15 @@ export function FootprintsStageWorkspace({
      <Film size={15}/> Archival Mapping</button>
    </div>
    <div className="fp-stage-top-actions">
-    <button type="button" onClick={()=>setSetupOpen(open=>!open)}>
+    <button type="button" onClick={()=>{setVideoLabOpen(false);setComposerOpen(false);setSetupOpen(open=>!open);}}>
      <SlidersHorizontal size={15}/> Guided Setup</button>
+    <button type="button" aria-pressed={videoLabOpen} onClick={()=>{onBlackout();setSetupOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(v=>!v);}}><Film size={15}/> Video Motion Lab</button>
     <button type="button" onClick={onOpenSimulator}><Play size={15}/> Simulasi 3D</button>
     <button type="button" onClick={onOpenLiveFloor}><SlidersHorizontal size={15}/> Kalibrasi & QA</button>
-    <button type="button" aria-pressed={composerOpen} onClick={()=>setComposerOpen(v=>!v)}><SlidersHorizontal size={15}/> Surface Composer</button>
+    <button type="button" aria-pressed={composerOpen} onClick={()=>{setVideoLabOpen(false);setComposerOpen(v=>!v);}}><SlidersHorizontal size={15}/> Surface Composer</button>
    </div>
   </div>}
+  {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab onClose={()=>{onBlackout();setVideoLabOpen(false);}}/>}
   {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer
    bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
    router={router} floorTracker={tracker} projection={projection}
