@@ -383,7 +383,7 @@ export function FootprintsStageWorkspace({
    </div>
    <FootprintsSourceSwitcher status={sourceStatus} onChoose={chooseSource}
     onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(false);setSetupOpen(false);}}/>
-   {!setupOpen&&<CompactFootprintsStatus
+   {!setupOpen&&<CompactFootprintsStatus items={compactItems}
     onSource={trigger=>openFromStatus('input',trigger)}
     onProcess={trigger=>openFromStatus('process',trigger)}/>}
 
