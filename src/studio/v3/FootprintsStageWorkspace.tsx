@@ -95,8 +95,7 @@ export function FootprintsStageWorkspace({
  const experimentFrameRef=useRef<ExperimentalFrame|null>(null);
  experimentFrameRef.current=experimentFrame;
  const motionBufferRef=useRef<ActorMotionStateBuffer>(new ActorMotionStateBuffer());
- const [videoRenderFps,setVideoRenderFps]=useState(0);
- useEffect(()=>{motionBufferRef.current.reset();setVideoRenderFps(0);},[experimentalKind,experimentClip]);
+ useEffect(()=>{motionBufferRef.current.reset();},[experimentalKind,experimentClip]);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
@@ -275,7 +274,6 @@ export function FootprintsStageWorkspace({
   if(experimentalKind!=='video')return;
   let raf=0,lastFloorAt=-Infinity,lastVideoAt=-1;
   let source:HTMLVideoElement|null=null;
-  let count=0,lastFpsAt=0;
   const buffer=motionBufferRef.current;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
   const draw=(now:number)=>{
@@ -296,12 +294,6 @@ export function FootprintsStageWorkspace({
     if(floor&&!footprint.hold&&current.snapshot?.atMs!==lastFloorAt){
      paintExperimentFloor(floor,frame,footprint);
      lastFloorAt=current.snapshot?.atMs??-Infinity;
-    }
-    count++;
-    if(lastFpsAt===0)lastFpsAt=now;
-    if(now-lastFpsAt>=900){
-     setVideoRenderFps(Math.round(count*1000/(now-lastFpsAt)));
-     count=0;lastFpsAt=now;
     }
    }else{
     for(const canvas of [cam,body,floor]){
@@ -571,10 +563,6 @@ export function FootprintsStageWorkspace({
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>{experimentalKind?
        experimentalKind==='video'?'INPUT · VIDEO':'INPUT · PUPPET 3D':'INPUT · KAMERA'}</span>
-       {experimentalKind==='video'&&<span className="fp-motion-render-fps"
-        title="S0.2 One Euro A/B · S0.3 interpolasi BODY; FPS repaint aktual, terpisah dari FPS AI">
-        Motion Smooth · {videoRenderFps} FPS render
-       </span>}
        {experimentalKind!=='simulator'&&<button type="button" className="fp-full-skeleton-switch"
         aria-pressed={skeletonVisible}
         aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
