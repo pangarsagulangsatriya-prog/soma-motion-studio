@@ -65,7 +65,10 @@ test('S6.8.8.2 one person remains visible as B becomes occluded and later lost',
  assert.equal(hidden.actors.find(a=>a.id==='B')?.rawIndex,null);
  const gone=tracker.observe([pose(.28)],1200);
  assert.equal(gone.actors.find(a=>a.id==='B')?.presence,'lost');
- assert.equal(gone.assignments.length,1);
+ // A also returns after a long sampled-frame gap: re-identification is
+ // quarantined instead of silently continuing its old event trajectory.
+ assert.equal(gone.assignments.length,0);
+ assert.equal(gone.actors[0].presence,'reacquiring');
  assert.equal(videoActorPresenceLabel(gone.actors[1].presence),'Keluar frame');
 });
 
@@ -78,8 +81,15 @@ test('S6.8.8.2 close overlap marks identity uncertain rather than inventing coor
  assert.deepEqual(crossing.assignments,[]);
  assert.deepEqual(crossing.actors.map(a=>a.presence),['uncertain','uncertain']);
  const after=tracker.observe([pose(.26),pose(.74)],330);
- assert.equal(after.visibleCount,2);
- assert.equal(after.ambiguous,false);
+ // With only a single pre-crossing observation there is no direction
+ // evidence proving which human emerged on either side.
+ assert.equal(after.visibleCount,0);
+ assert.equal(after.ambiguous,true);
+ assert.deepEqual(after.actors.map(a=>a.presence),['uncertain','uncertain']);
+ tracker.reset();
+ const restarted=tracker.observe([pose(.26),pose(.74)],440);
+ assert.equal(restarted.visibleCount,2);
+ assert.deepEqual(restarted.assignments.map(a=>a.id),['A','B']);
 });
 
 test('S6.8.8.2 temporary missing torso points do not create phantom identity',()=>{

@@ -403,8 +403,20 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        getHistory={getHandLimbWindow} segment={analysisSnapshot?.segment??0}/>
       {analysisOn&&<div className="vml-identity-qa" data-state={qa?.state??'waiting'}>
       <div className="vml-qa-top"><strong>Identity QA · {(analysisSnapshot?.performers??1)===2?'BODY A/B':'BODY A'}</strong>
-       <span>{qa?.state==='stable'?'STABLE':qa?.state==='locked'?'LOCKED':qa?.state==='warming'?'WARMING':'HOLD'}</span></div>
+       <span>{qa?.perActor?.some(a=>a.approved)?
+        qa.perActor.every(a=>a.approved)?'A/B ACTIVE':'PARTIAL ACTIVE':
+        qa?.state==='warming'?'WARMING':'HOLD'}</span></div>
       <p>{qa?.reason??'Menunggu frame analisis.'}</p>
+      {qa?.perActor&&<div className="vml-recovery-actors" aria-label="Recovery dan QA setiap aktor">
+       {qa.perActor.map(actor=><span key={actor.id} data-actor={actor.id}
+        data-recovery={actor.state} data-approved={actor.approved}>
+        <b>{actor.id}</b> {actor.approved?'Event aktif':
+         actor.state==='reacquiring'?'Memulihkan ID':
+         actor.state==='warming'?'Verifikasi '+actor.streak+'/'+qa.requiredFrames:
+         actor.state==='occluded'?'Tertutup':
+         actor.state==='lost'?'Keluar frame':'Ditahan'}
+       </span>)}
+      </div>}
       <div className="vml-qa-grid">
        <span><small>Frame stabil</small><b>{qa?.streak??0}/{qa?.requiredFrames??3}</b></span>
        <span><small>Confidence minimum</small><b>{Math.round((qa?.confidence??0)*100)}%</b></span>
@@ -412,7 +424,9 @@ export function VideoMotionLab({onClose,onUseReference,initialFile}:Props){
        <span><small>Ambiguitas</small><b>{qa?.ambiguousFrames??0}</b></span>
       </div>
       <small>Reset terakhir: {qa?.lastResetReason??'Belum ada'} · segmen {analysisSnapshot?.segment??0}</small>
-      {qa?.state==='locked'&&<p role="alert">Tubuh berpapasan/tertutup. Perbaiki posisi, lalu tekan Reset identitas & event atau geser ke posisi yang jelas.</p>}
+      {qa?.perActor?.some(a=>a.state==='uncertain')&&
+       !qa.perActor.some(a=>a.approved)&&
+       <p role="alert">Identitas A/B belum pasti. Kerangka mentah tetap tampil. Gunakan Reset identitas atau seek untuk membentuk identitas baru.</p>}
      </div>}
      <div className="vml-analysis-counters">
       <span><small>Frame dianalisis</small><b>{analysisSnapshot?.sampledFrames??0}</b></span>
