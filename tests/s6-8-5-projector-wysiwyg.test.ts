@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {defaultStageSurfacePlan,stageSurfaceState,validateStageSurfacePlan,
  assessSurfaceProof,outputSurfaceDecision} from '../src/footprints/stage-optics/DualSurfaceCalibration.ts';
-import {previewSignal,previewCaption,previewArtworkMatrix,previewBrightness}
+import {dualPhysicalOutputAllowed,previewSignal,previewCaption,previewArtworkMatrix,previewBrightness}
  from '../src/footprints/stage-optics/projectorWysiwygModel.ts';
 import {artworkMatrix} from '../src/projection/artwork.ts';
 import {projectionMatrix} from '../src/projection/model.ts';
@@ -44,6 +44,14 @@ test('S6.8.5 projector: corner changes alter WYSIWYG matrix, remain validated',(
   aspect:16/9,time:0});
  assert.equal(expected.length,9);
  assert.ok(previewArtworkMatrix(modified,480,270).every(Number.isFinite));
+});
+
+test('S6.8.5 projector: MP4 and 3D cannot unlock dual physical output',()=>{
+ assert.equal(dualPhysicalOutputAllowed(true,true,true),false);
+ assert.equal(dualPhysicalOutputAllowed(true,true,false),false);
+ assert.equal(dualPhysicalOutputAllowed(false,false,true),false);
+ assert.equal(dualPhysicalOutputAllowed(true,false,false),false);
+ assert.equal(dualPhysicalOutputAllowed(true,false,true),true);
 });
 
 test('S6.8.5 projector: five-point QA remains mandatory before Live',()=>{
