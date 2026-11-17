@@ -1,6 +1,5 @@
 import {useEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
-import {STAGE_INSPECTOR_TABS,moveOperatorCue,
- operatorCueAt,operatorShortcut,type StageInspectorTab} from './OperatorStageModel.ts';
+import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {GuidedStageSetup} from '../../stage/GuidedStageSetup.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
@@ -8,7 +7,9 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Activity,Camera,CameraOff,ChevronRight,Film,Play,ShieldAlert,SlidersHorizontal,Video} from 'lucide-react';
+import {Activity,Camera,CameraOff,ChevronRight,Film,Play,ShieldAlert,Video} from 'lucide-react';
+import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
+import {footprintsSteps,type FootprintsStep} from './footprintsFlow.ts';
 import type {StageNavigationRequest} from './stageNavigation.ts';
 import type {Point} from '../../projection/geometry.ts';
 import type {MotionFrame} from '../../engine/types.ts';
@@ -19,8 +20,7 @@ import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {ArchivalMappingPanel} from '../../footprints/stage-optics/ArchivalMappingPanel.tsx';
 import {stageBodyPreviewGate} from './footprintsUX.ts';
-import {palettes} from '../../footprints/pattern.ts';
-import type {FootprintConfig,FootprintStyle} from '../../footprints/StudioFootprints.tsx';
+import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {readDualOutputStatus,watchDualOutputStatus,verifiedDualStatus} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from '../../footprints/stage-optics/StageHardwareGate.ts';
@@ -38,6 +38,7 @@ type Props={
  phoneActive:boolean;
  performerCount:1|2;onPerformerCount:(count:1|2)=>void;
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
+ onOpenProjection:()=>void;
  onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
  onPhoneDisconnect:()=>void;onEnterOperator:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
@@ -52,7 +53,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
 export function FootprintsStageWorkspace({
  navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  phoneActive,
- performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,
+ performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
  onPhoneStream,onPhoneDisconnect,onEnterOperator,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  operatorMode,onExitOperator,footprint,updateFootprint
@@ -62,6 +63,8 @@ export function FootprintsStageWorkspace({
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const stageSession=useStageSession();
  const [setupOpen,setSetupOpen]=useState(false);
+ const [flowStep,setFlowStep]=useState<FootprintsStep>('input');
+ const [inspectorOpen,setInspectorOpen]=useState(false);
  const [calibrationOverlay,setCalibrationOverlay]=useState<{marks:Array<Point|null>;editing:number}|null>(null);
  const calibrationTap=useRef<((x:number,y:number)=>void)|null>(null);
  useEffect(()=>{if(!setupOpen)setCalibrationOverlay(null);},[setupOpen]);
@@ -86,7 +89,6 @@ export function FootprintsStageWorkspace({
  },[setupOpen,videoLabOpen,rehearsalOpen,composerOpen,view,onActiveToolChange,navigationRequest?.tool]);
  const previewHoldRef=useRef(footprint.hold);
  previewHoldRef.current=footprint.hold;
- const [inspector,setInspector]=useState<StageInspectorTab>('tracking');
  const [operatorCue,setOperatorCue]=useState(0);
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
@@ -99,7 +101,8 @@ export function FootprintsStageWorkspace({
   import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
  useEffect(()=>watchDualOutputStatus(()=>setDualRaw(readDualOutputStatus())),[]);
  const showArchive=()=>{
-  setView('archive');setInspector('archive');
+  setFlowStep('compose');setSetupOpen(false);setInspectorOpen(false);
+  setView('archive');
  };
  useEffect(()=>{
   if(!operatorMode)return;
@@ -250,14 +253,14 @@ export function FootprintsStageWorkspace({
   setComposerOpen(false);
   onBlackout();
   switch(request.tool){
-   case 'live':setView('stage');setInspector('tracking');break;
-   case 'setup':setView('stage');setSetupOpen(true);break;
+   case 'live':setView('stage');setFlowStep('input');setInspectorOpen(false);break;
+   case 'setup':setView('stage');setFlowStep('input');setInspectorOpen(true);setSetupOpen(true);break;
    case 'archival-mapping':showArchive();break;
-   case 'composer':setView('stage');setComposerOpen(true);break;
-   case 'video':setView('stage');setVideoLabOpen(true);break;
-   case 'rehearsal':setView('stage');setRehearsalOpen(true);break;
+   case 'composer':setView('stage');setFlowStep('compose');setComposerOpen(true);break;
+   case 'video':setView('stage');setFlowStep('input');setVideoLabOpen(true);break;
+   case 'rehearsal':setView('stage');setFlowStep('process');setRehearsalOpen(true);break;
    case 'simulator':setView('stage');onOpenSimulator();break;
-   case 'calibration':setView('stage');onOpenLiveFloor();break;
+   case 'calibration':setView('stage');setFlowStep('process');onOpenLiveFloor();break;
   }
  },[navigationRequest]);
  const onMainCameraPoint=(event:PointerEvent<HTMLCanvasElement>)=>{
@@ -283,6 +286,7 @@ export function FootprintsStageWorkspace({
  const camLeft=(768-camDrawWidth)/2,camTop=(432-camDrawHeight)/2;
  return <section className={'fp-stage-workspace'+(operatorMode?' fp-operator-mode':'')+(setupOpen&&!operatorMode?' fp-setup-docked':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context={setupOpen?'setup':'inspector'}
+  data-inspector-open={inspectorOpen&&!operatorMode} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
