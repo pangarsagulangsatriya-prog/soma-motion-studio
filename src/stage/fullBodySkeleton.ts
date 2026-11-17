@@ -90,6 +90,23 @@ export function replaySkeletonPresentation(snapshot:ReplaySkeletonSample,videoTi
  });
  return {poses:smoothed,labels,colors};
 }
+/**
+ * Software preview holds the LAST MEASURED pose briefly across delayed
+ * worker frames. Never feeds the event engine or physical projection.
+ * When the clip seeks backward or the pose is missing, it clears immediately.
+ */
+export function replaySkeletonDiagnosticPreview(snapshot:ReplaySkeletonSample,
+ videoTimeMs:number,previous?:ReplaySkeletonSample|null,holdLimitMs=850){
+ const age=videoTimeMs-snapshot.atMs;
+ const empty={poses:[] as Landmark[][],labels:[] as string[],
+  colors:[] as string[],opacity:0,held:false};
+ if(!Number.isFinite(age)||age<0||age>holdLimitMs||
+  !snapshot.rawPoses?.some(p=>p.length===POSE_LANDMARK_COUNT))return empty;
+ const drawTime=Math.min(videoTimeMs,snapshot.atMs+260);
+ const last=replaySkeletonPresentation(snapshot,drawTime,previous);
+ const opacity=age<=260?1:Math.max(0,(holdLimitMs-age)/(holdLimitMs-260));
+ return {...last,opacity,held:age>260};
+}
 export function drawSkeletonBodies(
  ctx:CanvasRenderingContext2D,poses:readonly (readonly Landmark[])[],
  rect:SkeletonRect,options:{labels?:boolean|readonly string[];colors?:readonly string[];
