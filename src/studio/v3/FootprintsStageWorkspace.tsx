@@ -42,6 +42,7 @@ import './compact-stage.css';
 import './interaction-refinement.css';
 import './source-switcher-layout.css';
 import './persistent-stage-workspace.css';
+import './inline-setup-assistant.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -339,7 +340,7 @@ export function FootprintsStageWorkspace({
   selectFlowStep(step,trigger,true);
   window.requestAnimationFrame(()=>{
    if(step==='input'&&!cameraOn)
-    document.querySelector<HTMLButtonElement>('.fp-source-launchpad .fp-source-choice')?.focus({preventScroll:true});
+    document.querySelector<HTMLButtonElement>('.fp-source-switch-trigger')?.focus({preventScroll:true});
    else document.getElementById('fp-flow-inspector-title')?.focus({preventScroll:true});
   });
  };
@@ -352,9 +353,13 @@ export function FootprintsStageWorkspace({
   if(choice==='simulator')onOpenSimulator();
   return true;
  };
- const openPhoneInput=()=>{void chooseSource('phone');};
  const openVideoInput=()=>{void chooseSource('video');};
  const openSimulatorInput=()=>{void chooseSource('simulator');};
+ const openCalibration=()=>{
+  setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  setFlowStep('process');setView('stage');
+  setPhonePanelOpen(false);setInspectorOpen(true);setCalibrationOpen(true);
+ };
  const sourceMode=deriveSourceScreenMode({
   cameraOn,cameraBusy,cameraError,bodySelected,videoReady
  });
@@ -369,6 +374,34 @@ export function FootprintsStageWorkspace({
  const gaitPreviewVisible=showsGaitPreviews(sourceMode);
  const screenMode=operatorMode?'operator':calibrationOpen?'setup':sourcePickerVisible?'source':
   gaitPreviewVisible?'live':'preparing';
+ const setupHint=inlineSetupHint({
+  source:sourceStatus,cameraOn,cameraBusy,cameraError,bodySelected,videoReady,
+  frameFresh,performerCount,visibleCount:identityStatus.visible.length,
+  identityAmbiguous:identityStatus.ambiguous,
+  identityMatchedFrame:identityStatus.observedFrameTime===frameRef.current.time,
+  floorCalibrated:floorStatus.calibrated,floorConfirmed:floorStatus.confirmed,cameraMatched
+ });
+ const handleAssistantAction=(action:InlineSetupAction)=>{
+  switch(action){
+   case 'source':{
+    const trigger=document.querySelector<HTMLButtonElement>('.fp-source-switch-trigger');
+    trigger?.focus({preventScroll:true});trigger?.click();break;
+   }
+   case 'webcam':void chooseSource('webcam');break;
+   case 'phone':
+    if(sourceStatus.selection==='phone'){
+     setCalibrationOpen(false);setInspectorOpen(true);setPhonePanelOpen(true);
+    }else void chooseSource('phone');
+    break;
+   case 'body':
+    if(sourceStatus.selection==='phone')selectFlowStep('process',undefined,true);
+    else onStartBody();
+    break;
+   case 'tracking':selectFlowStep('process',undefined,true);break;
+   case 'calibrate':openCalibration();break;
+   case 'projector':onOpenProjection();break;
+  }
+ };
  return <section className={'fp-stage-workspace fp-persistent-layout'+(operatorMode?' fp-operator-mode':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
   data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
@@ -396,7 +429,7 @@ export function FootprintsStageWorkspace({
    </div>
    <FootprintsSourceSwitcher status={sourceStatus} onChoose={chooseSource}
     onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(true);setCalibrationOpen(false);}}/>
-   {!calibrationOpen&&<CompactFootprintsStatus items={compactItems}
+   <CompactFootprintsStatus items={compactItems}
     onSource={trigger=>openFromStatus('input',trigger)}
     onProcess={trigger=>openFromStatus('process',trigger)}/>}
 
@@ -433,17 +466,7 @@ export function FootprintsStageWorkspace({
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     <div className="fp-stage-overview" hidden={view!=='stage'}>
-     {sourcePickerVisible&&sourceStatus.selection==='phone'?
-      <section className="fp-phone-wait" aria-label="Kamera HP menunggu sambungan">
-       <span>INPUT / KAMERA HP</span><h2>Hubungkan kamera HP</h2>
-       <p>Scan QR di panel pairing. Menu INPUT di atas tetap bisa digunakan untuk berganti sumber.</p>
-       <button type="button" onClick={()=>{setPhonePanelOpen(true);setInspectorOpen(false);setCalibrationOpen(false);}}>
-        Buka pairing HP</button>
-      </section>:
-      sourcePickerVisible&&<FootprintsSourceScreen mode={sourceMode as 'select'|'connecting'|'recover'}
-       cameraError={cameraError} onWebcam={()=>{void chooseSource('webcam');}}
-       onPhone={openPhoneInput} onVideo={openVideoInput}
-       onSimulator={openSimulatorInput}/>}
+     <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>
 
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>INPUT · KAMERA</span>
@@ -543,11 +566,11 @@ export function FootprintsStageWorkspace({
    {((!operatorMode&&inspectorOpen)||sourceStatus.selection==='phone')&&<aside id="fp-context-panel"
     className="fp-stage-inspector" data-phone-visible={phonePanelOpen&&!operatorMode}
     data-panel-hidden={operatorMode||(!inspectorOpen&&!phonePanelOpen)}
-    data-mode={calibrationOpen?'setup':'inspector'} aria-label={calibrationOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}
+    data-mode={calibrationOpen?'calibration':'inspector'} aria-label={calibrationOpen?'Kalibrasi lantai':'Pengaturan tahap '+flowStep}
     onKeyDown={event=>{
      if(isDismissEscape(event)){
       event.preventDefault();event.stopPropagation();
-      if(phonePanelOpen)closePhonePanel();else closeInspector();
+      if(phonePanelOpen)closePhonePanel();else if(calibrationOpen)closeCalibration();else closeInspector();
      }
     }}>
     {sourceStatus.selection==='phone'&&<div className="fp-phone-source-panel"
@@ -560,24 +583,13 @@ export function FootprintsStageWorkspace({
       </header>
       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
      </div>}
-    {!operatorMode&&calibrationOpen&&!phonePanelOpen&&<GuidedStageSetup embedded open={true} onClose={closeSetup}
-     phoneManaged={true} onSelectPhone={openPhoneInput}
-     onShowPhoneManager={openPhoneInput}
-   onCalibrationState={setCalibrationOverlay}
-   onBindCalibrationTap={handler=>{calibrationTap.current=handler;}}
-   session={stageSession} frameRef={frameRef} videoRef={videoRef}
-   bodyPreviewRef={bodyCanvas} floorPreviewRef={floorCanvas}
-   floorTracker={tracker} identityRouter={router} phoneActive={phoneActive}
-   performers={performerCount} onStartLaptop={onStartBody}
-   onPhoneStream={onPhoneStream} onPhoneDisconnect={onPhoneDisconnect}
-   onCalibrate={onOpenLiveFloor} onSimulator={onOpenSimulator}
-   onArchive={()=>{onBlackout();showArchive();setCalibrationOpen(false);}}
-   onComposer={()=>{onBlackout();setCalibrationOpen(false);setVideoLabOpen(false);setView('stage');setComposerOpen(true);}}
-   onBlackout={onBlackout}
-   onVideoLab={()=>{onBlackout();setCalibrationOpen(false);setInspectorOpen(false);setComposerOpen(false);setView('stage');setVideoLabOpen(true);}}
-   onPerform={onEnterOperator}
-   cameraOn={cameraOn} calibrated={floorStatus.calibrated}
-   confirmed={floorStatus.confirmed} contacts={floorStatus.contacts}/>}
+    {!operatorMode&&calibrationOpen&&!phonePanelOpen&&<InlineFloorCalibration
+     key={sourceStatus.selection??'none'}
+     videoRef={videoRef} tracker={tracker} router={router}
+     cameraOn={cameraOn} bodySelected={bodySelected} videoReady={videoReady}
+     cameraMatched={cameraMatched} onBlackout={onBlackout}
+     onClose={closeCalibration} onOpenQA={onOpenLiveFloor}
+     onOverlay={setCalibrationOverlay} onTap={bindCalibrationTap}/>}
     {!operatorMode&&!calibrationOpen&&!phonePanelOpen&&inspectorOpen&&<FootprintsFlowInspector
      key={flowStep} step={flowStep} onClose={closeInspector}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
@@ -594,10 +606,8 @@ export function FootprintsStageWorkspace({
      floorReady={floorStatus.confirmed&&cameraMatched}
      projectionReason={legacyGate.reason}
      onStartBody={()=>{void chooseSource('webcam');}}
-     onGuidedSetup={()=>{
-      setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
-      setCalibrationOpen(true);setInspectorOpen(true);
-     }}
+     onPhone={()=>{void chooseSource('phone');}}
+     onEditFloor={openCalibration}
      onVideo={openVideoInput}
      onSimulation={openSimulatorInput}
      onCalibration={onOpenLiveFloor}
