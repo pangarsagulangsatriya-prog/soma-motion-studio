@@ -55,7 +55,10 @@ test('local workflow inspector opens, keyboard enters, Escape restores focus',as
  await tracking.click();
  await expect(page.locator('#fp-context-panel')).toBeVisible();
  await tracking.click();
+ await expect(page.locator('#fp-context-panel')).toBeVisible();
+ await page.getByRole('button',{name:'Tutup pengaturan'}).click();
  await expect(page.locator('#fp-context-panel')).toHaveCount(0);
+ await expect(tracking).toBeFocused();
  await noOverflow(page);
 });
 
