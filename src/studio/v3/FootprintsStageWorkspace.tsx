@@ -16,6 +16,8 @@ import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from '.
 import {compactFootprintsReadiness} from './compactStageStatusModel.ts';
 import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
 import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
+import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
+import {defaultFloorSpace} from '../../footprints/spatial/coordinates.ts';
 import {activeExperimentKind,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
@@ -87,6 +89,9 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(sourceStatus.selection!=='phone')setPhonePanelOpen(false);},[sourceStatus.selection]);
  const experimentalKind=activeExperimentKind(sourceStatus.selection);
  const [experimentClip,setExperimentClip]=useState<File|null>(null);
+ const experimentPuppet=useRef<DirectPuppetSession|null>(null);
+ if(!experimentPuppet.current)experimentPuppet.current=
+  new DirectPuppetSession(defaultFloorSpace(8,6));
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('compose');
@@ -499,6 +504,7 @@ export function FootprintsStageWorkspace({
      <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind} performers={performerCount}
+      model={experimentPuppet.current}
       clip={experimentClip} onClip={setExperimentClip} onFrame={onExperimentFrame}
       onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
       onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
