@@ -105,7 +105,7 @@ async function detectPeople(pixels:ImageData,timeMs:number){
  return {people,keypoints};
 }
 function detailForActor(bitmap:ImageBitmap,actor:DuetActor):DuetV2Pose|null{
- if(!detail||!actor.box||!actor.lastSeenAtMs)return null;
+ if(!detail||!actor.box||actor.lastSeenAtMs===null)return null;
  const roi=expandedDuetRoi(actor.box,.26,.22);
  const w=480,h=640;
  const canvas=new OffscreenCanvas(w,h);
