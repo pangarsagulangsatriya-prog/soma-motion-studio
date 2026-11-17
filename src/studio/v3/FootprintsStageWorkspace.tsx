@@ -115,6 +115,7 @@ export function FootprintsStageWorkspace({
   if(!operatorMode)return;
   // Archive unmounts when entering Perform; its dual windows are also
   // disarmed by the App-level global Blackout before the mode is changed.
+  setSetupOpen(false);closeToolMenus();
   setView('stage');setOperatorCue(0);
  },[operatorMode]);
  const nextCue=()=>setOperatorCue(index=>moveOperatorCue(index,1));
@@ -286,7 +287,7 @@ export function FootprintsStageWorkspace({
     onRecordVideo={onRecordVideo} units={units}
     contacts={floorStatus.contacts} performerCount={performerCount}/>
    :<UnifiedStageStatusStrip units={units} legacy={legacy}/>}
-  {!operatorMode&&<div className="fp-stage-toolbar" role="toolbar" aria-label="Kontrol workspace SOMA">
+  {!operatorMode&&<div className="fp-stage-toolbar" role="group" aria-label="Kontrol workspace SOMA">
    <div className="fp-stage-view-switch" role="group" aria-label="Tampilan panggung">
     <button type="button" aria-pressed={view==='stage'} onClick={()=>changeView('stage')}>
      <Waypoints size={15}/> Live Stage</button>
@@ -310,7 +311,7 @@ export function FootprintsStageWorkspace({
        closeToolMenus();onBlackout();setSetupOpen(false);setComposerOpen(false);
        setVideoLabOpen(false);setView('stage');setRehearsalOpen(v=>!v);
       }}><Activity size={16}/> <span><b>Rehearsal Lab</b><small>Bandingkan rekaman dan live</small></span></button>
-      <button type="button" onClick={()=>{closeToolMenus();onOpenSimulator();}}>
+      <button type="button" onClick={()=>{closeToolMenus();setSetupOpen(false);onOpenSimulator();}}>
        <Play size={16}/> <span><b>Simulasi 3D</b><small>Eksperimen tanpa kamera</small></span>
       </button>
      </div>
@@ -318,7 +319,7 @@ export function FootprintsStageWorkspace({
     <details ref={toolsMenuRef} className="fp-stage-tool-menu">
      <summary aria-label="Buka menu perangkat dan QA"><Settings2 size={15}/> Tools <ChevronDown size={14}/></summary>
      <div className="fp-stage-menu-popover" role="group" aria-label="Perangkat panggung">
-      <button type="button" onClick={()=>{closeToolMenus();onOpenLiveFloor();}}>
+      <button type="button" onClick={()=>{closeToolMenus();setSetupOpen(false);onOpenLiveFloor();}}>
        <SlidersHorizontal size={16}/> <span><b>Kalibrasi & QA</b><small>Kamera, lantai dan output</small></span>
       </button>
       <button type="button" aria-pressed={composerOpen} onClick={()=>{
