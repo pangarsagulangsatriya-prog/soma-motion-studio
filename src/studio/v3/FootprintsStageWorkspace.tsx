@@ -511,7 +511,7 @@ export function FootprintsStageWorkspace({
    initialReference={rehearsalReference}
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
-  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer initialOutputQA={composerStartQA}
+  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
    bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
    router={router} floorTracker={tracker} projection={projection}
    cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
