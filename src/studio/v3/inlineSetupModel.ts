@@ -1,6 +1,6 @@
 import type {FootprintsInputStatus} from './sourceSwitchModel.ts';
 
-export type InlineSetupAction='source'|'webcam'|'phone'|'body'|'tracking'|'calibrate'|'projector'|null;
+export type InlineSetupAction='source'|'webcam'|'phone'|'body'|'tracking'|'calibrate'|'projector'|'experiment'|null;
 export type InlineSetupSeverity='idle'|'busy'|'warning'|'ok';
 export type InlineSetupHint={
  id:string;title:string;description:string;action:InlineSetupAction;
@@ -14,6 +14,7 @@ export function inlineSetupHint(input:{
  videoReady:boolean;frameFresh:boolean;
  performerCount:1|2;visibleCount:number;identityAmbiguous:boolean;identityMatchedFrame:boolean;
  floorCalibrated:boolean;floorConfirmed:boolean;cameraMatched:boolean;
+ experiment?:{ready:boolean;name:string;events:number;contacts:number};
 }):InlineSetupHint{
  const hint=(id:string,title:string,description:string,
   action:InlineSetupAction,actionLabel:string|null,severity:InlineSetupSeverity):InlineSetupHint=>
@@ -21,10 +22,19 @@ export function inlineSetupHint(input:{
  const {source,cameraOn,cameraBusy,cameraError,bodySelected,videoReady,
   frameFresh,performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
   floorCalibrated,floorConfirmed,cameraMatched}=input;
- if(source.selection==='video')
-  return hint('video-input','Video Footprints','Pilih rekaman MP4/WebM pada panel input. BODY dan FLOOR membaca hasil analisis video 2D; kalibrasi lantai fisik tidak digunakan.','source','Ganti sumber','idle');
+ if(source.selection==='video'){
+  if(!input.experiment?.ready)
+   return hint('video-input','Pilih video gerak','Pilih rekaman MP4/WebM pada panel input. BODY dan FLOOR akan membaca hasil analisis video 2D.','experiment','Pilih video','idle');
+  return hint('video-preview','Video masuk ke Stage Preview',
+   'File '+input.experiment.name+' · '+input.experiment.events+
+   ' event 2D. Posisi lantai masih ilustratif, output fisik tetap terkunci.',
+   'experiment','Kontrol pemutaran','ok');
+ }
  if(source.selection==='simulator')
-  return hint('simulator-input','Lantai virtual siap','Buat langkah dengan puppet. Stage Preview menampilkan data sintetis dalam meter virtual.','source','Ganti sumber','idle');
+  return hint(input.experiment?.contacts?'simulator-preview':'simulator-input',
+   'Puppet virtual · '+(input.experiment?.contacts??0)+' kontak',
+   'Langkah sintetis dalam meter virtual. Kaki dan lantai fisik tetap belum dikalibrasi.',
+   'experiment','Buat langkah','idle');
  if(source.selection===null)
   return hint('source','Pilih sumber gerak','Hubungkan webcam atau kamera HP. Semua pengaturan visual Footprints tetap tersedia.','source','Pilih sumber','idle');
  if(source.phase==='error'||cameraError&&source.selection==='webcam')
