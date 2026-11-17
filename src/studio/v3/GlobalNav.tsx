@@ -23,7 +23,6 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  });
  const [mobile,setMobile]=useState(false);
  const [instrumentsOpen,setInstrumentsOpen]=useState(false);
- const [visit,setVisit]=useState(0);
  const toggleRef=useRef<HTMLButtonElement>(null);
  const railRef=useRef<HTMLElement>(null);
  useEffect(()=>{
@@ -51,21 +50,19 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    if(previous instanceof HTMLElement&&document.contains(previous))previous.focus({preventScroll:true});
   };
  },[mobile,expanded]);
- const choose=()=>{setVisit(x=>x+1);if(mobile)setExpanded(false);};
- const stage=(tool:StageNavigationTool)=>{choose();onStageTool(tool);};
- const item=(icon:typeof Footprints,title:string,active:boolean,action:()=>void,detail?:string)=>{
+ const choose=()=>{if(mobile)setExpanded(false);};
+ const item=(icon:typeof Footprints,title:string,active:boolean,action:()=>void,detail?:string,tool?:StageNavigationTool)=>{
   const Icon=icon;
   return <button type="button" key={title} className="soma-rail-item"
    title={!expanded?title+(detail?' · '+detail:''):detail}
-   aria-label={title} aria-current={active?'page':undefined}
+   data-soma-tool={tool} aria-label={title} aria-current={active?'page':undefined}
    onClick={()=>{action();choose();}}>
    <Icon size={19} aria-hidden="true"/><span className="soma-rail-item-copy"><b>{title}</b>
    {detail&&<small>{detail}</small>}</span></button>;
  };
  const stageItem=(icon:typeof Footprints,title:string,tool:StageNavigationTool,detail?:string)=>
   item(icon,title,workspace==='studio'&&scene==='footprints'&&selectedTool===tool,
-   ()=>onStageTool(tool),detail);
- void visit;
+   ()=>tool==='live'?onFootprints():onStageTool(tool),detail,tool);
  return <>
   <header className="v3-global-nav v3-primary-nav soma-nav-header">
    <div className="soma-nav-brand-row">
