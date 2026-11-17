@@ -209,3 +209,9 @@
 .soma-guide-gate-note small{color:#e4c5aa;letter-spacing:0}
 @media(max-width:1050px){.soma-guide-main{grid-template-columns:1fr}.soma-guide-preview{grid-row:1}.soma-guided-v2 .soma-guided-steps button{padding:10px}.soma-guided-v2 .soma-guided-steps button small{display:none}}
 @media(max-width:580px){.soma-guided-v2{padding:10px}.soma-guided-v2 .soma-guided-steps button{gap:5px;flex-direction:column;align-items:center;min-height:55px}.soma-guided-v2 .soma-guided-steps button strong{font-size:11px}.soma-guided-v2 .soma-setup-choice,.soma-guide-archives{grid-template-columns:1fr}.soma-guide-corners{grid-template-columns:repeat(2,minmax(0,1fr))}.soma-guided-v2 .soma-guide-footer{grid-template-columns:1fr 1fr}.soma-guide-gate-note{grid-column:1/-1;grid-row:1}.soma-guide-preview-head{padding:8px 10px}}
+
+/* S6.5.2 — experiment link kept separate from live camera source options. */
+.soma-guide-experiments{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border-top:1px solid #3c503d;padding-top:11px}
+.soma-guide-experiments>button:not(.soma-guide-text-link){background:#24372b;border-color:#617a5d;color:#d3e8bb;min-height:41px}
+.soma-guide-experiments .soma-guide-text-link{font-size:11px!important}
+@media(max-width:560px){.soma-guide-experiments{flex-direction:column;align-items:stretch}.soma-guide-experiments>button{width:100%}}
