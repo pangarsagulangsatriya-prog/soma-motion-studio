@@ -4,7 +4,8 @@ import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts
 import {VideoAutoActorTracker,type VideoActorState} from './videoAutoActorTracker.ts';
 import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
 import {HandLimbDetailAnalyzer,HAND_SCAN_INTERVAL_MS,type HandLimbFrame,type RawHandDetection} from './videoHandLimbDetail.ts';
-import {ReplayIdentityGate,type ReplayIdentityQA} from './videoReplayIdentityQA.ts';
+import type {ReplayIdentityQA} from './videoReplayIdentityQA.ts';
+import {ReplayActorRecoveryGate} from './replayActorRecoveryGate.ts';
 import type {ReplayArchiveSegment} from './videoReplayExport.ts';
 import {emptyReplayState,replayDiscontinuity,replayEventsForSample,
  type ReplayGaitEvent,type ReplayGaitState,type ReplayPerformer,type ReplayFoot} from './videoGaitAnalysis.ts';
@@ -42,7 +43,7 @@ export class VideoPoseGaitEngine{
  private actorTracker=new VideoAutoActorTracker();
  private temporalAnalyzer=new TemporalJointAnalyzer();
  private handLimbAnalyzer=new HandLimbDetailAnalyzer();
- private qa=new ReplayIdentityGate();
+ private qa=new ReplayActorRecoveryGate();
  private archived:ReplayArchiveSegment[]=[];
  private firstAtMs:number|null=null;
  private discardedSegments=0;
@@ -223,26 +224,24 @@ export class VideoPoseGaitEngine{
     this.handLimbAnalyzer.observe(observed.assignments,observed.actors,temporal,atMs,{
      hands,handModelAvailable:this.handModel!==null
     });
-    const count=this.manualCount??observed.knownCount;
-    if(count!==this.count){
-     this.count=count;
-     // Changing 1 → 2 invalidates gait continuity, not the raw skeletons.
-     this.qa.reset('Jumlah aktor terdeteksi berubah; cek ulang gait.',atMs);
-     this.analyzers.clear();this.feet.clear();
-    }
+    // A continues when B enters, leaves, crosses or is reacquiring.
+    // A count change does not reset the other actor's gait continuity.
+    this.count=this.manualCount??observed.knownCount;
     this.ambiguous=observed.ambiguous;
-    let assigned:ReplayOverlayPerson[]=observed.assignments
+    const candidates:ReplayOverlayPerson[]=observed.assignments
      .filter(person=>this.count===2||person.id==='A')
      .map(person=>({id:person.id,landmarks:person.pose,confidence:person.confidence}));
-    const identityStable=this.qa.observe(assigned,this.count,this.ambiguous);
-    this.status=observed.reason+(identityStable?' Event gait aktif.':
-     ' Event gait ditahan sampai identitas lolos QA.');
-    if(!identityStable)assigned=[];
-    if(!assigned.length){
-     // Never connect a stale planted foot to a new identity.
-     this.analyzers.clear();this.feet.clear();
-    }else{
-     for(const person of assigned){
+    const approved=this.qa.observe(candidates,observed.actors);
+    this.status=observed.reason+(approved.length?
+     ' Event gait aktor yang lolos QA tetap aktif.':
+     ' Event gait ditahan sampai identitas stabil.');
+    // Reset only the actor that disappeared, never both event chains.
+    for(const id of ['A','B'] as const){
+     if(approved.some(person=>person.id===id))continue;
+     this.analyzers.delete(id);
+     this.feet.delete(id+':left');this.feet.delete(id+':right');
+    }
+    for(const person of approved){
       let analyzer=this.analyzers.get(person.id);
       if(!analyzer){analyzer=new GaitAnalyzer();this.analyzers.set(person.id,analyzer);}
       const single={...frame,pose:person.landmarks,tracked:true};
@@ -256,8 +255,7 @@ export class VideoPoseGaitEngine{
        this.feet.set(key,{phase:sample.phase,motion:sample.motionKind??'unknown',confidence:sample.confidence});
       }
      }
-    }
-    this.people=assigned;
+    this.people=approved;
     // Bound memory during long takes. Position is image-relative, never metric.
     if(this.history.length>5000){this.truncatedEvents+=this.history.length-5000;this.history=this.history.slice(-5000);}
     this.emit();
@@ -268,7 +266,7 @@ export class VideoPoseGaitEngine{
    this.actorStates=this.actorStates.map(person=>({...person,presence:'lost',rawIndex:null,confidence:0}));
    this.analyzers.clear();this.feet.clear();this.temporalAnalyzer.reset();
    this.handLimbAnalyzer.reset();this.lastHandScanAt=-Infinity;
-   this.qa.observe([],this.count,false);this.emit();
+   this.qa.observe([],this.actorStates);this.emit();
   }finally{this.inProgress=false;}
  }
  dispose(){
