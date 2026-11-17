@@ -265,6 +265,11 @@ export function FootprintsStageWorkspace({
   });
  };
  const closeSetup=()=>{setSetupOpen(false);setInspectorOpen(false);restoreFlowFocus();};
+ const closePhonePanel=()=>{
+  setPhonePanelOpen(false);
+  requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>(
+   '.fp-source-switch-trigger')?.focus({preventScroll:true}));
+ };
  const closeInspector=()=>{setSetupOpen(false);setInspectorOpen(false);restoreFlowFocus();};
  useEffect(()=>{
   const request=navigationRequest;
@@ -516,7 +521,8 @@ export function FootprintsStageWorkspace({
     data-mode={setupOpen?'setup':'inspector'} aria-label={setupOpen?'Panduan Footprints':'Pengaturan tahap '+flowStep}
     onKeyDown={event=>{
      if(isDismissEscape(event)){
-      event.preventDefault();event.stopPropagation();closeInspector();
+      event.preventDefault();event.stopPropagation();
+      if(phonePanelOpen)closePhonePanel();else closeInspector();
      }
     }}>
     {sourceStatus.selection==='phone'&&<div className="fp-phone-source-panel"
@@ -525,7 +531,7 @@ export function FootprintsStageWorkspace({
        <div><small>INPUT / KAMERA HP</small><h2>Hubungkan kamera HP</h2>
         <p>Pairing tetap berjalan ketika panel ditutup.</p></div>
        <button type="button" aria-label="Tutup panel kamera HP"
-        onClick={()=>setPhonePanelOpen(false)}>✕</button>
+        onClick={closePhonePanel}>✕</button>
       </header>
       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
      </div>}
