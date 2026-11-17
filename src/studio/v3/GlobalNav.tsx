@@ -34,7 +34,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  },[]);
  useEffect(()=>{if(!mobile)try{localStorage.setItem(NAV_KEY,String(expanded));}catch{}},[mobile,expanded]);
  useEffect(()=>{
-  if(!mobile||!expanded)return;
+  if(!mobile||!expanded||labsOpen)return;
   const previous=document.activeElement;
   const raf=requestAnimationFrame(()=>railRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true}));
   const handle=(e:KeyboardEvent)=>{
@@ -50,11 +50,20 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   document.addEventListener('keydown',handle);
   return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',handle);
    if(previous instanceof HTMLElement&&document.contains(previous))previous.focus({preventScroll:true});};
- },[mobile,expanded]);
+ },[mobile,expanded,labsOpen]);
  useEffect(()=>{
   if(!labsOpen)return;
+  const raf=requestAnimationFrame(()=>labsPanelRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true}));
   const onKey=(e:KeyboardEvent)=>{
-   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setLabsOpen(false);labsRef.current?.focus();}
+   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setLabsOpen(false);labsRef.current?.focus();return;}
+   if(e.key==='Tab'&&mobile&&labsPanelRef.current){
+    const buttons=Array.from(labsPanelRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+     .filter(node=>node.getClientRects().length>0);
+    const first=buttons[0],last=buttons[buttons.length-1];
+    if(!first||!last)return;
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+   }
   };
   const outside=(e:PointerEvent)=>{
    if(e.target instanceof Node&&!labsPanelRef.current?.contains(e.target)&&
@@ -62,8 +71,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   };
   document.addEventListener('keydown',onKey);
   document.addEventListener('pointerdown',outside);
-  return()=>{document.removeEventListener('keydown',onKey);document.removeEventListener('pointerdown',outside);};
- },[labsOpen]);
+  return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',onKey);document.removeEventListener('pointerdown',outside);};
+ },[labsOpen,mobile]);
  const navigate=(target:'footprints'|'projector')=>{
   setLabsOpen(false);if(mobile)setExpanded(false);
   if(target==='footprints')onFootprints();else onProjection();
@@ -85,10 +94,12 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     <div className="v3-brand"><b>SOMA</b><span> / {workspace==='projection'?'PROJECTOR':'FOOTPRINTS'}</span></div>
    </div>
    <div className="v3-global-actions">
-    <button className="v3-preset" type="button" title="Pilih atau simpan preset"
-     onClick={onPreset}><Save size={15}/><span>{preset}</span></button>
-    <button className="v3-perform" type="button" aria-pressed={perform} onClick={onPerform}>
-     <Play size={15}/>{perform?'Kembali Edit':'Perform'}</button>
+    {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
+     type="button" title="Preset instrumen SOMA Labs" onClick={onPreset}>
+     <Save size={15}/><span>{preset}</span></button>}
+    {workspace!=='projection'&&<button className="v3-perform" type="button"
+     aria-pressed={perform} onClick={onPerform}>
+     <Play size={15}/>{perform?'Kembali Edit':'Perform'}</button>}
     <button className="v3-help" type="button" onClick={onHelp} aria-label="Bantuan SOMA">
      <HelpCircle size={19}/></button>
    </div>
