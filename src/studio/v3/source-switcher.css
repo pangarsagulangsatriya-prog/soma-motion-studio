@@ -66,3 +66,12 @@
  .fp-source-switch-trigger,.fp-source-switch-option,.fp-switch-chevron{transition:none}
  .fp-switch-spin{animation:none}
 }
+
+/* S6.8.6 — explicit recovery alongside the source error; never auto-rearm output. */
+.fp-source-switch-error{align-items:center;max-width:370px;min-width:190px;box-sizing:border-box}
+.fp-source-switch-error>span{min-width:0;overflow-wrap:anywhere;flex:1}
+.fp-source-switch-error button{background:#643e34;border:1px solid #c38d79;color:#ffe8db;
+ border-radius:5px;font:700 10px inherit;min-height:29px;flex:none;
+ padding:5px 8px;cursor:pointer}
+.fp-source-switch-error button:disabled{opacity:.6;cursor:wait}
+.fp-source-switch-error button:focus-visible{outline:2px solid #ffe8db;outline-offset:2px}
