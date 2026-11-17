@@ -55,6 +55,32 @@ export function classifySourceTransition(
   record('pairing');
  return result;
 }
+export type BeginnerObservationState={
+ previous:Pick<FootprintsInputStatus,'selection'|'phase'>;
+ pendingErrorSource:FootprintsInputChoice|null;
+};
+/**
+ * Source replacement can pass through "connecting" before "ready".
+ * Keep a prior failure unresolved until the same source recovers or a
+ * different usable source takes over. Never treat "connecting" as success.
+ */
+export function observeBeginnerSource(
+ state:BeginnerObservationState,
+ next:Pick<FootprintsInputStatus,'selection'|'phase'>,
+ atMs:number
+):{state:BeginnerObservationState;events:BeginnerEvent[]}{
+ let events=classifySourceTransition(state.previous,next,atMs);
+ let pending=state.pendingErrorSource;
+ if(events.some(event=>event.type==='connection-error'))pending=next.selection;
+ if(pending&&isSourceReady(next)){
+  events=events.filter(event=>!['source-ready','recovery','fallback'].includes(event.type));
+  events.push({type:pending===next.selection?'recovery':'fallback',
+   source:next.selection,phase:next.phase,atMs:Math.max(0,Math.round(atMs))});
+  pending=null;
+ }
+ return {state:{previous:{...next},pendingErrorSource:pending},events};
+}
+
 export function summarizeBeginnerUsability(
  results:BeginnerTaskResult[],events:BeginnerEvent[]
 ){
