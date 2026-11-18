@@ -437,6 +437,16 @@ export default function App(){
 
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
      navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
+     onNavigateStageWorkspace={workspace=>{
+      // Only Stage Studio owns these local destinations. Other SOMA modules keep their own routes.
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setArchiveActive(false);setProjectionActive(false);setClean(false);selectScene('footprints');
+      if(workspace==='perform'){setFootprintsOperator(true);return;}
+      setFootprintsOperator(false);
+      const tool=workspace==='track'?'tracking':workspace==='map'?'mapping':'composer';
+      setSelectedStageTool(tool);
+      setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
+     }}
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection} audioAnalyser={audioOn?engine.analyser:null}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
