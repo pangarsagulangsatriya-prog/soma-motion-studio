@@ -148,3 +148,52 @@
  .soma-ia-four-workspaces .soma-stage-module-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;width:100%}
  .soma-ia-four-workspaces .soma-stage-module-tab{min-width:0;min-height:44px;padding:7px 3px;font-size:11px}
 }
+
+/* Stage 1 recovery — no-source state is a usable selector, not three black panes. */
+.soma-ia-four-workspaces[data-workspace=track][data-stage-source=none] .fp-stage-layout{display:none}
+.soma-ia-four-workspaces .soma-ia-source-setup{
+ max-width:1020px;margin:10px auto 0;padding:clamp(18px,3vw,30px);
+ background:#17251c;border:1px solid #405b45;border-radius:12px;
+ display:flex;flex-direction:column;gap:20px;
+}
+.soma-ia-four-workspaces .soma-ia-source-heading{display:flex;flex-direction:column;gap:7px}
+.soma-ia-four-workspaces .soma-ia-source-heading strong{
+ font-size:20px;line-height:1.25;font-weight:650;color:#eef5e9;
+}
+.soma-ia-four-workspaces .soma-ia-source-heading span{
+ font-size:12px;line-height:1.5;color:#aabdad;
+}
+.soma-ia-four-workspaces .soma-ia-source-options{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+}
+.soma-ia-four-workspaces .soma-ia-source-options button{
+ display:flex;flex-direction:column;align-items:flex-start;text-align:left;
+ gap:7px;min-width:0;min-height:88px;padding:16px;
+ border:1px solid #48664d;border-radius:9px;background:#233428;
+ color:#e6f3e1;cursor:pointer;
+}
+.soma-ia-four-workspaces .soma-ia-source-options button:hover:not(:disabled){
+ border-color:#b2d39d;background:#304a36;
+}
+.soma-ia-four-workspaces .soma-ia-source-options button:focus-visible{
+ outline:2px solid #d3eab7;outline-offset:2px;
+}
+.soma-ia-four-workspaces .soma-ia-source-options button:disabled{opacity:.45;cursor:progress}
+.soma-ia-four-workspaces .soma-ia-source-options button strong{font-size:14px;font-weight:650}
+.soma-ia-four-workspaces .soma-ia-source-options button small{font-size:11px;color:#a8c0aa}
+
+/* Canvas overlays cannot consume flex width or spill outside their surface. */
+.soma-ia-four-workspaces .fp-stage-canvas-area{min-width:0}
+.soma-ia-four-workspaces .fp-stage-canvas-area>.fp-stage-hold-label{
+ position:absolute;inset:auto 14px 14px;
+ width:auto;max-width:calc(100% - 28px);
+ display:block;overflow-wrap:anywhere;white-space:normal;
+ text-align:center;line-height:1.45;font-size:12px;
+ padding:9px 11px;border-radius:7px;
+ color:#ebf2e7;background:#101b14e8;border:1px solid #3d5544;
+ pointer-events:none;z-index:15;
+}
+@media(max-width:650px){
+ .soma-ia-four-workspaces .soma-ia-source-options{grid-template-columns:minmax(0,1fr)}
+ .soma-ia-four-workspaces .soma-ia-source-setup{gap:14px}
+}
