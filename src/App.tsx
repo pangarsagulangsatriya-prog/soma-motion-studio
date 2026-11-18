@@ -418,7 +418,7 @@ export default function App(){
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
      navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
-     router={multiPoseRouter} projection={projection}
+     router={multiPoseRouter} projection={projection} audioAnalyser={audioOn?engine.analyser:null}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
      phoneActive={activeCameraMode.current==='phone'&&cameraOn}
