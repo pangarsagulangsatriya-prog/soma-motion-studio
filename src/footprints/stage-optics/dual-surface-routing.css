@@ -107,3 +107,46 @@
  .stage-dual .stage-dual-perform-go{width:100%}
  .stage-dual .stage-dual-profile button{min-height:44px}
 }
+
+
+/* V3.5: bench evidence is optional and cannot unlock projection. */
+.stage-dual .stage-dual-setup-uat{
+ padding:10px;border:1px solid #48644b;border-radius:7px;
+ background:#18291d;
+}
+.stage-dual .stage-dual-setup-uat summary{
+ padding:4px 6px;cursor:pointer;color:#dbe8d1;
+ font-size:12px;font-weight:600;
+}
+.stage-dual .stage-dual-setup-uat[open]{
+ display:flex;flex-direction:column;gap:9px;
+}
+.stage-dual .stage-dual-setup-uat p{
+ margin:0;color:#b6cbb3;font-size:11px;line-height:1.5;
+}
+.stage-dual .stage-dual-setup-elapsed{
+ font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;
+ color:#e2efcf;
+}
+.stage-dual .stage-dual-setup-uat label{
+ display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ font-size:11px;color:#d6e2d1;
+}
+.stage-dual .stage-dual-setup-uat input[type=text],
+.stage-dual .stage-dual-setup-uat input:not([type]){
+ min-width:160px;max-width:100%;flex:1 1 180px;
+ color:#e1ece0;background:#0f1e13;border:1px solid #638064;
+ border-radius:5px;padding:8px;
+}
+.stage-dual .stage-dual-setup-uat button{
+ width:fit-content;min-height:38px;padding:8px 12px;
+ background:#2b4732;color:#e5efdc;border:1px solid #6c8967;
+ border-radius:5px;cursor:pointer;
+}
+.stage-dual .stage-dual-setup-uat button:disabled{opacity:.45;cursor:not-allowed}
+.stage-dual .stage-dual-setup-uat :is(summary,input,button):focus-visible{
+ outline:2px solid #d4ebb0;outline-offset:2px;
+}
+@media(max-width:700px){
+ .stage-dual .stage-dual-setup-uat button{min-height:44px}
+}
