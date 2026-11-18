@@ -1,3 +1,4 @@
+import {toFootMotionEvent,type FootMotionEventV2} from './FootMotionEventV2.ts';
 /** Unified, software-preview-only FLOOR interaction bus.
  * Existing camera gait engine owns metric contact; this engine NEVER estimates
  * foot pressure, grants projector output, or modifies FootstepEvent v3. */
@@ -5,7 +6,7 @@ export type FloorInteractionSource='camera'|'phone'|'video'|'simulator'|'touch';
 export type FloorInteractionKind='presence'|'movement'|'contact'|'touch'|'release';
 export type FloorInteractionBasis='calibrated-estimate'|'image-2d'|'simulated'|'presence-only';
 export type FloorInteractionEvent={
- id:string;source:FloorInteractionSource;kind:FloorInteractionKind;
+ id:string;originEventId?:string;source:FloorInteractionSource;kind:FloorInteractionKind;
  actorId:string;foot?:'left'|'right';
  x:number;y:number;radius:number;speed:number;confidence:number;
  atMs:number;basis:FloorInteractionBasis;
@@ -37,10 +38,16 @@ export class FloorInteractionEngine{
  private seenOrder:string[]=[];
  private serial=0;
  private epoch=0;
+ private sessionId='floor-session-0';
  get generation(){return this.epoch;}
  get activeSource(){return this.source;}
+ get currentSessionId(){return this.sessionId;}
+ get canonicalRecent():readonly FootMotionEventV2[]{
+  return this.events.map(event=>toFootMotionEvent(event,this.sessionId,this.epoch));
+ }
  reset(source:FloorInteractionSource|null=null){
   this.epoch++;
+  this.sessionId='floor-session-'+this.epoch;
   this.source=source;this.events=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
   this.seenContacts.clear();this.seenOrder=[];this.serial=0;
  }
@@ -76,11 +83,11 @@ export class FloorInteractionEngine{
    (o.kind!=='touch'&&o.source==='touch'))return null;
   // An untrusted visual observation never becomes a contact.
   if(o.source!=='touch'&&o.basis==='presence-only')return null;
-  const key=o.source+':'+o.eventId;
+  const key=o.source+':'+o.actorId+':'+o.foot+':'+o.eventId;
   if(this.seenContacts.has(key))return null;
   this.seenContacts.add(key);this.seenOrder.push(key);
   if(this.seenOrder.length>6000)this.seenContacts.delete(this.seenOrder.shift()!);
-  return this.push({source:o.source,actorId:o.actorId,
+  return this.push({source:o.source,actorId:o.actorId,originEventId:o.eventId,
    x:o.x,y:o.y,confidence:o.confidence,atMs:o.atMs,basis:o.basis,
    kind:o.kind??'contact',foot:o.foot,radius:.03,speed:0,verified:o.verified});
  }
