@@ -75,3 +75,12 @@
  padding:5px 8px;cursor:pointer}
 .fp-source-switch-error button:disabled{opacity:.6;cursor:wait}
 .fp-source-switch-error button:focus-visible{outline:2px solid #ffe8db;outline-offset:2px}
+
+/* QA: source choice stays above the experiment's expanded advanced popover.
+   Keep this local to an OPEN source selector; do not elevate idle controls. */
+.fp-stage-workspace .fp-flow-nav:has(.fp-source-switch-trigger[aria-expanded="true"]){
+ position:relative;z-index:350;
+}
+.fp-stage-workspace .fp-source-switcher:has(.fp-source-switch-trigger[aria-expanded="true"]){
+ z-index:351;
+}
