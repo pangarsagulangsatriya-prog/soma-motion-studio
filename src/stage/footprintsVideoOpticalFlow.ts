@@ -116,20 +116,18 @@ function matchPoint(prev:GrayFrame,next:GrayFrame,p:Feature,range:number){
  }
  // Average per pixel greyscale error must remain small.
  if(!finite(error)||error/25>27)return null;
- // A small forward/backward consistency gate limits drift and lookalike swaps.
+ // Forward/backward verification, as in standard sparse feature tracking:
+ // reverse-search from the new patch towards the original feature.
  let backward=Infinity,backX=bestX,backY=bestY;
- for(let sy=-2;sy<=2;sy++)for(let sx=-2;sx<=2;sx++){
+ for(let sy=-range;sy<=range;sy++)for(let sx=-range;sx<=range;sx++){
   const x=bestX+sx,y=bestY+sy;
   const cost=meanAbsolutePatch(next,prev,bestX,bestY,x,y,backward);
   if(cost<backward){backward=cost;backX=x;backY=y;}
  }
- // Reverse search is constrained around the old feature, not the new match.
- // An exact reverse check is done below using direct patch cost at original.
- const backwardAtOrigin=meanAbsolutePatch(next,prev,bestX,bestY,p.x,p.y);
- if(!finite(backwardAtOrigin)||backwardAtOrigin/25>27)return null;
+ if(!finite(backward)||backward/25>27||
+  Math.hypot(backX-p.x,backY-p.y)>1.6)return null;
  return {next:{x:bestX,y:bestY,strength:p.strength},
-  dx:bestX-p.x,dy:bestY-p.y,error:error/25,
-  backwardError:backwardAtOrigin/25};
+  dx:bestX-p.x,dy:bestY-p.y,error:error/25};
 }
 function propagate(prev:GrayFrame,next:GrayFrame,track:Track){
  const deltaMs=next.atMs-prev.atMs;
