@@ -104,7 +104,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
 export function FootprintsStageWorkspace({
  navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,audioAnalyser,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  cameraDevices,selectedCameraId,onSelectCameraDevice,
- sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
+ phoneActive,sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
  onPhoneStream,onPhoneDisconnect,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
