@@ -45,7 +45,7 @@ test('S0.3 interpolated and short predicted poses are bounded, visual-only',()=>
  assert.equal(short.actors[0].mode,'predicted');
  assert.ok(short.actors[0].pose[0].x<.41);
  assert.ok(!('events' in short));
- const bridging=state.present(1371);
+ const bridging=state.present(1390);
  assert.equal(bridging.actors.length,2);
  assert.equal(bridging.actors[0].mode,'held');
  const stale=state.present(1751);
