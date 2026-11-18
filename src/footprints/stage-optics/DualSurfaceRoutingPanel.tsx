@@ -10,6 +10,9 @@ import {claimDualOutputStatus,releaseDualOutputStatus,reportDualOutputStatus} fr
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
 import {ProjectorWysiwygPreview} from './ProjectorWysiwygPreview.tsx';
 import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
+import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
+import {loadStageOutputDrafts,saveStageOutputDraft,stableStageEquipmentKey,
+ matchingStageOutputDraft,type StageOutputDraft} from '../../studio/v3/stageOutputDraftProfiles.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
  import.meta.env.VITE_SOMA_STAGE_OUTPUTS);
 import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceReport,
@@ -58,6 +61,11 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  });
  const [operatorConfirm,setOperatorConfirm]=useState(false);
  const [previewView,setPreviewView]=useState<PreviewView>('draft');
+ const [savedDrafts,setSavedDrafts]=useState<StageOutputDraft[]>(()=>{
+  try{return loadStageOutputDrafts(localStorage);}catch{return [];}
+ });
+ const [draftName,setDraftName]=useState('Panggung Utama');
+ const [draftId,setDraftId]=useState('');
  const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked});
  latest.current={plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked};
  const legacyRef=useRef(legacyProjection);legacyRef.current=legacyProjection;
@@ -94,6 +102,17 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     const safe=dualPhysicalOutputAllowed(STAGE_HARDWARE_ENABLED,current.experimentLocked,current.operatorConfirm)&&
      !!stage&&stage.cameraSafe&&fresh;
     const sourceSafe=id==='body'?!!stage?.bodyMediaReady:!!stage?.bridgeSafe;
+    // A lost LIVE camera/renderer/artwork latches blackout. Reconnection
+    // can only return to live through a new deliberate operator action.
+    if(shouldLatchProjectionBlackout({
+     requested:current.requested[id],connected:link.connected,
+     stageSafe:safe,sourceSafe
+    })){
+     current.requested[id]='blackout';current.armed[id]=false;
+     setRequested(prev=>({...prev,[id]:'blackout'}));
+     setArmed(prev=>({...prev,[id]:false}));
+     setMessage('LIVE '+id+' terputus. BLACKOUT terkunci; periksa sumber dan tekan Perform ulang.');
+    }
     const decision=outputSurfaceDecision({
      plan,signature:key,proof:current.proofs[id],requested:current.requested[id],
      connected:link.connected,cameraSafe:safe,sourceFresh:fresh,
