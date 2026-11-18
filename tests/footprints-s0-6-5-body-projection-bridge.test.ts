@@ -125,6 +125,10 @@ test('S0.6.5 connects main BODY rAF and rejects unassigned raw diagnostic poses'
  assert.match(stage,/bodyBridge\.present\(/);
  assert.match(stage,/paintExperimentBody\(body,frame,skeletonVisible,\s*motion,bodyOutput\?\?undefined,true\)/);
  assert.match(painter,/if\(cleanBodyOutput\)/);
- assert.match(painter,/safeIds/);
+ // The measured 33-joint diagnostic must not go black when a geometrical
+ // silhouette is unavailable, while silhouette mode still uses A/B mask gates.
+ assert.match(painter,/if\(skeleton\)\{/);
+ assert.match(painter,/drawBufferedBodies\(ctx,rect,motion,frame\)/);
+ assert.match(painter,/if\(masks\?\.actors\.length\)/);
  assert.match(projection,/physicalOutputPermitted\(latest\.current\.sourceChoice\)/);
 });
