@@ -23,10 +23,10 @@ const contact=(source:'camera'|'simulation',id:string,performerId:string,atMs:nu
  positionM:{xM:2,yM:3},headingRad:0,
  positionBasis:source==='simulation'?'simulated':'calibrated-estimate',confidence:.9
 });
-const liveTracker=(events:FootstepEvent[],confirmed=true):LiveFloorTrackingEngine=>(
- {isConfirmed:confirmed,calibrationData:null,floor,session:createFloorSession(floor,events)}
- as unknown as LiveFloorTrackingEngine
-);
+const liveTracker=(events:FootstepEvent[],confirmed=true):LiveFloorTrackingEngine=>{
+ return {isConfirmed:confirmed,calibrationData:null,floor,
+  session:createFloorSession(floor,events)} as unknown as LiveFloorTrackingEngine;
+};
 const identity=(ambiguous=false)=>({
  mode:2 as const,visible:ambiguous?[]:['A','B'],
  ambiguous,reason:'test',ghostCount:0,
