@@ -83,7 +83,7 @@ test('IA-R1: shared source crosses all four workspaces with one active selection
  const modules=page.locator('.soma-primary-nav-list .soma-primary-destination');
  const workspaces=page.locator('.soma-stage-module-nav .soma-stage-module-tab');
  await expect(modules).toHaveCount(1);
- await expect(modules.first()).toHaveAttribute('aria-label','Stage Studio');
+ await expect(modules.first()).toHaveAttribute('aria-label','Stage 1');
  await expect(workspaces).toHaveCount(4);
  await expect(stage).toHaveAttribute('data-workspace','track');
 
