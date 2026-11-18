@@ -84,14 +84,14 @@ export default function App(){
  const [advancedOpen,setAdvancedOpen]=useState(false),[,setBodyPromptDismissed]=useState(false);
  const [inspectorOpen,setInspectorOpen]=useState(()=>typeof window==='undefined'||window.innerWidth>=1360);
  const [footprintRecording,setFootprintRecording]=useState(false);
- const [footprintConfig,setFootprintConfig]=useState<FootprintConfig>(()=>{try{const v=JSON.parse(localStorage.getItem('soma-footprint-visual-v1')||'null');const d=footprintDefaults();return v&&typeof v==='object'?{...d,...v,colors:{...d.colors,...v.colors}}:d;}catch{return footprintDefaults();}});
+ const [footprintConfig,setFootprintConfig]=useState<FootprintConfig>(()=>{try{const v=JSON.parse(localStorage.getItem('soma-footprint-visual-v1')||'null');const d=footprintDefaults();return v&&typeof v==='object'?{...d,...v,hold:false,colors:{...d.colors,...v.colors}}:d;}catch{return footprintDefaults();}});
  const footprintRef=useRef<FootprintsHandle|null>(null),footprintCanvasRef=useRef<HTMLCanvasElement|null>(null);
  const simulatorArtworkRef=useRef<HTMLCanvasElement|null>(null);
  const liveFloorArtworkRef=useRef<HTMLCanvasElement|null>(null);
  const liveFloorEngine=useRef(new LiveFloorTrackingEngine()).current;
  const multiPoseRouter=useRef(new MultiPoseGaitRouter(liveFloorEngine)).current;
  const updateFootprint=(patch:Partial<FootprintConfig>)=>setFootprintConfig(c=>({...c,...patch}));
- useEffect(()=>{try{localStorage.setItem('soma-footprint-visual-v1',JSON.stringify(footprintConfig));}catch{}},[footprintConfig]);
+ useEffect(()=>{try{localStorage.setItem('soma-footprint-visual-v1',JSON.stringify({...footprintConfig,hold:false}));}catch{}},[footprintConfig]);
  const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem('soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):defaults();}catch{return defaults();}});
  useEffect(()=>{const timer=setTimeout(()=>{try{localStorage.setItem('soma-studio-session-v3',JSON.stringify({version:2,settings}));}catch{}},300);return()=>clearTimeout(timer);},[settings]);const sr=useRef(settings);sr.current=settings;
  const [source,setSource]=useState<'camera'|'mouse'>(settings.input==='mouse'?'mouse':'camera');const sourceRef=useRef(source);sourceRef.current=source;
