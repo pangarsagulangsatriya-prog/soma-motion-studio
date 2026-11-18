@@ -937,17 +937,24 @@ export function FootprintsStageWorkspace({
    initialReference={rehearsalReference}
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
-  {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
-   bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
-   router={router} floorTracker={tracker} projection={projection}
-   cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
-   floorReady={floorStatus.confirmed&&cameraMatched}
-   floorEvents={()=>tracker.session?.events??[]}
-   identitySafe={!identityStatus.ambiguous}
-   onClose={()=>{onBlackout();setComposerOpen(false);}}/>}
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
-    <div className="fp-stage-overview" hidden={view!=='stage'}>
+    {!operatorMode&&view==='stage'&&<div className="uxr3-compose-switcher" role="group" aria-label="Mode Compose">
+     <span className="uxr3-compose-label">COMPOSE</span>
+     <button type="button" aria-pressed={!composerOpen} onClick={()=>{setComposerOpen(false);setComposerStartQA(false);}}>Stage Preview</button>
+     <button type="button" aria-pressed={composerOpen} onClick={()=>{setCalibrationOpen(false);setPhonePanelOpen(false);setInspectorOpen(false);setComposerStartQA(false);setComposerOpen(true);}}>Scene &amp; Layers</button>
+     <span className="uxr3-compose-status">{floorScene==='footprints'?'Footprints':FLOOR_SCENES.find(scene=>scene.id===floorScene)?.name??'Scene'} · {experimentalKind?'Rehearsal only':'Source shared'}</span>
+    </div>}
+    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} onSceneChange={selectFloorScene}
+     initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
+     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
+     router={router} floorTracker={tracker} projection={projection}
+     cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
+     floorReady={floorStatus.confirmed&&cameraMatched}
+     floorEvents={()=>tracker.session?.events??[]}
+     identitySafe={!identityStatus.ambiguous}
+     onClose={()=>{onBlackout();setComposerOpen(false);setComposerStartQA(false);}}/>}
+    <div className="fp-stage-overview" hidden={view!=='stage'||composerOpen}>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind}
