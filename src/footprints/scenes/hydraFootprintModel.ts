@@ -1,4 +1,5 @@
 /** VIS-R1/R2: bounded artistic controls; never authorize hardware output. */
+import {validateCatalogSceneId,type CatalogSceneId} from './artisticCatalog.ts';
 import {ARTISTIC_FOOTPRINT_DEFAULTS,type ArtisticFootprintStyle,type ArtisticFootprintView,type ArtisticFootprintTreatment} from './ArtisticFootprintRuntime.ts';
 export type HydraFootprintStyle='grain'|'echo'|'interference'|'flow';
 export type HydraFootprintStatus='off'|'loading'|'ready'|'fallback';
@@ -7,10 +8,11 @@ export type HydraFootprintSettings={
  feedback:number;motion:number;quality:'low'|'medium'|'high';
  artwork:'off'|ArtisticFootprintStyle;
  artworkView:ArtisticFootprintView;artworkTreatment:ArtisticFootprintTreatment;
+ catalogScene:CatalogSceneId;catalogVisual:boolean;
 };
 export const HYDRA_FOOTPRINT_DEFAULTS:HydraFootprintSettings={
  enabled:false,style:'grain',mix:.6,distortion:.2,feedback:.28,motion:.65,quality:'medium',
- artwork:'off',artworkView:'both',artworkTreatment:'artistic'
+ artwork:'off',artworkView:'both',artworkTreatment:'artistic',catalogScene:'footprints',catalogVisual:true
 };
 export const HYDRA_FOOTPRINT_STYLES:readonly {id:HydraFootprintStyle;label:string;description:string}[]=[
  {id:'grain',label:'Grain',description:'Noise grain and displaced foot traces'},
@@ -32,7 +34,9 @@ export function normalizeHydraFootprintSettings(raw:unknown):HydraFootprintSetti
   quality:v.quality==='low'||v.quality==='medium'||v.quality==='high'?v.quality:'medium',
   artwork:v.artwork==='off'||v.artwork==='trace'||v.artwork==='compression'||v.artwork==='negative-memory'||v.artwork==='wave-record'?v.artwork:'off',
   artworkView:v.artworkView==='footprints'||v.artworkView==='paths'||v.artworkView==='both'?v.artworkView:ARTISTIC_FOOTPRINT_DEFAULTS.view,
-  artworkTreatment:v.artworkTreatment==='literal'||v.artworkTreatment==='artistic'?v.artworkTreatment:ARTISTIC_FOOTPRINT_DEFAULTS.treatment
+  artworkTreatment:v.artworkTreatment==='literal'||v.artworkTreatment==='artistic'?v.artworkTreatment:ARTISTIC_FOOTPRINT_DEFAULTS.treatment,
+  catalogScene:validateCatalogSceneId(v.catalogScene)?v.catalogScene:'footprints',
+  catalogVisual:typeof v.catalogVisual==='boolean'?v.catalogVisual:true
  };
 }
 export type HydraMotionUniforms={x:number;y:number;energy:number;contacts:number;speed:number};

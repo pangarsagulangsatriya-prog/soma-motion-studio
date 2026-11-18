@@ -136,6 +136,7 @@ export function FootprintsStageWorkspace({
    return isFloorSceneId(saved)?saved:'footprints';
   }catch{return 'footprints';}
  });
+ useEffect(()=>{setHydraSettings(prev=>prev.catalogScene===floorScene?prev:normalizeHydraFootprintSettings({...prev,catalogScene:floorScene}));},[floorScene]);
  const [snowfallCount,setSnowfallCount]=useState(0);
  const [snowfallPaused,setSnowfallPaused]=useState(false);
  const [snowfallRate,setSnowfallRate]=useState(.55);
@@ -984,7 +985,8 @@ export function FootprintsStageWorkspace({
     </div>}
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
-     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
+     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
+     previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'} frameRef={frameRef} videoRef={videoRef}
      router={router} floorTracker={tracker} projection={projection}
      cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
      floorReady={floorStatus.confirmed&&cameraMatched}
@@ -1172,13 +1174,16 @@ export function FootprintsStageWorkspace({
           <strong>GENERATIVE / FLOOR</strong>
           <label><input type="checkbox" checked={hydraSettings.enabled}
            onChange={e=>updateHydra({enabled:e.target.checked})}/> Aktifkan Hydra untuk preview</label>
+          <label><input type="checkbox" checked={hydraSettings.catalogVisual}
+           onChange={e=>updateHydra({catalogVisual:e.target.checked})}/> Artistic scene profiles (14 scenes)</label>
+          <small>Active catalog: {floorScene} · 14 distinct contact-bound motifs. Hardware output unchanged.</small>
           <label>Flagship artwork<select aria-label="Pilih artwork Footprints" value={hydraSettings.artwork}
            onChange={e=>updateHydra({enabled:e.target.value!=='off'||hydraSettings.enabled,
             artwork:e.target.value as HydraFootprintSettings['artwork']})}>
-           <option value="off">Original scene + Hydra</option>
+           <option value="off">Use selected scene's catalog profile</option>
            {ARTISTIC_FOOTPRINT_STYLES.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
           </select></label>
-          {hydraSettings.artwork!=='off'&&<>
+          {(hydraSettings.artwork!=='off'||hydraSettings.catalogVisual)&&<>
            <label>Representation<select aria-label="Artistic atau literal" value={hydraSettings.artworkTreatment}
             onChange={e=>updateHydra({artworkTreatment:e.target.value as HydraFootprintSettings['artworkTreatment']})}>
             <option value="artistic">Artistic</option><option value="literal">Literal footprint</option>
