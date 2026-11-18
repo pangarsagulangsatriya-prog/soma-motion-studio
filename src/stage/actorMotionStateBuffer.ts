@@ -11,15 +11,13 @@
  */
 import type {Landmark} from '../engine/types.ts';
 import {POSE_LANDMARK_COUNT,SKELETON_COLORS} from './fullBodySkeleton.ts';
+import {ContactAwareFootLock,type FootLockSample} from './contactAwareFootLock.ts';
 
 export type MotionActorId='A'|'B';
-export type MotionSnapshot={
- atMs:number;segment?:number;ambiguous?:boolean;rawPoses?:Landmark[][];
- actorStates?:Array<{id:MotionActorId;presence:string;rawIndex:number|null}>;
-};
+export type MotionSnapshot=FootLockSample;
 export type MotionVisualActor={
  id:MotionActorId;pose:Landmark[];opacity:number;mode:'measured'|'interpolated'|'predicted';
- ageMs:number;color:string;label:string;
+ ageMs:number;color:string;label:string;lockedFeet?:Array<'left'|'right'>;
 };
 export type MotionVisualFrame={actors:MotionVisualActor[];atMs:number;renderDelayMs:number};
 export type MotionFilterConfig={
@@ -76,13 +74,14 @@ type ActorBank={filters:JointFilter[];previous:MotionSample|null;latest:MotionSa
 const ids=['A','B'] as const;
 export class ActorMotionStateBuffer{
  private actors=new Map<MotionActorId,ActorBank>();
+ private readonly footLock=new ContactAwareFootLock();
  private lastAtMs=-1;
  private segment:number|null=null;
  private readonly config:MotionFilterConfig;
  constructor(config:Partial<MotionFilterConfig>={}){
   this.config={...DEFAULT_MOTION_FILTER,...config};
  }
- reset(){this.actors.clear();this.lastAtMs=-1;this.segment=null;}
+ reset(){this.actors.clear();this.footLock.reset();this.lastAtMs=-1;this.segment=null;}
  get latestAtMs(){return this.lastAtMs;}
  private createFilters():JointFilter[]{
   return Array.from({length:POSE_LANDMARK_COUNT},()=>({
@@ -98,6 +97,7 @@ export class ActorMotionStateBuffer{
   if(this.lastAtMs>=0&&frame.atMs<=this.lastAtMs)return false;
   if(this.lastAtMs>=0&&frame.atMs-this.lastAtMs>550)this.actors.clear();
   this.lastAtMs=frame.atMs;
+  this.footLock.observe(frame);
   // A/B identity uncertainty is a hard boundary. No cached labeled ghost.
   if(frame.ambiguous){this.actors.clear();return true;}
   for(const id of ids){
@@ -162,7 +162,9 @@ export class ActorMotionStateBuffer{
   const opacity=age<=fadeStart?1:
    clamp((this.config.staleLimitMs-age)/(this.config.staleLimitMs-fadeStart),0,1);
   if(opacity<=0)return null;
-  return {id,pose,opacity,mode,ageMs:Math.max(0,age),
+  const locked=this.footLock.apply(id,pose,videoAtMs);
+  return {id,pose:locked.pose,lockedFeet:locked.lockedFeet,opacity,mode,
+   ageMs:Math.max(0,age),
    color:SKELETON_COLORS[id==='A'?0:1],label:'ACTOR '+id};
  }
  present(videoAtMs:number):MotionVisualFrame{

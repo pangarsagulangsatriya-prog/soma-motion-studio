@@ -2,6 +2,7 @@ import {FilesetResolver,PoseLandmarker} from '@mediapipe/tasks-vision';
 import type {Landmark} from '../engine/types.ts';
 import {descriptorsFor33} from './mediaPipeD2Bridge.ts';
 import {d3MatchGuides,d3AcceptRefinement,type D3Guide,type D3Report} from './duetPose33.ts';
+import {AdaptiveD3Scheduler} from './adaptiveD3Scheduler.ts';
 import {duetSearchRegions,cropInferenceSize,remapPoseFromCrop,rescuePoseQuality,
  mergeRescueDetections,type RescuedPose} from './duetPoseRescue.ts';
 
@@ -13,7 +14,8 @@ let rescue:PoseLandmarker|null=null;
 let rescueLoading:Promise<void>|null=null;
 let basePath='';
 let files:Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>|null=null;
-let lastClock=-1,lastRescueClock=-Infinity,lastGuidedClock=-Infinity;
+let lastClock=-1,lastRescueClock=-Infinity;
+const adaptiveD3=new AdaptiveD3Scheduler();
 let rescueFailure='';
 const RESCUE_INTERVAL_MS=360;
 const send=(data:unknown)=>self.postMessage(data);
@@ -94,17 +96,13 @@ function guidedDual33(bitmap:ImageBitmap,poses:Landmark[][],guides:D3Guide[],
   report.reason='Crop tidak aman: aktor bersilangan atau berpindah terlalu jauh.';
   return report;
  }
- if(clock-lastGuidedClock<230){
-  report.reason='Frame skipping D3 agar video tetap berjalan.';
+ const schedule=adaptiveD3.choose(clock,performance.now()-startMs,matches,poses);
+ if(schedule.matches.length===0){
+  report.reason=schedule.reason;
   return report;
  }
- if(performance.now()-startMs>135){
-  report.reason='Inferensi utama sedang berat; D3 melewati frame.';
-  return report;
- }
- lastGuidedClock=clock;
  const begin=performance.now();
- for(const match of matches){
+ for(const match of schedule.matches){
   if(performance.now()-startMs>210)break;
   const {region,rawIndex,id}=match;
   const size=cropInferenceSize(bitmap.width,bitmap.height,region);
@@ -131,7 +129,9 @@ function guidedDual33(bitmap:ImageBitmap,poses:Landmark[][],guides:D3Guide[],
   finally{sample.close();}
  }
  report.elapsedMs=performance.now()-begin;
- if(!report.accepted)report.reason='Menggunakan pose utama; crop belum memenuhi QA.';
+ if(report.attempted)adaptiveD3.observe(clock,schedule.matches[0].id,report.elapsedMs);
+ report.reason=report.accepted?schedule.reason:
+  'Crop tidak lolos QA; pose multipose asli dipertahankan.';
  return report;
 }
 self.onmessage=async(event:MessageEvent<Request>)=>{
@@ -139,6 +139,7 @@ self.onmessage=async(event:MessageEvent<Request>)=>{
  if(value.type==='init'){
   try{
    const initStart=performance.now();
+   adaptiveD3.reset();
    basePath=value.base;
    files=await FilesetResolver.forVisionTasks(value.base+'wasm');
    pose=await PoseLandmarker.createFromOptions(files,{
