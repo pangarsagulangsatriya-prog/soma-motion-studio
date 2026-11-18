@@ -80,7 +80,7 @@ test('S0.3 stage runs a continuous rAF renderer while FLOOR remains event-bound'
  const skeleton=readFileSync(new URL('../src/stage/fullBodySkeleton.ts',import.meta.url),'utf8');
  assert.doesNotMatch(code,/now-lastPaintAt>=1000\/30/);
  assert.match(code,/buffer\.ingest\(current\.snapshot\)/);
- assert.match(code,/buffer\.present\(atMs\)/);
+ assert.match(code,/buffer\.present\(atMs,flow\)/);
  assert.match(code,/paintExperimentBody\(body,frame,skeletonVisible,motion\)/);
  assert.match(code,/current\.snapshot\?\.atMs!==lastFloorAt/);
  assert.match(painter,/drawBufferedBodies/);
