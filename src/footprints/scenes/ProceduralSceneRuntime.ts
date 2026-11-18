@@ -34,6 +34,7 @@ export class ProceduralSceneRuntime{
  private pulses:Pulse[]=[];
  private particles:Particle[]=[];
  private snow=new SnowfallScene();
+ private snowBuffer:HTMLCanvasElement|null=null;
  private rng=0x1682b3;
  private clockMs=0;
  private lastAt:number|null=null;
@@ -62,6 +63,7 @@ export class ProceduralSceneRuntime{
  /** Ignore old history after switching scenes; future F0 events still flow. */
  skipExisting(events:readonly FloorInteractionEvent[],generation:number){
   if(this.generation!==generation)this.reset(generation);
+  this.snow.consume(events,generation,false);
   for(const event of events)this.seen.add(generation+':'+event.id);
  }
  ingest(events:readonly FloorInteractionEvent[],generation:number,enabled=true){
@@ -170,7 +172,11 @@ export class ProceduralSceneRuntime{
   // The winter scenes share the same physically persistent Snowfall heightfield.
   const snow=this.snow;
   const gw=snow.width,gh=snow.height;
-  const thumb=document.createElement('canvas');thumb.width=gw;thumb.height=gh;
+  if(!this.snowBuffer){
+   this.snowBuffer=document.createElement('canvas');
+   this.snowBuffer.width=gw;this.snowBuffer.height=gh;
+  }
+  const thumb=this.snowBuffer;
   const c=thumb.getContext('2d');if(!c)return;
   const img=c.createImageData(gw,gh);
   const warm=this.id==='christmas',blue=this.id==='hanukkah';
