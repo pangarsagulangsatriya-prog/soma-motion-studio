@@ -290,6 +290,53 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   });
   setMessage('Pengukuran dicatat sebagai bukti operator, bukan verifikasi otomatis cahaya.');
  };
+ const saveOutputDraft=()=>{
+  const key=stableStageEquipmentKey(frameRef.current?.cameraKey??null,
+   frameRef.current?.floorKey??null);
+  if(!key){setMessage('Aktifkan kamera, mask dan profil lantai sebelum menyimpan draf optik.');return;}
+  const name=draftName.trim().slice(0,100);
+  if(!name){setMessage('Isi nama profil output.');return;}
+  const existing=savedDrafts.find(p=>p.id===draftId);
+  const id=existing?.id??('output-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+  try{
+   const next=saveStageOutputDraft(localStorage,{
+    schema:'soma.stage-output-draft',version:1,id,name,
+    equipmentKey:key,updatedAt:new Date().toISOString(),
+    plans:{body:plans.body,floor:plans.floor}
+   });
+   setSavedDrafts(next);setDraftId(id);
+   setMessage('Draf optik tersimpan lokal. QA dan izin fisik tidak ikut disimpan.');
+  }catch(e){setMessage(e instanceof Error?e.message:'Gagal menyimpan draf output.');}
+ };
+ const applyOutputDraft=()=>{
+  const draft=savedDrafts.find(p=>p.id===draftId);
+  const key=stableStageEquipmentKey(frameRef.current?.cameraKey??null,
+   frameRef.current?.floorKey??null);
+  if(!draft||!matchingStageOutputDraft(draft,key)){
+   setMessage('Profil tidak cocok dengan kamera, resolusi, performer atau kalibrasi lantai.');
+   return;
+  }
+  // Old light state is cleared synchronously, before changing any quad.
+  ids.forEach(urgentBlackout);
+  const next={body:draft.plans.body,floor:draft.plans.floor};
+  latest.current.plans=next;latest.current.proofs={body:null,floor:null};
+  latest.current.requested={body:'blackout',floor:'blackout'};
+  latest.current.armed={body:false,floor:false};
+  setPlans(next);setProofs({body:null,floor:null});
+  setRequested({body:'blackout',floor:'blackout'});
+  setArmed({body:false,floor:false});
+  setDraftName(draft.name);
+  setMessage('Draf BODY/FLOOR dimuat. Keduanya BLACKOUT. Ulangi QA lima titik.');
+ };
+ const removeOutputDraft=()=>{
+  if(!draftId)return;
+  try{
+   const remaining=savedDrafts.filter(d=>d.id!==draftId);
+   localStorage.setItem('soma-stage-output-drafts-v1',JSON.stringify(remaining));
+   setSavedDrafts(remaining);setDraftId('');
+   setMessage('Profil lokal dihapus. Kalibrasi aktif tidak berubah.');
+  }catch{setMessage('Penyimpanan lokal tidak tersedia.');}
+ };
  const exportReport=()=>{
   const result={schema:'soma.footprints.dual-surface-report',version:1,
    files:ids.map(id=>stageSurfaceReport(plans[id],proofs[id],context(id))),
