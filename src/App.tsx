@@ -416,7 +416,7 @@ export default function App(){
      setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));
      void switchFootprintsSource(choice);
     }}
-    sourceLabel={footprintsChoice==='video'?'MP4 · rehearsal':footprintsChoice==='simulator'?'3D · simulation':footprintsChoice==='phone'?'Phone camera':footprintsChoice==='webcam'?'Webcam':'No source'}
+    sourceLabel={footprintsChoice==='video'?'Video MP4':footprintsChoice==='simulator'?'Simulasi 3D':footprintsChoice==='phone'?'Kamera HP':footprintsChoice==='webcam'?'Webcam laptop':'Pilih sumber'}
     trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
     outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Output terkunci':projection.status.connected?'QA diperlukan':'Output terkunci'}
     onPreset={()=>setModal('presets')}
