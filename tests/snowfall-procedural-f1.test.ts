@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {FloorInteractionEngine} from '../src/footprints/scenes/FloorInteractionEngine.ts';
 import {feedTouchFloorInteraction} from '../src/footprints/scenes/interactionAdapters.ts';
 import {SnowfallScene,snowfallOptions,SNOW_GRID} from '../src/footprints/scenes/SnowfallScene.ts';
+import {floorPointerCoordinates} from '../src/footprints/scenes/floorPointerCoordinates.ts';
 
 const client=()=>{const bus=new FloorInteractionEngine();bus.reset('touch');return bus;};
 const click=(bus:FloorInteractionEngine,index:number,atMs:number,x:number,y:number)=>{
@@ -125,6 +126,20 @@ test('F1 snow refills footprint gradually without removing unique history',()=>{
  assert.equal(snow.count,1);
  assert.equal(snowfallOptions({recoverySeconds:500}).recoverySeconds,240);
  assert.equal(snowfallOptions({snowfall:-2}).snowfall,0);
+});
+test('F1 touch maps real 16:9 artwork and excludes black letterbox regions',()=>{
+ const rect={left:100,top:200,width:500,height:400};
+ const center=floorPointerCoordinates(350,400,rect)!;
+ assert.ok(center.inside);
+ assert.ok(Math.abs(center.x-.5)<.001);
+ assert.ok(Math.abs(center.y-.5)<.001);
+ const letterbox=floorPointerCoordinates(350,210,rect)!;
+ assert.equal(letterbox.inside,false);
+ assert.equal(letterbox.y,0);
+ const corner=floorPointerCoordinates(100,200+(400-500*9/16)/2,rect)!;
+ assert.equal(corner.inside,true);
+ assert.equal(corner.x,0);
+ assert.equal(floorPointerCoordinates(NaN,200,rect),null);
 });
 test('F1 clean GPU Snowfall never renders diagnostic labels into physical floor',()=>{
  const stage=readFileSync(new URL('../src/studio/v3/FootprintsStageWorkspace.tsx',import.meta.url),'utf8');
