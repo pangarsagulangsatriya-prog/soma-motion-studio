@@ -106,3 +106,37 @@ test('Source E2E: MP4 cannot open physical projector output',async({page})=>{
  await expect(router.locator('.stage-wysiwyg-card[data-preview-signal=blackout]')).toHaveCount(2);
  expect(popups).toBe(0);
 });
+
+test('IA-R1: four-stage UX keeps one source and one stage session',async({page})=>{
+ await page.goto('/');
+ const destinations=page.locator('.soma-primary-nav-list .soma-primary-destination');
+ await expect(destinations).toHaveCount(4);
+ for(const name of ['Track','Compose','Map','Perform'])
+  await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ await chooseSource(page,'Simulasi 3D');
+ const stage=page.locator('.fp-stage-workspace');
+ await expect(stage).toHaveAttribute('data-workspace','track');
+ await expect(stage).toHaveAttribute('data-experimental','true');
+
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-root')).toBeVisible();
+ await expect(page.locator('.uxr3-scene-card')).toHaveCount(14);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await page.getByRole('button',{name:'Map',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','map');
+ await expect(page.locator('.map-r1-workspace')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await page.getByRole('button',{name:'Perform',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','perform');
+ await expect(page.locator('.ops-r1-cue-slots .ops-r1-slot')).toHaveCount(8);
+ await expect(page.locator('.fp-stage-overview')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-root')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+});
