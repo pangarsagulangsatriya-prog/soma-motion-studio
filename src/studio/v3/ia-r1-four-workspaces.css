@@ -1,4 +1,4 @@
-/* IA-R1 · one global Stage Studio module; four local workspaces. */
+/* IA-R1 · one global Stage 1 module; four local workspaces. */
 .soma-v3 .workspace:has(>.soma-primary-sidebar[data-expanded=true]){--soma-sidebar-width:176px}
 .soma-v3 .soma-primary-sidebar{background:#101913;border-right-color:#314538}
 .soma-v3 .soma-primary-nav-list{gap:5px;padding-top:14px}
