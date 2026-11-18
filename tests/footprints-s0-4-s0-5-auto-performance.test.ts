@@ -103,7 +103,8 @@ test('S0.5 releases foot lock on swing, slide, pivot, identity hold, time gap an
  const secondContact={...contact,id:'A:contact:1450',atMs:1450};
  lock.observe({...sample(1450),events:[secondContact]});
  assert.deepEqual(lock.apply('A',pose(.25),1450).lockedFeet,['left']);
- lock.observe({...sample(1500),ambiguous:true});
+ lock.observe({...sample(1500),ambiguous:true,
+  actorStates:[{id:'A',presence:'uncertain',rawIndex:null}],people:[]});
  assert.deepEqual(lock.apply('A',pose(.25),1500).lockedFeet,[]);
  lock.observe({...sample(2100),events:[secondContact]});
  assert.deepEqual(lock.apply('A',pose(.25),2100).lockedFeet,[]);
