@@ -6,6 +6,7 @@ import {
 } from './hydraFootprintModel.ts';
 import type {FootMotionEventV2} from './FootMotionEventV2.ts';
 import {ArtisticFootprintRuntime,normalizeArtisticFootprintConfig} from './ArtisticFootprintRuntime.ts';
+import {catalogRecipe} from './artisticCatalog.ts';
 
 /** One Hydra instance and one stable s0 canvas per Compose workspace.
  * This is a SOFTWARE visual post-processor. Physical routing stays on its existing QA gate. */
@@ -75,9 +76,11 @@ export class PersistentHydraFootprintRuntime {
  configure(raw:HydraFootprintSettings){
   this.settings=normalizeHydraFootprintSettings(raw);
   if(!this.engine||this.status==='fallback')return;
-  const selected:HydraFootprintStyle=this.settings.artwork==='off'?this.settings.style:
-   this.settings.artwork==='trace'?'echo':this.settings.artwork==='compression'?'grain':
-   this.settings.artwork==='negative-memory'?'interference':'flow';
+  const motifStyle=this.settings.artwork!=='off'?this.settings.artwork:
+   this.settings.catalogVisual?catalogRecipe(this.settings.catalogScene).style:null;
+  const selected:HydraFootprintStyle=motifStyle===null?this.settings.style:
+   motifStyle==='trace'?'echo':motifStyle==='compression'?'grain':
+   motifStyle==='negative-memory'?'interference':'flow';
   if(this.style===selected)return;
   try{
    this.applyGraph(selected);
@@ -119,9 +122,15 @@ export class PersistentHydraFootprintRuntime {
    this.style=null;this.configure(this.settings);
   }
   try{
-   const artwork=this.settings.artwork;
-   if(artwork!==this.lastArtwork){
-    this.lastArtwork=artwork;this.art.reset(generation);this.resetFeedback();
+   const recipe=this.settings.artwork==='off'&&this.settings.catalogVisual?
+    catalogRecipe(this.settings.catalogScene):null;
+   const artwork=this.settings.artwork!=='off'?this.settings.artwork:(recipe?.style??'off');
+   const sceneKey=this.settings.artwork!=='off'?'flagship:'+artwork:
+    recipe?'catalog:'+recipe.id:'off';
+   if(sceneKey!==this.lastArtwork){
+    if(this.lastArtwork==='off')this.art.reset(generation);
+    else this.art.skipExisting(events,generation);
+    this.lastArtwork=sceneKey;this.resetFeedback();
    }
    this.sourceContext.fillStyle='#000';
    this.sourceContext.fillRect(0,0,640,360);
@@ -129,7 +138,7 @@ export class PersistentHydraFootprintRuntime {
     this.art.ingest(events,generation,nowMs);
     this.art.paint(this.artCanvas,nowMs,normalizeArtisticFootprintConfig({
      style:artwork,view:this.settings.artworkView,treatment:this.settings.artworkTreatment,
-     intensity:this.settings.mix,persistence:.76
+     intensity:this.settings.mix,persistence:recipe?.persistence??.76,catalog:recipe??undefined
     }));
     this.sourceContext.drawImage(this.artCanvas,0,0,640,360);
    }else if(source.width&&source.height)this.sourceContext.drawImage(source,0,0,640,360);
