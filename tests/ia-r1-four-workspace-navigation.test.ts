@@ -40,7 +40,7 @@ test('IA-R1: no second Footprints source picker or stage tabs underneath the glo
  assert.ok(!stage.includes('uxr3-compose-switcher'));
  assert.ok(!stage.includes('fp-flow-local-tabs'));
  assert.match(nav,/<details className="soma-uxr1-source"/);
- assert.match(stage,/!experimentalKind&&<QuickStageSetup/);
+ assert.match(stage,/sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup/);
  assert.match(stage,/experimentalKind&&<FootprintsExperimentalSource/);
  assert.match(stage,/data-workspace=\{operatorMode\?'perform':composerOpen\?/);
 });
