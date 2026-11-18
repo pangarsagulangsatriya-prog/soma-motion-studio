@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
-test('IA-R1: one global Stage Studio module owns four local workspaces',()=>{
+test('IA-R1: one global Stage 1 module owns four local workspaces',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
  const local=read('../src/studio/v3/StageModuleNav.tsx');
  const global=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
   nav.indexOf('className="soma-primary-labs-launch"'));
  assert.equal((global.match(/soma-primary-destination/g)||[]).length,1);
- assert.match(global,/aria-label="Stage Studio"/);
+ assert.match(global,/aria-label="Stage 1"/);
  for(const name of ['Track','Compose','Map','Perform'])
   assert.match(local,new RegExp("id:'"+name.toLowerCase()+"'"));
- assert.match(local,/aria-label="Navigasi Stage Studio"/);
+ assert.match(local,/aria-label="Navigasi Stage 1"/);
  assert.match(local,/onNavigate\(item.id\)/);
  assert.match(nav,/stageModuleActive&&<div className="soma-uxr1-health"/);
  assert.match(nav,/aria-label="Tools · SOMA Labs"/);
