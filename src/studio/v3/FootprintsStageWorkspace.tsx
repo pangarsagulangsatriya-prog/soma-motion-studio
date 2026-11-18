@@ -40,6 +40,10 @@ import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
 import {SnowfallScene} from '../../footprints/scenes/SnowfallScene.ts';
 import {SnowfallRenderer} from '../../footprints/scenes/SnowfallRenderer.ts';
+import {ProceduralSceneRuntime,type ProceduralParams} from '../../footprints/scenes/ProceduralSceneRuntime.ts';
+import {FLOOR_SCENES,FLOOR_SCENE_PRESETS,loadFloorPresets,saveFloorPreset,
+ isFloorSceneId,type FloorSceneId,type FloorScenePreset} from '../../footprints/scenes/sceneRegistry.ts';
+import {FloorAudioReactive,type FloorAudioSource} from '../../footprints/scenes/FloorAudioReactive.ts';
 import {floorPointerCoordinates} from '../../footprints/scenes/floorPointerCoordinates.ts';
 import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
  feedTouchFloorInteraction,paintFloorInteractionOverlay} from '../../footprints/scenes/interactionAdapters.ts';
@@ -70,6 +74,7 @@ type Props={
  onActiveToolChange?:(tool:StageNavigationRequest['tool'])=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
+ audioAnalyser?:AnalyserNode|null;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
  cameraDevices:MediaDeviceInfo[];selectedCameraId:string;
  onSelectCameraDevice:(deviceId:string)=>Promise<void>;
@@ -91,7 +96,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,audioAnalyser,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  cameraDevices,selectedCameraId,onSelectCameraDevice,
  sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
@@ -103,6 +108,7 @@ export function FootprintsStageWorkspace({
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const snowfallCanvas=useRef<HTMLCanvasElement>(null);
+ const proceduralCanvas=useRef<HTMLCanvasElement>(null);
  const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
  const interactionCanvas=useRef<HTMLCanvasElement>(null);
  const interactionEngineRef=useRef(new FloorInteractionEngine());
@@ -110,20 +116,49 @@ export function FootprintsStageWorkspace({
  const [touchDemo,setTouchDemo]=useState(false);
  const [floorInteractionStats,setFloorInteractionStats]=useState({actors:0,contacts:0,events:0});
  const [snowfallScene]=useState(()=>new SnowfallScene());
- const [floorScene,setFloorScene]=useState<'footprints'|'snowfall'>(()=>{
-  try{return localStorage.getItem('soma-floor-scene-v1')==='snowfall'?'snowfall':'footprints';}
-  catch{return 'footprints';}
+ const [floorScene,setFloorScene]=useState<'footprints'|FloorSceneId>(()=>{
+  try{
+   const saved=localStorage.getItem('soma-floor-scene-v1');
+   return isFloorSceneId(saved)?saved:'footprints';
+  }catch{return 'footprints';}
  });
  const [snowfallCount,setSnowfallCount]=useState(0);
  const [snowfallPaused,setSnowfallPaused]=useState(false);
  const [snowfallRate,setSnowfallRate]=useState(.55);
  const [snowfallRecovery,setSnowfallRecovery]=useState(75);
  const [snowfallRendererMode,setSnowfallRendererMode]=useState<'webgl2'|'2d'|'unavailable'>('unavailable');
+ const [proceduralRuntime]=useState(()=>new ProceduralSceneRuntime());
+ const [sceneIntensity,setSceneIntensity]=useState(.6);
+ const [sceneRadius,setSceneRadius]=useState(.5);
+ const [scenePersistence,setScenePersistence]=useState(.65);
+ const [sceneQuality,setSceneQuality]=useState<'low'|'medium'|'high'>('medium');
+ const [sceneAudioMix,setSceneAudioMix]=useState(.35);
+ const [sceneCount,setSceneCount]=useState(0);
+ const [userPresets,setUserPresets]=useState<FloorScenePreset[]>(()=>{
+  try{return loadFloorPresets(localStorage);}catch{return [];}
+ });
+ const [presetName,setPresetName]=useState('Scene Panggung');
+ const [sceneAudioSource,setSceneAudioSource]=useState<FloorAudioSource>('off');
+ const [sceneAudioError,setSceneAudioError]=useState('');
+ const [sceneAudioLevel,setSceneAudioLevel]=useState(0);
+ const audioMeter=useRef(new FloorAudioReactive());
+ const proceduralConfig=useRef<ProceduralParams>({
+  intensity:sceneIntensity,radius:sceneRadius,persistence:scenePersistence,
+  quality:sceneQuality,audioMix:sceneAudioMix,audioLevel:0,paused:snowfallPaused
+ });
+ proceduralConfig.current={intensity:sceneIntensity,radius:sceneRadius,
+  persistence:scenePersistence,quality:sceneQuality,audioMix:sceneAudioMix,
+  audioLevel:sceneAudioLevel,paused:snowfallPaused};
+ const sceneAudioSourceRef=useRef(sceneAudioSource);
+ sceneAudioSourceRef.current=sceneAudioSource;
+ const analyserRef=useRef(audioAnalyser??null);
+ analyserRef.current=audioAnalyser??null;
  // Changing Jeda/intensity/refill must never recreate the WebGL context,
  // otherwise a stage slider interaction can flash the projection.
  const snowfallConfig=useRef({paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery});
  snowfallConfig.current={paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery};
- cleanFloorOutput.current=floorScene==='snowfall'?snowfallCanvas.current:floorCanvas.current;
+ cleanFloorOutput.current=floorScene==='footprints'?floorCanvas.current:
+  floorScene==='snowfall'?snowfallCanvas.current:proceduralCanvas.current;
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
