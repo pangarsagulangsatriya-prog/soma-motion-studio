@@ -8,6 +8,7 @@ import {LABS_ITEM_COUNT,searchLabs,type LabsId} from './labsCatalog.ts';
 import {isDismissEscape,RAIL_TOOLTIP_DELAY_MS} from './interactionPolicy.ts';
 import './workspace-navigation.css';
 import './projector-shell.css';
+import './ux-r1-unified-shell.css';
 
 export type Workspace='studio'|'archive'|'projection';
 const NAV_KEY='soma-primary-navigation-v2';
