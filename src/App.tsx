@@ -405,6 +405,8 @@ export default function App(){
      setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
     }}
     selectedTool={selectedStageTool}
+    sourceSelection={footprintsChoice} sourceBusy={sourceSwitchBusy||cameraBusy}
+    onSelectSource={choice=>{void switchFootprintsSource(choice);}}
     sourceLabel={footprintsChoice==='video'?'MP4 · rehearsal':footprintsChoice==='simulator'?'3D · simulation':footprintsChoice==='phone'?'Phone camera':footprintsChoice==='webcam'?'Webcam':'No source'}
     trackingLabel={sourceSwitchBusy?'Connecting':cameraOn?'Camera connected · check tracking':footprintsChoice==='video'||footprintsChoice==='simulator'?'Preview source':'Tracking offline'}
     outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Physical output locked':projection.status.connected?'Output connected · verify QA':'Output disconnected'}
