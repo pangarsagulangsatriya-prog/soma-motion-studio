@@ -958,8 +958,13 @@ export function FootprintsStageWorkspace({
     break;
    }
    case 'source':{
-    const trigger=document.querySelector<HTMLElement>('.soma-uxr1-source > summary');
-    trigger?.focus({preventScroll:true});trigger?.click();break;
+    onNavigateStageWorkspace('track');
+    requestAnimationFrame(()=>{
+     const trigger=document.querySelector<HTMLElement>('.soma-ux01-source-switch > summary');
+     trigger?.focus({preventScroll:true});
+     if(trigger?.parentElement instanceof HTMLDetailsElement)trigger.parentElement.open=true;
+    });
+    break;
    }
    case 'webcam':void chooseSource('webcam');break;
    case 'phone':
@@ -993,7 +998,7 @@ export function FootprintsStageWorkspace({
    </div>
    <div className="soma-ia-track-actions">
     <details className="soma-ux01-source-switch">
-     <summary aria-label="Ganti sumber gerak">Sumber: {SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Pilih'}</summary>
+     <summary aria-label="Ganti sumber gerak" title={sourceStatus.message}>Sumber: {SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Pilih'}</summary>
      <div className="soma-ux01-source-options" role="group" aria-label="Sumber gerak Track">
       {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
        disabled={sourceStatus.phase==='connecting'||sourceStatus.selection===option.id}
