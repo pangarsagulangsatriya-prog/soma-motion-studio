@@ -15,7 +15,7 @@ declare module 'hydra-synth' {
   hush?:()=>void;
  };
  export default class Hydra{
-  constructor(options:{canvas:HTMLCanvasElement;width:number;height:number;autoLoop:boolean;makeGlobal:boolean;detectAudio:boolean;enableStreamCapture:boolean});
+  constructor(options:{canvas:HTMLCanvasElement;width:number;height:number;autoLoop:boolean;makeGlobal:boolean;detectAudio:boolean;enableStreamCapture:boolean;numSources?:number;numOutputs?:number});
   synth:HydraSynth;
   tick:(dt:number)=>void;
   regl?:{destroy?:()=>void};
