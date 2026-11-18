@@ -36,7 +36,7 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,visualFloorCanvas,previewFloorEnabled=false,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
@@ -146,8 +146,9 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   // selected. Presence/touch diagnostics are in another software-only canvas.
   // Hardware projection remains under the existing five-point QA gate.
   if(s==='FLOOR'&&!readyMedia('FLOOR')){
-   const source=!physical&&previewFloorEnabled?visualFloorCanvas?.current??floorCanvas.current:floorCanvas.current;
-   if(source&&source.width>=16&&source.height>=16)ctx.drawImage(source,0,0,w,h);
+   const source=floorCanvas.current;
+   const softwareSource=!physical&&previewFloorEnabled?visualFloorCanvas?.current??source:source;
+   if(softwareSource&&softwareSource.width>=16&&softwareSource.height>=16)ctx.drawImage(softwareSource,0,0,w,h);
    return;
   }
   const now=performance.now();
