@@ -917,8 +917,8 @@ export function FootprintsStageWorkspace({
  experimentalKind==='video'?'Landmark video 2D':'Puppet sintetis (bukan mask fisik)':maskStatus}</span>
  <span>{experimentalKind?'Preview eksperimen':'Mask · preview'}</span></div>
       </div>
-      <div className="fp-stage-surface fp-preview-floor">
-       <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span>
+      <div className="fp-stage-surface fp-preview-floor" data-floor-scene={floorScene}>
+       <div className="fp-stage-surface-head"><span>{floorScene==='snowfall'?'FLOOR · SNOWFALL':'FLOOR · PATH PREVIEW'}</span>
         <small className="fp-floor-bus-status" title="Satu bus presence, movement dan contact untuk seluruh input">
          BUS · {floorInteractionStats.actors} sumber gerak · {floorInteractionStats.contacts} kontak
         </small>
@@ -932,6 +932,34 @@ export function FootprintsStageWorkspace({
          onClick={event=>selectPreviewFocus('floor',event.currentTarget)}>
          {focusPreview==='floor'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
         </button></div>
+       <div className="fp-floor-scene-controls" role="group" aria-label="Scene dan pengaturan FLOOR">
+        <label>SCENE <select aria-label="Pilih scene FLOOR" value={floorScene}
+         onChange={e=>selectFloorScene(e.target.value as 'footprints'|'snowfall')}>
+         <option value="footprints">Footprints</option>
+         <option value="snowfall">Snowfall · Procedural</option>
+        </select></label>
+        {floorScene==='snowfall'&&<>
+         <span className="fp-snowfall-counter" role="status">
+          {snowfallCount} jejak · {snowfallRendererMode==='webgl2'?'GPU WebGL2':
+           snowfallRendererMode==='2d'?'2D fallback':'GPU tidak tersedia'}</span>
+         <button type="button" className="fp-snowfall-pause" aria-pressed={snowfallPaused}
+          onClick={()=>setSnowfallPaused(p=>!p)}>{snowfallPaused?'Lanjut':'Jeda'}</button>
+         <button type="button" onClick={resetSnowfall}>Reset salju</button>
+         <details className="fp-snowfall-options">
+          <summary>Atur</summary>
+          <div>
+           <label>Turun salju · {Math.round(snowfallRate*100)}%
+            <input aria-label="Intensitas snowfall" type="range" min="0" max="1" step=".05"
+             value={snowfallRate} onChange={e=>setSnowfallRate(Number(e.target.value))}/>
+           </label>
+           <label>Tutup jejak · {snowfallRecovery} dtk
+            <input aria-label="Durasi pemulihan salju" type="range" min="12" max="240" step="1"
+             value={snowfallRecovery} onChange={e=>setSnowfallRecovery(Number(e.target.value))}/>
+           </label>
+          </div>
+         </details>
+        </>}
+       </div>
        <div className="fp-stage-canvas-area fp-stage-focus-surface"
         data-touch-demo={touchDemo} role={touchDemo?'group':'button'}
         tabIndex={0} aria-label={touchDemo?'Touch Demo · sentuh FLOOR':'Fokus preview FLOOR'}
@@ -953,13 +981,15 @@ export function FootprintsStageWorkspace({
           }else selectPreviewFocus('floor',event.currentTarget);
          }
         }}>
-        <canvas ref={floorCanvas} width={1280} height={720}
+        <canvas ref={floorCanvas} className="fp-floor-legacy-canvas" width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
+        <canvas ref={snowfallCanvas} className="fp-floor-snowfall-canvas" width={1280} height={720}
+         aria-label="Pratinjau Snowfall, salju menutup jejak kaki perlahan"/>
         <canvas ref={interactionCanvas} className="fp-floor-interaction-layer"
          width={1280} height={720} aria-hidden="true"/>
         {touchDemo&&<span className="fp-floor-touch-hint" aria-hidden="true">
          Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>}
-        {!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
+        {floorScene!=='snowfall'&&!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
         {footprint.hold&&<span className="fp-stage-hold-label">
          HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
