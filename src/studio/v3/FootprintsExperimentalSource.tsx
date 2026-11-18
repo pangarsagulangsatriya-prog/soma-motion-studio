@@ -206,7 +206,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      clip?'Menyiapkan AI':'Belum ada video'}
    </span>
    {snapshot&&<div className="fp-duet-engine-status" role="status"
-    aria-label="Pelacakan otomatis dua aktor">
+    aria-label="TRACKING OTOMATIS dua aktor">
     <b>TRACKING</b>
     <span className="fp-tracking-summary"
      title={snapshot.visibleCount===2?'Dua aktor terbaca':snapshot.visibleCount===1?
