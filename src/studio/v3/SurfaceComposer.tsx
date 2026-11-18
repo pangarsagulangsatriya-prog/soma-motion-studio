@@ -69,13 +69,13 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [hint,setHint]=useState('');
  // Software preview starts enabled in Compose. Physical output still requires the existing routing/QA panel.
  const [blackout,setBlackout]=useState(false);
+ const [previewLive,setPreviewLive]=useState(true);
  useEffect(()=>{
   const onGlobalBlackout=()=>setBlackout(true);
   window.addEventListener(STAGE_BLACKOUT_EVENT,onGlobalBlackout);
   return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,onGlobalBlackout);
  },[]);
  useEffect(()=>{if(previewResumeRevision>0){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision]);
- const [previewLive,setPreviewLive]=useState(true);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
  const motionClocks=useRef(new Map<string,MotionRecipeCue>());
