@@ -75,3 +75,63 @@ test('S6.8.7 source switch preserves input and locked physical output',async({pa
  for(const button of await page.locator('.stage-dual').getByRole('button',{name:'Buka output'}).all())
   await expect(button).toBeDisabled();
 });
+
+test('IA-R1: shared source crosses all four workspaces with one active selection',async({page})=>{
+ await page.goto('/');
+ const stage=page.locator('.fp-stage-workspace');
+ const nav=page.locator('.soma-primary-nav-list .soma-primary-destination');
+ await expect(nav).toHaveCount(4);
+ await expect(stage).toHaveAttribute('data-workspace','track');
+
+ await selectSource(page,'Simulasi 3D');
+ await expect(stage).toHaveAttribute('data-experimental','true');
+ await expect(stage).toHaveAttribute('data-workspace','track');
+
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-root')).toBeVisible();
+ await expect(page.locator('.uxr3-scene-card')).toHaveCount(14);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await openStageMap(page);
+ await expect(stage).toHaveAttribute('data-workspace','map');
+ await expect(page.locator('.map-r1-workspace')).toBeVisible();
+ const panel=page.locator('.stage-dual');
+ await expect(panel).toContainText('Dua output fisik terkunci');
+ for(const button of await panel.getByRole('button',{name:'Buka output'}).all())
+  await expect(button).toBeDisabled();
+
+ await page.getByRole('button',{name:'Perform',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','perform');
+ await expect(page.locator('.ops-r1-cue-grid')).toBeVisible();
+ await expect(page.locator('.ops-r1-slot')).toHaveCount(8);
+ await expect(page.locator('.ops-r1-status')).toContainText('simulator');
+
+ await page.getByRole('button',{name:'Kembali Build'}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-root')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+});
+
+test('IA-R1: global blackout remains latched across Track / Compose until manual Resume',async({page})=>{
+ await page.goto('/');
+ await selectSource(page,'Simulasi 3D');
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ const stage=page.locator('.fp-stage-workspace');
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+
+ await page.getByRole('button',{name:'Kirim perintah blackout SOMA'}).click();
+ const preview=page.locator('.s64-safety input[type=checkbox]').first();
+ await expect(preview).not.toBeChecked();
+ await expect(preview).toBeDisabled();
+
+ await page.getByRole('button',{name:'Track',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','track');
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-safety input[type=checkbox]').first()).toBeDisabled();
+
+ await page.getByRole('button',{name:'Resume preview',exact:true}).click();
+ await expect(page.locator('.s64-safety input[type=checkbox]').first()).toBeEnabled();
+ await expect(page.locator('.s64-safety input[type=checkbox]').first()).toBeChecked();
+});
