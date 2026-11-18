@@ -86,9 +86,12 @@ export class LiveBodyProjectionBridge{
     age<=FLOW_LIMIT_MS){
     mode='continuity';reason='Mask mengikuti optical flow aktor yang sama.';
     alpha=mask.alpha;
-   }else if(status.presence==='occluded'&&mask.mode==='held'&&
-    age<=HELD_LIMIT_MS){
-    mode='held';reason='Mask terakhir memudar selama tubuh terhalang.';
+   }else if((status.presence==='visible'||status.presence==='occluded')&&
+    mask.mode==='held'&&age<=HELD_LIMIT_MS){
+    // 12 FPS inference may leave ~80ms between observations. A still-visible
+    // verified actor must not black-flash between measured and flow frames.
+    // This bounded visual hold grants no new identity or physical output.
+    mode='held';reason='Mask terukur terakhir ditahan singkat sampai frame berikutnya.';
     alpha=mask.alpha*clamp((HELD_LIMIT_MS-age)/
      (HELD_LIMIT_MS-FADE_HELD_START_MS));
    }else{
@@ -99,7 +102,9 @@ export class LiveBodyProjectionBridge{
     if(!usedAnchors.has(key)){
      usedAnchors.add(key);
      actors.push({...mask,alpha:clamp(alpha),
-      tentative:mode!=='live'});
+      // Optical flow backed by this actor's own anchor remains identity-colored.
+      // Only held/occluded silhouettes use the neutral uncertainty palette.
+      tentative:mode==='held'});
     }else{
      mode='blocked';reason='Mask duplikat ditahan.';alpha=0;
     }
