@@ -74,7 +74,7 @@ export class ContactAwareFootLock{
       this.anchors.delete(key);
      else{current.lastMs=atMs;continue;}
     }
-    const contact=frame.events?.find(e=>e.kind==='contact'&&
+    const contact=frame.events?.slice().reverse().find(e=>e.kind==='contact'&&
      e.performer===id&&e.foot===foot&&
      atMs-e.atMs>=0&&atMs-e.atMs<=230&&
      (e.confidence??0)>=.72);
