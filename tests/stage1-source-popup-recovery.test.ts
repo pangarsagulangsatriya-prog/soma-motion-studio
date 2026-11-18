@@ -21,7 +21,10 @@ test('Stage 1 no-source: four direct source actions replace empty black previews
  assert.match(stage,/void chooseSource\(option.id\)/);
  assert.match(stage,/aria-label="Pilih sumber Stage 1"/);
  assert.match(stage,/data-stage-source=\{sourceStatus\.selection\?\?'none'\}/);
- assert.match(css,/data-workspace=track\]\[data-stage-source=none\] \.fp-stage-layout\{display:none\}/);
+ assert.match(css,/data-workspace=track\] \[data-stage-source=none\]|data-workspace=track\]\[data-stage-source=none\]/);
+ assert.match(css,/\.fp-stage-layout\{display:none!important\}/);
+ assert.match(css,/data-workspace=compose\] \.fp-stage-layout/);
+ assert.match(css,/data-workspace=map\] \.fp-stage-layout/);
  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(stage,/sourceStatus\.selection!==null&&!experimentalKind&&<QuickStageSetup/);
 });
