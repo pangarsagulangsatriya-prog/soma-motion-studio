@@ -109,7 +109,7 @@ export function FootprintsStageWorkspace({
  const touchPointers=useRef(new Set<number>());
  const [touchDemo,setTouchDemo]=useState(false);
  const [floorInteractionStats,setFloorInteractionStats]=useState({actors:0,contacts:0,events:0});
- const snowfallSceneRef=useRef(new SnowfallScene());
+ const [snowfallScene]=useState(()=>new SnowfallScene());
  const [floorScene,setFloorScene]=useState<'footprints'|'snowfall'>(()=>{
   try{return localStorage.getItem('soma-floor-scene-v1')==='snowfall'?'snowfall':'footprints';}
   catch{return 'footprints';}
@@ -119,6 +119,10 @@ export function FootprintsStageWorkspace({
  const [snowfallRate,setSnowfallRate]=useState(.55);
  const [snowfallRecovery,setSnowfallRecovery]=useState(75);
  const [snowfallRendererMode,setSnowfallRendererMode]=useState<'webgl2'|'2d'|'unavailable'>('unavailable');
+ // Changing Jeda/intensity/refill must never recreate the WebGL context,
+ // otherwise a stage slider interaction can flash the projection.
+ const snowfallConfig=useRef({paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery});
+ snowfallConfig.current={paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery};
  cleanFloorOutput.current=floorScene==='snowfall'?snowfallCanvas.current:floorCanvas.current;
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
@@ -188,12 +192,12 @@ export function FootprintsStageWorkspace({
    raf=requestAnimationFrame(draw);
    if(now-last<1000/30)return;
    last=now;
-   const scene=snowfallSceneRef.current,bus=interactionEngineRef.current;
-   const freeze=snowfallPaused||previewHoldRef.current;
+   const scene=snowfallScene,bus=interactionEngineRef.current,cfg=snowfallConfig.current;
+   const freeze=cfg.paused||previewHoldRef.current;
    if(scene.paused!==freeze)scene.setPaused(freeze);
    scene.consume(bus.recent,bus.generation,!freeze);
-   scene.step(now,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
-   renderer.render(scene,scene.visualTimeMs,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
+   scene.step(now,{snowfall:cfg.rate,recoverySeconds:cfg.recovery,paused:freeze});
+   renderer.render(scene,scene.visualTimeMs,{snowfall:cfg.rate,recoverySeconds:cfg.recovery,paused:freeze});
    cleanFloorOutput.current=snowfallCanvas.current;
    if(now-lastRead>180){
     lastRead=now;setSnowfallCount(old=>old===scene.count?old:scene.count);
@@ -201,19 +205,19 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>{cancelAnimationFrame(raf);renderer.dispose();};
- },[floorScene,snowfallPaused,snowfallRate,snowfallRecovery]);
+ },[floorScene,snowfallScene]);
  useEffect(()=>{
   try{localStorage.setItem('soma-floor-scene-v1',floorScene);}catch{}
  },[floorScene]);
  const selectFloorScene=(next:'footprints'|'snowfall')=>{
-  const bus=interactionEngineRef.current,scene=snowfallSceneRef.current;
+  const bus=interactionEngineRef.current,scene=snowfallScene;
   scene.reset(bus.generation);
   scene.consume(bus.recent,bus.generation,false);
   setSnowfallCount(0);setSnowfallPaused(false);setFloorScene(next);
   cleanFloorOutput.current=next==='snowfall'?snowfallCanvas.current:floorCanvas.current;
  };
  const resetSnowfall=()=>{
-  const scene=snowfallSceneRef.current,bus=interactionEngineRef.current;
+  const scene=snowfallScene,bus=interactionEngineRef.current;
   scene.reset(bus.generation);scene.consume(bus.recent,bus.generation,false);
   scene.setPaused(snowfallPaused||previewHoldRef.current);
   setSnowfallCount(0);
