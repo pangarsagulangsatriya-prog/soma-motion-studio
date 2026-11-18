@@ -231,10 +231,13 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
       <strong>TRACKING / VIDEO</strong>
       <p>Sumber MP4 · output fisik terkunci</p>
       <dl>
-       <div><dt>Model</dt><dd>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</dd></div>
+       <div><dt>Model</dt><dd>MediaPipe Pose Lite · 33 titik</dd></div>
+       <div><dt>Eksekusi</dt><dd>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</dd></div>
+       <div><dt>Pose AI mentah</dt><dd>{snapshot.rawPoses.length}/2 terukur</dd></div>
+       <div><dt>Identitas aktif</dt><dd>{snapshot.visibleCount}/2 valid</dd></div>
        <div><dt>Inferensi</dt><dd>{snapshot.performance.poseFps.toFixed(1)} FPS</dd></div>
        <div><dt>Lag video</dt><dd>{snapshot.performance.latestVideoLagMs.toFixed(0)} ms</dd></div>
-       <div><dt>Identitas</dt><dd>{snapshot.persistentActors?.filter(a=>a.registered).length??0}/2 tersimpan</dd></div>
+       <div><dt>Registrasi</dt><dd>{snapshot.persistentActors?.filter(a=>a.registered).length??0}/2 tersimpan</dd></div>
       </dl>
       {snapshot.actorStates.map(actor=><p key={actor.id}>
        <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
