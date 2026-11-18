@@ -82,7 +82,8 @@ test('IA-R1: blackout remains a command, physical output gated and Compose can e
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(nav,/aria-label="Kirim perintah blackout SOMA"/);
  assert.match(app,/onBlackout=\{\(\)=>\{/);
- assert.match(composer,/window.addEventListener\(STAGE_BLACKOUT_EVENT,onGlobalBlackout\)/);
+ assert.match(composer,/window.addEventListener\(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout\)/);
+ assert.match(app,/requestSoftwarePreviewBlackout\(\)/);
  assert.match(composer,/setBlackout\(false\);setPreviewLive\(true\)/);
  assert.match(stage,/setPreviewResumeRevision\(v=>v\+1\)/);
  assert.match(composer,/experimentLocked=\{experimentLocked\}/);
