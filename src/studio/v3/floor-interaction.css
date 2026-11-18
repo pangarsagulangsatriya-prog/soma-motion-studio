@@ -1,0 +1,40 @@
+/* F0 Unified FLOOR runtime: diagnostic/software overlay only.
+   No change to physical projection canvas, stage columns or input decoder. */
+.fp-stage-workspace .fp-preview-floor .fp-stage-canvas-area{position:relative}
+.fp-stage-workspace .fp-preview-floor .fp-floor-interaction-layer{
+ position:absolute;inset:0;width:100%;height:100%;z-index:2;
+ pointer-events:none;background:transparent!important;
+}
+.fp-stage-workspace .fp-preview-floor .fp-stage-canvas-area[data-touch-demo=true]{
+ cursor:crosshair;touch-action:none;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-touch-hint{
+ position:absolute;z-index:3;left:10px;bottom:10px;
+ max-width:calc(100% - 20px);padding:5px 8px;
+ font-size:10px;line-height:1.35;color:#d7eaca;
+ background:#15281bcc;border:1px solid #75947b;
+ border-radius:4px;pointer-events:none;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-touch-toggle{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 auto;min-height:29px;padding:4px 8px;
+ color:#bbd3bc;background:#1a2a20;border:1px solid #506a54;
+ border-radius:5px;font-size:11px;font-weight:600;
+ white-space:nowrap;cursor:pointer;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-touch-toggle[aria-pressed=true]{
+ background:#334d36;color:#e4efca;border-color:#a5c48e;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-touch-toggle:focus-visible{
+ outline:2px solid #cee6a1;outline-offset:2px;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-bus-status{
+ margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+@media(max-width:800px){
+ .fp-stage-workspace .fp-preview-floor .fp-floor-bus-status{display:none}
+ .fp-stage-workspace .fp-preview-floor .fp-floor-touch-toggle{
+  min-height:35px;
+ }
+}
