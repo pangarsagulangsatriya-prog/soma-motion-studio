@@ -642,7 +642,7 @@ export function FootprintsStageWorkspace({
       <div className="fp-stage-surface fp-preview-body">
        <div className="fp-stage-surface-head"><span>{experimentalKind?experimentalKind==='video'?(skeletonVisible?'BODY · SKELETON 33':'BODY · MASK VIDEO 2D'):
  'BODY · RIG VIRTUAL':'BODY · MASK PREVIEW'}</span><small>{experimentalKind?
- experimentalKind==='video'?'Pose mentah · diagnostik':'Rig 3D virtual':'Lower body'}</small></div>
+ experimentalKind==='video'?'Pose AI + optical flow · pratinjau':'Rig 3D virtual':'Lower body'}</small></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
