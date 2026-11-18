@@ -11,6 +11,8 @@ import {stageHardwareAvailable} from './StageHardwareGate.ts';
 import {ProjectorWysiwygPreview} from './ProjectorWysiwygPreview.tsx';
 import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
+import {startSetupBench,readSetupStart,finishSetupBench,FIRST_SETUP_TARGET_MS}
+ from '../../studio/v3/safeProjectionBench.ts';
 import {loadStageOutputDrafts,saveStageOutputDraft,stableStageEquipmentKey,
  matchingStageOutputDraft,type StageOutputDraft} from '../../studio/v3/stageOutputDraftProfiles.ts';
 const STAGE_HARDWARE_ENABLED=stageHardwareAvailable(import.meta.env.DEV,
@@ -66,6 +68,9 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  });
  const [draftName,setDraftName]=useState('Panggung Utama');
  const [draftId,setDraftId]=useState('');
+ const [benchObserved,setBenchObserved]=useState(false);
+ const [benchNotes,setBenchNotes]=useState('');
+ const [benchResult,setBenchResult]=useState('');
  const latest=useRef({plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked});
  latest.current={plans,proofs,requested,armed,epoch,operatorConfirm,experimentLocked};
  const legacyRef=useRef(legacyProjection);legacyRef.current=legacyProjection;
@@ -340,6 +345,29 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
    setMessage('Profil lokal dihapus. Kalibrasi aktif tidak berubah.');
   }catch{setMessage('Penyimpanan lokal tidak tersedia.');}
  };
+ const beginBench=()=>{
+  try{
+   const started=startSetupBench(sessionStorage,Date.now(),true);
+   setBenchObserved(false);setBenchResult('');
+   setMessage(started?'Timer setup pertama dimulai. Ikuti persiapan proyeksi hingga efek terlihat.':
+    'Browser tidak menyediakan penyimpanan sesi untuk timer.');
+  }catch{setMessage('Timer sesi tidak tersedia.');}
+ };
+ const recordBench=()=>{
+  try{
+   if(devices.floor.mode!=='live'||assessment('floor').status!=='within-provisional-target')
+    throw Error('Output FLOOR harus LIVE dan QA lima titik lulus.');
+   const record=finishSetupBench({
+    startStore:sessionStorage,resultsStore:localStorage,now:Date.now(),
+    softwareLive:true,operatorObserved:benchObserved,notes:benchNotes
+   });
+   setBenchResult(
+    Math.floor(record.elapsedMs/60000)+':'+Math.floor(record.elapsedMs%60000/1000).toString().padStart(2,'0')+
+    (record.passedTarget?' · Target <10 menit: tercapai menurut laporan operator.':
+     ' · Target <10 menit: belum tercapai.'));
+   setMessage('Hasil UAT tersimpan lokal. Ini laporan operator, bukan pengukuran cahaya otomatis.');
+  }catch(e){setMessage(e instanceof Error?e.message:'Uji setup belum bisa dicatat.');}
+ };
  const exportReport=()=>{
   const result={schema:'soma.footprints.dual-surface-report',version:1,
    files:ids.map(id=>stageSurfaceReport(plans[id],proofs[id],context(id))),
@@ -381,6 +409,35 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     {devices.floor.mode==='live'?'BLACKOUT FLOOR':'PERFORM · FLOOR'}
    </button>
   </div>
+  <details className="stage-dual-setup-uat">
+   <summary>Uji setup end-to-end · target kurang dari 10 menit</summary>
+   <p>Timer dihitung sejak Quick Start/Projector pertama kali ditekan. Catat hasil hanya setelah operator melihat efek yang tepat pada lantai fisik.</p>
+   <div className="stage-dual-setup-elapsed">
+    {(()=>{const started=readSetupStart(sessionStorage,Date.now());
+     if(started===null)return 'Timer belum dimulai';
+     const total=Math.floor((Date.now()-started)/1000);
+     return 'Waktu '+Math.floor(total/60).toString().padStart(2,'0')+':'+
+      (total%60).toString().padStart(2,'0')+' / target '+(FIRST_SETUP_TARGET_MS/60000)+' menit';
+    })()}
+   </div>
+   <button type="button" onClick={beginBench} disabled={devices.floor.mode==='live'}>
+    Mulai uji setup baru
+   </button>
+   <label className="stage-dual-setup-check">
+    <input type="checkbox" checked={benchObserved}
+     onChange={e=>setBenchObserved(e.target.checked)}/>
+    Saya melihat efek FLOOR pada lantai fisik, posisinya sesuai, dan BLACKOUT nyata sudah diuji
+   </label>
+   <label>Catatan uji
+    <input maxLength={180} value={benchNotes} onChange={e=>setBenchNotes(e.target.value)}
+     placeholder="Kamera, proyektor, ruangan, hambatan"/>
+   </label>
+   <button type="button" disabled={!benchObserved||devices.floor.mode!=='live'||
+    assessment('floor').status!=='within-provisional-target'} onClick={recordBench}>
+    Catat hasil uji fisik
+   </button>
+   {benchResult&&<p role="status">{benchResult}</p>}
+  </details>
   <details className="stage-dual-profile">
    <summary>Profil proyektor tersimpan · geometri BODY/FLOOR</summary>
    <p>Pengaturan proyeksi tersimpan lokal pada kamera, resolusi, lantai dan jumlah performer yang sama. QA dan izin LIVE selalu diulang.</p>
