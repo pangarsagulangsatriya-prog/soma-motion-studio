@@ -173,8 +173,10 @@ export class SparseVideoOpticalFlow{
   const prior=this.previous;
   if(prior&&input.atMs<=prior.atMs)return this.snapshot;
   if(prior&&input.atMs-prior.atMs<FLOW_MIN_INTERVAL_MS)return this.snapshot;
-  if(prior&&input.atMs-prior.atMs>MAX_STEP_MS){
-   // Playback may have paused or jumped: never reuse stale pixel features.
+  const discontinuity=!!prior&&input.atMs-prior.atMs>MAX_STEP_MS;
+  if(discontinuity){
+   // Playback paused/jumped: avoid re-seeding a pose on an unrelated image.
+   // A new authoritative D2 sample will create the next flow anchor.
    this.tracks.clear();
   }
   const next:GrayFrame={...input,gray:input.gray.slice()};
@@ -186,6 +188,7 @@ export class SparseVideoOpticalFlow{
    const old=this.tracks.get(id);
    const newlyObserved=old?.anchorAtMs!==observedAt;
    if(newlyObserved){
+    if(discontinuity)continue;
     // D2's latest accepted measurement is the ONLY new identity anchor.
     // Do not anchor a severely old pose onto a newer image.
     if(input.atMs-observedAt<0||input.atMs-observedAt>220)continue;
