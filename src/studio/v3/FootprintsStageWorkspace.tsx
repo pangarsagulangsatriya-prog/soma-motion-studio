@@ -1049,6 +1049,7 @@ export function FootprintsStageWorkspace({
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
+     hydraSettings={hydraSettings} onHydraSettingsChange={updateHydra} hydraStatus={hydraStatus}
      archiveHydraCanvas={archiveHydraCanvas}
      onArchiveHydraChange={enabled=>{archiveHydraReady.current=enabled;
       if(enabled)setHydraSettings(v=>v.enabled?v:normalizeHydraFootprintSettings({...v,enabled:true}));}}
