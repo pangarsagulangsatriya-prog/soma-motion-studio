@@ -2,7 +2,7 @@ import {floorEventCanStamp,type FloorInteractionEvent} from './FloorInteractionE
 import {SnowfallScene} from './SnowfallScene.ts';
 import {floorSceneById,type FloorSceneId,type FloorPrimitive} from './sceneRegistry.ts';
 
-type Anchor={x:number;y:number;speed:number;atMs:number};
+type Anchor={x:number;y:number;speed:number;seenClockMs:number};
 type Pulse={id:string;x:number;y:number;atMs:number;age:number;kind:'contact'|'movement';actorId:string};
 type Particle={x:number;y:number;vx:number;vy:number;phase:number;size:number};
 export type ProceduralParams={
@@ -79,7 +79,7 @@ export class ProceduralSceneRuntime{
    if(e.kind==='release'){this.anchors.delete(e.actorId);continue;}
    if(e.kind==='presence'||e.kind==='movement'){
     this.anchors.set(e.actorId,{
-     x:e.x,y:e.y,speed:e.kind==='movement'?e.speed:0,atMs:e.atMs
+     x:e.x,y:e.y,speed:e.kind==='movement'?e.speed:0,seenClockMs:this.clockMs
     });
     this.eventTotal++;
     // Only movement may create non-contact disturbance, not a footprint.
@@ -150,7 +150,9 @@ export class ProceduralSceneRuntime{
   });
   // Presence snapshots naturally expire if source stops reporting.
   for(const [key,a] of this.anchors){
-   if(nowMs-a.atMs>1400)this.anchors.delete(key);
+   // F0 events can use video-relative, camera-performance, or synthetic
+   // timestamps. Compare expiry only on the local presentation clock.
+   if(this.clockMs-a.seenClockMs>1400)this.anchors.delete(key);
   }
  }
  private drawBackground(ctx:CanvasRenderingContext2D,w:number,h:number,
