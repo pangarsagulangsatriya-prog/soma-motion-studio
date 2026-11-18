@@ -7,7 +7,7 @@ import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrack
 import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
-import {STAGE_BLACKOUT_EVENT} from '../../footprints/stage-optics/StageBlackout.ts';
+import {SOFTWARE_PREVIEW_BLACKOUT_EVENT} from './stagePreviewCommands.ts';
 import './SurfaceComposer.css';
 import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
 import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
@@ -72,8 +72,8 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [previewLive,setPreviewLive]=useState(true);
  useEffect(()=>{
   const onGlobalBlackout=()=>setBlackout(true);
-  window.addEventListener(STAGE_BLACKOUT_EVENT,onGlobalBlackout);
-  return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,onGlobalBlackout);
+  window.addEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout);
+  return()=>window.removeEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout);
  },[]);
  useEffect(()=>{if(previewResumeRevision>0){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision]);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
