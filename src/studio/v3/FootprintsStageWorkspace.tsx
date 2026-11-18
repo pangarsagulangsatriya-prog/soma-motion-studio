@@ -39,6 +39,8 @@ import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/Mu
 import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
 import {SnowfallScene} from '../../footprints/scenes/SnowfallScene.ts';
+import {PersistentHydraFootprintRuntime} from '../../footprints/scenes/PersistentHydraFootprintRuntime.ts';
+import {HYDRA_FOOTPRINT_STYLES,normalizeHydraFootprintSettings,type HydraFootprintSettings,type HydraFootprintStatus} from '../../footprints/scenes/hydraFootprintModel.ts';
 import {SnowfallRenderer} from '../../footprints/scenes/SnowfallRenderer.ts';
 import {ProceduralSceneRuntime,type ProceduralParams} from '../../footprints/scenes/ProceduralSceneRuntime.ts';
 import {FLOOR_SCENES,FLOOR_SCENE_PRESETS,loadFloorPresets,saveFloorPreset,
@@ -68,6 +70,7 @@ import './s6-8-7-simplified-stage.css';
 import './s6-8-8-1-full-skeleton.css';
 import './ux-r1-stage.css';
 import './floor-interaction.css';
+import './vis-r1-hydra.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -110,6 +113,15 @@ export function FootprintsStageWorkspace({
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const snowfallCanvas=useRef<HTMLCanvasElement>(null);
  const proceduralCanvas=useRef<HTMLCanvasElement>(null);
+ const hydraFloorCanvas=useRef<HTMLCanvasElement>(null);
+ const hydraRuntime=useRef<PersistentHydraFootprintRuntime>(new PersistentHydraFootprintRuntime());
+ const [hydraSettings,setHydraSettings]=useState<HydraFootprintSettings>(()=>{
+  try{return normalizeHydraFootprintSettings(JSON.parse(localStorage.getItem('soma-floor-hydra-v1')??'null'));}
+  catch{return normalizeHydraFootprintSettings(null);}
+ });
+ const [hydraStatus,setHydraStatus]=useState<HydraFootprintStatus>('off');
+ const [hydraReason,setHydraReason]=useState('');
+ const updateHydra=(patch:Partial<HydraFootprintSettings>)=>setHydraSettings(v=>normalizeHydraFootprintSettings({...v,...patch}));
  const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
  const interactionCanvas=useRef<HTMLCanvasElement>(null);
  const interactionEngineRef=useRef(new FloorInteractionEngine());
@@ -155,6 +167,19 @@ export function FootprintsStageWorkspace({
  analyserRef.current=audioAnalyser??null;
  const audioLevelLive=useRef(0);
  const audioRequest=useRef(0);
+ const hydraSettingsRef=useRef(hydraSettings);hydraSettingsRef.current=hydraSettings;
+ useEffect(()=>{
+  try{localStorage.setItem('soma-floor-hydra-v1',JSON.stringify(hydraSettings));}catch{}
+  const runtime=hydraRuntime.current;
+  runtime.configure(hydraSettings);
+  if(hydraSettings.enabled&&hydraFloorCanvas.current){
+   void runtime.initialize(hydraFloorCanvas.current,hydraSettings).then(()=>{
+    setHydraStatus(runtime.status);setHydraReason(runtime.reason);
+   });
+  }else if(!hydraSettings.enabled)setHydraStatus('off');
+ },[hydraSettings]);
+ useEffect(()=>()=>hydraRuntime.current.dispose(),[]);
+
  // Changing Jeda/intensity/refill must never recreate the WebGL context,
  // otherwise a stage slider interaction can flash the projection.
  const snowfallConfig=useRef({paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery});
@@ -204,11 +229,17 @@ export function FootprintsStageWorkspace({
     current?.kind==='video'?(current.video?.currentTime??current.timeMs/1000)*1000:
     current?.kind==='simulator'?current.timeMs:now;
    engine.expire(time);
+   if(hydraSettingsRef.current.enabled&&hydraRuntime.current.status==='ready'&&!previewHoldRef.current){
+    hydraRuntime.current.tick(cleanFloorOutput.current,engine.canonicalRecent,engine.generation,now);
+   }
    const canvas=interactionCanvas.current;
    if(canvas&&!previewHoldRef.current)
     paintFloorInteractionOverlay(canvas,engine,time,Math.max(1200,footprint.life*1000));
    if(now-lastRead>=500){
-    lastRead=now;const snap=engine.snapshot;
+    lastRead=now;const runtime=hydraRuntime.current;
+    setHydraStatus(v=>v===(hydraSettingsRef.current.enabled?runtime.status:'off')?v:hydraSettingsRef.current.enabled?runtime.status:'off');
+    setHydraReason(v=>v===runtime.reason?v:runtime.reason);
+    const snap=engine.snapshot;
     const next={actors:snap.actors.length,
      contacts:snap.counts.contact+snap.counts.touch,events:snap.events.length};
     setFloorInteractionStats(prev=>prev.actors===next.actors&&
@@ -947,7 +978,7 @@ export function FootprintsStageWorkspace({
     </div>}
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
-     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
+     bodyCanvas={bodyCanvas} floorCanvas={hydraSettings.enabled&&hydraStatus==='ready'?hydraFloorCanvas:cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
      router={router} floorTracker={tracker} projection={projection}
      cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
      floorReady={floorStatus.confirmed&&cameraMatched}
@@ -1079,7 +1110,7 @@ export function FootprintsStageWorkspace({
  experimentalKind==='video'?'Landmark video 2D':'Puppet sintetis (bukan mask fisik)':maskStatus}</span>
  <span>{experimentalKind?'Preview eksperimen':'Mask · preview'}</span></div>
       </div>
-      <div className="fp-stage-surface fp-preview-floor" data-floor-scene={floorScene}
+      <div className="fp-stage-surface fp-preview-floor" data-floor-scene={floorScene} data-hydra-visible={hydraSettings.enabled&&hydraStatus==="ready"}
        data-procedural={floorScene!=='footprints'&&floorScene!=='snowfall'}>
        <div className="fp-stage-surface-head"><span>{floorScene==='footprints'?'FLOOR · PATH PREVIEW':
         'FLOOR · '+FLOOR_SCENES.find(item=>item.id===floorScene)?.name.toUpperCase()}</span>
@@ -1129,6 +1160,26 @@ export function FootprintsStageWorkspace({
           onClick={()=>setSnowfallPaused(p=>!p)}>{snowfallPaused?'Lanjut':'Jeda'}</button>
          <button type="button" onClick={resetSnowfall}>Reset scene</button>
         </>}
+        <details className="fp-hydra-controls">
+         <summary aria-label="Pengaturan Hydra FLOOR">HYDRA · {hydraSettings.enabled?hydraStatus.toUpperCase():'OFF'}</summary>
+         <div className="fp-hydra-panel">
+          <strong>GENERATIVE / FLOOR</strong>
+          <label><input type="checkbox" checked={hydraSettings.enabled}
+           onChange={e=>updateHydra({enabled:e.target.checked})}/> Aktifkan Hydra untuk preview</label>
+          <label>Style<select value={hydraSettings.style}
+           onChange={e=>updateHydra({style:e.target.value as HydraFootprintSettings['style']})}>
+           {HYDRA_FOOTPRINT_STYLES.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
+          </select></label>
+          {(['mix','distortion','feedback','motion'] as const).map(field=><label key={field}>
+           {field.toUpperCase()} · {Math.round(hydraSettings[field]*100)}%
+           <input type="range" min="0" max={field==='feedback'?.65:field==='distortion'?.4:1}
+            step=".01" value={hydraSettings[field]}
+            onChange={e=>updateHydra({[field]:Number(e.target.value)})}/>
+          </label>)}
+          <small>{hydraReason?'GPU fallback: '+hydraReason:'Preview artistik. Output fisik tetap mengikuti QA Map.'}</small>
+          {hydraStatus==='fallback'&&<button type="button" onClick={()=>updateHydra({enabled:false})}>Gunakan renderer asli</button>}
+         </div>
+        </details>
         {floorScene!=='footprints'&&<FloorSceneAdvancedControls
          params={{intensity:sceneIntensity,radius:sceneRadius,
           persistence:scenePersistence,quality:sceneQuality,audioMix:sceneAudioMix}}
@@ -1172,6 +1223,8 @@ export function FootprintsStageWorkspace({
          aria-label="Pratinjau Snowfall, salju menutup jejak kaki perlahan"/>
         <canvas ref={proceduralCanvas} className="fp-floor-procedural-canvas" width={1280} height={720}
          aria-label="Pratinjau procedural FLOOR yang dipilih"/>
+        <canvas ref={hydraFloorCanvas} className="fp-floor-hydra-canvas" width={640} height={360}
+         aria-label="Hydra generatif FLOOR · software preview"/>
         <canvas ref={interactionCanvas} className="fp-floor-interaction-layer"
          width={1280} height={720} aria-hidden="true"/>
         {touchDemo&&<span className="fp-floor-touch-hint" aria-hidden="true">
