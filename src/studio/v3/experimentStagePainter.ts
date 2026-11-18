@@ -4,6 +4,7 @@ import {floorRasterPoint} from '../../footprints/simulator/floorCanvas.ts';
 import {drawPuppetScene} from '../../footprints/simulator/draw3d.ts';
 import {drawSkeletonBodies,replaySkeletonDiagnosticPreview} from '../../stage/fullBodySkeleton.ts';
 import type {MotionVisualFrame} from '../../stage/actorMotionStateBuffer.ts';
+import {paintIndependentBodyMasks,type BodyMaskPresentation} from '../../stage/persistentBodyMaskEngine.ts';
 
 function context(canvas:HTMLCanvasElement,w:number,h:number){
  if(canvas.width!==w)canvas.width=w;
@@ -58,7 +59,7 @@ function drawBufferedBodies(ctx:CanvasRenderingContext2D,rect:{x:number;y:number
  }
 }
 export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
- skeleton=true,motion?:MotionVisualFrame){
+ skeleton=true,motion?:MotionVisualFrame,masks?:BodyMaskPresentation){
  // Decoder-not-ready must not clear the last presented video raster.
  if(frame.kind==='video'&&(!frame.video||!frame.ready||
     frame.video.readyState<2||!frame.video.videoWidth||!frame.video.videoHeight))return;
@@ -68,6 +69,9 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   const scale=Math.min(768/v.videoWidth,432/v.videoHeight);
   const w=scale*v.videoWidth,h=scale*v.videoHeight;
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
+  if(masks?.actors.length)
+   paintIndependentBodyMasks(ctx,masks,
+    {x:(768-w)/2,y:(432-h)/2,width:w,height:h},skeleton?.20:.42);
   if(skeleton&&motion){
    drawBufferedBodies(ctx,{x:(768-w)/2,y:(432-h)/2,width:w,height:h},motion,frame);
   }else if(skeleton&&frame.snapshot){
@@ -84,7 +88,7 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   frame.performers.length,frame.session.events,null,true);
 }
 export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
- skeleton=true,motion?:MotionVisualFrame){
+ skeleton=true,motion?:MotionVisualFrame,masks?:BodyMaskPresentation){
  // A momentary decoder gap must not black-flash the previous BODY preview.
  if(frame.kind==='video'&&!frame.ready)return;
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
@@ -97,6 +101,11 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  }
  const snapshot=frame.snapshot;
  if(!frame.ready)return;
+ // Independent pose-guided A/B masks persist and move under optical flow.
+ // The pixels below remain software preview only, not live projector output.
+ if(masks?.actors.length)
+  paintIndependentBodyMasks(ctx,masks,{x:0,y:0,width:w,height:h},
+   skeleton?.40:1);
  // Software preview still renders the last measured A/B poses when a
  // React snapshot briefly clears during video/worker handover.
  if(skeleton&&motion){
@@ -104,6 +113,7 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
   return;
  }
  if(!snapshot&&!motion?.actors.length)return;
+ if(!skeleton&&masks?.actors.length)return;
  if(skeleton){
   if(!snapshot)return;
   const preview=replaySkeletonDiagnosticPreview(snapshot,frame.timeMs,frame.previousSnapshot);
