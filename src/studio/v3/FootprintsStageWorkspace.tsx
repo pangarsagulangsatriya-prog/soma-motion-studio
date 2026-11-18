@@ -1024,7 +1024,7 @@ export function FootprintsStageWorkspace({
     </div>
     <div className="soma-ia-source-options">
      {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
-      disabled={sourceStatus.busy} onClick={()=>{void chooseSource(option.id);}}
+      disabled={sourceStatus.phase==='connecting'} onClick={()=>{void chooseSource(option.id);}}
       aria-label={'Gunakan '+option.label}>
       <strong>{option.label}</strong><small>{option.description}</small>
      </button>)}
