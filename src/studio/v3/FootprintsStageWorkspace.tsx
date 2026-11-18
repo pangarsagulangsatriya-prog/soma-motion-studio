@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
+import {PERFORM_CUE_STORAGE_KEY,defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,evaluatePerformReadiness,type PerformCueGrid} from './performCueModel.ts';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
 import {QuickStageSetup} from './QuickStageSetup.tsx';
 import {safeProjectionPreflight} from './safeProjectionPreflight.ts';
@@ -474,6 +475,30 @@ export function FootprintsStageWorkspace({
  const previewHoldRef=useRef(footprint.hold);
  previewHoldRef.current=footprint.hold;
  const [operatorCue,setOperatorCue]=useState(0);
+ const [performGrid,setPerformGrid]=useState<PerformCueGrid>(()=>{
+  try{return normalizePerformCueGrid(JSON.parse(localStorage.getItem(PERFORM_CUE_STORAGE_KEY)??'null'));}
+  catch{return defaultPerformCueGrid();}
+ });
+ const [activePerformSlot,setActivePerformSlot]=useState(0);
+ const [performMessage,setPerformMessage]=useState('');
+ const [performBlackout,setPerformBlackout]=useState(true);
+ const applyPerformSlot=(index:number)=>{
+  const slot=performGrid.slots[index];if(!slot)return;
+  // Cue loads scene/layout only, never hardware light permissions.
+  selectFloorScene(slot.scene);
+  setOperatorCue(['overview','body','floor','split'].indexOf(slot.view));
+  setActivePerformSlot(index);setPerformMessage('Cue '+(index+1)+' diterapkan. Output fisik mengikuti QA Map.');
+ };
+ const savePerformGrid=()=>{
+  try{localStorage.setItem(PERFORM_CUE_STORAGE_KEY,JSON.stringify(performGrid));
+   setPerformMessage('Cue tersimpan lokal; izin LIVE dan QA tidak disimpan.');
+  }catch{setPerformMessage('Penyimpanan cue di browser gagal.');}
+ };
+ const resetPerformGrid=()=>{
+  setPerformGrid(defaultPerformCueGrid());setActivePerformSlot(0);
+  try{localStorage.removeItem(PERFORM_CUE_STORAGE_KEY);}catch{}
+  setPerformMessage('Cue dikembalikan ke default; output fisik tetap terkunci menurut QA.');
+ };
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
  const [maskStatus,setMaskStatus]=useState('Kamera belum terhubung');
@@ -494,7 +519,7 @@ export function FootprintsStageWorkspace({
   // Archive unmounts when entering Perform; its dual windows are also
   // disarmed by the App-level global Blackout before the mode is changed.
   setCalibrationOpen(false);
-  setView('stage');setOperatorCue(0);
+  setView('stage');setOperatorCue(0);setActivePerformSlot(0);setPerformBlackout(true);
  },[operatorMode]);
  const nextCue=()=>setOperatorCue(index=>moveOperatorCue(index,1));
  const previousCue=()=>setOperatorCue(index=>moveOperatorCue(index,-1));
@@ -737,6 +762,24 @@ export function FootprintsStageWorkspace({
   bodyMask:{ready:totalFrames>0,reason:maskStatus},
   dual,hardwareEnabled
  });
+ const performReadiness=evaluatePerformReadiness({
+  source:sourceStatus.selection,
+  cameraOk:cameraOn&&bodySelected&&frameFresh&&!cameraBusy,
+  identityOk:performerCount===1?!identityStatus.ambiguous:
+   identityStatus.visible.length===2&&!identityStatus.ambiguous&&
+   identityStatus.observedFrameTime===frameRef.current.time,
+  floorOk:floorStatus.confirmed&&cameraMatched,
+  bodyOutputQa:dual.body.connected&&dual.body.qa==='within-provisional-target',
+  floorOutputQa:dual.floor.connected&&dual.floor.qa==='within-provisional-target'
+ });
+ const performUnsafe=performReadiness.state==='attention';
+ const performUnsafeRef=useRef(performUnsafe);
+ performUnsafeRef.current=performUnsafe;
+ useEffect(()=>{
+  if(!operatorMode||!performUnsafe)return;
+  onBlackoutRef.current();setPerformBlackout(true);
+  updateFootprint({hold:true});
+ },[operatorMode,performUnsafe]);
  const legacyGate=legacyStageTransportGate({
   cameraOn,frameFresh,floorConfirmed:floorStatus.confirmed,cameraMatched,
   dualOpened:dual.body.opened||dual.floor.opened,legacy
@@ -967,11 +1010,20 @@ export function FootprintsStageWorkspace({
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
-    held={footprint.hold} onHold={()=>updateFootprint({hold:true})}
-    onResume={()=>updateFootprint({hold:false})}
+    held={footprint.hold||performBlackout} onHold={()=>updateFootprint({hold:true})}
+    onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});}}
     videoRecording={videoRecording} canRecordVideo={canRecordVideo}
     onRecordVideo={onRecordVideo} units={units}
-    contacts={floorStatus.contacts} performerCount={performerCount}/>
+    contacts={floorStatus.contacts} performerCount={performerCount}
+    cueGrid={performGrid} activeSlot={activePerformSlot} onApplySlot={applyPerformSlot}
+    onUpdateSlot={(index,changes)=>setPerformGrid(grid=>updatePerformCueSlot(grid,index,changes))}
+    onSaveCue={savePerformGrid} onResetCues={resetPerformGrid} cueMessage={performMessage}
+    scene={floorScene} previewStatus={cameraLabel}
+    sourceLabel={sourceStatus.selection??'Belum dipilih'}
+    hardwareStatus={dual.body.mode.toUpperCase()+' BODY · '+dual.floor.mode.toUpperCase()+' FLOOR'}
+    unreadyReason={performReadiness.state==='attention'||performReadiness.state==='qa-required'?performReadiness.reason:''}
+    onRecovery={()=>{onBlackout();onExitOperator();setFlowStep('process');setInspectorOpen(true);}}
+    canResume={!performUnsafe}/>
    :null}
   {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab initialFile={experimentClip}
    onClose={()=>{onBlackout();setVideoLabOpen(false);}}
