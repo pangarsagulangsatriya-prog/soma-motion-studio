@@ -153,6 +153,8 @@ export function FootprintsStageWorkspace({
  sceneAudioSourceRef.current=sceneAudioSource;
  const analyserRef=useRef(audioAnalyser??null);
  analyserRef.current=audioAnalyser??null;
+ const audioLevelLive=useRef(0);
+ const audioRequest=useRef(0);
  // Changing Jeda/intensity/refill must never recreate the WebGL context,
  // otherwise a stage slider interaction can flash the projection.
  const snowfallConfig=useRef({paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery});
@@ -231,8 +233,10 @@ export function FootprintsStageWorkspace({
    const freeze=cfg.paused||previewHoldRef.current;
    if(scene.paused!==freeze)scene.setPaused(freeze);
    scene.consume(bus.recent,bus.generation,!freeze);
-   scene.step(now,{snowfall:cfg.rate,recoverySeconds:cfg.recovery,paused:freeze});
-   renderer.render(scene,scene.visualTimeMs,{snowfall:cfg.rate,recoverySeconds:cfg.recovery,paused:freeze});
+   const reactiveRate=Math.min(1,cfg.rate+
+    audioLevelLive.current*proceduralConfig.current.audioMix*.5);
+   scene.step(now,{snowfall:reactiveRate,recoverySeconds:cfg.recovery,paused:freeze});
+   renderer.render(scene,scene.visualTimeMs,{snowfall:reactiveRate,recoverySeconds:cfg.recovery,paused:freeze});
    cleanFloorOutput.current=snowfallCanvas.current;
    if(now-lastRead>180){
     lastRead=now;setSnowfallCount(old=>old===scene.count?old:scene.count);
@@ -244,18 +248,118 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{
   try{localStorage.setItem('soma-floor-scene-v1',floorScene);}catch{}
  },[floorScene]);
- const selectFloorScene=(next:'footprints'|'snowfall')=>{
+ // Shared audio envelope; optional mic only after explicit browser permission.
+ useEffect(()=>{
+  let raf=0,lastRead=0;
+  const draw=(now:number)=>{
+   raf=requestAnimationFrame(draw);
+   if(now-lastRead<100)return;
+   lastRead=now;
+   const level=audioMeter.current.sample(
+    sceneAudioSourceRef.current,analyserRef.current);
+   audioLevelLive.current=level;
+   setSceneAudioLevel(prev=>Math.abs(prev-level)<.025?prev:level);
+  };
+  raf=requestAnimationFrame(draw);
+  return()=>{
+   cancelAnimationFrame(raf);audioRequest.current++;
+   void audioMeter.current.disable();
+  };
+ },[]);
+ const selectAudioInput=async(next:FloorAudioSource)=>{
+  const request=++audioRequest.current;
+  setSceneAudioError('');
+  if(next==='microphone'){
+   try{
+    await audioMeter.current.enableMicrophone();
+    if(request!==audioRequest.current){await audioMeter.current.disable();return;}
+    setSceneAudioSource('microphone');
+   }catch(error){
+    if(request!==audioRequest.current)return;
+    setSceneAudioSource('off');
+    setSceneAudioError(error instanceof Error?error.message:'Akses mikrofon gagal.');
+   }
+  }else{
+   setSceneAudioSource(next);
+   await audioMeter.current.disable();
+  }
+ };
+ // All 12 non-Snowfall scenes share a single continuously mounted canvas,
+ // so input tracking and physical projector connections never restart.
+ useEffect(()=>{
+  if(floorScene==='footprints'||floorScene==='snowfall'||!proceduralCanvas.current)return;
+  const canvas=proceduralCanvas.current;
+  const bus=interactionEngineRef.current;
+  proceduralRuntime.setScene(floorScene,bus.generation);
+  proceduralRuntime.skipExisting(bus.recent,bus.generation);
+  let raf=0,last=0,lastRead=0;
+  const draw=(now:number)=>{
+   raf=requestAnimationFrame(draw);
+   if(now-last<1000/30)return;
+   last=now;
+   const bus=interactionEngineRef.current,cfg=proceduralConfig.current;
+   const paused=cfg.paused||previewHoldRef.current;
+   proceduralRuntime.ingest(bus.recent,bus.generation,!paused);
+   proceduralRuntime.step(now,{...cfg,paused,
+    audioLevel:audioLevelLive.current});
+   if(!paused)proceduralRuntime.paint(canvas,{...cfg,
+    audioLevel:audioLevelLive.current,paused});
+   cleanFloorOutput.current=canvas;
+   if(now-lastRead>180){
+    lastRead=now;
+    setSceneCount(old=>old===proceduralRuntime.contactCount?old:
+     proceduralRuntime.contactCount);
+   }
+  };
+  raf=requestAnimationFrame(draw);
+  return()=>cancelAnimationFrame(raf);
+ },[floorScene,proceduralRuntime]);
+ const selectFloorScene=(next:'footprints'|FloorSceneId)=>{
   const bus=interactionEngineRef.current,scene=snowfallScene;
   scene.reset(bus.generation);
   scene.consume(bus.recent,bus.generation,false);
-  setSnowfallCount(0);setSnowfallPaused(false);setFloorScene(next);
-  cleanFloorOutput.current=next==='snowfall'?snowfallCanvas.current:floorCanvas.current;
+  proceduralRuntime.setScene(next==='footprints'?'spring-garden':next,bus.generation);
+  proceduralRuntime.skipExisting(bus.recent,bus.generation);
+  setSnowfallCount(0);setSceneCount(0);setSnowfallPaused(false);setFloorScene(next);
+  cleanFloorOutput.current=next==='footprints'?floorCanvas.current:
+   next==='snowfall'?snowfallCanvas.current:proceduralCanvas.current;
  };
  const resetSnowfall=()=>{
   const scene=snowfallScene,bus=interactionEngineRef.current;
   scene.reset(bus.generation);scene.consume(bus.recent,bus.generation,false);
   scene.setPaused(snowfallPaused||previewHoldRef.current);
-  setSnowfallCount(0);
+  proceduralRuntime.reset(bus.generation);
+  proceduralRuntime.skipExisting(bus.recent,bus.generation);
+  setSnowfallCount(0);setSceneCount(0);
+ };
+ const applyFloorPreset=(preset:FloorScenePreset)=>{
+  selectFloorScene(preset.sceneId);
+  setSceneIntensity(preset.intensity);setSceneRadius(preset.radius);
+  setScenePersistence(preset.persistence);setSceneQuality(preset.quality);
+  setSceneAudioMix(preset.audioMix);
+  setSnowfallRate(preset.intensity);
+  setSnowfallRecovery(Math.round(12+(1-preset.persistence)*228));
+ };
+ const saveScenePreset=()=>{
+  if(floorScene==='footprints')return;
+  try{
+   const next=saveFloorPreset(localStorage,{
+    schema:'soma.floor-scene-preset',version:1,
+    name:presetName.trim().slice(0,64),sceneId:floorScene,
+    intensity:floorScene==='snowfall'?snowfallRate:sceneIntensity,
+    radius:sceneRadius,
+    persistence:floorScene==='snowfall'?1-(snowfallRecovery-12)/228:scenePersistence,
+    audioMix:sceneAudioMix,quality:sceneQuality
+   });
+   setUserPresets(next);
+  }catch(error){setSceneAudioError(error instanceof Error?error.message:'Preset gagal disimpan.');}
+ };
+ const deleteScenePreset=(name:string)=>{
+  try{
+   const next=userPresets.filter(p=>p.name!==name);
+   localStorage.setItem('soma-floor-scene-presets-v1',JSON.stringify(next));
+   setUserPresets(next);
+  }catch{setSceneAudioError('Tidak dapat menghapus preset lokal.');}
  };
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
