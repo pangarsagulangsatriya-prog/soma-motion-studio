@@ -211,6 +211,9 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   ids.forEach(urgentBlackout);
   setRequested({body:'blackout',floor:'blackout'});
   setArmed({body:false,floor:false});
+  // Recover a stuck/lost window in the same deliberate click; opening
+  // a new output session invalidates the previous five-point QA.
+  if(ports[id].opened&&!ports[id].connected)ports[id].closeOutput();
   const opened=ports[id].open(id);
   if(opened){
    setEpoch(prev=>({...prev,[id]:prev[id]+1}));
@@ -406,7 +409,8 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
      <p>{s.opened?(s.connected?'Jendela terhubung':'Menunggu heartbeat output'):'Jendela belum dibuka'}</p>
      <p>Pengukuran {a.count}/5 · {a.status==='within-provisional-target'?'Target sementara tercapai':a.status==='needs-adjustment'?'Perlu koreksi':'Bukti belum lengkap'}</p>
      <div className="stage-dual-buttons">
-      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.opened} onClick={()=>open(id)}>Buka output</button>
+      <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.connected}
+        onClick={()=>open(id)}>{s.opened&&!s.connected?'Pulihkan output':'Buka output'}</button>
       <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
       <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm}
        onClick={()=>changeMode(id,'test')}><Target size={13}/> Uji terbatas</button>
