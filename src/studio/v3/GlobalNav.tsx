@@ -4,7 +4,7 @@ import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCir
  Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
-import {SOURCE_CHOICES,type FootprintsInputChoice} from './sourceSwitchModel.ts';
+import type {FootprintsInputChoice} from './sourceSwitchModel.ts';
 import {LABS_ITEM_COUNT,searchLabs,type LabsId} from './labsCatalog.ts';
 import {isDismissEscape,RAIL_TOOLTIP_DELAY_MS} from './interactionPolicy.ts';
 import './workspace-navigation.css';
@@ -171,18 +171,10 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
      <span> / {stageModuleActive?'STAGE 1':'TOOLS'}</span>
     </div>
    </div>
-   {stageModuleActive&&<div className="soma-uxr1-health" role="group" aria-label="Source dan status Stage 1">
-    <details className="soma-uxr1-source" aria-label="Pilih sumber gerak SOMA">
-     <summary title="Satu sumber untuk Track, Compose, Map, Perform">SOURCE: {sourceLabel}</summary>
-     <div className="soma-uxr1-source-menu" role="group" aria-label="Pilihan sumber gerak">
-      {SOURCE_CHOICES.map(option=><button key={option.id} type="button" disabled={sourceBusy||sourceSelection===option.id}
-       aria-pressed={sourceSelection===option.id} onClick={e=>{onSelectSource(option.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
-       <b>{option.label}</b><small>{option.description}</small>
-      </button>)}
-     </div>
-    </details>
-    <span title="Status koneksi sumber; bukan konfirmasi kualitas deteksi pose">{trackingLabel}</span>
-    <span title="Koneksi output software bukan bukti proyeksi fisik atau QA">{outputLabel}</span>
+   {stageModuleActive&&<div className="soma-uxr1-health" role="status" aria-label="Ringkasan status Stage 1">
+    <span title="Ubah sumber di workspace Track">SOURCE: {sourceLabel}</span>
+    <span title="Status pelacakan">{trackingLabel}</span>
+    <span title="Status koneksi output">{outputLabel}</span>
    </div>}
    <div className="v3-global-actions">
     {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
