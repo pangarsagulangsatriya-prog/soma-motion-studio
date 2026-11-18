@@ -176,7 +176,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
      type="button" title="Preset instrumen SOMA Labs" onClick={onPreset}>
      <Save size={15}/><span>{preset}</span></button>}
-    {labsContext&&workspace!=='projection'&&<button className="v3-perform" type="button"
+    {labsContext&&<button className="v3-perform" type="button"
      aria-pressed={perform} onClick={onPerform}>
      <Play size={15}/>{perform?'Kembali Edit':'Perform'}</button>}
     <button className="v3-help" type="button" onClick={onHelp} aria-label="Bantuan SOMA">
