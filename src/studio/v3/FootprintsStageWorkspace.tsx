@@ -994,7 +994,7 @@ export function FootprintsStageWorkspace({
      <button type="button" aria-pressed={composerOpen&&mappingOpen} onClick={()=>{onBlackout();setInspectorOpen(false);setMappingOpen(true);setComposerStartQA(true);setComposerOpen(true);}}>Map &amp; QA</button>
      <span className="uxr3-compose-status">{floorScene==='footprints'?'Footprints':FLOOR_SCENES.find(scene=>scene.id===floorScene)?.name??'Scene'} · {experimentalKind?'Rehearsal only':'Source shared'}</span>
     </div>}
-    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded mapMode={mappingOpen} sceneId={floorScene} onSceneChange={selectFloorScene}
+    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
