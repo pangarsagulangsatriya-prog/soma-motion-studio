@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "setup:assets": "node scripts/setup-assets.mjs",
-    "predev": "node scripts/prepare-pose-worker.mjs",
+    "predev": "node scripts/setup-assets.mjs && node scripts/prepare-pose-worker.mjs",
     "prebuild": "node scripts/setup-assets.mjs && node scripts/prepare-pose-worker.mjs"
   },
   "dependencies": {
