@@ -1,4 +1,5 @@
 import {useEffect,useState,type RefObject} from 'react';
+import type {SafeProjectionPreflight} from './safeProjectionPreflight.ts';
 import {Camera,CheckCircle2,ChevronDown,Clock3,HardDrive,Monitor,RefreshCw,
  ShieldAlert,SlidersHorizontal} from 'lucide-react';
 import {cameraBinding,type LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -18,6 +19,7 @@ type Props={
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;
  onConnectCamera:()=>Promise<boolean>;onSelectCamera:(deviceId:string)=>Promise<void>;
  onOpenCalibration:()=>void;onOpenProjector:()=>void;onBlackout:()=>void;
+ projectionPreflight:SafeProjectionPreflight;onPrepareProjection:()=>void;
 };
 const readProfiles=()=>{try{return loadQuickStageProfiles(localStorage);}catch{return [];}};
 const makeId=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?
@@ -26,7 +28,8 @@ export function QuickStageSetup({
  cameraOn,cameraBusy,cameraError,bodySelected,videoReady,frameFresh,cameraMatched,
  outputConnected,performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
  devices,deviceId,videoRef,tracker,router,
- onConnectCamera,onSelectCamera,onOpenCalibration,onOpenProjector,onBlackout
+ onConnectCamera,onSelectCamera,onOpenCalibration,onOpenProjector,onBlackout,
+ projectionPreflight,onPrepareProjection
 }:Props){
  const [profiles,setProfiles]=useState<QuickStageProfile[]>(readProfiles);
  const [profileId,setProfileId]=useState<string>(()=>readProfiles()[0]?.id??'');
@@ -175,9 +178,19 @@ export function QuickStageSetup({
     <button type="button" onClick={save}><HardDrive size={14}/> Simpan profil</button>
     {selected&&<button type="button" onClick={remove}>Hapus</button>}
    </div>
-   <button type="button" className="fp-quick-setup-output" onClick={onOpenProjector}>
-    <Monitor size={14}/> Periksa Projector · output software
-   </button>
+   <div className="fp-quick-projection" role="group" aria-label="Persiapan proyeksi aman">
+    <div className="fp-quick-projection-status">
+     <strong>PROJECTION · {projectionPreflight.progress}/4</strong>
+     <small>{projectionPreflight.detail}</small>
+    </div>
+    <button type="button" className="fp-quick-setup-primary"
+     onClick={onPrepareProjection} disabled={cameraBusy&&projectionPreflight.step==='source'}>
+     <Monitor size={14}/>{projectionPreflight.label}
+    </button>
+    <button type="button" className="fp-quick-setup-output" onClick={onOpenProjector}>
+     <SlidersHorizontal size={14}/> Output QA · pengaturan lengkap
+    </button>
+   </div>
    {sessionStarted!==null&&<p className="fp-quick-setup-timer">
     <Clock3 size={14}/> Sesi: {Math.floor(elapsed/60).toString().padStart(2,'0')}:
     {(elapsed%60).toString().padStart(2,'0')} / target 02:00
