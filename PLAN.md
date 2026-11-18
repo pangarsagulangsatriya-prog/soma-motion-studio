@@ -25,15 +25,27 @@ Files: `src/studio/v3/quickStageProfiles.ts`, `QuickStageSetup.tsx`, `quick-stag
 
 **Remaining UAT:** first-time vs saved profile timings on actual camera/projector; camera disconnect/reconnect; same device different resolution; quad reprojection; physical BLACKOUT; accessibility, 320px mobile and storage-disabled recovery. Do not treat a green build as physical setup acceptance.
 
+## F0 — Unified Interaction Engine (18 Nov 2026)
+
+**Code delivered to main:** `src/footprints/scenes/FloorInteractionEngine.ts`, `interactionAdapters.ts`, integrated in `src/studio/v3/FootprintsStageWorkspace.tsx` with `floor-interaction.css`. Source adapters reuse the existing camera Body tracker, MultiPoseGaitRouter, LiveFloorTrackingEngine/FloorSession v3, replay VideoPoseGaitEngine, and Direct Puppet simulator. No second decoder, AI model, calibration, physical projector renderer or output authorization was added.
+
+**Shared contract:** all five inputs — Webcam, Phone, MP4, 3D Puppet and on-screen Touch Demo — produce `FloorInteractionEvent` with `source`, `actorId`, `kind` (presence / movement / contact / touch / release), floor-normalized `x/y`, time, confidence, speed, foot when applicable, basis and verified provenance. Presence is emitted even while stationary via a throttled heartbeat. Moving actors emit movement; only pre-existing debounced gait contacts or an explicit touch-down can print a software contact. The event history is bounded; duplicated contact IDs are ignored. MP4 seek/loop, input switch and touch toggle reset the bus. When A/B assignment is ambiguous, anonymous positions can react visually but cannot produce new A/B contact stamps. Switching between known and unknown identities prunes stale actor slots.
+
+**Operator UI:** open Footprints → FLOOR preview → **Touch Demo ON** for mouse/touch/keyboard-simulated steps, or use an existing camera/HP/MP4/3D input. The same overlay renders presence/movement rings and stamped contact circles over the current FLOOR preview. The original FLOOR raster and physical output routing remain independent and unchanged. Preview status summarizes active actors and accepted contacts. This is a first usable F0 interaction layer, **not yet the 13-scene procedural GPU runtime**.
+
+**Gate evidence:** `tests/unified-floor-interaction-f0.test.ts` covers source parity, two IDs, stationary presence, crossing quarantine, provenance, deduplication and reset; `e2e/unified-floor-interaction.spec.mjs` exercises Touch Demo and projector lock in Chromium. Mark the F0 software gate complete only when Verify, Pages, and Browser QA pass at the same code revision. Hardware latency/accuracy still require bench UAT.
+
+**Next:** F1 — procedural Snowfall scene consuming this bus, accumulation/persistence/re-cover and multi-input visual QA; then optimize live calibration and the 13-scene catalogue. Do not merge BODY skeleton quality, physical projector QA or true biomechanical contact claims into an F0 pass.
+
 ## FLOOR next: Phantom Floor benchmark parity (18 Nov 2026)
 
 **Document:** [SOMA FLOOR — Operator Flow & Feature Parity V2](docs/SOMA-FLOOR-PHANTOM-PARITY-V2-IMPLEMENTATION-PLAN.md)
 
-**Current state:** source switching, A/B tracking, floor coordinate/contact event, preview, calibration and projector safety code exist. The 13 benchmark scenes, Touch-as-Feet through a shared scene bus, and procedural Snowfall accumulation are not yet delivered. Overhead A/B tracking and physical projector accuracy remain unverified.
+**Current state:** source switching, A/B tracking, floor coordinate/contact event, preview, calibration and projector safety code exist. The F0 shared presence/movement/contact/touch bus and Touch Demo software preview have been integrated. The procedural Snowfall scene engine and the 13 benchmark scenes are not delivered. Overhead A/B tracking and physical projector accuracy remain unverified.
 
 **One operator flow:** Select input → Select Floor scene → Test interaction → Calibrate floor → Open projector → Go Live (only after hardware safety approval). Rehearsal MP4/3D/touch remains software-only.
 
-**Next tasks:** F0 Shared FloorInteractionEvent / adapters / truthful status → F1 Touch Demo + procedural persistent Snowfall on the existing FLOOR preview → F2 Camera presence/contact + calibration → F3 Clean gated Projector output → F4 GPU primitives → F5 13-scene catalog → F6 audio/performance/privacy UAT → F7 advanced SOMA gait research.
+**Next tasks:** F0 shared interaction bus delivered for software preview (pending final QA) → F1 procedural persistent Snowfall consuming the same event bus → F2 Camera presence/contact + calibration → F3 Clean gated Projector output → F4 GPU primitives → F5 13-scene catalog → F6 audio/performance/privacy UAT → F7 advanced SOMA gait research.
 
 **Release gate:** six touches produce six footprints with no duplicates when stationary, graceful fade, two simultaneous inputs, output locked for rehearsal sources, real camera/projection acceptance before claiming parity. No second video decoder, body tracker or projector transport.
 
