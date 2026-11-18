@@ -360,8 +360,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
-  <header><div><h2>Map</h2></div>
-   <button type="button" onClick={onClose}>Track</button></header>
+  <header><div><h2>Map</h2></div></header>
   <p role="status">{bodyStatus} · FLOOR {floorReady?'terkonfirmasi':'belum terkalibrasi'} · Status cahaya wajib diperiksa fisik</p>
   <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="Map BODY output raster"/>
   <canvas ref={floorOutput} width={640} height={360} hidden aria-label="Map FLOOR output raster"/>
@@ -369,7 +368,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
  </section>;
  return <div className={'s64-root'+(embedded?' s64-embedded':'')} role="region" aria-label="Compose Workspace — media dan layer">
-  <div className="s64-heading"><div><h2>Compose</h2></div><button type="button" onClick={onClose}>Track</button></div>
+  <div className="s64-heading"><div><h2>Compose</h2></div></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
    onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
    <span>{eventInfo}</span>
