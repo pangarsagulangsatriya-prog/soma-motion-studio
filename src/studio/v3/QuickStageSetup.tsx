@@ -11,7 +11,8 @@ import './quick-stage-setup.css';
 type Props={
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;
  videoReady:boolean;frameFresh:boolean;cameraMatched:boolean;
- outputConnected:boolean;performerCount:1|2;
+ outputConnected:boolean;performerCount:1|2;visibleCount:number;
+ identityAmbiguous:boolean;identityMatchedFrame:boolean;
  devices:MediaDeviceInfo[];deviceId:string;
  videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;
@@ -23,7 +24,8 @@ const makeId=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='functi
  crypto.randomUUID():'local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
 export function QuickStageSetup({
  cameraOn,cameraBusy,cameraError,bodySelected,videoReady,frameFresh,cameraMatched,
- outputConnected,performerCount,devices,deviceId,videoRef,tracker,router,
+ outputConnected,performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
+ devices,deviceId,videoRef,tracker,router,
  onConnectCamera,onSelectCamera,onOpenCalibration,onOpenProjector,onBlackout
 }:Props){
  const [profiles,setProfiles]=useState<QuickStageProfile[]>(readProfiles);
@@ -42,6 +44,7 @@ export function QuickStageSetup({
  },[sessionStarted]);
  const diagnostics=quickStageDiagnostics({
   cameraOn,cameraBusy,cameraError,bodySelected,videoReady,frameFresh,
+  performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
   floorCalibrated:tracker.isCalibrated,floorConfirmed:tracker.isConfirmed,
   cameraMatched,outputConnected
  });
