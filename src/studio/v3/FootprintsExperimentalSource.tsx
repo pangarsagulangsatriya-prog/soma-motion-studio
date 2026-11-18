@@ -26,6 +26,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [url,setUrl]=useState<string|null>(null);
  const [videoReady,setVideoReady]=useState(false);
  const [position,setPosition]=useState(0),[duration,setDuration]=useState(0);
+ const [scrubPosition,setScrubPosition]=useState<number|null>(null);
  const [playing,setPlaying]=useState(false),[analyzing,setAnalyzing]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
  const [snapshot,setSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
@@ -52,7 +53,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  useEffect(()=>{
   if(kind!=='video'||!clip){setUrl(null);setVideoReady(false);setSnapshot(null);return;}
   const objectUrl=URL.createObjectURL(clip);setUrl(objectUrl);
-  setVideoReady(false);setDuration(0);setPosition(0);setPlaying(false);setSnapshot(null);
+  setVideoReady(false);setDuration(0);setPosition(0);setScrubPosition(null);setPlaying(false);setSnapshot(null);
   lastSnapshot.current=null;previousSnapshot.current=null;userPaused.current=false;
   setAnalysisError('');setAnalyzing(false);
   return()=>URL.revokeObjectURL(objectUrl);
@@ -138,6 +139,15 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   videoEngine.current?.reset('Timeline dipindah. Event segmen sebelumnya disimpan di arsip analisis.');
   el.currentTime=seconds;setPosition(seconds);
  };
+ const commitScrub=()=>{
+  if(scrubPosition===null)return;
+  seek(scrubPosition);setScrubPosition(null);
+ };
+ const timecode=(seconds:number)=>{
+  const safe=Math.max(0,Number.isFinite(seconds)?seconds:0);
+  return String(Math.floor(safe/60)).padStart(2,'0')+':'+
+   String(Math.floor(safe%60)).padStart(2,'0');
+ };
  const step=(dx:number)=>{
   const model=sessionRef.current,which={performerId:'A',foot};
   const v=model.getFoot(which);if(!v)return;
@@ -179,32 +189,39 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     aria-label={playing?'Jeda video':'Putar video'}>
     {playing?<Pause size={15}/>:<Play size={15}/>}
     {playing?'Jeda':'Putar'}</button>
-   <input type="range" min={0} max={duration||1} step={.02} value={position}
-    aria-label="Geser waktu video" disabled={!videoReady} onChange={e=>seek(+e.target.value)}/>
-   <output>{position.toFixed(1)} / {duration.toFixed(1)} dtk</output>
-   <span className="fp-experiment-meta" role="status">
-    {analysisError?'Tracking belum siap. '+analysisError:
-     analyzing?'Mengaktifkan pelacakan otomatis…':
-     snapshot?snapshot.visibleCount===2?'Dua aktor terbaca':
-       snapshot.visibleCount===1?'Satu aktor terbaca · mencari pasangan':
-       'Mencari dua aktor pada video':
-     clip?'Menyiapkan pelacakan otomatis':'Pilih video untuk mulai'}
+   <input type="range" min={0} max={duration||1} step={.02}
+    value={scrubPosition??position} aria-label="Geser waktu video"
+    disabled={!videoReady} onChange={e=>setScrubPosition(+e.target.value)}
+    onPointerUp={commitScrub} onPointerCancel={commitScrub}
+    onKeyUp={commitScrub} onBlur={commitScrub}/>
+   <output aria-label="Waktu video" className="fp-stable-timecode"
+    title={`${(scrubPosition??position).toFixed(1)} dari ${duration.toFixed(1)} detik`}>
+    {timecode(scrubPosition??position)} / {timecode(duration)}
+   </output>
+   <span className="fp-experiment-meta" role="status"
+    data-state={analysisError?'error':analyzing?'busy':snapshot?'ready':'idle'}
+    title={analysisError||'Status deteksi frame saat ini'}>
+    {analysisError?'Tracking gagal':analyzing?'Memuat AI…':
+     snapshot?`${snapshot.visibleCount}/2 tubuh`:
+     clip?'Menyiapkan AI':'Belum ada video'}
    </span>
    {snapshot&&<div className="fp-duet-engine-status" role="status"
     aria-label="Pelacakan otomatis dua aktor">
-    <b>TRACKING OTOMATIS</b>
-    <span>{snapshot.visibleCount===2?'A dan B terlacak':
-     snapshot.persistentActors?.filter(a=>a.registered).length===2?
-      'A/B tersimpan · memulihkan aktor yang terhalang':
-     snapshot.detectedCount>=2?'Memastikan identitas kedua aktor':
-      snapshot.visibleCount===1?'Memindai ulang tubuh yang belum terbaca':
-      'Mencari aktor A dan B'}</span>
+    <b>TRACKING</b>
+    <span className="fp-tracking-summary"
+     title={snapshot.visibleCount===2?'Dua aktor terbaca':snapshot.visibleCount===1?
+      'Satu aktor terbaca; menunggu aktor lainnya':'Menunggu tubuh yang dapat diatribusikan'}>
+     {snapshot.visibleCount===2?'2/2 aktif':
+      snapshot.persistentActors?.filter(a=>a.registered).length===2?
+       'Re-ID aktif':snapshot.visibleCount===1?'1/2 aktif':'Mencari'}
+    </span>
     <span className="fp-video-actor-status" aria-label="Status masing-masing aktor MP4">
      {snapshot.actorStates.map(actor=><span key={actor.id}
       data-actor={actor.id} data-presence={actor.presence}>
-      <b>{actor.id}</b> {actor.presence==='visible'?'Terdeteksi':
-       snapshot.persistentActors?.find(saved=>saved.id===actor.id)?.registered?
-        'Tersimpan · pulihkan':'Dicari'}
+      <b>{actor.id}</b> {actor.presence==='visible'?'Aktif':
+       actor.presence==='occluded'?'Tertahan':
+       actor.presence==='reacquiring'||actor.presence==='uncertain'?'Pulih':
+       actor.presence==='lost'?'Hilang':'Dicari'}
      </span>)}
     </span>
    </div>}
