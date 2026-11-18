@@ -47,8 +47,8 @@ export const FLOOR_SCENE_PRESETS:readonly FloorScenePreset[]=[
  {schema:'soma.floor-scene-preset',version:1,name:'Responsive · Fog',
   sceneId:'ectoplasmic-fog',intensity:.6,radius:.7,persistence:.7,audioMix:.25,quality:'medium'}
 ];
-const finite=(v:unknown)=>typeof v==='number'&&Number.isFinite(v);
-const unit=(v:unknown)=>finite(v)&&v>=0&&v<=1;
+const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
+const unit=(v:unknown):v is number=>finite(v)&&v>=0&&v<=1;
 export function validateFloorScenePreset(raw:unknown):FloorScenePreset{
  const p=raw as Partial<FloorScenePreset>|null;
  if(!p||p.schema!=='soma.floor-scene-preset'||p.version!==1||
@@ -58,8 +58,8 @@ export function validateFloorScenePreset(raw:unknown):FloorScenePreset{
   (p.quality!=='low'&&p.quality!=='medium'&&p.quality!=='high'))
   throw Error('Preset scene FLOOR tidak valid.');
  return {schema:'soma.floor-scene-preset',version:1,name:p.name.trim(),
-  sceneId:p.sceneId,intensity:p.intensity,radius:p.radius,
-  persistence:p.persistence,audioMix:p.audioMix,quality:p.quality};
+  sceneId:p.sceneId,intensity:p.intensity!,radius:p.radius!,
+  persistence:p.persistence!,audioMix:p.audioMix!,quality:p.quality};
 }
 export const FLOOR_PRESETS_STORAGE_KEY='soma-floor-scene-presets-v1';
 type ReadStore=Pick<Storage,'getItem'>;type WriteStore=Pick<Storage,'getItem'|'setItem'>;
