@@ -40,6 +40,7 @@ import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
 import {SnowfallScene} from '../../footprints/scenes/SnowfallScene.ts';
 import {PersistentHydraFootprintRuntime} from '../../footprints/scenes/PersistentHydraFootprintRuntime.ts';
+import {ARTISTIC_FOOTPRINT_STYLES} from '../../footprints/scenes/ArtisticFootprintRuntime.ts';
 import {HYDRA_FOOTPRINT_STYLES,normalizeHydraFootprintSettings,type HydraFootprintSettings,type HydraFootprintStatus} from '../../footprints/scenes/hydraFootprintModel.ts';
 import {SnowfallRenderer} from '../../footprints/scenes/SnowfallRenderer.ts';
 import {ProceduralSceneRuntime,type ProceduralParams} from '../../footprints/scenes/ProceduralSceneRuntime.ts';
@@ -1171,7 +1172,23 @@ export function FootprintsStageWorkspace({
           <strong>GENERATIVE / FLOOR</strong>
           <label><input type="checkbox" checked={hydraSettings.enabled}
            onChange={e=>updateHydra({enabled:e.target.checked})}/> Aktifkan Hydra untuk preview</label>
-          <label>Style<select value={hydraSettings.style}
+          <label>Flagship artwork<select aria-label="Pilih artwork Footprints" value={hydraSettings.artwork}
+           onChange={e=>updateHydra({enabled:e.target.value!=='off'||hydraSettings.enabled,
+            artwork:e.target.value as HydraFootprintSettings['artwork']})}>
+           <option value="off">Original scene + Hydra</option>
+           {ARTISTIC_FOOTPRINT_STYLES.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+          </select></label>
+          {hydraSettings.artwork!=='off'&&<>
+           <label>Representation<select aria-label="Artistic atau literal" value={hydraSettings.artworkTreatment}
+            onChange={e=>updateHydra({artworkTreatment:e.target.value as HydraFootprintSettings['artworkTreatment']})}>
+            <option value="artistic">Artistic</option><option value="literal">Literal footprint</option>
+           </select></label>
+           <label>Footprint / Path<select aria-label="Tampilkan jejak dan lintasan" value={hydraSettings.artworkView}
+            onChange={e=>updateHydra({artworkView:e.target.value as HydraFootprintSettings['artworkView']})}>
+            <option value="both">Footprints + Paths</option><option value="footprints">Footprints only</option><option value="paths">Paths only</option>
+           </select></label>
+          </>}
+          <label>Hydra shader<select value={hydraSettings.style}
            onChange={e=>updateHydra({style:e.target.value as HydraFootprintSettings['style']})}>
            {HYDRA_FOOTPRINT_STYLES.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
           </select></label>
