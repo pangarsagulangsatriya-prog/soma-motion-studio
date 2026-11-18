@@ -13,7 +13,7 @@ import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
 import {catalogRecipe,catalogThumbnailSvg} from '../../footprints/scenes/artisticCatalog.ts';
 import './vis-r3-gallery.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
-import {MOTION_RECIPE_DEFAULT,MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRule,
+import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRule,
  resolveMotionRecipeCue,motionRecipeEnvelope,type MotionRecipeRule,type MotionRecipeCue} from '../../footprints/scenes/motionRecipeModel.ts';
 import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
@@ -33,6 +33,8 @@ const valid=(v:unknown):v is Snapshot=>{if(!v||typeof v!=='object')return false;
 type Props={
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
  visualFloorCanvas?:RefObject<HTMLCanvasElement|null>;previewFloorEnabled?:boolean;
+ archiveHydraCanvas?:RefObject<HTMLCanvasElement|null>;
+ onArchiveHydraChange?:(enabled:boolean)=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
@@ -41,13 +43,17 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,archiveHydraCanvas,onArchiveHydraChange}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
  const [composition,setComposition]=useState<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
  const [media,setMedia]=useState<Media[]>([]);
+ const [archiveHydra,setArchiveHydra]=useState(false);
+ const archiveReadyRef=useRef(false);
+ const onArchiveHydraChangeRef=useRef(onArchiveHydraChange);
+ onArchiveHydraChangeRef.current=onArchiveHydraChange;
  const [selectedLayer,setSelectedLayer]=useState(0);
  const [presets,setPresets]=useState<{name:string;snapshot:Snapshot}[]>(()=>{try{const p=JSON.parse(localStorage.getItem(presetKey)||'[]');return Array.isArray(p)?p.filter(x=>x?.name&&valid(x.snapshot)).slice(0,30):[];}catch{return [];}});
  const [presetName,setPresetName]=useState('New composition');
@@ -208,7 +214,13 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
     }
    }
    ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100*envelope));
-   ctx.globalCompositeOperation=layer.blend;ctx.drawImage(off,0,0);ctx.restore();
+   ctx.globalCompositeOperation=layer.blend;
+   const motionCue=layer.recipe==='motion-v2'?motionClocks.current.get(layer.id):undefined;
+   if(!physical&&motionCue?.treatment==='distort'&&envelope>0){
+    const wobble=4*envelope*Math.sin((now-motionCue.started)/90);
+    ctx.translate(wobble,-wobble*.6);ctx.drawImage(off,0,0);
+   }else ctx.drawImage(off,0,0);
+   ctx.restore();
   }
  };
  useEffect(()=>{
@@ -223,6 +235,14 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
     if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false,true);
    }}
    if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height,true,true);}
+   const archiveReady=archiveHydra&&!blackoutRef.current&&previewLiveRef.current&&readyMedia('FLOOR')&&!!archiveHydraCanvas;
+   if(archiveReady&&archiveHydraCanvas){
+    if(!archiveHydraCanvas.current)archiveHydraCanvas.current=document.createElement('canvas');
+    const archive=archiveHydraCanvas.current;
+    if(archive.width!==640)archive.width=640;if(archive.height!==360)archive.height=360;
+    const archiveCtx=archive.getContext('2d');if(archiveCtx)render(archiveCtx,'FLOOR',640,360,true,false);
+   }
+   if(archiveReadyRef.current!==archiveReady){archiveReadyRef.current=archiveReady;onArchiveHydraChangeRef.current?.(archiveReady);}
    const preview=canvas.current;
    if(preview){const ctx=preview.getContext('2d');if(ctx){
     if(previewArrangementRef.current==='split'){
@@ -315,6 +335,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const savePreset=()=>{const name=presetName.trim().slice(0,60);if(!name)return;const next=[{name,snapshot:{version:1 as const,selected,composition:structuredClone(composition)}},...presets.filter(p=>p.name!==name)].slice(0,30);setPresets(next);localStorage.setItem(presetKey,JSON.stringify(next));setHint('Preset tersimpan di perangkat ini.');};
  const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
  const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);setHint('Konfigurasi dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
+ useEffect(()=>()=>{onArchiveHydraChangeRef.current?.(false);},[]);
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  return <div className={'s64-root'+(embedded?' s64-embedded':'')} role="region" aria-label="Compose Workspace — media dan layer">
@@ -331,7 +352,11 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
        <span className="visr3-scene-copy"><strong>{scene.name}</strong>
         <small>{catalogRecipe(scene.id).subtitle}</small></span>
       </button>)}
-     </div><h3>Surface Navigator</h3>{surfaces.map(s=><button key={s} className={selected===s?'active':''} onClick={()=>{setSelected(s);setSelectedLayer(0);}}>{s}<small>{composition[s].length} layer</small></button>)}<h3>Media Library</h3><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>patch({mediaId:m.id,name:m.name})}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media tetap lokal di browser. Pilih ulang berkas setelah reload.</small></aside>
+     </div><h3>Surface Navigator</h3>{surfaces.map(s=><button key={s} className={selected===s?'active':''} onClick={()=>{setSelected(s);setSelectedLayer(0);}}>{s}<small>{composition[s].length} layer</small></button>)}<h3>Media Library</h3><label className="visr4-archive-row">
+ <input type="checkbox" checked={archiveHydra}
+  onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
+ Process FLOOR archive media with Hydra (software preview)</label>
+ <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>patch({mediaId:m.id,name:m.name})}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media tetap lokal di browser. Pilih ulang berkas setelah reload.</small></aside>
    <section className="s64-center"><div className="uxr3-compose-preview-bar"><strong>STAGE PREVIEW</strong><div role="group" aria-label="Pilih bidang preview">
      {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
