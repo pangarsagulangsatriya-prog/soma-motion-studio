@@ -18,7 +18,6 @@ export class PersistentHydraFootprintRuntime {
  private seen=new Set<string>();
  private generation=-1;
  private motion:HydraMotionUniforms={...HYDRA_MOTION_IDLE};
- private latestContactAt=0;
  private settings:HydraFootprintSettings=normalizeHydraFootprintSettings(null);
  private loading:Promise<void>|null=null;
  private destroyed=false;
@@ -27,6 +26,12 @@ export class PersistentHydraFootprintRuntime {
  private lastGoodStyle:HydraFootprintStyle|null=null;
  private onLost=(event:Event)=>{event.preventDefault();this.fail('WebGL context lost');};
  get activeStyle(){return this.style;}
+ get isDestroyed(){return this.destroyed;}
+ resetFeedback(){
+  if(!this.engine||this.status!=='ready')return;
+  try{this.engine.synth.hush?.();this.style=null;this.configure(this.settings);}
+  catch(error){this.fail(error instanceof Error?error.message:'Hydra reset failed');}
+ }
  get output(){return this.status==='ready'?this.outputCanvas:null;}
  get motionUniforms(){return {...this.motion};}
  /** A retained software buffer; never a projector destination. */
@@ -54,6 +59,7 @@ export class PersistentHydraFootprintRuntime {
     if(this.destroyed){engine.regl?.destroy?.();return;}
     this.engine=engine;engine.synth.s0.init({src:input});
     this.configure(this.settings);
+    if(this.status==='fallback')return;
     this.status='ready';this.reason='';
    }catch(error){
     this.fail(error instanceof Error?error.message:'Hydra could not initialize');
@@ -82,7 +88,7 @@ export class PersistentHydraFootprintRuntime {
   const mix=()=>clamp01(this.settings.mix);
   let graph;
   if(style==='grain'){
-   graph=source().modulate(h.noise(3,.1),amount()).blend(h.noise(20,.12),()=>mix()*.12);
+   graph=source().modulate(h.noise(3,.1),amount).blend(h.noise(20,.12),()=>mix()*.12);
   }else if(style==='echo'){
    graph=source().blend(h.src(h.o0).scale(1.008).rotate(.002),feedback);
   }else if(style==='interference'){
@@ -99,7 +105,8 @@ export class PersistentHydraFootprintRuntime {
   if(!Number.isFinite(nowMs))return;
   if(generation!==this.generation){
    this.generation=generation;this.seen.clear();
-   this.motion={...HYDRA_MOTION_IDLE};this.latestContactAt=0;
+   this.motion={...HYDRA_MOTION_IDLE};
+   try{this.engine.synth.hush?.();}catch{}
    // A new source must not inherit previous frame feedback.
    this.style=null;this.configure(this.settings);
   }
@@ -112,7 +119,7 @@ export class PersistentHydraFootprintRuntime {
     if(this.seen.has(e.eventId))continue;
     this.seen.add(e.eventId);
     if(e.kind==='contact'&&e.verified){
-     this.latestContactAt=nowMs;this.motion.energy=Math.min(1,this.motion.energy+.26);
+     this.motion.energy=Math.min(1,this.motion.energy+.26);
      this.motion.contacts++;
      this.motion.x=clamp01(e.x);this.motion.y=clamp01(e.y);
     }else if(e.kind==='movement'||e.kind==='presence'){
