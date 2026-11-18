@@ -38,7 +38,8 @@ test('responsive initial source screen, safety access, no horizontal overflow',a
  await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
  await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
  await expect(page.locator('.fp-stage-video')).toBeVisible();
- await expect(page.locator('#fp-context-panel')).toBeVisible();
+ // Simplified UX keeps contextual settings closed until a task is chosen.
+ await expect(page.locator('#fp-context-panel')).toHaveCount(0);
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
  await screenshot(page,testInfo,'source');
@@ -49,7 +50,7 @@ test('local workflow inspector opens, keyboard enters, Escape restores focus',as
  const tracking=tab(page,'Tracking');
  await tracking.click();
  await expect(page.locator('#fp-context-panel')).toBeVisible();
- await expect(page.locator('.fp-flow-inspector-head h2')).toContainText('Baca gerak kaki');
+ await expect(page.locator('.fp-flow-inspector-head h2')).toContainText('Pelacakan kaki');
  await screenshot(page,testInfo,'tracking');
  await tracking.focus();
  await page.keyboard.press('ArrowDown');
@@ -71,9 +72,9 @@ test('Footprints Visual → Projector → Footprints keeps software blackout acc
  await ready(page);
  let popups=0;
  page.on('popup',popup=>{popups++;void popup.close();});
- const visual=tab(page,'Visual & Archive');
+ const visual=tab(page,'Visual');
  await visual.click();
- await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Bentuk & arsip');
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeVisible();
  // A Blackout command must remain directly clickable while editing.
  await page.locator('.fp-compact-transport .fp-transport-blackout').click();
@@ -151,7 +152,7 @@ test('denied camera permission displays recoverable source error without project
  await expect(page.locator('.fp-stage-side-previews')).toBeVisible();
  await expect(page.locator('.fp-stage-preview-toolbar')).toBeVisible();
  await expect(page.locator('.fp-stage-video')).toBeVisible();
- await expect(page.locator('#fp-context-panel')).toBeVisible();
+ await expect(page.locator('#fp-context-panel')).toHaveCount(0);
 });
 
 test('S6.8.1 source switcher keeps phone pairing session mounted while its panel closes',async({page},testInfo)=>{
@@ -168,7 +169,7 @@ test('S6.8.1 source switcher keeps phone pairing session mounted while its panel
  await expect(manager.locator('.soma-setup-phone-choices')).toHaveCount(1);
  await manager.getByRole('button',{name:'Tutup panel kamera HP'}).click();
  await expect(manager).toBeHidden();
- await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Pelacakan kaki');
  // Closing the controls must not unmount the WebRTC receiver.
  await expect(manager.locator('.soma-setup-phone-choices')).toHaveCount(1);
  await switcher.click();
@@ -179,7 +180,7 @@ test('S6.8.1 source switcher keeps phone pairing session mounted while its panel
  await page.getByRole('dialog',{name:'Ganti sumber Footprints'}).getByRole('button',{name:/Webcam laptop/i}).click();
  await expect(switcher).toContainText('Webcam laptop');
  await expect(page.locator('.fp-phone-source-panel')).toHaveCount(0);
- await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
+ await expect(page.locator('#fp-context-panel')).toHaveCount(0);
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
 });
@@ -221,7 +222,7 @@ test('S6.8.2 main workspace keeps all live preview canvases mounted across mode 
  await expect(canvasBody).toBeVisible();
  await expect(canvasFloor).toBeVisible();
  await expect(camera).toBeVisible();
- await expect(page.locator('.fp-flow-inspector-head')).toContainText('Atur bentuk');
+ await expect(page.locator('#fp-context-panel')).toHaveCount(0);
  const body=page.locator('.fp-stage-preview-modes button').filter({hasText:'BODY'});
  const floor=page.locator('.fp-stage-preview-modes button').filter({hasText:'FLOOR'});
  const split=page.locator('.fp-stage-preview-modes button').filter({hasText:'Split'});
@@ -239,7 +240,9 @@ test('S6.8.2 main workspace keeps all live preview canvases mounted across mode 
  await expect(canvasFloor).toBeVisible();
  await expect(canvasBody).toBeVisible();
  await expect(camera).toBeVisible();
+ await page.locator('.fp-flow-local-tabs button').filter({hasText:'Visual'}).click();
  await expect(page.locator('#fp-context-panel')).toBeVisible();
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Bentuk & arsip');
  await expect(page.locator('.fp-compact-transport .fp-transport-blackout')).toBeEnabled();
  await noOverflow(page);
  await screenshot(page,testInfo,'persistent-stage');
@@ -293,7 +296,7 @@ test('S6.8.3 inline four-point calibration keeps camera and preview in one works
  await screenshot(page,testInfo,'inline-calibration');
  await page.getByRole('button',{name:'Tutup kalibrasi'}).click();
  await expect(page.locator('.fp-inline-floor-editor')).toHaveCount(0);
- await expect(page.locator('.fp-flow-inspector-head')).toContainText('Baca gerak kaki');
+ await expect(page.locator('.fp-flow-inspector-head')).toContainText('Pelacakan kaki');
 });
 
 test('S6.8.3 assistant follows phone pairing and retains one camera receiver',async({page})=>{
