@@ -38,6 +38,8 @@ import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/liv
 import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/MultiPoseGaitRouter.ts';
 import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
+import {SnowfallScene} from '../../footprints/scenes/SnowfallScene.ts';
+import {SnowfallRenderer} from '../../footprints/scenes/SnowfallRenderer.ts';
 import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
  feedTouchFloorInteraction,paintFloorInteractionOverlay} from '../../footprints/scenes/interactionAdapters.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
@@ -99,11 +101,24 @@ export function FootprintsStageWorkspace({
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
+ const snowfallCanvas=useRef<HTMLCanvasElement>(null);
+ const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
  const interactionCanvas=useRef<HTMLCanvasElement>(null);
  const interactionEngineRef=useRef(new FloorInteractionEngine());
  const touchPointers=useRef(new Set<number>());
  const [touchDemo,setTouchDemo]=useState(false);
  const [floorInteractionStats,setFloorInteractionStats]=useState({actors:0,contacts:0,events:0});
+ const snowfallSceneRef=useRef(new SnowfallScene());
+ const [floorScene,setFloorScene]=useState<'footprints'|'snowfall'>(()=>{
+  try{return localStorage.getItem('soma-floor-scene-v1')==='snowfall'?'snowfall':'footprints';}
+  catch{return 'footprints';}
+ });
+ const [snowfallCount,setSnowfallCount]=useState(0);
+ const [snowfallPaused,setSnowfallPaused]=useState(false);
+ const [snowfallRate,setSnowfallRate]=useState(.55);
+ const [snowfallRecovery,setSnowfallRecovery]=useState(75);
+ const [snowfallRendererMode,setSnowfallRendererMode]=useState<'webgl2'|'2d'|'unavailable'>('unavailable');
+ cleanFloorOutput.current=floorScene==='snowfall'?snowfallCanvas.current:floorCanvas.current;
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
@@ -161,6 +176,47 @@ export function FootprintsStageWorkspace({
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
  },[touchDemo,footprint.life]);
+ // F1 paints a separate, clean FLOOR surface from the same F0 bus.
+ // A source generation reset clears previous snow contacts on MP4 seek.
+ useEffect(()=>{
+  if(floorScene!=='snowfall'||!snowfallCanvas.current)return;
+  const renderer=new SnowfallRenderer(snowfallCanvas.current);
+  setSnowfallRendererMode(renderer.mode);
+  let raf=0,last=0,lastRead=0;
+  const draw=(now:number)=>{
+   raf=requestAnimationFrame(draw);
+   if(now-last<1000/30)return;
+   last=now;
+   const scene=snowfallSceneRef.current,bus=interactionEngineRef.current;
+   const freeze=snowfallPaused||previewHoldRef.current;
+   if(scene.paused!==freeze)scene.setPaused(freeze);
+   scene.consume(bus.recent,bus.generation,!freeze);
+   scene.step(now,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
+   renderer.render(scene,now,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
+   cleanFloorOutput.current=snowfallCanvas.current;
+   if(now-lastRead>180){
+    lastRead=now;setSnowfallCount(old=>old===scene.count?old:scene.count);
+   }
+  };
+  raf=requestAnimationFrame(draw);
+  return()=>{cancelAnimationFrame(raf);renderer.dispose();};
+ },[floorScene,snowfallPaused,snowfallRate,snowfallRecovery]);
+ useEffect(()=>{
+  try{localStorage.setItem('soma-floor-scene-v1',floorScene);}catch{}
+ },[floorScene]);
+ const selectFloorScene=(next:'footprints'|'snowfall')=>{
+  const bus=interactionEngineRef.current,scene=snowfallSceneRef.current;
+  scene.reset(bus.generation);
+  scene.consume(bus.recent,bus.generation,false);
+  setSnowfallCount(0);setSnowfallPaused(false);setFloorScene(next);
+  cleanFloorOutput.current=next==='snowfall'?snowfallCanvas.current:floorCanvas.current;
+ };
+ const resetSnowfall=()=>{
+  const scene=snowfallSceneRef.current,bus=interactionEngineRef.current;
+  scene.reset(bus.generation);scene.consume(bus.recent,bus.generation,false);
+  scene.setPaused(snowfallPaused||previewHoldRef.current);
+  setSnowfallCount(0);
+ };
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
  const [inspectorOpen,setInspectorOpen]=useState(false);
@@ -727,7 +783,7 @@ export function FootprintsStageWorkspace({
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
   {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
-   bodyCanvas={bodyCanvas} floorCanvas={floorCanvas} frameRef={frameRef} videoRef={videoRef}
+   bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
    router={router} floorTracker={tracker} projection={projection}
    cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
    floorReady={floorStatus.confirmed&&cameraMatched}
