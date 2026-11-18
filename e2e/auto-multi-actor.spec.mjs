@@ -85,3 +85,49 @@ test('S0.6.1 main Tracking registry retains A/B between skipped AI frames in Chr
  expect(result.missing.every(a=>a.tentative)).toBe(true);
  expect(result.returned.map(a=>a.label)).toEqual(['ACTOR A','ACTOR B']);
 });
+
+
+test('S0.6.2 Chromium: BODY follows independently moving A/B pixels between AI observations',async({page})=>{
+ await page.goto('/');
+ const observed=await page.evaluate(async()=>{
+  const {SparseVideoOpticalFlow}=await import('/src/stage/footprintsVideoOpticalFlow.ts');
+  const {ActorMotionStateBuffer}=await import('/src/stage/actorMotionStateBuffer.ts');
+  const W=256,H=144;
+  const pose=cx=>{
+   const out=Array.from({length:33},()=>({x:cx/W,y:.5,z:0,visibility:.96}));
+   for(const [i,dx,y] of [[11,-.036,.30],[12,.036,.30],[23,-.032,.62],[24,.032,.62]])
+    out[i]={x:cx/W+dx,y,z:0,visibility:.96};
+   return out;
+  };
+  const saved=(id,cx)=>({id,registered:true,observed:true,presence:'visible',
+   lastObservedAtMs:1000,ageMs:0,lastPose:pose(cx),center:{x:cx/W,y:.46},
+   velocity:{x:0,y:0},box:null,rawIndex:id==='A'?0:1,confidence:.95,observedFrames:3});
+  const paint=(atMs,ca,cb)=>{
+   const gray=new Uint8Array(W*H).fill(18);
+   for(const [cx,code] of [[ca,1],[cb,2]]){
+    for(let y=-24;y<=24;y++)for(let x=-14;x<=14;x++){
+     const xx=cx+x,yy=66+y,raw=(x*41+y*29+x*y*7+code*37)%173;
+     if(xx>=0&&xx<W&&yy>=0&&yy<H)gray[yy*W+xx]=40+(raw+173)%173;
+    }
+   }
+   return {atMs,width:W,height:H,gray};
+  };
+  const list=[saved('A',62),saved('B',194)];
+  const flow=new SparseVideoOpticalFlow();
+  const bank=new ActorMotionStateBuffer();
+  bank.ingest({atMs:1000,segment:0,rawPoses:[pose(62),pose(194)],ambiguous:false,
+   actorStates:[{id:'A',presence:'visible',rawIndex:0},
+    {id:'B',presence:'visible',rawIndex:1}]});
+  flow.ingest(paint(1000,62,194),list);
+  flow.ingest(paint(1040,65,191),list);
+  const optical=flow.ingest(paint(1080,68,188),list);
+  const body=bank.present(1080,optical);
+  return {optical:optical.actors.map(a=>({id:a.id,dx:a.dx,confidence:a.confidence})),
+   body:body.actors.map(a=>({id:a.id,mode:a.mode,x:a.pose[11].x}))};
+ });
+ expect(observed.optical.map(a=>a.id)).toEqual(['A','B']);
+ expect(observed.optical[0].dx).toBeGreaterThan(.016);
+ expect(observed.optical[1].dx).toBeLessThan(-.016);
+ expect(observed.body.every(a=>a.mode==='flow')).toBe(true);
+ expect(observed.body[0].x).toBeGreaterThan(observed.body[1].x-.6);
+});

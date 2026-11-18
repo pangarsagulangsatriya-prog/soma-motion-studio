@@ -103,8 +103,9 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
   drawBufferedBodies(ctx,{x:0,y:0,width:w,height:h},motion,frame);
   return;
  }
- if(!snapshot)return;
+ if(!snapshot&&!motion?.actors.length)return;
  if(skeleton){
+  if(!snapshot)return;
   const preview=replaySkeletonDiagnosticPreview(snapshot,frame.timeMs,frame.previousSnapshot);
   const rect={x:0,y:0,width:w,height:h};
   ctx.save();ctx.globalAlpha=preview.opacity;
@@ -113,14 +114,22 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
   ctx.restore();
   return;
  }
- for(const person of snapshot.people){
+ // Skeleton OFF must use the SAME per-actor optical-flow positions as the
+ // main BODY skeleton. Never regress to the QA-gated measured-only snapshots.
+ const people=motion?.actors.length?
+  motion.actors.map(a=>({id:a.id,landmarks:a.pose,opacity:a.opacity,
+   tentative:a.tentative??false})):
+  (snapshot?.people??[]).map(a=>({id:a.id,landmarks:a.landmarks,
+   opacity:1,tentative:false}));
+ for(const person of people){
   const points=person.landmarks;
   if(points.length<33)continue;
   if(![23,24,25,26,27,28,29,30,31,32].every(i=>
    points[i]&&Number.isFinite(points[i].x)&&Number.isFinite(points[i].y)&&
    (points[i].visibility??0)>=.52))continue;
-  const color=person.id==='A'?'#deead4':'#9ed8d1';
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=color;
+  const color=person.tentative?'#9daaa4':
+   person.id==='A'?'#deead4':'#9ed8d1';
+  ctx.save();ctx.globalAlpha=person.opacity;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=color;
   const hipWidth=Math.hypot((points[23].x-points[24].x)*w,(points[23].y-points[24].y)*h);
   ctx.lineWidth=Math.max(8,Math.min(32,hipWidth*.4));
   for(const ids of [[23,25,27,29,31],[24,26,28,30,32]]){
