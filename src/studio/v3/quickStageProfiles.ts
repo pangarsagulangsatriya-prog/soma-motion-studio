@@ -59,6 +59,7 @@ export type QuickStageDiagnostic={
 export function quickStageDiagnostics(input:{
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;
  videoReady:boolean;frameFresh:boolean;
+ performerCount:1|2;visibleCount:number;identityAmbiguous:boolean;identityMatchedFrame:boolean;
  floorCalibrated:boolean;floorConfirmed:boolean;cameraMatched:boolean;
  outputConnected:boolean;
 }):QuickStageDiagnostic[]{
@@ -67,9 +68,15 @@ export function quickStageDiagnostics(input:{
   input.cameraOn&&input.bodySelected&&input.videoReady?
    {state:'ready' as const,detail:'Gambar kamera tersedia.'}:
    {state:'pending' as const,detail:'Pilih dan hubungkan kamera Body.'};
- const tracking=input.cameraOn&&input.frameFresh?{
-  state:'ready' as const,detail:'Frame pelacakan terbaru tersedia.'
- }:{state:'pending' as const,detail:'Menunggu frame tracking yang valid.'};
+ const tracking=input.cameraOn&&input.frameFresh&&
+  !input.identityAmbiguous&&input.identityMatchedFrame&&
+  input.visibleCount>=input.performerCount?{
+  state:'ready' as const,detail:`Terukur ${input.visibleCount}/${input.performerCount} performer pada frame yang cocok.`
+ }:{state:'pending' as const,detail:!input.frameFresh?
+   'Menunggu frame tracking yang valid.':
+   input.identityAmbiguous||!input.identityMatchedFrame?
+    'Identitas belum aman pada frame terbaru.':
+    `Terukur ${input.visibleCount}/${input.performerCount} performer.`};
  const floor=input.floorCalibrated&&input.floorConfirmed&&input.cameraMatched?{
   state:'ready' as const,detail:'Empat titik terkonfirmasi untuk kamera aktif.'
  }:{state:'pending' as const,detail:'Periksa empat sudut dan konfirmasi lantai.'};
