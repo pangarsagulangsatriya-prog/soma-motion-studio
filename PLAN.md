@@ -51,6 +51,16 @@ Files: `src/studio/v3/quickStageProfiles.ts`, `QuickStageSetup.tsx`, `quick-stag
 
 **Next:** F1 — procedural Snowfall scene consuming this bus, accumulation/persistence/re-cover and multi-input visual QA; then optimize live calibration and the 13-scene catalogue. Do not merge BODY skeleton quality, physical projector QA or true biomechanical contact claims into an F0 pass.
 
+## F5–F6 — 13 Scene Library & Audio Reactive (18 Nov 2026)
+
+**Integrated:** The 13 scene names from the PRD are present in `sceneRegistry.ts`: Snowfall, Christmas, Hanukkah, Spring Garden, Fall Leaves, The Swarm, Ectoplasmic Fog, Ground Smoke, Cursed Fluid, Living Water, Fireworks, Pool Splash, Fireflies. F1 Snowfall remains the WebGL2 persistent scene. The other 12 run through one procedural Canvas 2D runtime using snow/particles/growth/ripples/clearing/smoke/bursts and F0 source events. No extra detector, decoder or projector window has been introduced.
+
+**Operator UX:** The existing FLOOR scene dropdown selects the catalogue in place, without restarting input/tracking or touching the StageHardwareGate. Preview scene raster flows through the same clean FLOOR Surface Composer. **Preset & Audio** provides reusable validated local visual presets (no camera/projector authorization), low/medium/high bounded quality, and audio source Off / existing SOMA analyser / opt-in local microphone with immediate stop on Off. Audio can animate visual energy but never creates contact events.
+
+**UAT:** all 13 paint, one bus source keeps flowing after switches, verified contacts stay unique, presence/movement don't fabricate footsteps, preset roundtrip/reload, permission-safe audio, stable clean output, 30-minute performance and hardware QA. Tests: `tests/floor-scene-library-f5-f6.test.ts`, `e2e/floor-scene-library-f5-f6.spec.mjs`; independent physical acceptance remains required. Full GPU parity for the remaining 12 and true jump recognition are *not* yet claimed.
+
+**Detailed documentation:** [13 Scene Library & Audio Reactive — F5–F6](docs/SOMA-F5-F6-13-SCENE-LIBRARY-AUDIO-UAT.md).
+
 ## F1 — Snowfall & Procedural GPU (18 Nov 2026)
 
 **Integrated code:** `SnowfallScene.ts` deterministic 320×180 density field; `SnowfallRenderer.ts` procedural WebGL2 grain/flakes at 1280×720 with true 2D fallback; F0 `FloorInteractionEngine` generation counter prevents replays; Footprints Stage now offers **FLOOR → SCENE → Snowfall** with running unique mark count, Jeda/Lanjut, Reset salju, snowfall intensity and refill duration. Existing Footprints rendering remains selectable. Surface Composer consumes the same clean Snowfall raster as output input (no diagnostic overlay). No new camera, decoder, tracker, projector window or hardware authorization.
@@ -66,11 +76,11 @@ Files: `src/studio/v3/quickStageProfiles.ts`, `QuickStageSetup.tsx`, `quick-stag
 
 **Document:** [SOMA FLOOR — Operator Flow & Feature Parity V2](docs/SOMA-FLOOR-PHANTOM-PARITY-V2-IMPLEMENTATION-PLAN.md)
 
-**Current state:** source switching, A/B tracking, floor coordinate/contact events, F0 unified source bus, F1 procedural persistent Snowfall GPU scene/2D fallback, Touch Demo and clean FLOOR preview are integrated. The remaining 12 benchmark scenes are not delivered. Overhead A/B tracking and physical projector accuracy remain unverified.
+**Current state:** source switching, A/B tracking, floor coordinate/contact events, F0 unified source bus, F1 procedural persistent Snowfall GPU scene/2D fallback, Touch Demo and clean FLOOR preview are integrated. The remaining 12 benchmark scenes have procedural Canvas 2D implementations, with a shared scene switcher, local presets and audio opt-in. These still require scene-by-scene browser and physical acceptance. Overhead A/B tracking and physical projector accuracy remain unverified.
 
 **One operator flow:** Select input → Select Floor scene → Test interaction → Calibrate floor → Open projector → Go Live (only after hardware safety approval). Rehearsal MP4/3D/touch remains software-only.
 
-**Next tasks:** F0/F1 shared bus and Snowfall implemented (software QA pending) → F2 camera presence/contact + calibration physical QA → F3 clean gated projector optical QA → F4 remaining GPU primitives → F5 remaining 12-scene catalog → F6 audio/performance/privacy UAT → F7 advanced SOMA gait research.
+**Next tasks:** F0/F1/F5-F6 shared event bus, Snowfall, 13-scene Canvas 2D catalogue, preset/audio implemented (browser QA pending) → F2 camera calibration & physical tracking QA → F3 optical projection QA → GPU upgrade and 30-minute soak testing for high-load effects → F7 advanced SOMA gait research.
 
 **Release gate:** six touches produce six footprints with no duplicates when stationary, graceful fade, two simultaneous inputs, output locked for rehearsal sources, real camera/projection acceptance before claiming parity. No second video decoder, body tracker or projector transport.
 
