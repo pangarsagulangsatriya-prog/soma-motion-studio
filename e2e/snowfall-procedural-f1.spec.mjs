@@ -19,7 +19,7 @@ test('F1 Snowfall: six touch steps create six persistent marks without standing 
  }
  await page.waitForTimeout(650);
  await expect(floor.locator('.fp-snowfall-counter')).toContainText('6 jejak');
- await expect(floor.locator('.fp-snowfall-counter')).toMatchAriaSnapshot(/GPU WebGL2|2D fallback/);
+ await expect(floor.locator('.fp-snowfall-counter')).toContainText(/GPU WebGL2|2D fallback/);
  await floor.getByRole('button',{name:'Jeda'}).click();
  await expect(floor.getByRole('button',{name:'Lanjut'})).toBeVisible();
  await page.waitForTimeout(450);
