@@ -111,10 +111,13 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
    if(skeleton&&motion){
     const safeIds=new Set(masks.actors.filter(a=>!a.tentative).map(a=>a.id));
     for(const actor of motion.actors){
-     if(!safeIds.has(actor.id)||actor.tentative)continue;
+     // A motion sample may be visually tentative between AI measurements;
+     // the separately approved A/B mask provides the ID gate here.
+     if(!safeIds.has(actor.id)||actor.ageMs>260)continue;
      ctx.save();ctx.globalAlpha=actor.opacity*.65;
+     const actorColor=actor.id==='A'?'#dbe9ca':'#80d1da';
      drawSkeletonBodies(ctx,[actor.pose],{x:0,y:0,width:w,height:h},
-      {labels:[actor.label],colors:[actor.color]});
+      {labels:[`ACTOR ${actor.id}`],colors:[actorColor]});
      ctx.restore();
     }
    }
