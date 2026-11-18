@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
-import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
+import {operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {PERFORM_CUE_STORAGE_KEY,defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,evaluatePerformReadiness,type PerformCueGrid} from './performCueModel.ts';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
@@ -522,8 +522,10 @@ export function FootprintsStageWorkspace({
   setView('stage');setOperatorCue(0);setActivePerformSlot(0);setPerformBlackout(true);
   updateFootprint({hold:true});
  },[operatorMode]);
- const nextCue=()=>setOperatorCue(index=>moveOperatorCue(index,1));
- const previousCue=()=>setOperatorCue(index=>moveOperatorCue(index,-1));
+ const nextCue=()=>applyPerformSlot(Math.min(performGrid.slots.length-1,activePerformSlot+1));
+ const previousCue=()=>applyPerformSlot(Math.max(0,activePerformSlot-1));
+ const cueNavigationRef=useRef({next:nextCue,previous:previousCue});
+ cueNavigationRef.current={next:nextCue,previous:previousCue};
  const operatorBlackout=()=>{onBlackout();setPerformBlackout(true);updateFootprint({hold:true});};
  const onBlackoutRef=useRef(operatorBlackout);
  onBlackoutRef.current=operatorBlackout;
@@ -537,8 +539,8 @@ export function FootprintsStageWorkspace({
    if(!action||event.repeat)return;
    event.preventDefault();
    if(action==='blackout')onBlackoutRef.current();
-   if(action==='next')setOperatorCue(index=>moveOperatorCue(index,1));
-   if(action==='previous')setOperatorCue(index=>moveOperatorCue(index,-1));
+   if(action==='next')cueNavigationRef.current.next();
+   if(action==='previous')cueNavigationRef.current.previous();
   };
   window.addEventListener('keydown',handle);
   return()=>window.removeEventListener('keydown',handle);
