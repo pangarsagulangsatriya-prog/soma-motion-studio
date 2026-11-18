@@ -409,7 +409,7 @@ export default function App(){
      setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
     }}
     selectedTool={selectedStageTool}
-    sourceSelection={footprintsChoice} sourceBusy={sourceSwitchBusy||cameraBusy}
+    sourceSelection={footprintsChoice} sourceBusy={sourceSwitchBusy}
     onSelectSource={choice=>{
      // Route new sources into Track for upload, pairing and pose diagnostics.
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
