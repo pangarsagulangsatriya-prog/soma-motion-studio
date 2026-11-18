@@ -365,8 +365,8 @@ export default function App(){
  const archive=useArchive({pointerStart:e=>{pointer(e);mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);},pointerMove:pointer,pointerEnd:()=>{mouse.current.down=false;},active:archiveActive,engine,frameRef,videoRef:video,settings,cameraOn,cameraBusy,cameraStatus:cameraError||status,audioOn,muted,recording,recordSeconds,chooseInput,startCamera,stopCamera,enableAudio,panic,toggleRecording,openSessions:()=>{archive.setClean(false);setModal('sessions');},setMaster:master=>update({master}),exit:()=>{archive.hold();setArchiveActive(false);archive.setClean(false);}});
  return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
-   {!clean&&!footprintsOperator&&<GlobalNav workspace={archiveActive?'archive':projectionActive?'projection':'studio'} scene={currentScene}
-    perform={footprintsActive?footprintsOperator:clean}
+   {!clean&&<GlobalNav workspace={archiveActive?'archive':projectionActive?'projection':'studio'} scene={currentScene}
+    perform={footprintsOperator}
     onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
@@ -405,12 +405,15 @@ export default function App(){
      setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
     }}
     selectedTool={selectedStageTool}
+    sourceLabel={footprintsChoice==='video'?'MP4 · rehearsal':footprintsChoice==='simulator'?'3D · simulation':footprintsChoice==='phone'?'Phone camera':footprintsChoice==='webcam'?'Webcam':'No source'}
+    trackingLabel={sourceSwitchBusy?'Connecting':cameraOn?'Camera connected · check tracking':footprintsChoice==='video'||footprintsChoice==='simulator'?'Preview source':'Tracking offline'}
+    outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Physical output locked':projection.status.connected?'Output connected · verify QA':'Output disconnected'}
     onPreset={()=>setModal('presets')}
     onPerform={()=>{
-     if(footprintsActive){
-      requestStageBlackout(()=>projection.setTransport('blackout'));
-      setFootprintsOperator(v=>!v);setClean(false);
-     }else setClean(v=>!v);
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     setArchiveActive(false);setProjectionActive(false);setClean(false);
+     selectScene('footprints');
+     setFootprintsOperator(value=>!value);
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main>
