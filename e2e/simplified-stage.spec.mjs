@@ -139,3 +139,38 @@ test('IA-R1: global blackout remains latched across Track / Compose until manual
  await expect(page.locator('.s64-safety input[type=checkbox]').first()).toBeEnabled();
  await expect(page.locator('.s64-safety input[type=checkbox]').first()).toBeChecked();
 });
+
+test('Stage 1 recovery: SOURCE menu opens visibly below the header and switches to MP4',async({page})=>{
+ await page.goto('/');
+ const trigger=page.locator('.soma-uxr1-source > summary');
+ const menu=page.locator('.soma-uxr1-source-menu');
+ await expect(trigger).toBeVisible();
+ await expect(menu).toBeHidden();
+ await trigger.click();
+ await expect(menu).toBeVisible();
+ const rect=await menu.boundingBox();
+ const headerRect=await page.locator('.soma-primary-header').boundingBox();
+ expect(rect).not.toBeNull();
+ expect(headerRect).not.toBeNull();
+ expect(rect.y).toBeGreaterThanOrEqual(headerRect.y+headerRect.height-5);
+ const video=menu.getByRole('button',{name:/Video MP4/});
+ await expect(video).toBeVisible();
+ await video.click();
+ await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-stage-source','video');
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Video MP4');
+ await expect(menu).toBeHidden();
+});
+
+test('Stage 1 recovery: four direct source actions replace empty HOLD panes',async({page})=>{
+ await page.goto('/');
+ const stage=page.locator('.fp-stage-workspace');
+ await expect(stage).toHaveAttribute('data-stage-source','none');
+ await expect(page.locator('.soma-ia-source-setup')).toBeVisible();
+ await expect(page.locator('.soma-ia-source-options button')).toHaveCount(4);
+ await expect(page.locator('.fp-stage-layout')).toBeHidden();
+ await expect(page.locator('.fp-stage-hold-label')).toHaveCount(0);
+ await page.getByRole('button',{name:'Gunakan Simulasi 3D'}).click();
+ await expect(stage).toHaveAttribute('data-stage-source','simulator');
+ await expect(page.locator('.fp-stage-layout')).toBeVisible();
+ await expect(page.locator('.fp-stage-video .fp-stage-surface-head')).toContainText('PUPPET 3D');
+});
