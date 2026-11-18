@@ -45,15 +45,20 @@ test('S0.3 interpolated and short predicted poses are bounded, visual-only',()=>
  assert.equal(short.actors[0].mode,'predicted');
  assert.ok(short.actors[0].pose[0].x<.41);
  assert.ok(!('events' in short));
- const stale=state.present(1371);
+ const bridging=state.present(1371);
+ assert.equal(bridging.actors.length,2);
+ assert.equal(bridging.actors[0].mode,'held');
+ const stale=state.present(1751);
  assert.equal(stale.actors.length,0);
 });
-test('S0.2 crossing clears both labels and reacquisition starts a fresh filter',()=>{
+test('S0.2 crossing keeps only neutral measured visuals and reacquires fresh filters',()=>{
  const b=new ActorMotionStateBuffer();
  b.ingest(frame(1000,.2,.8));
  b.ingest(frame(1100,.35,.65));
  b.ingest(frame(1180,.5,.5,false,true));
- assert.equal(b.present(1180).actors.length,0);
+ const held=b.present(1180);
+ assert.equal(held.actors.length,2);
+ assert.ok(held.actors.every(a=>a.tentative&&a.label===''&&a.mode==='held'));
  b.ingest(frame(1270,.75,.25,true));
  const result=b.present(1280);
  assert.deepEqual(result.actors.map(x=>x.id),['A','B']);

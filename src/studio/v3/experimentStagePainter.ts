@@ -23,19 +23,35 @@ function drawBufferedBodies(ctx:CanvasRenderingContext2D,rect:{x:number;y:number
  for(const actor of motion.actors){
   ctx.save();ctx.globalAlpha=actor.opacity;
   drawSkeletonBodies(ctx,[actor.pose],rect,
-   {labels:[actor.label],colors:[actor.color]});
+   {labels:actor.tentative?false:[actor.label],colors:[actor.color]});
   ctx.restore();
  }
- // Uncertain A/B must never receive a misleading performer label.
- // Show neutral raw detections briefly when identity is held at crossing.
+ // A second body may have valid raw landmarks while its identity is still
+ // reacquiring. Draw that *unassigned* observation in neutral grey rather than
+ // blanking the whole performer. Avoid duplicate rasters near cached bodies.
  const latest=frame.snapshot,age=latest?frame.timeMs-latest.atMs:Infinity;
- if(motion.actors.length===0&&latest&&age>=0&&age<=130&&
-   (latest.ambiguous||latest.rawPoses.length>0)){
-  const raw=latest.rawPoses.filter(p=>p.length===33).slice(0,2);
+ if(latest&&age>=0&&age<=185){
+  const center=(pose:readonly {x:number;y:number}[])=>{
+   const hip=pose[23],shoulder=pose[11];
+   return hip&&shoulder&&[hip.x,hip.y,shoulder.x,shoulder.y].every(Number.isFinite)?
+    {x:(hip.x+shoulder.x)/2,y:(hip.y+shoulder.y)/2}:null;
+  };
+  const raw=latest.rawPoses.flatMap((pose,index)=>{
+   if(pose.length!==33)return [];
+   const assigned=!latest.ambiguous&&latest.actorStates.some(a=>
+    a.presence==='visible'&&a.rawIndex===index);
+   if(assigned)return [];
+   const point=center(pose);
+   const duplicate=point&&motion.actors.some(actor=>{
+    const old=center(actor.pose);
+    return old&&Math.hypot(old.x-point.x,old.y-point.y)<.12;
+   });
+   return duplicate?[]:[pose];
+  }).slice(0,2);
   if(raw.length){
-   ctx.save();ctx.globalAlpha=.42;
+   ctx.save();ctx.globalAlpha=.55;
    drawSkeletonBodies(ctx,raw,rect,
-    {labels:false,colors:['#82968a','#82968a']});
+    {labels:false,colors:['#9daaa4','#9daaa4']});
    ctx.restore();
   }
  }
@@ -75,11 +91,14 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
   return;
  }
  const snapshot=frame.snapshot;
- if(!snapshot||!frame.ready)return;
+ if(!frame.ready)return;
+ // Software preview still renders the last measured A/B poses when a
+ // React snapshot briefly clears during video/worker handover.
  if(skeleton&&motion){
   drawBufferedBodies(ctx,{x:0,y:0,width:w,height:h},motion,frame);
   return;
  }
+ if(!snapshot)return;
  if(skeleton){
   const preview=replaySkeletonDiagnosticPreview(snapshot,frame.timeMs,frame.previousSnapshot);
   const rect={x:0,y:0,width:w,height:h};

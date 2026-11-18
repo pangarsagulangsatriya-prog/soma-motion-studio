@@ -16,17 +16,19 @@ import {ContactAwareFootLock,type FootLockSample} from './contactAwareFootLock.t
 export type MotionActorId='A'|'B';
 export type MotionSnapshot=FootLockSample;
 export type MotionVisualActor={
- id:MotionActorId;pose:Landmark[];opacity:number;mode:'measured'|'interpolated'|'predicted';
+ id:MotionActorId;pose:Landmark[];opacity:number;mode:'measured'|'interpolated'|'predicted'|'held';
  ageMs:number;color:string;label:string;lockedFeet?:Array<'left'|'right'>;
+ // 'held' is a visually retained measurement, never a confirmed identity.
+ tentative?:boolean;
 };
 export type MotionVisualFrame={actors:MotionVisualActor[];atMs:number;renderDelayMs:number};
 export type MotionFilterConfig={
  minCutoff:number;beta:number;derivativeCutoff:number;
- renderDelayMs:number;predictionLimitMs:number;staleLimitMs:number;
+ renderDelayMs:number;predictionLimitMs:number;staleLimitMs:number;fadeStartMs:number;
 };
 export const DEFAULT_MOTION_FILTER:MotionFilterConfig={
  minCutoff:2.4,beta:.65,derivativeCutoff:1,
- renderDelayMs:50,predictionLimitMs:55,staleLimitMs:270
+ renderDelayMs:50,predictionLimitMs:55,staleLimitMs:650,fadeStartMs:275
 };
 const clamp=(x:number,lo:number,hi:number)=>Math.min(hi,Math.max(lo,x));
 const valid=(p:Landmark|undefined):boolean=>Boolean(p&&
@@ -70,7 +72,8 @@ export class OneEuroScalar{
 }
 type MotionSample={atMs:number;pose:Landmark[]};
 type JointFilter={x:OneEuroScalar;y:OneEuroScalar;z:OneEuroScalar};
-type ActorBank={filters:JointFilter[];previous:MotionSample|null;latest:MotionSample};
+type ActorBank={filters:JointFilter[];previous:MotionSample|null;latest:MotionSample;
+ verified:boolean};
 const ids=['A','B'] as const;
 export class ActorMotionStateBuffer{
  private actors=new Map<MotionActorId,ActorBank>();
@@ -95,27 +98,37 @@ export class ActorMotionStateBuffer{
   if(this.lastAtMs>=0&&frame.atMs<this.lastAtMs-1)this.reset();
   if(frame.segment!==undefined)this.segment=frame.segment;
   if(this.lastAtMs>=0&&frame.atMs<=this.lastAtMs)return false;
-  if(this.lastAtMs>=0&&frame.atMs-this.lastAtMs>550)this.actors.clear();
+  // Keep bounded display continuity across slow worker samples. Each stale
+  // filter is restarted independently; seek/segment still clears immediately.
   this.lastAtMs=frame.atMs;
   this.footLock.observe(frame);
-  // A/B identity uncertainty is a hard boundary. No cached labeled ghost.
-  if(frame.ambiguous){this.actors.clear();return true;}
+  // The event/identity gate already blocks unsafe labels and foot contacts.
+  // Preserve only the last measured raster pose as an UNLABELED neutral
+  // silhouette during crossing. The buffer can never confirm A/B by itself.
+  if(frame.ambiguous){
+   for(const bank of this.actors.values()){
+    bank.verified=false;bank.previous=null;
+   }
+   return true;
+  }
   for(const id of ids){
    const assignment=frame.actorStates?.find(s=>s.id===id&&s.presence==='visible'&&
     s.rawIndex!==null);
    const observed=assignment?.rawIndex===null||assignment===undefined?undefined:
     frame.rawPoses?.[assignment.rawIndex];
    if(!observed||observed.length!==POSE_LANDMARK_COUNT){
-    this.actors.delete(id);continue;
+    const old=this.actors.get(id);
+    if(old){old.verified=false;old.previous=null;}
+    continue;
    }
    let bank=this.actors.get(id);
    if(!bank){
-    bank={filters:this.createFilters(),previous:null,
+    bank={filters:this.createFilters(),previous:null,verified:true,
      latest:{atMs:frame.atMs,pose:observed.map(p=>({...p}))}};
     this.actors.set(id,bank);
    }
    // Restart rather than interpolate across a long gap or an unobserved person.
-   if(frame.atMs-bank.latest.atMs>300){
+   if(frame.atMs-bank.latest.atMs>300||!bank.verified){
     bank.filters=this.createFilters();bank.previous=null;
    }else if(bank.latest.atMs<frame.atMs){
     bank.previous=bank.latest;
@@ -129,6 +142,7 @@ export class ActorMotionStateBuffer{
      z:f.z.update(p.z,frame.atMs)};
    });
    bank.latest={atMs:frame.atMs,pose};
+   bank.verified=true;
   }
   return true;
  }
@@ -136,11 +150,14 @@ export class ActorMotionStateBuffer{
   const latest=bank.latest,age=videoAtMs-latest.atMs;
   if(!Number.isFinite(age)||age< -60||age>this.config.staleLimitMs)return null;
   const target=videoAtMs-this.config.renderDelayMs,prev=bank.previous;
-  let pose=latest.pose,mode:MotionVisualActor['mode']='measured';
-  if(prev&&target>=prev.atMs&&target<latest.atMs){
+  // A measured skeleton may outlive its A/B certainty for a short visual
+  // interval. Label/color it neutral; never imply a confirmed actor.
+  const tentative=!bank.verified||age>this.config.fadeStartMs;
+  let pose=latest.pose,mode:MotionVisualActor['mode']=tentative?'held':'measured';
+  if(!tentative&&prev&&target>=prev.atMs&&target<latest.atMs){
    const t=clamp((target-prev.atMs)/(latest.atMs-prev.atMs),0,1);
    pose=lerpPose(prev.pose,latest.pose,t);mode='interpolated';
-  }else if(prev&&target>latest.atMs&&
+  }else if(!tentative&&prev&&target>latest.atMs&&
    latest.atMs-prev.atMs>10&&latest.atMs-prev.atMs<=250){
    // Short visual-only extrapolation; never updates the authoritative pose.
    const dt=clamp(target-latest.atMs,0,this.config.predictionLimitMs);
@@ -154,18 +171,22 @@ export class ActorMotionStateBuffer{
      z:p.z+clamp((p.z-old.z)*dt/span,-.06,.06)};
    });
    if(dt>0)mode='predicted';
-  }else if(prev&&target<prev.atMs){
+  }else if(!tentative&&prev&&target<prev.atMs){
    pose=prev.pose;
   }
-  // Maximum visual hold is bounded (~270ms), not the previous 850ms ghost.
-  const fadeStart=Math.max(110,this.config.predictionLimitMs+this.config.renderDelayMs+20);
+  // One monotone fade. Worker gaps and transient lost/ambiguous frames must
+  // never toggle the visual between a full skeleton and a black canvas.
+  const fadeStart=Math.max(110,Math.min(this.config.fadeStartMs,
+   this.config.staleLimitMs-1));
   const opacity=age<=fadeStart?1:
    clamp((this.config.staleLimitMs-age)/(this.config.staleLimitMs-fadeStart),0,1);
   if(opacity<=0)return null;
-  const locked=this.footLock.apply(id,pose,videoAtMs);
+  const locked=tentative?{pose,lockedFeet:[] as Array<'left'|'right'>}:
+   this.footLock.apply(id,pose,videoAtMs);
   return {id,pose:locked.pose,lockedFeet:locked.lockedFeet,opacity,mode,
-   ageMs:Math.max(0,age),
-   color:SKELETON_COLORS[id==='A'?0:1],label:'ACTOR '+id};
+   ageMs:Math.max(0,age),tentative,
+   color:tentative?'#a0aaa6':SKELETON_COLORS[id==='A'?0:1],
+   label:tentative?'':'ACTOR '+id};
  }
  present(videoAtMs:number):MotionVisualFrame{
   const actors:MotionVisualActor[]=[];
