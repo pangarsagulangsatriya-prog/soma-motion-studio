@@ -89,3 +89,24 @@
  .fp-stage-workspace .fp-quick-setup-panel button{min-height:44px}
 }
 @media(prefers-reduced-motion:reduce){.fp-stage-workspace .fp-quick-setup *{transition:none!important}}
+
+
+/* V3.5: next-safe-action panel, inside existing Quick Start dropdown */
+.fp-stage-workspace .fp-quick-projection{
+ display:flex;flex-direction:column;gap:8px;
+ padding:10px;border:1px solid #506b54;border-radius:7px;
+ background:#1b3021;
+}
+.fp-stage-workspace .fp-quick-projection-status{
+ display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+.fp-stage-workspace .fp-quick-projection-status strong{
+ font-size:11px;letter-spacing:.07em;font-variant-numeric:tabular-nums;
+}
+.fp-stage-workspace .fp-quick-projection-status small{
+ color:#bad1b8;font-size:11px;line-height:1.5;
+}
+.fp-stage-workspace .fp-quick-projection button{width:100%}
+.fp-stage-workspace .fp-quick-projection .fp-quick-setup-output{
+ background:transparent;border-color:#465c4c;color:#c7d9c5;
+}
