@@ -4,6 +4,7 @@ import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCir
  Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
+import {SOURCE_CHOICES,type FootprintsInputChoice} from './sourceSwitchModel.ts';
 import {LABS_ITEM_COUNT,searchLabs,type LabsId} from './labsCatalog.ts';
 import {isDismissEscape,RAIL_TOOLTIP_DELAY_MS} from './interactionPolicy.ts';
 import './workspace-navigation.css';
@@ -20,7 +21,7 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel}:{
+ onProjection,onPreset,onPerform,onHelp,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;
@@ -28,6 +29,8 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
  sourceLabel:string;trackingLabel:string;outputLabel:string;
+ sourceSelection:FootprintsInputChoice|null;sourceBusy:boolean;
+ onSelectSource:(choice:FootprintsInputChoice)=>void;
 }){
  const [mobile,setMobile]=useState(()=>window.matchMedia(mobileQuery).matches);
  const [expanded,setExpanded]=useState(()=>{
@@ -167,8 +170,16 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      <span> / {workspace==='projection'?'MAP':perform?'PERFORM':labsContext?'LABS':'COMPOSE'}</span>
     </div>
    </div>
-   <div className="soma-uxr1-health" role="status" aria-label="Status Stage Studio">
-    <span title="Sumber gerak yang sedang dipilih">SOURCE: {sourceLabel}</span>
+   <div className="soma-uxr1-health" role="group" aria-label="Source dan status Stage Studio">
+    <details className="soma-uxr1-source" aria-label="Pilih sumber gerak SOMA">
+     <summary title="Satu sumber gerak yang digunakan Compose, Map dan Perform">SOURCE: {sourceLabel}</summary>
+     <div className="soma-uxr1-source-menu" role="group" aria-label="Pilihan sumber gerak">
+      {SOURCE_CHOICES.map(option=><button key={option.id} type="button" disabled={sourceBusy||sourceSelection===option.id}
+       aria-pressed={sourceSelection===option.id} onClick={e=>{onSelectSource(option.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
+       <b>{option.label}</b><small>{option.description}</small>
+      </button>)}
+     </div>
+    </details>
     <span title="Status koneksi sumber; bukan konfirmasi kualitas deteksi pose">{trackingLabel}</span>
     <span title="Koneksi output software bukan bukti proyeksi fisik atau QA">{outputLabel}</span>
    </div>
