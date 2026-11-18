@@ -5,6 +5,18 @@ Scope: whole SOMA application, priority Footprints Stage (video MP4), then Proje
 Evidence: four supplied MP4 UI screenshots (0.5 s, 6.1 s, crossing, source selector), connected GitHub Pages tab, code on main as of 2026-11-18.
 Ownership: UI shell / presentation / interaction only. Preserve A/B identity and projector interlocks.
 
+## FLOOR next: Phantom Floor benchmark parity (18 Nov 2026)
+
+**Document:** [SOMA FLOOR — Operator Flow & Feature Parity V2](docs/SOMA-FLOOR-PHANTOM-PARITY-V2-IMPLEMENTATION-PLAN.md)
+
+**Current state:** source switching, A/B tracking, floor coordinate/contact event, preview, calibration and projector safety code exist. The 13 benchmark scenes, Touch-as-Feet through a shared scene bus, and procedural Snowfall accumulation are not yet delivered. Overhead A/B tracking and physical projector accuracy remain unverified.
+
+**One operator flow:** Select input → Select Floor scene → Test interaction → Calibrate floor → Open projector → Go Live (only after hardware safety approval). Rehearsal MP4/3D/touch remains software-only.
+
+**Next tasks:** F0 Shared FloorInteractionEvent / adapters / truthful status → F1 Touch Demo + procedural persistent Snowfall on the existing FLOOR preview → F2 Camera presence/contact + calibration → F3 Clean gated Projector output → F4 GPU primitives → F5 13-scene catalog → F6 audio/performance/privacy UAT → F7 advanced SOMA gait research.
+
+**Release gate:** six touches produce six footprints with no duplicates when stationary, graceful fade, two simultaneous inputs, output locked for rehearsal sources, real camera/projection acceptance before claiming parity. No second video decoder, body tracker or projector transport.
+
 ## Implementation progress — 2026-11-18
 
 The code updates in UX-R1 are an incremental stage UX pass on the original engine and canvas refs, not a new app.
