@@ -26,6 +26,8 @@ export class SnowfallScene{
  private seen=new Set<string>();
  private generation=-1;
  private lastStepMs:number|null=null;
+ private presentationMs=0;
+ get visualTimeMs(){return this.presentationMs;}
  private counted=0;
  private stopped=false;
  constructor(){this.reset();}
@@ -35,7 +37,8 @@ export class SnowfallScene{
  reset(generation=-1){
   this.density.fill(BASE);this.pixels.fill(Math.round(BASE*255));
   this.marks.splice(0);this.lastXY.clear();this.lastAngle.clear();this.seen.clear();
-  this.generation=generation;this.lastStepMs=null;this.counted=0;this.stopped=false;
+  this.generation=generation;this.lastStepMs=null;this.presentationMs=0;
+  this.counted=0;this.stopped=false;
  }
  setPaused(pause:boolean){this.stopped=pause;this.lastStepMs=null;}
  /** Snapshot may be a rolling 480-event buffer; de-duplicate by source
@@ -116,6 +119,7 @@ export class SnowfallScene{
   const dt=clamp((nowMs-this.lastStepMs)/1000,0,.5);
   this.lastStepMs=nowMs;
   if(dt<=0)return false;
+  this.presentationMs+=dt*1000;
   const o=snowfallOptions(options);
   // As snowfall increases, holes fill faster; recoverySeconds is
   // the approximate time constant, not a hard cut-off.
