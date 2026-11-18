@@ -48,7 +48,8 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [routeOpen,setRouteOpen]=useState(initialOutputQA);
  const [bodyStatus,setBodyStatus]=useState('Menunggu frame tubuh.');
  const [hint,setHint]=useState('');
- const [blackout,setBlackout]=useState(true);
+ // Software preview starts enabled in Compose. Physical output still requires the existing routing/QA panel.
+ const [blackout,setBlackout]=useState(false);
  const [previewLive,setPreviewLive]=useState(true);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
