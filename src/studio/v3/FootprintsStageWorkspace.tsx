@@ -983,7 +983,7 @@ export function FootprintsStageWorkspace({
   data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode} data-focus-preview={focusPreview}
   data-experimental={!!experimentalKind} data-skeleton-visible={skeletonVisible}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
-  aria-label="Stage Studio — Motion Projection">
+  aria-label="Stage 1 — Motion Projection">
   <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
    onNavigate={onNavigateStageWorkspace}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<div className="soma-ia-track-head">
