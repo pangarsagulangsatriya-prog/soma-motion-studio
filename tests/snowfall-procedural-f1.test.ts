@@ -103,8 +103,10 @@ test('F1 paused snow ignores incoming events and never replays them on resume',(
  snow.setPaused(true);
  click(bus,2,1500,.5,.5);ingest(snow,bus);
  const unchanged=snow.sample(.3,.3);
+ const frozenClock=snow.visualTimeMs;
  assert.equal(snow.step(3000,{paused:true}),false);
  assert.equal(snow.sample(.3,.3),unchanged);
+ assert.equal(snow.visualTimeMs,frozenClock,'GPU snow clock remains frozen on pause');
  snow.setPaused(false);
  ingest(snow,bus);
  assert.equal(snow.count,1,'paused contact not replayed later');
