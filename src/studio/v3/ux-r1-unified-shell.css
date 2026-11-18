@@ -26,3 +26,6 @@
 .soma-primary-header .soma-uxr1-source[open]{z-index:300}
 .soma-primary-header .soma-uxr1-source[open]>summary{border-color:#abc99a;box-shadow:0 0 0 2px #b5d7a44d}
 .soma-primary-header .soma-uxr1-source[open]>.soma-uxr1-source-menu{z-index:301;visibility:visible;pointer-events:auto}
+
+/* Keep the source selector dropdown below the sticky global header. */
+.soma-primary-header .soma-uxr1-source-menu{top:calc(100% + 20px)}
