@@ -47,6 +47,11 @@ export class ArtisticFootprintRuntime{
  reset(generation:number){
   this.generation=generation;this.seen.clear();this.stamps=[];this.paths=[];this.last.clear();
  }
+ /** Hide history when selecting another scene: only subsequent live events create marks. */
+ skipExisting(events:readonly FootMotionEventV2[],generation:number){
+  this.reset(generation);
+  for(const event of events)this.seen.add(event.eventId);
+ }
  ingest(events:readonly FootMotionEventV2[],generation:number,displayAtMs?:number){
   if(this.generation!==generation)this.reset(generation);
   for(const e of events){
