@@ -74,7 +74,7 @@ test('VIS-R2: renderer stays behind software-only Hydra source and retains exist
  const file=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
  const runtime=file('../src/footprints/scenes/PersistentHydraFootprintRuntime.ts');
  const stage=file('../src/studio/v3/FootprintsStageWorkspace.tsx');
- assert.match(runtime,/this\.art\.ingest\(events,generation\)/);
+ assert.match(runtime,/this\.art\.ingest\(events,generation,nowMs\)/);
  assert.match(runtime,/this\.art\.paint\(this\.artCanvas/);
  assert.match(runtime,/this\.engine\.tick\(delta\)/);
  assert.ok(!runtime.includes('getUserMedia('));
