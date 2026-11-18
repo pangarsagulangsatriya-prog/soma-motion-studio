@@ -44,6 +44,7 @@ import {ProceduralSceneRuntime,type ProceduralParams} from '../../footprints/sce
 import {FLOOR_SCENES,FLOOR_SCENE_PRESETS,loadFloorPresets,saveFloorPreset,
  isFloorSceneId,type FloorSceneId,type FloorScenePreset} from '../../footprints/scenes/sceneRegistry.ts';
 import {FloorAudioReactive,type FloorAudioSource} from '../../footprints/scenes/FloorAudioReactive.ts';
+import {FloorSceneAdvancedControls,type FloorAdvancedParams} from './FloorSceneAdvancedControls.tsx';
 import {floorPointerCoordinates} from '../../footprints/scenes/floorPointerCoordinates.ts';
 import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
  feedTouchFloorInteraction,paintFloorInteractionOverlay} from '../../footprints/scenes/interactionAdapters.ts';
@@ -137,7 +138,6 @@ export function FootprintsStageWorkspace({
  const [userPresets,setUserPresets]=useState<FloorScenePreset[]>(()=>{
   try{return loadFloorPresets(localStorage);}catch{return [];}
  });
- const [presetName,setPresetName]=useState('Scene Panggung');
  const [sceneAudioSource,setSceneAudioSource]=useState<FloorAudioSource>('off');
  const [sceneAudioError,setSceneAudioError]=useState('');
  const [sceneAudioLevel,setSceneAudioLevel]=useState(0);
@@ -340,12 +340,12 @@ export function FootprintsStageWorkspace({
   setSnowfallRate(preset.intensity);
   setSnowfallRecovery(Math.round(12+(1-preset.persistence)*228));
  };
- const saveScenePreset=()=>{
+ const saveScenePreset=(name:string)=>{
   if(floorScene==='footprints')return;
   try{
    const next=saveFloorPreset(localStorage,{
     schema:'soma.floor-scene-preset',version:1,
-    name:presetName.trim().slice(0,64),sceneId:floorScene,
+    name:name.trim().slice(0,64),sceneId:floorScene,
     intensity:floorScene==='snowfall'?snowfallRate:sceneIntensity,
     radius:sceneRadius,
     persistence:floorScene==='snowfall'?1-(snowfallRecovery-12)/228:scenePersistence,
@@ -1064,8 +1064,10 @@ export function FootprintsStageWorkspace({
  experimentalKind==='video'?'Landmark video 2D':'Puppet sintetis (bukan mask fisik)':maskStatus}</span>
  <span>{experimentalKind?'Preview eksperimen':'Mask · preview'}</span></div>
       </div>
-      <div className="fp-stage-surface fp-preview-floor" data-floor-scene={floorScene}>
-       <div className="fp-stage-surface-head"><span>{floorScene==='snowfall'?'FLOOR · SNOWFALL':'FLOOR · PATH PREVIEW'}</span>
+      <div className="fp-stage-surface fp-preview-floor" data-floor-scene={floorScene}
+       data-procedural={floorScene!=='footprints'&&floorScene!=='snowfall'}>
+       <div className="fp-stage-surface-head"><span>{floorScene==='footprints'?'FLOOR · PATH PREVIEW':
+        'FLOOR · '+FLOOR_SCENES.find(item=>item.id===floorScene)?.name.toUpperCase()}</span>
         <small className="fp-floor-bus-status" title="Satu bus presence, movement dan contact untuk seluruh input">
          BUS · {floorInteractionStats.actors} sumber gerak · {floorInteractionStats.contacts} kontak
         </small>
@@ -1081,9 +1083,9 @@ export function FootprintsStageWorkspace({
         </button></div>
        <div className="fp-floor-scene-controls" role="group" aria-label="Scene dan pengaturan FLOOR">
         <label>SCENE <select aria-label="Pilih scene FLOOR" value={floorScene}
-         onChange={e=>selectFloorScene(e.target.value as 'footprints'|'snowfall')}>
-         <option value="footprints">Footprints</option>
-         <option value="snowfall">Snowfall · Procedural</option>
+         onChange={e=>selectFloorScene(e.target.value as 'footprints'|FloorSceneId)}>
+         <option value="footprints">Footprints · Legacy</option>
+         {FLOOR_SCENES.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
         </select></label>
         {floorScene==='snowfall'&&<>
          <span className="fp-snowfall-counter" role="status">
@@ -1106,6 +1108,27 @@ export function FootprintsStageWorkspace({
           </div>
          </details>
         </>}
+        {floorScene!=='snowfall'&&floorScene!=='footprints'&&<>
+         <span className="fp-snowfall-counter" role="status">{sceneCount} kontak · Procedural 2D</span>
+         <button type="button" className="fp-snowfall-pause" aria-pressed={snowfallPaused}
+          onClick={()=>setSnowfallPaused(p=>!p)}>{snowfallPaused?'Lanjut':'Jeda'}</button>
+         <button type="button" onClick={resetSnowfall}>Reset scene</button>
+        </>}
+        {floorScene!=='footprints'&&<FloorSceneAdvancedControls
+         params={{intensity:sceneIntensity,radius:sceneRadius,
+          persistence:scenePersistence,quality:sceneQuality,audioMix:sceneAudioMix}}
+         onParams={(next:Partial<FloorAdvancedParams>)=>{
+          if(next.intensity!==undefined)setSceneIntensity(next.intensity);
+          if(next.radius!==undefined)setSceneRadius(next.radius);
+          if(next.persistence!==undefined)setScenePersistence(next.persistence);
+          if(next.quality!==undefined)setSceneQuality(next.quality);
+          if(next.audioMix!==undefined)setSceneAudioMix(next.audioMix);
+         }}
+         presets={userPresets} onApplyPreset={applyFloorPreset}
+         onSavePreset={saveScenePreset} onDeletePreset={deleteScenePreset}
+         audioSource={sceneAudioSource} audioLevel={sceneAudioLevel}
+         audioError={sceneAudioError} onAudioSource={next=>{void selectAudioInput(next);}}
+        />}
        </div>
        <div className="fp-stage-canvas-area fp-stage-focus-surface"
         data-touch-demo={touchDemo} role={touchDemo?'group':'button'}
@@ -1132,11 +1155,13 @@ export function FootprintsStageWorkspace({
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
         <canvas ref={snowfallCanvas} className="fp-floor-snowfall-canvas" width={1280} height={720}
          aria-label="Pratinjau Snowfall, salju menutup jejak kaki perlahan"/>
+        <canvas ref={proceduralCanvas} className="fp-floor-procedural-canvas" width={1280} height={720}
+         aria-label="Pratinjau procedural FLOOR yang dipilih"/>
         <canvas ref={interactionCanvas} className="fp-floor-interaction-layer"
          width={1280} height={720} aria-hidden="true"/>
         {touchDemo&&<span className="fp-floor-touch-hint" aria-hidden="true">
          Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>}
-        {floorScene!=='snowfall'&&!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
+        {floorScene==='footprints'&&!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
         {footprint.hold&&<span className="fp-stage-hold-label">
          HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
