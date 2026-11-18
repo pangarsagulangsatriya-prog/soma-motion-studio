@@ -117,6 +117,13 @@ test('F6 audio meter does not enable recording or produce contact events on its 
  const meter=new FloorAudioReactive();
  assert.equal(meter.sample('off'),0);
  assert.equal(meter.sample('soma',null),0);
+ const fakeAnalyser={
+  frequencyBinCount:128,
+  getByteFrequencyData:(buffer:Uint8Array)=>buffer.fill(210)
+ } as unknown as AnalyserNode;
+ assert.ok(meter.sample('soma',fakeAnalyser)>.1,
+  'existing SOMA analyser must drive an actual positive envelope');
+ assert.equal(meter.sample('off'),0);
  assert.equal(meter.microphoneActive,false);
  const bus=new FloorInteractionEngine();bus.reset('touch');
  assert.equal(bus.snapshot.counts.contact+bus.snapshot.counts.touch,0);
