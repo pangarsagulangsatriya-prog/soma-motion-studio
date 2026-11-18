@@ -46,7 +46,14 @@ test('S6.8.7 video hides advanced config and prioritizes previews',async({page})
 
  const preview=await page.locator('.fp-stage-side-previews').boundingBox();
  const camera=await page.locator('.fp-stage-video').boundingBox();
- expect(preview?.width).toBeGreaterThan((camera?.width??10000)*1.7);
+ expect(preview).not.toBeNull();
+ expect(camera).not.toBeNull();
+ // Above 1050px, the split stage uses two columns. At tablet/mobile
+ // widths BODY/FLOOR and camera stack in one full-width column.
+ if((page.viewportSize()?.width??0)>1050)
+  expect(preview!.width).toBeGreaterThan(camera!.width*1.7);
+ else
+  expect(Math.abs(preview!.width-camera!.width)).toBeLessThan(4);
  // Clicking Tracking in MP4 mode must NOT introduce a second setup flow.
  await page.locator('.fp-flow-local-tabs').getByRole('button',{name:'Tracking'}).click();
  await expect(stage).toHaveAttribute('data-inspector-open','false');
