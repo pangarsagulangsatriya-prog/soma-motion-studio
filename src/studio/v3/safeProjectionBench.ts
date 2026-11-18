@@ -27,10 +27,10 @@ export function startSetupBench(store:WriteStore,now:number,reset=false):number|
  }catch{return null;}
 }
 export function finishSetupBench(input:{
- store:WriteStore;now:number;softwareLive:boolean;operatorObserved:boolean;
- notes?:string;
+ startStore:ReadStore;resultsStore:WriteStore;
+ now:number;softwareLive:boolean;operatorObserved:boolean;notes?:string;
 }):SetupBenchRecord{
- const start=readSetupStart(input.store,input.now);
+ const start=readSetupStart(input.startStore,input.now);
  if(start===null)throw Error('Mulai timer Setup terlebih dahulu.');
  if(!input.softwareLive||!input.operatorObserved)
   throw Error('Lihat efek lantai pada perangkat, lalu konfirmasi pengukuran fisik.');
@@ -44,10 +44,10 @@ export function finishSetupBench(input:{
  };
  let old:SetupBenchRecord[]=[];
  try{
-  const parsed=JSON.parse(input.store.getItem(PROJECTION_SETUP_RESULTS_KEY)??'[]');
+  const parsed=JSON.parse(input.resultsStore.getItem(PROJECTION_SETUP_RESULTS_KEY)??'[]');
   if(Array.isArray(parsed))old=parsed.slice(0,19).filter(r=>
    r?.schema==='soma.projection-setup-uat'&&r?.version===1);
  }catch{}
- input.store.setItem(PROJECTION_SETUP_RESULTS_KEY,JSON.stringify([record,...old]));
+ input.resultsStore.setItem(PROJECTION_SETUP_RESULTS_KEY,JSON.stringify([record,...old]));
  return record;
 }
