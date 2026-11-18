@@ -50,13 +50,18 @@ test('V3.1 rejects malformed four-point calibration and damaged local storage',(
 });
 test('V3.1 status never treats saved profile, video-only or disconnected projector as ready',()=>{
  const input={cameraOn:true,cameraBusy:false,cameraError:'',bodySelected:true,
-  videoReady:true,frameFresh:true,floorCalibrated:true,floorConfirmed:false,
+  videoReady:true,frameFresh:true,performerCount:2,visibleCount:2,
+  identityAmbiguous:false,identityMatchedFrame:true,
+  floorCalibrated:true,floorConfirmed:false,
   cameraMatched:true,outputConnected:false};
  const result=quickStageDiagnostics(input);
  assert.deepEqual(result.map(x=>x.state),['ready','ready','pending','pending']);
  assert.equal(quickStageDiagnostics({...input,floorConfirmed:true,
   outputConnected:true}).filter(x=>x.state==='ready').length,4);
  assert.equal(quickStageDiagnostics({...input,cameraError:'Akses ditolak'})[0].state,'warning');
+ assert.equal(quickStageDiagnostics({...input,visibleCount:1})[1].state,'pending');
+ assert.equal(quickStageDiagnostics({...input,identityAmbiguous:true})[1].state,'pending');
+ assert.equal(quickStageDiagnostics({...input,identityMatchedFrame:false})[1].state,'pending');
 });
 test('V3.1 remains a local UI transaction and preserves original physical-output gates',()=>{
  const ui=readFileSync(new URL('../src/studio/v3/QuickStageSetup.tsx',import.meta.url),'utf8');
