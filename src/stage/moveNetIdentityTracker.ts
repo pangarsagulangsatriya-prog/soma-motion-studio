@@ -175,9 +175,16 @@ export class MoveNetIdentityTracker{
    }
   }else if(seen.length===1){
    const a=this.cost('A',seen[0],time),b=this.cost('B',seen[0],time);
-   if(!finite(Math.min(a,b))||Math.abs(a-b)<MARGIN)
-    hold(IDS,'Satu pose tidak bisa diatribusikan ke A/B secara aman.');
-   else this.commit(a<b?'A':'B',seen[0],time,assigned,recovered);
+   const chosen=a<b?'A':'B',other=chosen==='A'?'B':'A';
+   const chosenColor=colorDistance(this.tracks.get(chosen)!.appearance,seen[0].appearance);
+   const otherColor=colorDistance(this.tracks.get(other)!.appearance,seen[0].appearance);
+   // One remaining body during an unresolved crossing cannot establish two
+   // identities. Trust it only with strong independent clothing evidence.
+   const reliableSingle=!this.crossingActive||
+    chosenColor!==null&&otherColor!==null&&otherColor-chosenColor>=.28;
+   if(!finite(Math.min(a,b))||Math.abs(a-b)<MARGIN||!reliableSingle)
+    hold(IDS,'S0.6.4: satu tubuh saat crossing; menahan ID yang belum pasti.');
+   else this.commit(chosen,seen[0],time,assigned,recovered);
   }else{
    const straight=this.cost('A',seen[0],time)+this.cost('B',seen[1],time);
    const crossed=this.cost('A',seen[1],time)+this.cost('B',seen[0],time);
