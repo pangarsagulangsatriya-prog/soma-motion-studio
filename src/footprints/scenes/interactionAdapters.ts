@@ -55,6 +55,9 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  };
  const idsValid=performerCount===2&&!identity.ambiguous&&
   identity.observedFrameTime===frame.time;
+ engine.keepActors(source,performerCount===1?['performer-1']:idsValid?
+  (['A','B'] as const).filter(id=>identity.poseIndices[id]!==null):
+  (frame.poses??[]).slice(0,2).map((_,i)=>'unassigned-'+i));
  if(performerCount===1){
   if(frame.pose.length)ingestPose(engine,frame.pose,source,'performer-1',frame.time,coordinates);
  }else if(idsValid){
@@ -86,6 +89,9 @@ export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
  if(engine.activeSource!=='video'||!frame.ready||frame.video?.seeking)return;
  const s=frame.snapshot,at=frame.timeMs;
  if(!s||at<s.atMs-70||at-s.atMs>500)return;
+ engine.keepActors('video',s.ambiguous||s.people.length===0?
+  s.rawPoses.slice(0,2).map((_,i)=>'unassigned-'+i):
+  s.people.slice(0,2).map(person=>person.id));
  if(s.ambiguous||s.people.length===0){
   for(const [i,pose] of s.rawPoses.slice(0,2).entries())
    ingestPose(engine,pose,'video','unassigned-'+i,s.atMs,
@@ -107,6 +113,7 @@ export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
 export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
  frame:Extract<ExperimentalFrame,{kind:'simulator'}>){
  if(engine.activeSource!=='simulator')return;
+ engine.keepActors('simulator',frame.performers.slice(0,2).map(p=>p.id));
  const floor:FloorSpace=frame.session.floor;
  for(const performer of frame.performers.slice(0,2)){
   const x=(performer.left.positionM.xM+performer.right.positionM.xM)/2;
