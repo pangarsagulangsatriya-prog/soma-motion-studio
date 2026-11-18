@@ -1,0 +1,28 @@
+/* OPS-R1 — Perform cues stay part of the existing stage; no duplicated video/camera layer. */
+.fp-operator-mode .ops-r1-status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.fp-operator-mode .ops-r1-status>div{display:flex;flex-direction:column;gap:4px;min-width:0;padding:10px;border:1px solid #58675e;border-radius:7px;background:#101919}
+.fp-operator-mode .ops-r1-status small{font-size:9px;letter-spacing:.09em;color:#aebdaf}
+.fp-operator-mode .ops-r1-status strong{font-size:12px;line-height:1.45;color:#e5f0df;overflow-wrap:anywhere}
+.fp-operator-mode .ops-r1-recovery{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#342419;color:#f6e2ca;border:1px solid #b38b57;border-radius:7px;padding:10px;margin:9px 0;font-size:12px}
+.fp-operator-mode .ops-r1-recovery button{min-height:35px;background:#3b4230;color:#f0f7e8;border:1px solid #9aa67f;border-radius:6px;padding:6px 10px}
+.fp-operator-mode .ops-r1-cue-grid{padding:12px;margin:10px 0;border:1px solid #6b8775;border-radius:9px;background:#111a15;color:#e2e9dd}
+.fp-operator-mode .ops-r1-cue-grid header{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}
+.fp-operator-mode .ops-r1-cue-grid header strong{font-size:11px;letter-spacing:.09em}
+.fp-operator-mode .ops-r1-cue-grid header span{font-size:10px;color:#b4c4b5}
+.fp-operator-mode .ops-r1-cue-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.fp-operator-mode .ops-r1-slot{display:flex;flex-direction:column;gap:4px;min-width:0;min-height:97px;text-align:left;border:1px solid #64766a;border-radius:7px;background:#1a2720;color:#dceadd;padding:9px}
+.fp-operator-mode .ops-r1-slot[aria-pressed=true]{outline:2px solid #bce5ba;background:#354739}
+.fp-operator-mode .ops-r1-slot small{color:#a8cdb6;font-size:10px}
+.fp-operator-mode .ops-r1-slot b{font-size:13px}
+.fp-operator-mode .ops-r1-slot span{font-size:11px;overflow-wrap:anywhere}
+.fp-operator-mode .ops-r1-slot em{font-style:normal;font-size:9px;color:#a3c1aa}
+.fp-operator-mode .ops-r1-cue-editor{margin-top:12px;border-top:1px solid #52675b;padding-top:8px}
+.fp-operator-mode .ops-r1-cue-editor summary{cursor:pointer;padding:7px 0;font-size:11px}
+.fp-operator-mode .ops-r1-cue-editor label{display:flex;flex-direction:column;gap:5px;margin:9px 0;font-size:11px}
+.fp-operator-mode .ops-r1-cue-editor :is(input,select){min-height:36px;background:#1e3026;border:1px solid #748b7a;border-radius:5px;color:#eef6ea;padding:6px 9px;max-width:380px}
+.fp-operator-mode .ops-r1-cue-actions{display:flex;gap:8px;flex-wrap:wrap}
+.fp-operator-mode .ops-r1-cue-actions button{border:1px solid #829e83;background:#2a422f;color:#eaf6e7;border-radius:5px;padding:8px}
+.fp-operator-mode .ops-r1-cue-editor small,.fp-operator-mode .ops-r1-guard{color:#c0cdbf;font-size:11px;line-height:1.55}
+.fp-operator-mode .ops-r1-cue-grid :is(button,input,select,summary):focus-visible{outline:2px solid #f1f9d6;outline-offset:2px}
+@media(max-width:900px){.fp-operator-mode .ops-r1-status{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.fp-operator-mode .ops-r1-cue-slots{grid-template-columns:repeat(2,minmax(0,1fr))}.fp-operator-mode .ops-r1-recovery{flex-direction:column;align-items:stretch}}
