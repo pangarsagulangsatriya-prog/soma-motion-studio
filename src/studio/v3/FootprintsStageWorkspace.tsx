@@ -648,7 +648,8 @@ export function FootprintsStageWorkspace({
  const floorPointer=(event:PointerEvent<HTMLDivElement>,kind:'down'|'move'|'up')=>{
   if(!touchDemo||operatorMode)return;
   const target=event.currentTarget;
-  const surface=floorScene==='snowfall'?snowfallCanvas.current:floorCanvas.current;
+  const surface=floorScene==='snowfall'?snowfallCanvas.current:
+   floorScene==='footprints'?floorCanvas.current:proceduralCanvas.current;
   const rect=surface?.getBoundingClientRect()??target.getBoundingClientRect();
   const uv=floorPointerCoordinates(event.clientX,event.clientY,rect);
   if(!uv)return;
