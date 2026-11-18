@@ -197,8 +197,6 @@ export class MoveNetIdentityTracker{
    const colorB0=colorDistance(b.appearance,seen[0].appearance);
    const colorB1=colorDistance(b.appearance,seen[1].appearance);
    const hasColor=[colorA0,colorA1,colorB0,colorB1].every(v=>v!==null);
-   const colorMargin=hasColor?
-    Math.abs((colorA0!+colorB1!)-(colorA1!+colorB0!)):0;
    const distinctClothing=hasColor&&
     (colorDistance(a.appearance,b.appearance)??0)>=.22;
    const reliableMotion=a.velocity.x*b.velocity.x<0&&
