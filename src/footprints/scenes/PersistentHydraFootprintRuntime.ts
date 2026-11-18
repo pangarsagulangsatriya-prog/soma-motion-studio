@@ -126,7 +126,7 @@ export class PersistentHydraFootprintRuntime {
    this.sourceContext.fillStyle='#000';
    this.sourceContext.fillRect(0,0,640,360);
    if(artwork!=='off'&&this.artCanvas){
-    this.art.ingest(events,generation);
+    this.art.ingest(events,generation,nowMs);
     this.art.paint(this.artCanvas,nowMs,normalizeArtisticFootprintConfig({
      style:artwork,view:this.settings.artworkView,treatment:this.settings.artworkTreatment,
      intensity:this.settings.mix,persistence:.76
