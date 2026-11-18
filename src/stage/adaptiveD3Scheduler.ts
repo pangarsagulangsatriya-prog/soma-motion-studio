@@ -28,9 +28,10 @@ export class AdaptiveD3Scheduler{
  private startAt=-1;
  private lastFor=new Map<D3Actor,number>();
  private cropEwma=0;
+ private lastAnyMs=-Infinity;
  reset(){
   this.previousClock=-1;this.startAt=-1;
-  this.lastFor.clear();this.cropEwma=0;
+  this.lastFor.clear();this.cropEwma=0;this.lastAnyMs=-Infinity;
  }
  choose(clock:number,primaryMs:number,matches:readonly D3Match[],
   poses:readonly (readonly Landmark[])[]):D3ScheduleDecision{
@@ -43,6 +44,7 @@ export class AdaptiveD3Scheduler{
   this.previousClock=clock;
   if(this.startAt<0)this.startAt=clock;
   if(!matches.length)return defer('D3 menunggu identitas A/B yang aman.');
+  if(clock-this.lastAnyMs<260)return defer('D3 cooldown: menjaga FPS pose utama.',260);
   // Preserve the main body result when the CPU is saturated. No extra crop.
   if(primaryMs>105||this.cropEwma>125&&primaryMs>72)
    return defer('Beban worker tinggi, D3 dilewati.',900);
@@ -67,7 +69,7 @@ export class AdaptiveD3Scheduler{
     'Audit berkala pose yang sudah stabil.',intervalMs:selected.intervalMs};
  }
  observe(clock:number,id:D3Actor,elapsedMs:number){
-  if(Number.isFinite(clock))this.lastFor.set(id,clock);
+  if(Number.isFinite(clock)){this.lastFor.set(id,clock);this.lastAnyMs=clock;}
   if(Number.isFinite(elapsedMs)&&elapsedMs>=0)
    this.cropEwma=this.cropEwma>0?
     this.cropEwma*.72+elapsedMs*.28:elapsedMs;
