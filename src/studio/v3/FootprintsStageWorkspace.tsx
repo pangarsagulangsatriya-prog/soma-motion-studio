@@ -983,7 +983,7 @@ export function FootprintsStageWorkspace({
     </div>}
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
-     bodyCanvas={bodyCanvas} floorCanvas={hydraSettings.enabled&&hydraStatus==='ready'?hydraFloorCanvas:cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
+     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} frameRef={frameRef} videoRef={videoRef}
      router={router} floorTracker={tracker} projection={projection}
      cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
      floorReady={floorStatus.confirmed&&cameraMatched}
