@@ -206,7 +206,7 @@ export class MoveNetIdentityTracker{
     time-Math.max(a.atMs,b.atMs)<=850;
    const reIdEvidence=!this.crossingActive||
     (distinctClothing&&colorMargin>=.2)||
-    (!hasColor&&reliableMotion&&margin>=.22);
+    (reliableMotion&&margin>=.22&&!distinctClothing);
    if(!finite(Math.min(straight,crossed))||margin<MARGIN||!reIdEvidence)
     hold(IDS,'S0.6.4: crossing belum pasti; proyeksi A/B ditahan.');
    else if(straight<crossed){
