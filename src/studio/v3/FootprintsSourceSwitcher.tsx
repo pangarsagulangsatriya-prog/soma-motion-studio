@@ -11,10 +11,24 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
 }){
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
  const [localError,setLocalError]=useState('');
+ const [menuPosition,setMenuPosition]=useState<{top:number;left:number;width:number}|null>(null);
  const trigger=useRef<HTMLButtonElement>(null),panel=useRef<HTMLDivElement>(null);
  useEffect(()=>setLocalError(''),[status.selection,status.phase]);
  useEffect(()=>{
   if(!open)return;
+  const position=()=>{
+   const rect=trigger.current?.getBoundingClientRect();
+   if(!rect)return;
+   const width=Math.min(345,Math.max(240,window.innerWidth-24));
+   const height=panel.current?.offsetHeight??320;
+   const top=rect.bottom+8+Math.min(height,480)>window.innerHeight-12?
+    Math.max(12,rect.top-Math.min(height,480)-8):rect.bottom+8;
+   const left=Math.min(Math.max(12,rect.right-width),Math.max(12,window.innerWidth-width-12));
+   setMenuPosition({top,left,width});
+  };
+  position();
+  window.addEventListener('resize',position);
+  window.addEventListener('scroll',position,true);
   const raf=requestAnimationFrame(()=>{
    const preferred=panel.current?.querySelector<HTMLButtonElement>('[aria-current="true"]');
    (preferred??panel.current?.querySelector<HTMLButtonElement>('.fp-source-switch-option'))
@@ -24,6 +38,15 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    if(e.key==='Escape'&&!e.shiftKey){
     e.preventDefault();e.stopPropagation();setOpen(false);
     trigger.current?.focus({preventScroll:true});
+   }else if(e.key==='Tab'&&panel.current?.contains(document.activeElement)){
+    const items=Array.from(panel.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+    const first=items[0],last=items[items.length-1];
+    if(!first||!last)return;
+    if(e.shiftKey&&document.activeElement===first){
+     e.preventDefault();last.focus({preventScroll:true});
+    }else if(!e.shiftKey&&document.activeElement===last){
+     e.preventDefault();first.focus({preventScroll:true});
+    }
    }
   };
   const outside=(e:PointerEvent)=>{
@@ -32,7 +55,9 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
   };
   document.addEventListener('keydown',key);document.addEventListener('pointerdown',outside);
   return()=>{cancelAnimationFrame(raf);document.removeEventListener('keydown',key);
-   document.removeEventListener('pointerdown',outside);};
+   document.removeEventListener('pointerdown',outside);
+   window.removeEventListener('resize',position);
+   window.removeEventListener('scroll',position,true);};
  },[open]);
  const choose=async(choice:FootprintsInputChoice)=>{
   if(busy)return;
@@ -64,7 +89,9 @@ export function FootprintsSourceSwitcher({status,onChoose,onPhoneManager}:{
    <ChevronDown size={15} className="fp-switch-chevron" aria-hidden="true"/>
   </button>
   {open&&<div id="fp-source-switch-menu" ref={panel} role="dialog"
-   aria-label="Ganti sumber Footprints" className="fp-source-switch-menu">
+   aria-modal="false" aria-label="Ganti sumber Footprints" className="fp-source-switch-menu"
+   style={menuPosition?{position:'fixed',top:menuPosition.top,
+    left:menuPosition.left,width:menuPosition.width}:undefined}>
    <header><span>SUMBER GERAK</span><button type="button" aria-label="Tutup pilihan sumber"
     onClick={()=>{setOpen(false);trigger.current?.focus({preventScroll:true});}}><X size={16}/></button></header>
    {SOURCE_CHOICES.map(item=>{
