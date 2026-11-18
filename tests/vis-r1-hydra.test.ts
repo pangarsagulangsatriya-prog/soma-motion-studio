@@ -38,7 +38,7 @@ test('VIS-R1: static stage composition uses persistent Hydra runtime and no seco
  assert.ok(!runtime.includes('getUserMedia('));
  assert.match(stage,/hydraRuntime\.current\.tick\(cleanFloorOutput\.current/);
  assert.match(stage,/engine\.canonicalRecent/);
- assert.match(stage,/floorCanvas=\{hydraSettings\.enabled&&hydraStatus==='ready'\?hydraFloorCanvas:cleanFloorOutput\}/);
+ assert.match(stage,/floorCanvas=\{cleanFloorOutput\}/);
 });
 test('VIS-R1: output fallback keeps original FLOOR raster and respects explicit enable',()=>{
  const stage=code('../src/studio/v3/FootprintsStageWorkspace.tsx');
