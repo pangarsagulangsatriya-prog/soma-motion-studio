@@ -1,30 +1,29 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 async function selectSource(page,name){
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:name}).click();
- await expect(page.locator('.fp-source-switch-trigger')).toContainText(name);
+ await selectStageSource(page,name);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText(name);
 }
 
 test('S6.8.7 one source switcher and no beginner observation in production',async({page})=>{
  await page.goto('/');
  const stage=page.locator('.fp-stage-workspace');
  await expect(stage).toBeVisible();
- await expect(page.locator('.fp-source-switch-trigger')).toHaveCount(1);
+ await expect(page.locator('.soma-uxr1-source > summary')).toHaveCount(1);
  await expect(page.getByRole('button',{name:'Uji Pemula'})).toHaveCount(0);
  await expect(page.locator('#fp-beginner-usability')).toHaveCount(0);
  await expect(page.locator('.fp-compact-status')).toHaveCount(0);
- await expect(page.locator('.fp-flow-local-tabs button')).toHaveCount(2);
- await expect(page.locator('.fp-flow-local-tabs')).toContainText('Tracking');
- await expect(page.locator('.fp-flow-local-tabs')).toContainText('Visual');
+ await expect(page.locator('.fp-flow-local-tabs')).toHaveCount(0);
+ await expect(page.locator('.soma-primary-nav-list .soma-primary-destination')).toHaveCount(4);
  await expect(stage).toHaveAttribute('data-inspector-open','false');
 
- await page.locator('.fp-source-switch-trigger').click();
- const choices=page.locator('.fp-source-switch-option');
+ await page.locator('.soma-uxr1-source > summary').click();
+ const choices=page.locator('.soma-uxr1-source-menu button');
  await expect(choices).toHaveCount(4);
- await expect(page.locator('.fp-source-switch-menu')).not.toContainText('Pengaturan jejak dan arsip tetap tersimpan');
- await page.keyboard.press('Escape');
- await expect(page.locator('.fp-source-switch-menu')).toHaveCount(0);
+ await expect(page.locator('.soma-uxr1-source-menu')).not.toContainText('Pengaturan jejak dan arsip tetap tersimpan');
+ await page.locator('.soma-uxr1-source > summary').click();
+ await expect(page.locator('.soma-uxr1-source')).not.toHaveAttribute('open','');
 });
 
 test('S6.8.7 video hides advanced config and prioritizes previews',async({page})=>{
@@ -55,7 +54,7 @@ test('S6.8.7 video hides advanced config and prioritizes previews',async({page})
  else
   expect(Math.abs(preview.width-camera.width)).toBeLessThan(4);
  // Clicking Tracking in MP4 mode must NOT introduce a second setup flow.
- await page.locator('.fp-flow-local-tabs').getByRole('button',{name:'Tracking'}).click();
+ await page.getByRole('button',{name:'Track',exact:true}).click();
  await expect(stage).toHaveAttribute('data-inspector-open','false');
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
 });
@@ -70,7 +69,7 @@ test('S6.8.7 source switch preserves input and locked physical output',async({pa
  await selectSource(page,'Video MP4');
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-inspector-open','false');
  await expect(page.locator('.fp-stage-video .fp-stage-surface-foot')).toContainText('OUTPUT FISIK TERKUNCI');
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  await expect(page.locator('.stage-dual')).toContainText('Dua output fisik terkunci');
  await expect(page.locator('.stage-dual').getByRole('button',{name:'Buka output'})).toHaveCount(2);
  for(const button of await page.locator('.stage-dual').getByRole('button',{name:'Buka output'}).all())
