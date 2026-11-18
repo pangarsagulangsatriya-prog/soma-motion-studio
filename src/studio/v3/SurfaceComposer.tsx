@@ -29,7 +29,7 @@ type Props={
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false}:Props){
  const [selected,setSelected]=useState<Surface>('BODY A');
  const [composition,setComposition]=useState<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
  const [media,setMedia]=useState<Media[]>([]);
