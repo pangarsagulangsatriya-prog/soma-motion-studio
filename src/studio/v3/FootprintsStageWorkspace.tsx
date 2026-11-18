@@ -115,6 +115,8 @@ export function FootprintsStageWorkspace({
  const snowfallCanvas=useRef<HTMLCanvasElement>(null);
  const proceduralCanvas=useRef<HTMLCanvasElement>(null);
  const hydraFloorCanvas=useRef<HTMLCanvasElement>(null);
+ const archiveHydraCanvas=useRef<HTMLCanvasElement|null>(null);
+ const archiveHydraReady=useRef(false);
  const hydraRuntime=useRef<PersistentHydraFootprintRuntime>(new PersistentHydraFootprintRuntime());
  const [hydraSettings,setHydraSettings]=useState<HydraFootprintSettings>(()=>{
   try{return normalizeHydraFootprintSettings(JSON.parse(localStorage.getItem('soma-floor-hydra-v1')??'null'));}
@@ -237,7 +239,13 @@ export function FootprintsStageWorkspace({
     current?.kind==='simulator'?current.timeMs:now;
    engine.expire(time);
    if(hydraSettingsRef.current.enabled&&hydraRuntime.current.status==='ready'&&!previewHoldRef.current){
-    hydraRuntime.current.tick(cleanFloorOutput.current,engine.canonicalRecent,engine.generation,now);
+    if(archiveHydraReady.current&&archiveHydraCanvas.current){
+     hydraRuntime.current.configure({...hydraSettingsRef.current,artwork:'off',catalogVisual:false});
+     hydraRuntime.current.tick(archiveHydraCanvas.current,engine.canonicalRecent,engine.generation,now);
+    }else{
+     hydraRuntime.current.configure(hydraSettingsRef.current);
+     hydraRuntime.current.tick(cleanFloorOutput.current,engine.canonicalRecent,engine.generation,now);
+    }
    }
    const canvas=interactionCanvas.current;
    if(canvas&&!previewHoldRef.current)
@@ -986,14 +994,18 @@ export function FootprintsStageWorkspace({
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
-     previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'} frameRef={frameRef} videoRef={videoRef}
+     previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
+     archiveHydraCanvas={archiveHydraCanvas}
+     onArchiveHydraChange={enabled=>{archiveHydraReady.current=enabled;
+      if(enabled)setHydraSettings(v=>v.enabled?v:normalizeHydraFootprintSettings({...v,enabled:true}));}}
+     frameRef={frameRef} videoRef={videoRef}
      router={router} floorTracker={tracker} projection={projection}
      cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
      floorReady={floorStatus.confirmed&&cameraMatched}
      floorEvents={()=>tracker.session?.events??[]}
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      identitySafe={!identityStatus.ambiguous}
-     onClose={()=>{onBlackout();setComposerOpen(false);setComposerStartQA(false);}}/>}
+     onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setComposerStartQA(false);}}/>}
     <div className="fp-stage-overview" hidden={view!=='stage'||composerOpen}>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource
