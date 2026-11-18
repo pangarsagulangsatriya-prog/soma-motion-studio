@@ -77,4 +77,13 @@ test('F6: audio opt-in defaults OFF, SOMA analyser reuse never creates contact',
  await audio.selectOption('off');
  await expect(audio).toHaveValue('off');
  await expect(floor.locator('.fp-scene-audio-level')).toContainText('Off');
+ // The pinned Chromium runner uses a fake, permission-approved media device.
+ // Switching back to Footprints must stop the mic and reset the source.
+ await audio.selectOption('microphone');
+ await expect(audio).toHaveValue('microphone');
+ await expect(floor.locator('.fp-scene-audio-level')).toContainText('Mikrofon lokal');
+ await floor.getByRole('combobox',{name:'Pilih scene FLOOR'}).selectOption('footprints');
+ await floor.getByRole('combobox',{name:'Pilih scene FLOOR'}).selectOption('fireflies');
+ await floor.locator('.fp-scene-advanced summary').click();
+ await expect(floor.getByRole('combobox',{name:'Sumber audio scene FLOOR'})).toHaveValue('off');
 });
