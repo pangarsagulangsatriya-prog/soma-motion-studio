@@ -3,29 +3,30 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
-test('IA-R1: only Track, Compose, Map, Perform appear as four primary destinations',()=>{
+test('IA-R1: one global Stage Studio module owns four local workspaces',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
- const top=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
+ const local=read('../src/studio/v3/StageModuleNav.tsx');
+ const global=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
   nav.indexOf('className="soma-primary-labs-launch"'));
- for(const name of ['Track','Compose','Map','Perform']){
-  assert.equal((top.match(new RegExp('aria-label="'+name+'"','g'))??[]).length,1,name);
- }
- assert.equal((top.match(/soma-primary-destination/g)??[]).length,4);
- assert.ok(!top.includes('aria-label="Footprints"'));
- assert.ok(!top.includes('aria-label="Projector"'));
+ assert.equal((global.match(/soma-primary-destination/g)||[]).length,1);
+ assert.match(global,/aria-label="Stage Studio"/);
+ for(const name of ['Track','Compose','Map','Perform'])
+  assert.match(local,new RegExp("id:'"+name.toLowerCase()+"'"));
+ assert.match(local,/aria-label="Navigasi Stage Studio"/);
+ assert.match(local,/onNavigate\(item.id\)/);
+ assert.match(nav,/stageModuleActive&&<div className="soma-uxr1-health"/);
  assert.match(nav,/aria-label="Tools · SOMA Labs"/);
 });
 
-test('IA-R1: global routes resolve to the real Stage compositor and diagnostics',()=>{
+test('IA-R1: each local destination routes into the one Stage session',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
  const app=read('../src/App.tsx');
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
- assert.match(nav,/target==='track'\)onStageTool\('tracking'\)/);
- assert.match(nav,/target==='compose'\)onFootprints\(\)/);
- assert.match(nav,/target==='map'\)onStageTool\('mapping'\)/);
- assert.match(nav,/else onPerform\(\)/);
- assert.match(app,/setSelectedStageTool\('composer'\)/);
- assert.match(app,/tool:'composer'/);
+ assert.match(nav,/onClick=\{openStageStudio\}/);
+ assert.match(app,/onNavigateStageWorkspace=\{workspace=>\{/);
+ assert.match(app,/workspace==='perform'/);
+ assert.match(app,/workspace==='track'\?'tracking':workspace==='map'\?'mapping':'composer'/);
+ assert.match(stage,/<StageModuleNav active=\{operatorMode\?'perform'/);
  assert.match(stage,/case 'tracking':setView\('stage'\)/);
  assert.match(stage,/case 'composer':setView\('stage'\)/);
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
@@ -96,5 +97,8 @@ test('IA-R1: minimal status/source and keyboard work on 390px viewport',()=>{
  assert.match(css,/soma-uxr1-health\{display:flex!important/);
  assert.match(nav,/const \[mobile,setMobile\]=useState/);
  assert.match(nav,/aria-expanded=\{expanded\}/);
- assert.match(nav,/onClick=\{\(\)=>navigate\('track'\)\}/);
+ assert.match(nav,/onClick=\{openStageStudio\}/);
+ const local=read('../src/studio/v3/StageModuleNav.tsx');
+ assert.match(local,/className="soma-stage-module-nav"/);
+ assert.match(css,/\.soma-stage-module-tab/);
 });
