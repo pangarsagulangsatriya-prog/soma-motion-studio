@@ -22,6 +22,7 @@ import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfa
  outputSurfaceDecision,validateStageSurfacePlan,
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext} from './DualSurfaceCalibration.ts';
 import './dual-surface-routing.css';
+import {MapFourCornerEditor} from '../../studio/v3/MapFourCornerEditor.tsx';
 
 const ids=['body','floor'] as const;
 type Requested='blackout'|'test'|'live';
@@ -515,8 +516,11 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
     onChange={e=>editPlan(selected,p=>({...p,resolution:e.target.value as '720p'|'1080p'}))}>
     <option value="720p">720p</option><option value="1080p">1080p</option>
    </select></label>
+   <MapFourCornerEditor key={selected} sourceQuad={activePlan.sourceQuad}
+    projectorQuad={activePlan.projectorQuad}
+    onCommit={(group,quad)=>editPlan(selected,p=>({...p,[group]:quad}))}/>
    <details>
-    <summary>Kalibrasi empat titik · Source UV → Projector UV</summary>
+    <summary>Advanced · angka presisi empat titik</summary>
     <p>Urutan: kiri atas, kanan atas, kanan bawah, kiri bawah. Angka 0–1 terikat pada bidang output yang dipilih. Atur ulang dan ukur fisik setiap kali perangkat dipindahkan.</p>
     <div className="stage-dual-quad">
      {(['sourceQuad','projectorQuad'] as const).map(group=><div key={group}>

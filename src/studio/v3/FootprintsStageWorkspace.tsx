@@ -452,6 +452,7 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(!calibrationOpen)setCalibrationOverlay(null);},[calibrationOpen]);
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
+ const [mappingOpen,setMappingOpen]=useState(false);
  const [composerStartQA,setComposerStartQA]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
  const [rehearsalOpen,setRehearsalOpen]=useState(false);
@@ -467,9 +468,9 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{
   if(navigationRequest?.tool==='simulator'||navigationRequest?.tool==='calibration')return;
   const tool=calibrationOpen?'setup':videoLabOpen?'video':rehearsalOpen?'rehearsal':
-   composerOpen?'composer':view==='archive'?'archival-mapping':'live';
+   composerOpen?(mappingOpen?'mapping':'composer'):view==='archive'?'archival-mapping':'live';
   onActiveToolChange?.(tool);
- },[calibrationOpen,videoLabOpen,rehearsalOpen,composerOpen,view,onActiveToolChange,navigationRequest?.tool]);
+ },[calibrationOpen,videoLabOpen,rehearsalOpen,composerOpen,mappingOpen,view,onActiveToolChange,navigationRequest?.tool]);
  const previewHoldRef=useRef(footprint.hold);
  previewHoldRef.current=footprint.hold;
  const [operatorCue,setOperatorCue]=useState(0);
@@ -774,13 +775,14 @@ export function FootprintsStageWorkspace({
   if(!request||lastNavRequest.current===request.id)return;
   lastNavRequest.current=request.id;
   setCalibrationOpen(false);setVideoLabOpen(false);setRehearsalOpen(false);
-  setComposerOpen(false);
+  setComposerOpen(false);setMappingOpen(false);
   onBlackout();
   switch(request.tool){
    case 'live':setView('stage');setInspectorOpen(true);break;
    case 'setup':setView('stage');setFlowStep('process');setInspectorOpen(true);setCalibrationOpen(true);break;
    case 'archival-mapping':showArchive();break;
-   case 'composer':setView('stage');setFlowStep('compose');setComposerOpen(true);break;
+   case 'composer':setView('stage');setFlowStep('compose');setComposerOpen(true);setMappingOpen(false);break;
+   case 'mapping':setView('stage');setFlowStep('compose');setComposerOpen(true);setMappingOpen(true);setComposerStartQA(true);break;
    case 'video':setView('stage');setFlowStep('input');setVideoLabOpen(true);break;
    case 'rehearsal':setView('stage');setFlowStep('process');setRehearsalOpen(true);break;
    case 'simulator':setView('stage');onOpenSimulator();break;
@@ -836,7 +838,7 @@ export function FootprintsStageWorkspace({
  };
  const openProjectorQA=()=>{
   onBlackout();setCalibrationOpen(false);setInspectorOpen(false);
-  setView('stage');setComposerStartQA(true);setComposerOpen(true);
+  setView('stage');setComposerStartQA(true);setMappingOpen(true);setComposerOpen(true);
  };
  const openVideoInput=()=>{void chooseSource('video');};
  const openSimulatorInput=()=>{void chooseSource('simulator');};
@@ -987,11 +989,12 @@ export function FootprintsStageWorkspace({
    <div className="fp-stage-main">
     {!operatorMode&&view==='stage'&&<div className="uxr3-compose-switcher" role="group" aria-label="Mode Compose">
      <span className="uxr3-compose-label">COMPOSE</span>
-     <button type="button" aria-pressed={!composerOpen} onClick={()=>{setComposerOpen(false);setComposerStartQA(false);}}>Stage Preview</button>
-     <button type="button" aria-pressed={composerOpen} onClick={()=>{setCalibrationOpen(false);setPhonePanelOpen(false);setInspectorOpen(false);setComposerStartQA(false);setComposerOpen(true);}}>Scene &amp; Layers</button>
+     <button type="button" aria-pressed={!composerOpen} onClick={()=>{if(mappingOpen)onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}>Stage Preview</button>
+     <button type="button" aria-pressed={composerOpen&&!mappingOpen} onClick={()=>{if(mappingOpen)onBlackout();setCalibrationOpen(false);setPhonePanelOpen(false);setInspectorOpen(false);setComposerStartQA(false);setMappingOpen(false);setComposerOpen(true);}}>Scene &amp; Layers</button>
+     <button type="button" aria-pressed={composerOpen&&mappingOpen} onClick={()=>{onBlackout();setInspectorOpen(false);setMappingOpen(true);setComposerStartQA(true);setComposerOpen(true);}}>Map &amp; QA</button>
      <span className="uxr3-compose-status">{floorScene==='footprints'?'Footprints':FLOOR_SCENES.find(scene=>scene.id===floorScene)?.name??'Scene'} · {experimentalKind?'Rehearsal only':'Source shared'}</span>
     </div>}
-    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} onSceneChange={selectFloorScene}
+    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
@@ -1006,7 +1009,7 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
-     onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setComposerStartQA(false);}}/>}
+     onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/>}
     <div className="fp-stage-overview" hidden={view!=='stage'||composerOpen}>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource

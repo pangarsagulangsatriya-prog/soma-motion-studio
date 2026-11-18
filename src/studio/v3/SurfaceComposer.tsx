@@ -42,9 +42,9 @@ type Props={
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
- embedded?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
+ embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
@@ -348,6 +348,16 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  useEffect(()=>()=>{onArchiveHydraChangeRef.current?.(false);},[]);
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
+ if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
+  <header><div><small>STAGE STUDIO / MAP</small><h2>Unified Mapping</h2>
+   <p>BODY dan FLOOR: empat titik, profil optik tersimpan, dan QA fisik lima titik yang terpisah.</p></div>
+   <button type="button" onClick={onClose}>Kembali ke Stage</button></header>
+  <p role="status">{bodyStatus} · FLOOR {floorReady?'terkonfirmasi':'belum terkalibrasi'} · Status cahaya wajib diperiksa fisik</p>
+  <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="Map BODY output raster"/>
+  <canvas ref={floorOutput} width={640} height={360} hidden aria-label="Map FLOOR output raster"/>
+  <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
+   floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
+ </section>;
  return <div className={'s64-root'+(embedded?' s64-embedded':'')} role="region" aria-label="Compose Workspace — media dan layer">
   <div className="s64-heading"><div><small>STAGE STUDIO / COMPOSE</small><h2>Visual Composer</h2><p>Scene, media, layer dan mask pada sumber gerak yang sama.</p></div><button type="button" onClick={onClose}>Stage Preview</button></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview aktif</label><label><input type="checkbox" checked={previewLive} onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label><button onClick={()=>setBlackout(true)}>BLACKOUT Preview</button><span>{eventInfo}</span></div>
