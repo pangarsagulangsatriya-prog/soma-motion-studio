@@ -102,26 +102,35 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  }
  const snapshot=frame.snapshot;
  if(!frame.ready)return;
- // S0.6.5: clean BODY raster can only draw actor-owned, bridge-approved
- // masks. Unassigned raw poses and buffered tentative skeletons may remain
- // visible in INPUT diagnostics but cannot leak into this output channel.
+ // BODY software preview has two genuinely different visualization modes.
+ // Skeleton ON: diagnostic 33-joint tracking. It must NOT depend on a
+ // successful lower-body silhouette/mask (which can reject valid poses).
+ // Skeleton OFF: only draw A/B masks approved by the S0.6.5 gate.
+ // Neither view can authorize physical projector output or create gait events.
  if(cleanBodyOutput){
-  if(masks?.actors.length){
-   paintIndependentBodyMasks(ctx,masks,{x:0,y:0,width:w,height:h},1);
-   if(skeleton&&motion){
-    const safeIds=new Set(masks.actors.filter(a=>!a.tentative).map(a=>a.id));
-    for(const actor of motion.actors){
-     // A motion sample may be visually tentative between AI measurements;
-     // the separately approved A/B mask provides the ID gate here.
-     if(!safeIds.has(actor.id)||actor.ageMs>260)continue;
-     ctx.save();ctx.globalAlpha=actor.opacity*.65;
-     const actorColor=actor.id==='A'?'#dbe9ca':'#80d1da';
-     drawSkeletonBodies(ctx,[actor.pose],{x:0,y:0,width:w,height:h},
-      {labels:[`ACTOR ${actor.id}`],colors:[actorColor]});
+  if(skeleton){
+   const rect={x:0,y:0,width:w,height:h};
+   if(motion?.actors.length){
+    // Held/uncertain identities remain unlabelled and neutral in the buffer.
+    drawBufferedBodies(ctx,rect,motion,frame);
+   }else if(snapshot){
+    // When the identity/motion buffer is empty, preserve a short, measured
+    // raw-pose diagnostic instead of turning the entire BODY viewport black.
+    const diagnostic=replaySkeletonDiagnosticPreview(
+     snapshot,frame.timeMs,frame.previousSnapshot,650);
+    if(diagnostic.poses.length){
+     ctx.save();ctx.globalAlpha=diagnostic.opacity;
+     drawSkeletonBodies(ctx,diagnostic.poses,rect,
+      {labels:diagnostic.labels,colors:diagnostic.colors});
      ctx.restore();
     }
    }
+   return;
   }
+  // Silhouette mode retains the strict identity/mask gate. A rejected mask
+  // does not silently gain confidence from the diagnostic skeleton above.
+  if(masks?.actors.length)
+   paintIndependentBodyMasks(ctx,masks,{x:0,y:0,width:w,height:h},1);
   return;
  }
  // Independent pose-guided A/B masks persist and move under optical flow.
