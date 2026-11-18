@@ -44,7 +44,7 @@ export class ArtisticFootprintRuntime{
  reset(generation:number){
   this.generation=generation;this.seen.clear();this.stamps=[];this.paths=[];this.last.clear();
  }
- ingest(events:readonly FootMotionEventV2[],generation:number){
+ ingest(events:readonly FootMotionEventV2[],generation:number,displayAtMs?:number){
   if(this.generation!==generation)this.reset(generation);
   for(const e of events){
    if(this.seen.has(e.eventId))continue;
@@ -54,14 +54,14 @@ export class ArtisticFootprintRuntime{
     const prev=this.last.get(e.actorId);
     const dx=prev?e.x-prev.x:0,dy=prev?e.y-prev.y:0;
     this.stamps.push({id:e.eventId,actorId:e.actorId,foot:e.foot,
-     x:clamp(e.x),y:clamp(e.y),atMs:e.atMs,confidence:clamp(e.confidence),
+     x:clamp(e.x),y:clamp(e.y),atMs:displayAtMs??e.atMs,confidence:clamp(e.confidence),
      heading:prev&&Math.hypot(dx,dy)>.004?Math.atan2(dy,dx)-Math.PI/2:0});
     this.last.set(e.actorId,{x:e.x,y:e.y,atMs:e.atMs});
    }
    if(e.kind==='movement'||e.kind==='contact'){
     const prev=this.paths.at(-1);
     if(!prev||prev.actorId!==e.actorId||Math.hypot(prev.x-e.x,prev.y-e.y)>.006){
-     this.paths.push({actorId:e.actorId,x:clamp(e.x),y:clamp(e.y),atMs:e.atMs});
+     this.paths.push({actorId:e.actorId,x:clamp(e.x),y:clamp(e.y),atMs:displayAtMs??e.atMs});
     }
    }
   }
