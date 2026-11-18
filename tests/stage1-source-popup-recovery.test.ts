@@ -9,6 +9,7 @@ test('Stage 1 SOURCE: header popup is not clipped and closed menu is hidden',()=
  assert.match(css,/\.soma-primary-header \.soma-uxr1-health\{overflow:visible\}/);
  assert.match(css,/\.soma-uxr1-source:not\(\[open\]\)>\.soma-uxr1-source-menu\{display:none\}/);
  assert.match(css,/\.soma-uxr1-source\[open\]>/);
+ assert.match(css,/source-menu\{top:calc\(100% \+ 20px\)\}/);
  assert.match(nav,/<summary title="Satu sumber untuk Track, Compose, Map, Perform">SOURCE:/);
  assert.match(nav,/onSelectSource\(option.id\)/);
  assert.match(nav,/closest\('details'\)\?\.removeAttribute\('open'\)/);
