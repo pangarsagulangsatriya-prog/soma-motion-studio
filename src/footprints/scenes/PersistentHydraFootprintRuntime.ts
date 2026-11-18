@@ -5,6 +5,7 @@ import {
  clamp01
 } from './hydraFootprintModel.ts';
 import type {FootMotionEventV2} from './FootMotionEventV2.ts';
+import {ArtisticFootprintRuntime,normalizeArtisticFootprintConfig} from './ArtisticFootprintRuntime.ts';
 
 /** One Hydra instance and one stable s0 canvas per Compose workspace.
  * This is a SOFTWARE visual post-processor. Physical routing stays on its existing QA gate. */
@@ -19,6 +20,9 @@ export class PersistentHydraFootprintRuntime {
  private generation=-1;
  private motion:HydraMotionUniforms={...HYDRA_MOTION_IDLE};
  private settings:HydraFootprintSettings=normalizeHydraFootprintSettings(null);
+ private readonly art=new ArtisticFootprintRuntime();
+ private artCanvas:HTMLCanvasElement|null=null;
+ private lastArtwork='off';
  private loading:Promise<void>|null=null;
  private destroyed=false;
  status:HydraFootprintStatus='off';
@@ -51,6 +55,7 @@ export class PersistentHydraFootprintRuntime {
     const ctx=input.getContext('2d',{alpha:false});
     if(!ctx)throw Error('2D input texture unavailable');
     this.sourceCanvas=input;this.sourceContext=ctx;
+    this.artCanvas=document.createElement('canvas');this.artCanvas.width=640;this.artCanvas.height=360;
     // Never start Hydra's own RAF: this instance is ticked by the existing Stage loop.
     const engine=new HydraConstructor({
      canvas,width:640,height:360,autoLoop:false,makeGlobal:false,
@@ -70,10 +75,13 @@ export class PersistentHydraFootprintRuntime {
  configure(raw:HydraFootprintSettings){
   this.settings=normalizeHydraFootprintSettings(raw);
   if(!this.engine||this.status==='fallback')return;
-  if(this.style===this.settings.style)return;
+  const selected:HydraFootprintStyle=this.settings.artwork==='off'?this.settings.style:
+   this.settings.artwork==='trace'?'echo':this.settings.artwork==='compression'?'grain':
+   this.settings.artwork==='negative-memory'?'interference':'flow';
+  if(this.style===selected)return;
   try{
-   this.applyGraph(this.settings.style);
-   this.style=this.settings.style;this.lastGoodStyle=this.style;
+   this.applyGraph(selected);
+   this.style=selected;this.lastGoodStyle=this.style;
   }catch(error){
    // Attempt to recover last known-good shader and keep existing FLOOR raster.
    try{if(this.lastGoodStyle)this.applyGraph(this.lastGoodStyle);}catch{}
@@ -104,16 +112,27 @@ export class PersistentHydraFootprintRuntime {
   if(this.destroyed||this.status!=='ready'||!this.engine||!this.sourceContext||!source)return;
   if(!Number.isFinite(nowMs))return;
   if(generation!==this.generation){
-   this.generation=generation;this.seen.clear();
+   this.generation=generation;this.seen.clear();this.art.reset(generation);
    this.motion={...HYDRA_MOTION_IDLE};
    try{this.engine.synth.hush?.();}catch{}
    // A new source must not inherit previous frame feedback.
    this.style=null;this.configure(this.settings);
   }
   try{
+   const artwork=this.settings.artwork;
+   if(artwork!==this.lastArtwork){
+    this.lastArtwork=artwork;this.art.reset(generation);this.resetFeedback();
+   }
    this.sourceContext.fillStyle='#000';
    this.sourceContext.fillRect(0,0,640,360);
-   if(source.width&&source.height)this.sourceContext.drawImage(source,0,0,640,360);
+   if(artwork!=='off'&&this.artCanvas){
+    this.art.ingest(events,generation);
+    this.art.paint(this.artCanvas,nowMs,normalizeArtisticFootprintConfig({
+     style:artwork,view:this.settings.artworkView,treatment:this.settings.artworkTreatment,
+     intensity:this.settings.mix,persistence:.76
+    }));
+    this.sourceContext.drawImage(this.artCanvas,0,0,640,360);
+   }else if(source.width&&source.height)this.sourceContext.drawImage(source,0,0,640,360);
    // Seen IDs survive bounded history changes and prohibit re-triggering a paused event.
    for(const e of events){
     if(this.seen.has(e.eventId))continue;
@@ -146,6 +165,7 @@ export class PersistentHydraFootprintRuntime {
   try{this.engine?.regl?.destroy?.();}catch{}
   try{this.outputCanvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}catch{}
   this.engine=null;this.sourceCanvas=null;this.sourceContext=null;this.outputCanvas=null;
+  this.artCanvas=null;this.art.reset(-1);
   this.seen.clear();this.loading=null;
  }
 }
