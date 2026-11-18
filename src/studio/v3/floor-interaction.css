@@ -38,3 +38,71 @@
   min-height:35px;
  }
 }
+
+
+/* F1 — Snowfall shares the original FLOOR pane. One clean raster stays
+   mounted for Surface Composer; the debug overlay cannot reach the output. */
+.fp-stage-workspace .fp-preview-floor .fp-floor-snowfall-canvas{display:none!important}
+.fp-stage-workspace .fp-preview-floor[data-floor-scene=snowfall] .fp-floor-legacy-canvas{
+ display:none!important;
+}
+.fp-stage-workspace .fp-preview-floor[data-floor-scene=snowfall] .fp-floor-snowfall-canvas{
+ display:block!important;width:100%;height:auto;max-height:100%;
+ aspect-ratio:16/9;object-fit:contain;background:#111819;
+}
+.fp-stage-workspace .fp-preview-floor[data-floor-scene=snowfall] .fp-floor-interaction-layer{
+ display:none!important;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls{
+ display:flex;align-items:center;gap:7px;padding:7px 10px;
+ background:#142019;border-bottom:1px solid #334d39;
+ flex-wrap:wrap;min-width:0;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls>label{
+ display:flex;align-items:center;gap:7px;min-width:0;
+ color:#b9cfb8;font-size:10px;font-weight:600;letter-spacing:.06em;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls select{
+ min-height:30px;max-width:200px;min-width:125px;
+ padding:5px 8px;color:#e5eedd;background:#0d1a12;
+ border:1px solid #5c7763;border-radius:5px;font-size:11px;
+}
+.fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls>button{
+ min-height:30px;padding:4px 9px;border-radius:5px;
+ font-size:11px;color:#d8e8d6;background:#1b3021;
+ border:1px solid #4e7057;cursor:pointer;white-space:nowrap;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-pause[aria-pressed=true]{
+ background:#415d48;border-color:#b4d2b2;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-counter{
+ min-width:0;font-size:10px;color:#bed6c1;
+ font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-options{
+ position:relative;margin-left:auto;min-width:0;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-options summary{
+ padding:7px 9px;cursor:pointer;border:1px solid #536d59;
+ border-radius:5px;color:#d4e5ce;font-size:11px;
+ list-style:revert;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-options>div{
+ position:absolute;right:0;top:calc(100% + 5px);z-index:8;
+ width:min(270px,82vw);display:flex;flex-direction:column;gap:14px;
+ padding:14px;border:1px solid #59735e;border-radius:7px;
+ background:#17271a;box-shadow:0 12px 30px #0009;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-options label{
+ display:flex;flex-direction:column;gap:6px;
+ color:#d0e2c9;font-size:11px;
+}
+.fp-stage-workspace .fp-preview-floor .fp-snowfall-options input{width:100%;accent-color:#c4dda9}
+.fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls :is(button,summary,select,input):focus-visible{
+ outline:2px solid #d4ebb0;outline-offset:2px;
+}
+@media(max-width:800px){
+ .fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls{gap:6px}
+ .fp-stage-workspace .fp-preview-floor .fp-snowfall-options{margin-left:0}
+ .fp-stage-workspace .fp-preview-floor .fp-floor-scene-controls>button{min-height:36px}
+}
