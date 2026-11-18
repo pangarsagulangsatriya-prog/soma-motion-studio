@@ -36,8 +36,11 @@ export class FloorInteractionEngine{
  private seenContacts=new Set<string>();
  private seenOrder:string[]=[];
  private serial=0;
+ private epoch=0;
+ get generation(){return this.epoch;}
  get activeSource(){return this.source;}
  reset(source:FloorInteractionSource|null=null){
+  this.epoch++;
   this.source=source;this.events=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
   this.seenContacts.clear();this.seenOrder=[];this.serial=0;
  }
