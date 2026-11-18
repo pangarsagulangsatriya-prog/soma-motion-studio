@@ -90,7 +90,7 @@ test('VIS-R4: composer uses canonical FLOOR V2 event bus and keeps legacy preset
  assert.match(composer,/layer\?\.recipe==='motion-v2'/);
  assert.match(composer,/option value="contact-reveal"/);
  assert.match(composer,/option value="motion-v2"/);
- assert.match(composer,/physical\?0:motionRecipeEnvelope/);
+ assert.match(composer,/physical\|\|!identitySafeRef\.current\?0:motionRecipeEnvelope/);
 });
 test('VIS-R4: archival image/video enters existing Hydra, physical route stays clean',()=>{
  const stage=source('../src/studio/v3/FootprintsStageWorkspace.tsx');
