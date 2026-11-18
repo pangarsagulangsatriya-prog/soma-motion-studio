@@ -13,11 +13,12 @@ import type {Landmark} from '../engine/types.ts';
 import {POSE_LANDMARK_COUNT,SKELETON_COLORS} from './fullBodySkeleton.ts';
 import {ContactAwareFootLock,type FootLockSample} from './contactAwareFootLock.ts';
 import type {PersistentActorState} from './persistentActorRegistry.ts';
+import {OPTICAL_FLOW_MAX_AGE_MS,type OpticalFlowFrame,type OpticalFlowActor} from './footprintsVideoOpticalFlow.ts';
 
 export type MotionActorId='A'|'B';
 export type MotionSnapshot=FootLockSample&{persistentActors?:PersistentActorState[]};
 export type MotionVisualActor={
- id:MotionActorId;pose:Landmark[];opacity:number;mode:'measured'|'interpolated'|'predicted'|'held';
+ id:MotionActorId;pose:Landmark[];opacity:number;mode:'measured'|'interpolated'|'predicted'|'held'|'flow';
  ageMs:number;color:string;label:string;lockedFeet?:Array<'left'|'right'>;
  // 'held' is a visually retained measurement, never a confirmed identity.
  tentative?:boolean;
@@ -154,9 +155,19 @@ export class ActorMotionStateBuffer{
   }
   return true;
  }
- private presentActor(id:MotionActorId,bank:ActorBank,videoAtMs:number):MotionVisualActor|null{
+ private presentActor(id:MotionActorId,bank:ActorBank,videoAtMs:number,
+  flow?:OpticalFlowActor):MotionVisualActor|null{
   const latest=bank.latest,age=videoAtMs-latest.atMs;
-  if(!Number.isFinite(age)||age< -60||age>this.config.staleLimitMs)return null;
+  // Flow MUST be tied to the exact last measured D2 anchor for this actor.
+  // Never reuse a different actor's displacement or infer floor contacts.
+  const trustedFlow=!!flow&&flow.id===id&&flow.anchorAtMs===latest.atMs&&
+   flow.confidence>=.46&&flow.inliers>=4&&
+   flow.trackedAtMs<=videoAtMs+12&&
+   videoAtMs-flow.trackedAtMs<=95&&age>=65&&age<=OPTICAL_FLOW_MAX_AGE_MS&&
+   Number.isFinite(flow.dx)&&Number.isFinite(flow.dy)&&
+   Math.hypot(flow.dx,flow.dy)<=.24;
+  const expiresAt=trustedFlow?OPTICAL_FLOW_MAX_AGE_MS:this.config.staleLimitMs;
+  if(!Number.isFinite(age)||age< -60||age>expiresAt)return null;
   const target=videoAtMs-this.config.renderDelayMs,prev=bank.previous;
   // A measured skeleton may outlive its A/B certainty for a short visual
   // interval. Label/color it neutral; never imply a confirmed actor.
@@ -182,27 +193,36 @@ export class ActorMotionStateBuffer{
   }else if(!tentative&&prev&&target<prev.atMs){
    pose=prev.pose;
   }
-  // One monotone fade. Worker gaps and transient lost/ambiguous frames must
-  // never toggle the visual between a full skeleton and a black canvas.
-  const fadeStart=Math.max(110,Math.min(this.config.fadeStartMs,
-   this.config.staleLimitMs-1));
+  // Translate the last measured BODY skeleton by image evidence gathered
+  // BETWEEN AI calls. This projection is visual-only; no synthetic joints
+  // are passed upstream into D2, gait, identity QA or hardware output.
+  if(trustedFlow&&flow){
+   pose=pose.map(p=>({...p,
+    x:clamp(p.x+flow.dx,0,1),
+    y:clamp(p.y+flow.dy,0,1)}));
+   mode='flow';
+  }
+  const fadeStart=Math.max(110,Math.min(
+   trustedFlow?420:this.config.fadeStartMs,expiresAt-1));
   const opacity=age<=fadeStart?1:
-   clamp((this.config.staleLimitMs-age)/(this.config.staleLimitMs-fadeStart),0,1);
+   clamp((expiresAt-age)/(expiresAt-fadeStart),0,1);
   if(opacity<=0)return null;
-  const locked=tentative?{pose,lockedFeet:[] as Array<'left'|'right'>}:
+  const locked=tentative||trustedFlow?
+   {pose,lockedFeet:[] as Array<'left'|'right'>}:
    this.footLock.apply(id,pose,videoAtMs);
   return {id,pose:locked.pose,lockedFeet:locked.lockedFeet,opacity,mode,
    ageMs:Math.max(0,age),tentative,
    color:tentative?'#a0aaa6':SKELETON_COLORS[id==='A'?0:1],
    label:tentative?'':'ACTOR '+id};
  }
- present(videoAtMs:number):MotionVisualFrame{
+ present(videoAtMs:number,flow?:OpticalFlowFrame):MotionVisualFrame{
   const actors:MotionVisualActor[]=[];
   if(Number.isFinite(videoAtMs))
    for(const id of ids){
     const bank=this.actors.get(id);
     if(!bank)continue;
-    const actor=this.presentActor(id,bank,videoAtMs);
+    const active=flow?.actors.find(a=>a.id===id);
+    const actor=this.presentActor(id,bank,videoAtMs,active);
     if(actor)actors.push(actor);
    }
   return {actors,atMs:videoAtMs,renderDelayMs:this.config.renderDelayMs};

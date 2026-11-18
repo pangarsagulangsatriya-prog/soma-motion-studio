@@ -19,6 +19,7 @@ import {activeExperimentKind,currentExperimentFrame,experimentFrameLabel,type Ex
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {drawSkeletonBodies} from '../../stage/fullBodySkeleton.ts';
 import {ActorMotionStateBuffer} from '../../stage/actorMotionStateBuffer.ts';
+import {FootprintsVideoOpticalFlow} from '../../stage/footprintsVideoOpticalFlow.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -95,7 +96,11 @@ export function FootprintsStageWorkspace({
  const experimentFrameRef=useRef<ExperimentalFrame|null>(null);
  experimentFrameRef.current=experimentFrame;
  const motionBufferRef=useRef<ActorMotionStateBuffer>(new ActorMotionStateBuffer());
- useEffect(()=>{motionBufferRef.current.reset();},[experimentalKind,experimentClip]);
+ const opticalFlowRef=useRef<FootprintsVideoOpticalFlow>(new FootprintsVideoOpticalFlow());
+ useEffect(()=>{
+  motionBufferRef.current.reset();
+  opticalFlowRef.current.reset();
+ },[experimentalKind,experimentClip]);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
@@ -275,6 +280,7 @@ export function FootprintsStageWorkspace({
   let raf=0,lastFloorAt=-Infinity,lastVideoAt=-1;
   let source:HTMLVideoElement|null=null;
   const buffer=motionBufferRef.current;
+  const flowTracker=opticalFlowRef.current;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
   const draw=(now:number)=>{
    const current=experimentFrameRef.current;
@@ -283,12 +289,16 @@ export function FootprintsStageWorkspace({
     const frame={...current,timeMs:atMs};
     if(source!==current.video||current.video?.seeking||
        (lastVideoAt>=0&&atMs<lastVideoAt-50)){
-     buffer.reset();lastFloorAt=-Infinity;
+     buffer.reset();flowTracker.reset();lastFloorAt=-Infinity;
     }
     source=current.video;
     lastVideoAt=atMs;
     if(!current.video?.seeking&&current.snapshot)buffer.ingest(current.snapshot);
-    const motion=buffer.present(atMs);
+    // S0.6.2: camera decoder provides intermediate frames while the AI worker
+    // samples more slowly. Optical flow is strictly a BODY visual translation.
+    const flow=current.video&&!current.video.seeking?
+     flowTracker.step(current.video,atMs,current.snapshot?.persistentActors??[]):undefined;
+    const motion=buffer.present(atMs,flow);
     if(cam)paintExperimentCamera(cam,frame,skeletonVisible,motion);
     if(body&&!footprint.hold)paintExperimentBody(body,frame,skeletonVisible,motion);
     if(floor&&!footprint.hold&&current.snapshot?.atMs!==lastFloorAt){
