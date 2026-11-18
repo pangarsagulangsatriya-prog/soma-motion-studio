@@ -82,7 +82,10 @@ export class MoveNetIdentityTracker{
  private pending=new Map<D2Id,Pending>();
  private holdSet=new Set<D2Id>();
  private lastTime=-1;
- reset(){this.tracks.clear();this.pending.clear();this.holdSet.clear();this.lastTime=-1;}
+ // Preserve a crossing quarantine until the original A/B tracks are recovered.
+ private crossingActive=false;
+ reset(){this.tracks.clear();this.pending.clear();this.holdSet.clear();
+  this.crossingActive=false;this.lastTime=-1;}
  private predicted(id:D2Id,time:number):D2Center{
   const t=this.tracks.get(id)!;
   const dt=Math.min(.5,Math.max(0,(time-t.atMs)/1000));
@@ -139,8 +142,9 @@ export class MoveNetIdentityTracker{
    .sort((a,b)=>b.confidence-a.confidence).slice(0,2);
   const assigned:D2Match[]=[],recovered:D2Id[]=[];
   let held=false,reason='Posisi, kecepatan, dan ciri warna torso.';
-  const hold=(ids:readonly D2Id[],message:string)=>{
+  const hold=(ids:readonly D2Id[],message:string,crossing=false)=>{
    held=true;reason=message;
+   if(crossing&&this.tracks.size===2)this.crossingActive=true;
    for(const id of ids)if(this.tracks.has(id)){
     this.holdSet.add(id);this.pending.delete(id);
    }
@@ -156,7 +160,7 @@ export class MoveNetIdentityTracker{
   }else if(!seen.length)reason='Pose hilang; riwayat A/B dipertahankan.';
   else if(seen.length===2&&(d(seen[0].center,seen[1].center)<HOLD_SEPARATION||
     iou(seen[0].box,seen[1].box)>OVERLAP_LIMIT))
-   hold(IDS,'Torso tumpang tindih; A/B ditahan sampai kembali terpisah.');
+   hold(IDS,'Torso tumpang tindih; A/B ditahan sampai kembali terpisah.',true);
   else if(this.tracks.size===1){
    const id=this.tracks.has('A')?'A':'B';
    const scored=seen.map((c,i)=>({i,cost:this.cost(id,c,time)}))
@@ -177,8 +181,27 @@ export class MoveNetIdentityTracker{
   }else{
    const straight=this.cost('A',seen[0],time)+this.cost('B',seen[1],time);
    const crossed=this.cost('A',seen[1],time)+this.cost('B',seen[0],time);
-   if(!finite(Math.min(straight,crossed))||Math.abs(straight-crossed)<MARGIN)
-    hold(IDS,'Pasangan A/B ambigu; menunggu lintasan dan warna stabil.');
+   const margin=Math.abs(straight-crossed);
+   // During crossing, compare both original torso signatures and motion
+   // histories before assigning a side. Raw detector index can freely flip.
+   const a=this.tracks.get('A')!,b=this.tracks.get('B')!;
+   const colorA0=colorDistance(a.appearance,seen[0].appearance);
+   const colorA1=colorDistance(a.appearance,seen[1].appearance);
+   const colorB0=colorDistance(b.appearance,seen[0].appearance);
+   const colorB1=colorDistance(b.appearance,seen[1].appearance);
+   const hasColor=[colorA0,colorA1,colorB0,colorB1].every(v=>v!==null);
+   const colorMargin=hasColor?
+    Math.abs((colorA0!+colorB1!)-(colorA1!+colorB0!)):0;
+   const distinctClothing=hasColor&&
+    (colorDistance(a.appearance,b.appearance)??0)>=.22;
+   const reliableMotion=a.velocity.x*b.velocity.x<0&&
+    Math.abs(a.velocity.x-b.velocity.x)>.24&&
+    time-Math.max(a.atMs,b.atMs)<=850;
+   const reIdEvidence=!this.crossingActive||
+    (distinctClothing&&colorMargin>=.2)||
+    (!hasColor&&reliableMotion&&margin>=.22);
+   if(!finite(Math.min(straight,crossed))||margin<MARGIN||!reIdEvidence)
+    hold(IDS,'S0.6.4: crossing belum pasti; proyeksi A/B ditahan.');
    else if(straight<crossed){
     this.commit('A',seen[0],time,assigned,recovered);
     this.commit('B',seen[1],time,assigned,recovered);
@@ -186,6 +209,8 @@ export class MoveNetIdentityTracker{
     this.commit('A',seen[1],time,assigned,recovered);
     this.commit('B',seen[0],time,assigned,recovered);
    }
+   // Both old identities must complete independent three-frame recovery.
+   if(assigned.length===2)this.crossingActive=false;
   }
   const actors=IDS.map((id):D2State=>{
    const a=assigned.find(item=>item.id===id),t=this.tracks.get(id);
