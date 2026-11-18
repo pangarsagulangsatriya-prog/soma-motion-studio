@@ -35,6 +35,9 @@ import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/MultiPoseGaitRouter.ts';
 import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
+import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
+import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
+ feedTouchFloorInteraction,paintFloorInteractionOverlay} from '../../footprints/scenes/interactionAdapters.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {ArchivalMappingPanel} from '../../footprints/stage-optics/ArchivalMappingPanel.tsx';
 import {stageBodyPreviewGate} from './footprintsUX.ts';
@@ -54,6 +57,7 @@ import './inline-setup-assistant.css';
 import './s6-8-7-simplified-stage.css';
 import './s6-8-8-1-full-skeleton.css';
 import './ux-r1-stage.css';
+import './floor-interaction.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -93,6 +97,11 @@ export function FootprintsStageWorkspace({
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
+ const interactionCanvas=useRef<HTMLCanvasElement>(null);
+ const interactionEngineRef=useRef(new FloorInteractionEngine());
+ const touchPointers=useRef(new Set<number>());
+ const [touchDemo,setTouchDemo]=useState(false);
+ const [floorInteractionStats,setFloorInteractionStats]=useState({actors:0,contacts:0,events:0});
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
@@ -113,6 +122,43 @@ export function FootprintsStageWorkspace({
   bodyProjectionRef.current.reset();
  },[experimentalKind,experimentClip]);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
+ const interactionSource:FloorInteractionSource|null=touchDemo?'touch':
+  experimentalKind??(sourceStatus.selection==='phone'?'phone':
+   sourceStatus.selection==='webcam'?'camera':null);
+ useEffect(()=>{
+  interactionEngineRef.current.reset(interactionSource);
+  touchPointers.current.clear();
+  setFloorInteractionStats({actors:0,contacts:0,events:0});
+ },[interactionSource,experimentClip]);
+ // The same preview event bus accepts all four source adapters and Touch.
+ // It draws an independent SOFTWARE overlay; existing FloorSession/projector
+ // raster and its hardware authorization are never modified.
+ useEffect(()=>{
+  let raf=0,lastPaint=0,lastRead=0;
+  const draw=(now:number)=>{
+   raf=requestAnimationFrame(draw);
+   if(now-lastPaint<1000/24)return;
+   lastPaint=now;
+   const engine=interactionEngineRef.current;
+   const current=experimentFrameRef.current;
+   const time=touchDemo?now:
+    current?.kind==='video'?(current.video?.currentTime??current.timeMs/1000)*1000:
+    current?.kind==='simulator'?current.timeMs:now;
+   engine.expire(time);
+   const canvas=interactionCanvas.current;
+   if(canvas&&!previewHoldRef.current)
+    paintFloorInteractionOverlay(canvas,engine,time,Math.max(1200,footprint.life*1000));
+   if(now-lastRead>=500){
+    lastRead=now;const snap=engine.snapshot;
+    const next={actors:snap.actors.length,
+     contacts:snap.counts.contact+snap.counts.touch,events:snap.events.length};
+    setFloorInteractionStats(prev=>prev.actors===next.actors&&
+     prev.contacts===next.contacts&&prev.events===next.events?prev:next);
+   }
+  };
+  raf=requestAnimationFrame(draw);
+  return()=>cancelAnimationFrame(raf);
+ },[touchDemo,footprint.life]);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
  const [inspectorOpen,setInspectorOpen]=useState(false);
@@ -232,6 +278,16 @@ export function FootprintsStageWorkspace({
    lastDraw=now;
    const f=frameRef.current,v=videoRef.current;
    const identities=router.status;
+   if(!touchDemo&&cameraOn&&bodySelected){
+    const binding=cameraBinding(v);
+    feedLiveFloorInteractions(interactionEngineRef.current,{
+     source:sourceStatus.selection==='phone'?'phone':'camera',
+     frame:f,identity:identities,performerCount,tracker,
+     cameraMatched:!!binding&&tracker.boundCamera===cameraBindingKey(binding),
+     videoAspect:v?.videoWidth&&v.videoHeight?v.videoWidth/v.videoHeight:16/9,
+     nowMs:now
+    });
+   }
    const gate=stageBodyPreviewGate({
     cameraOn:cameraOn&&bodySelected,tracked:f.tracked,source:f.source,ageMs:now-f.time,
     performerCount,visibleCount:identities.visible.length,
@@ -303,7 +359,7 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen]);
+ },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen,touchDemo,sourceStatus.selection]);
  // S0.2/S0.3: AI snapshots update a per-actor motion buffer; software
  // canvases paint at DISPLAY refresh (rAF), not only on AI arrival or 30 FPS.
  // FLOOR continues to render only measured contact events.
@@ -321,9 +377,11 @@ export function FootprintsStageWorkspace({
    if(current?.kind==='video'){
     const atMs=(current.video?.currentTime??current.timeMs/1000)*1000;
     const frame={...current,timeMs:atMs};
+    if(!touchDemo)feedVideoFloorInteractions(interactionEngineRef.current,frame);
     if(source!==current.video||current.video?.seeking||
        (lastVideoAt>=0&&atMs<lastVideoAt-50)){
      buffer.reset();flowTracker.reset();maskTracker.reset();bodyBridge.reset();lastFloorAt=-Infinity;
+     if(!touchDemo)interactionEngineRef.current.reset('video');
     }
     source=current.video;
     lastVideoAt=atMs;
@@ -365,18 +423,37 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[experimentalKind,footprint,skeletonVisible]);
+ },[experimentalKind,footprint,skeletonVisible,touchDemo]);
  useEffect(()=>{
   if(experimentalKind!=='simulator')return;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
   const frame=experimentFrameRef.current;
   if(!frame||frame.kind!=='simulator')return;
+  if(!touchDemo)feedSimulatorFloorInteractions(interactionEngineRef.current,frame);
   if(cam)paintExperimentCamera(cam,frame,skeletonVisible);
   if(!footprint.hold){
    if(body)paintExperimentBody(body,frame,skeletonVisible);
    if(floor)paintExperimentFloor(floor,frame,footprint);
   }
- },[experimentalKind,experimentFrame,footprint,skeletonVisible]);
+ },[experimentalKind,experimentFrame,footprint,skeletonVisible,touchDemo]);
+ const floorPointer=(event:PointerEvent<HTMLDivElement>,kind:'down'|'move'|'up')=>{
+  if(!touchDemo||operatorMode)return;
+  const target=event.currentTarget,rect=target.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  if(kind==='down'){
+   event.preventDefault();event.stopPropagation();
+   target.setPointerCapture(event.pointerId);
+   touchPointers.current.add(event.pointerId);
+  }else if(!touchPointers.current.has(event.pointerId))return;
+  const x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+  feedTouchFloorInteraction(interactionEngineRef.current,{
+   kind,pointerId:event.pointerId,x,y,atMs:performance.now()
+  });
+  if(kind==='up'){
+   touchPointers.current.delete(event.pointerId);
+   if(target.hasPointerCapture(event.pointerId))target.releasePointerCapture(event.pointerId);
+  }
+ };
  const projectionState=projection.status.connected?
   projection.transport==='blackout'?'Blackout aktif':projection.transport==='hold'?'Output ditahan':'Output aktif':
   'Output belum tersambung';
@@ -757,8 +834,13 @@ export function FootprintsStageWorkspace({
  <span>{experimentalKind?'Preview eksperimen':'Mask · preview'}</span></div>
       </div>
       <div className="fp-stage-surface fp-preview-floor">
-       <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>{experimentalKind?
- experimentalKind==='video'?'Estimasi video 2D':'Meter virtual':'Metric floor'}</small>
+       <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span>
+        <small className="fp-floor-bus-status" title="Satu bus presence, movement dan contact untuk seluruh input">
+         BUS · {floorInteractionStats.actors} sumber gerak · {floorInteractionStats.contacts} kontak
+        </small>
+        <button type="button" className="fp-floor-touch-toggle" aria-pressed={touchDemo}
+         title="Simulasikan kaki dengan klik/touch; preview software saja"
+         onClick={()=>setTouchDemo(active=>!active)}>Touch Demo {touchDemo?'ON':'OFF'}</button>
         <button type="button" className="fp-preview-focus-action"
          aria-label={focusPreview==='floor'?'Kembali ke Split':'Perbesar FLOOR'}
          aria-pressed={focusPreview==='floor'}
@@ -766,17 +848,33 @@ export function FootprintsStageWorkspace({
          onClick={event=>selectPreviewFocus('floor',event.currentTarget)}>
          {focusPreview==='floor'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
         </button></div>
-       <div className="fp-stage-canvas-area fp-stage-focus-surface" role="button"
-        tabIndex={0} aria-label="Fokus preview FLOOR"
-        title="Klik untuk memperbesar FLOOR"
-        onClick={event=>selectPreviewFocus('floor',event.currentTarget)}
+       <div className="fp-stage-canvas-area fp-stage-focus-surface"
+        data-touch-demo={touchDemo} role={touchDemo?'group':'button'}
+        tabIndex={0} aria-label={touchDemo?'Touch Demo · sentuh FLOOR':'Fokus preview FLOOR'}
+        title={touchDemo?'Sentuh bidang untuk membuat pijakan simulasi':'Klik untuk memperbesar FLOOR'}
+        onPointerDown={event=>floorPointer(event,'down')}
+        onPointerMove={event=>floorPointer(event,'move')}
+        onPointerUp={event=>floorPointer(event,'up')}
+        onPointerCancel={event=>floorPointer(event,'up')}
+        onClick={event=>{if(!touchDemo)selectPreviewFocus('floor',event.currentTarget);}}
         onKeyDown={event=>{
          if(event.key==='Enter'||event.key===' '){
-          event.preventDefault();selectPreviewFocus('floor',event.currentTarget);
+          event.preventDefault();
+          if(touchDemo){
+           const time=performance.now();
+           feedTouchFloorInteraction(interactionEngineRef.current,{
+            kind:'down',pointerId:1001,x:.5,y:.5,atMs:time});
+           feedTouchFloorInteraction(interactionEngineRef.current,{
+            kind:'up',pointerId:1001,x:.5,y:.5,atMs:time+1});
+          }else selectPreviewFocus('floor',event.currentTarget);
          }
         }}>
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
+        <canvas ref={interactionCanvas} className="fp-floor-interaction-layer"
+         width={1280} height={720} aria-hidden="true"/>
+        {touchDemo&&<span className="fp-floor-touch-hint" aria-hidden="true">
+         Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>
         {!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
         {footprint.hold&&<span className="fp-stage-hold-label">
