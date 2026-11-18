@@ -39,7 +39,7 @@ type Props={
  onArchiveHydraChange?:(enabled:boolean)=>void;
  hydraSettings?:HydraFootprintSettings;
  onHydraSettingsChange?:(patch:Partial<HydraFootprintSettings>)=>void;
- hydraStatus?:string;previewResumeRevision?:number;
+ hydraStatus?:string;previewResumeRevision?:number;previewBlackout?:boolean;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
@@ -49,7 +49,7 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
@@ -68,14 +68,15 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [bodyStatus,setBodyStatus]=useState('Menunggu frame tubuh.');
  const [hint,setHint]=useState('');
  // Software preview starts enabled in Compose. Physical output still requires the existing routing/QA panel.
- const [blackout,setBlackout]=useState(false);
+ const [blackout,setBlackout]=useState(previewBlackout);
  const [previewLive,setPreviewLive]=useState(true);
  useEffect(()=>{
   const onGlobalBlackout=()=>setBlackout(true);
   window.addEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout);
   return()=>window.removeEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout);
  },[]);
- useEffect(()=>{if(previewResumeRevision>0){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision]);
+ useEffect(()=>{if(previewBlackout)setBlackout(true);},[previewBlackout]);
+ useEffect(()=>{if(previewResumeRevision>0&&!previewBlackout){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision,previewBlackout]);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
  const motionClocks=useRef(new Map<string,MotionRecipeCue>());
@@ -369,7 +370,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  </section>;
  return <div className={'s64-root'+(embedded?' s64-embedded':'')} role="region" aria-label="Compose Workspace — media dan layer">
   <div className="s64-heading"><div><h2>Compose</h2></div><button type="button" onClick={onClose}>Track</button></div>
-  <div className="s64-safety"><label><input type="checkbox" checked={!blackout}
+  <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
    onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
    <span>{eventInfo}</span>
    <details className="soma-ia-display-options"><summary>Display</summary>
