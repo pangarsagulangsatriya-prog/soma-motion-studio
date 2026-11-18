@@ -315,6 +315,11 @@ export function FootprintsStageWorkspace({
   return()=>cancelAnimationFrame(raf);
  },[floorScene,proceduralRuntime]);
  const selectFloorScene=(next:'footprints'|FloorSceneId)=>{
+  if(next==='footprints'&&sceneAudioSourceRef.current==='microphone'){
+   audioRequest.current++;
+   setSceneAudioSource('off');
+   void audioMeter.current.disable();
+  }
   const bus=interactionEngineRef.current,scene=snowfallScene;
   scene.reset(bus.generation);
   scene.consume(bus.recent,bus.generation,false);
