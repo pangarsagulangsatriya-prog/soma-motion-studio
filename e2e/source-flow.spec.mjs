@@ -1,13 +1,11 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 test.setTimeout(90_000);
 
 async function chooseSource(page,label){
- await page.locator('.fp-source-switch-trigger').click();
- const choice=page.locator('.fp-source-switch-option').filter({hasText:label});
- await expect(choice).toBeVisible();
- await choice.click();
- await expect(page.locator('.fp-source-switch-trigger')).toContainText(label);
+ await selectStageSource(page,label);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText(label);
 }
 
 async function createLocalVideo(page){
@@ -45,13 +43,13 @@ async function createLocalVideo(page){
 test('Source E2E: webcam → phone → video → simulator → webcam',async({page,context})=>{
  await context.grantPermissions(['camera'],{origin:'http://127.0.0.1:4173'});
  await page.goto('/');
- await expect(page.locator('.fp-source-switch-trigger')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toBeVisible();
 
  await chooseSource(page,'Webcam laptop');
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-experimental','false');
 
  await chooseSource(page,'Kamera HP');
- await expect(page.locator('.fp-source-switch-trigger')).toContainText('Kamera HP');
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Kamera HP');
  // Pairing UI only; a physical phone and WebRTC connectivity still require bench QA.
 
  await chooseSource(page,'Video MP4');
@@ -94,7 +92,7 @@ test('Source E2E: MP4 cannot open physical projector output',async({page})=>{
  await page.goto('/');
  await chooseSource(page,'Video MP4');
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-experimental','true');
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const router=page.locator('.stage-dual');
  await expect(router).toBeVisible();
  await expect(router).toContainText('Dua output fisik terkunci');
