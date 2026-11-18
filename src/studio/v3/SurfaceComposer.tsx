@@ -40,10 +40,11 @@ type Props={
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
  motionEvents?:()=>readonly FootMotionEventV2[];
+ motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,archiveHydraCanvas,onArchiveHydraChange}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
@@ -69,6 +70,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
  const motionClocks=useRef(new Map<string,MotionRecipeCue>());
  const seenMotionEvents=useRef(new Set<string>());
+ const activeMotionSession=useRef<string|null>(null);
  const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
@@ -80,6 +82,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  
  const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const motionEventsRef=useRef(motionEvents);motionEventsRef.current=motionEvents;
+ const motionSessionRef=useRef(motionSession);motionSessionRef.current=motionSession;
  const [eventInfo,setEventInfo]=useState('Belum ada event gerak.');
  
  const canvas=useRef<HTMLCanvasElement>(null);
@@ -204,7 +207,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    const rawCue=effectClock.current.get(layer.id);
    const cue=physical&&rawCue?.kind.startsWith('simulation:')?undefined:rawCue;
    if(layer.recipe==='motion-v2'){
-    envelope=physical?0:motionRecipeEnvelope(motionClocks.current.get(layer.id)??null,now);
+    envelope=physical||!identitySafeRef.current?0:motionRecipeEnvelope(motionClocks.current.get(layer.id)??null,now);
    }else if(layer.recipe!=='none'){
     if(!cue)envelope=0;
     else{const age=now-cue.started;
@@ -285,6 +288,13 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   let timeout=0;
   const consume=()=>{
    const events=motionEventsRef.current?.()??[];
+   const session=motionSessionRef.current?.()??'unknown';
+   if(activeMotionSession.current!==session){
+    activeMotionSession.current=session;motionClocks.current.clear();seenMotionEvents.current.clear();
+    // Do not re-trigger historical contacts when opening Compose or switching source.
+    for(const old of events)seenMotionEvents.current.add(old.eventId);
+    timeout=window.setTimeout(consume,85);return;
+   }
    for(const event of events.slice(-120)){
     if(seenMotionEvents.current.has(event.eventId))continue;
     seenMotionEvents.current.add(event.eventId);
