@@ -69,20 +69,24 @@ export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRe
      </button>
     </div>
    </>:<span className="fp-transport-idle">{experiment?
-    experiment==='video'?'Footprints · sumber video 2D aktif':'Footprints · simulasi 3D aktif':
-    'Footprints · siap memilih sumber'}</span>}
+    experiment==='video'?'MP4 · preview software':'Simulasi 3D · preview software':
+    'Pilih sumber gerak'}</span>}
   </div>
   <div className="fp-transport-safety" role="group" aria-label="Projector dan Blackout">
    <div className="fp-transport-software" data-level={output.state}
     title={output.detail} aria-label={`Status output software: ${output.label}. ${output.detail}`}>
     <span className="fp-transport-software-led" aria-hidden="true"/>
-    <span><small>OUTPUT SOFTWARE</small><strong>{output.label}</strong></span>
+    <span><small>OUTPUT SOFTWARE</small><strong>{
+     output.state==='idle'&&output.label==='Jendela output belum tersambung'?
+      'Belum terhubung':output.label
+    }</strong></span>
    </div>
    <button type="button" className="fp-transport-projector" onClick={onOutputSettings}
     title="Buka Projector untuk kalibrasi, QA dan Live output fisik">
     <SlidersHorizontal size={16}/><span>Projector</span>
    </button>
    <button type="button" className="fp-transport-blackout" onClick={onBlackout}
+    aria-label="BLACKOUT · perintahkan semua output software gelap"
     title="Perintahkan Blackout ke seluruh output software; gunakan pemutus fisik bila darurat">
     <MonitorOff size={17}/><span>BLACKOUT</span>
    </button>
