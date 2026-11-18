@@ -133,7 +133,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
  const navigate=(target:'compose'|'map'|'perform')=>{
   setLabsOpen(false);clearTip();
   if(mobile){setExpanded(false);requestAnimationFrame(()=>toggleRef.current?.focus({preventScroll:true}));}
-  if(target==='compose')onFootprints();else if(target==='map')onProjection();else onPerform();
+  if(target==='compose')onFootprints();else if(target==='map')onStageTool('mapping');else onPerform();
  };
  const action:Record<LabsId,()=>void>={
   liquid:()=>onInstrument('liquid'),echo:()=>onInstrument('echo'),
@@ -213,7 +213,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      <span className="soma-rail-item-copy"><b>Compose</b><small>Gerak &amp; visual</small></span>
     </button>
     <button type="button" className="soma-rail-item soma-primary-destination"
-     aria-current={workspace==='projection'&&!perform?'page':undefined}
+     aria-current={(selectedTool==='mapping'||workspace==='projection')&&!perform?'page':undefined}
      aria-label="Map" aria-describedby={tip?.label==='Map'?'soma-rail-tooltip':undefined}
      title={expanded?'Map · kalibrasi dan output fisik':undefined}
      onMouseEnter={e=>showTip('Map',e.currentTarget,'hover')}
