@@ -11,6 +11,7 @@ import {SOFTWARE_PREVIEW_BLACKOUT_EVENT} from './stagePreviewCommands.ts';
 import './SurfaceComposer.css';
 import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
 import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
+import {canRenderComposeSurface} from './composePreviewGate.ts';
 import {catalogRecipe,catalogThumbnailSvg} from '../../footprints/scenes/artisticCatalog.ts';
 import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings} from '../../footprints/scenes/hydraFootprintModel.ts';
 import './vis-r3-gallery.css';
@@ -169,7 +170,8 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   if(blackoutRef.current||!previewLiveRef.current)return;
   const body=s!=='FLOOR';
   const currentMask=s==='BODY A'?maskCache.current.A:s==='BODY B'?maskCache.current.B:null;
-  if(body?(!maskCache.current.safe||!currentMask):!floorReadyRef.current&&(physical||!experimentLocked))return;
+  if(!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
+   bodyMaskSafe:maskCache.current.safe,bodyMaskPresent:!!currentMask}))return;
   // Reuse the clean Footprints FLOOR raster when no imported media is
   // selected. Presence/touch diagnostics are in another software-only canvas.
   // Hardware projection remains under the existing five-point QA gate.
