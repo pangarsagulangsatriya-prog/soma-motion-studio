@@ -45,3 +45,65 @@
 @media(max-width:720px){.stage-dual-outputs,.stage-dual-quad{grid-template-columns:1fr}
  .stage-dual-measure{grid-template-columns:1fr 1fr}
  .stage-dual-measure button{grid-column:1/-1}}
+
+
+/* V3.5: optical permission stays in the existing dual-surface router. */
+.stage-dual .stage-dual-perform-quick{
+ display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:12px;padding:13px 15px;
+ border:1px solid #70896d;border-radius:8px;
+ background:#1d3022;color:#e3efdb;
+}
+.stage-dual .stage-dual-perform-quick>div{
+ flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:5px;
+}
+.stage-dual .stage-dual-perform-quick b{font-size:12px;letter-spacing:.07em}
+.stage-dual .stage-dual-perform-quick small{
+ color:#b9d0b4;font-size:11px;line-height:1.45;
+}
+.stage-dual .stage-dual-perform-go{
+ min-height:44px;padding:10px 15px;
+ border:1px solid #a6c38b;border-radius:7px;
+ background:#375840;color:#f1f6e6;font-weight:700;
+ white-space:nowrap;cursor:pointer;
+}
+.stage-dual .stage-dual-perform-go:disabled{
+ opacity:.43;cursor:not-allowed;background:#27382b;
+}
+.stage-dual .stage-dual-perform-go:focus-visible,
+.stage-dual .stage-dual-profile :is(summary,button,input,select):focus-visible{
+ outline:2px solid #d4ebb0;outline-offset:2px;
+}
+.stage-dual .stage-dual-profile{
+ padding:10px;border:1px solid #49624f;border-radius:7px;
+ background:#192b1d;
+}
+.stage-dual .stage-dual-profile summary{
+ padding:4px 6px;color:#d6e5d1;font-size:12px;font-weight:600;cursor:pointer;
+}
+.stage-dual .stage-dual-profile[open]{
+ display:flex;flex-direction:column;gap:8px;
+}
+.stage-dual .stage-dual-profile p{
+ margin:0;color:#b9c9b6;font-size:11px;line-height:1.5;
+}
+.stage-dual .stage-dual-profile label{
+ display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+ font-size:11px;color:#c9d8c6;
+}
+.stage-dual .stage-dual-profile :is(select,input){
+ min-width:170px;max-width:100%;flex:1 1 160px;
+ background:#0f1e13;color:#e1ede0;
+ border:1px solid #647d62;border-radius:5px;padding:8px;
+}
+.stage-dual .stage-dual-profile button{
+ width:fit-content;min-height:36px;padding:7px 11px;
+ border:1px solid #65876c;border-radius:5px;
+ background:#2e4935;color:#e3ecdd;cursor:pointer;
+}
+.stage-dual .stage-dual-profile button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:700px){
+ .stage-dual .stage-dual-perform-quick{align-items:stretch}
+ .stage-dual .stage-dual-perform-go{width:100%}
+ .stage-dual .stage-dual-profile button{min-height:44px}
+}
