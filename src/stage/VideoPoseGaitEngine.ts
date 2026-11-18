@@ -54,6 +54,7 @@ export class VideoPoseGaitEngine{
  private readonly sessionId='replay-'+(++replaySessionSerial);
  private model:PoseLandmarker|null=null;
  private worker:ReplayInferenceWorkerClient|null=null;
+ private bootWorker:ReplayInferenceWorkerClient|null=null;
  private workerDisabled=false;
  private workerFailureReason='';
  private inference:NonNullable<ReplayAnalysisSnapshot['inference']>={state:'loading',error:'',rawPoseCount:0,requests:0};
@@ -163,14 +164,15 @@ export class VideoPoseGaitEngine{
    typeof createImageBitmap==='function'){
    let worker:ReplayInferenceWorkerClient|null=null;
    try{
-    worker=new ReplayInferenceWorkerClient();await worker.init();
+    worker=new ReplayInferenceWorkerClient();this.bootWorker=worker;
+    await worker.init();this.bootWorker=null;
     if(this.disposed){worker.dispose();return;}
     this.worker=worker;this.workerFailureReason='';this.meter.setBackend('worker');
     this.inference.state='ready';
     this.status='Analisis worker siap. Video dan AI berjalan terpisah.';
     this.emit(true);return;
    }catch(error){
-    worker?.dispose();this.workerDisabled=true;
+    worker?.dispose();this.bootWorker=null;this.workerDisabled=true;
     this.workerFailureReason=error instanceof Error?error.message:String(error);
    }
   }
@@ -307,6 +309,7 @@ export class VideoPoseGaitEngine{
     this.workerFailureReason=error instanceof Error?error.message:String(error);
     this.meter.setBackend('pending',this.workerFailureReason);
     this.reset('Inferensi worker terputus; memulihkan pelacakan CPU.');
+    this.queuedForced={video,atSeconds:video.currentTime,capFPS};
     void this.loadMainModels().catch(e=>{
      this.inference.state='error';
      this.inference.error='Fallback CPU gagal: '+(e instanceof Error?e.message:String(e));
@@ -436,6 +439,7 @@ export class VideoPoseGaitEngine{
  dispose(){
   if(this.disposed)return;
   this.disposed=true;this.epoch++;this.queuedForced=null;
+  this.bootWorker?.dispose();this.bootWorker=null;
   this.worker?.dispose();this.worker=null;this.model?.close();this.model=null;
   this.actorTracker.reset();this.temporalAnalyzer.reset();this.handLimbAnalyzer.reset();
   this.semanticEngine.reset();

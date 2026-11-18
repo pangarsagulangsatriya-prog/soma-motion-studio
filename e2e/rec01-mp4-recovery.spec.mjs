@@ -69,7 +69,7 @@ test('REC-01 late completed inference is measured but cannot emit contacts',asyn
   engine.worker={detect:async()=>{await new Promise(r=>setTimeout(r,25));video.currentTime+=.5;return {landmarks:[],worldLandmarks:[],poseMs:25};},dispose(){}};
   engine.meter.setBackend('worker');
   for(let i=0;i<3;i++){
-   engine.process(video,video.currentTime,18);
+   for(let request=0;request<10;request++)engine.process(video,video.currentTime,18);
    await new Promise(r=>setTimeout(r,40));
   }
   const snapshot=engine.snapshot;engine.dispose();return snapshot;
@@ -77,7 +77,28 @@ test('REC-01 late completed inference is measured but cannot emit contacts',asyn
  expect(result.performance.processedFrames).toBe(3);
  expect(result.performance.poseFps).toBeGreaterThan(0);
  expect(result.performance.staleResults).toBe(3);
+ expect(result.performance.busyDrops).toBe(27);
+ expect(result.inference.requests).toBe(3);
  expect(result.sampledFrames).toBe(0);
  expect(result.events).toEqual([]);
  expect(result.inference.state).toBe('stale');
+});
+
+test('REC-01 disposing during model boot terminates the pending worker immediately',async({page})=>{
+ await page.goto('/');
+ const observed=await page.evaluate(async()=>{
+  const {VideoPoseGaitEngine}=await import('/src/stage/VideoPoseGaitEngine.ts');
+  const NativeWorker=window.Worker;let terminated=0;
+  class BootOnlyWorker extends EventTarget{
+   postMessage(){} terminate(){terminated++;}
+  }
+  window.Worker=BootOnlyWorker;
+  try{
+   const engine=new VideoPoseGaitEngine(()=>{});
+   const init=engine.init();engine.dispose();
+   await init;
+   return {terminated,ready:engine.ready};
+  }finally{window.Worker=NativeWorker;}
+ });
+ expect(observed).toEqual({terminated:1,ready:false});
 });
