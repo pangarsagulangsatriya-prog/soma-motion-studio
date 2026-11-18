@@ -19,9 +19,10 @@ export function deriveFootprintsInputStatus(input:{
  cameraError:string;phoneActive:boolean;switchBusy:boolean;switchError:string;
 }):FootprintsInputStatus{
  const {selection,cameraOn,cameraBusy,cameraError,phoneActive,switchBusy,switchError}=input;
- if(switchError||cameraError&&selection==='webcam'&&!cameraOn)
+ // Camera failures and camera busy states must not leak into MP4 / 3D sessions.
+ if(switchError||(selection==='webcam'&&cameraError&&!cameraOn))
   return {selection,phase:'error',message:switchError||cameraError};
- if(switchBusy||cameraBusy)
+ if(switchBusy||(selection==='webcam'&&cameraBusy))
   return {selection,phase:'connecting',message:'Menyiapkan '+(selection?SOURCE_LABELS[selection]:'sumber')+'…'};
  if(selection==='phone'){
   return {selection,phase:phoneActive&&cameraOn?'ready':'pairing',
