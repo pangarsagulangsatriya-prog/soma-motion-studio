@@ -6,6 +6,7 @@ import {defaultFloorSpace} from './footprints/spatial/coordinates.ts';
 import {preserveCurrentSource} from './studio/v3/sourceE2EGuard.ts';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
+import {requestSoftwarePreviewBlackout} from './studio/v3/stagePreviewCommands.ts';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
 import {MultiPoseGaitRouter} from './footprints/live/MultiPoseGaitRouter';
 import {floorCalibrationSignature} from './projection/floorBridge';
@@ -426,6 +427,7 @@ export default function App(){
      if(!footprintsOperator)setFootprintsOperator(true);
     }} onBlackout={()=>{
      requestStageBlackout(()=>projection.setTransport('blackout'));
+     requestSoftwarePreviewBlackout();
      updateFootprint({hold:true});
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
