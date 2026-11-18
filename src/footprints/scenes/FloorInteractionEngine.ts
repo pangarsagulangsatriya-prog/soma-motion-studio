@@ -23,6 +23,7 @@ export type FloorInteractionSnapshot={
  actors:string[];counts:Record<FloorInteractionKind,number>;
 };
 const kinds=['presence','movement','contact','touch','release'] as const;
+let engineInstanceSerial=0;
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 const unit=(n:unknown)=>finite(n)&&n>=0&&n<=1;
 const valid=(o:FloorObservation)=>unit(o.x)&&unit(o.y)&&unit(o.confidence)&&
@@ -38,7 +39,8 @@ export class FloorInteractionEngine{
  private seenOrder:string[]=[];
  private serial=0;
  private epoch=0;
- private sessionId='floor-session-0';
+ private readonly instanceId=++engineInstanceSerial;
+ private sessionId='floor-session-'+this.instanceId+'-0';
  get generation(){return this.epoch;}
  get activeSource(){return this.source;}
  get currentSessionId(){return this.sessionId;}
@@ -47,7 +49,7 @@ export class FloorInteractionEngine{
  }
  reset(source:FloorInteractionSource|null=null){
   this.epoch++;
-  this.sessionId='floor-session-'+this.epoch;
+  this.sessionId='floor-session-'+this.instanceId+'-'+this.epoch;
   this.source=source;this.events=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
   this.seenContacts.clear();this.seenOrder=[];this.serial=0;
  }
@@ -79,6 +81,7 @@ export class FloorInteractionEngine{
  contact(o:FloorContactInput):FloorInteractionEvent|null{
   if(!this.accepts(o)||!o.eventId||o.eventId.length>180||
    !['left','right'].includes(o.foot)||!o.verified||
+   o.actorId.startsWith('unassigned-')||
    (o.kind==='touch'&&o.source!=='touch')||
    (o.kind!=='touch'&&o.source==='touch'))return null;
   // An untrusted visual observation never becomes a contact.
