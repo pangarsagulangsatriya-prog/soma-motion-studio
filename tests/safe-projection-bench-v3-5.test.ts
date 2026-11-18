@@ -17,7 +17,7 @@ test('V3.5 supervised stopwatch starts once and supports explicit new session',(
  assert.equal(startSetupBench(session,start+10000),start);
  assert.equal(startSetupBench(session,start+10000,true),start+10000);
  assert.equal(readSetupStart(session,start+10000),start+10000);
- assert.equal(readSetupStart(session,start+3600001),null);
+ assert.equal(readSetupStart(session,start+10000+3600001),null);
 });
 test('V3.5 cannot record physical acceptance from software state alone',()=>{
  const session=memory(),local=memory(),start=1730000000000;
