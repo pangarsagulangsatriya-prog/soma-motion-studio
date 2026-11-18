@@ -290,8 +290,10 @@ export function FootprintsStageWorkspace({
   if(floorScene==='footprints'||floorScene==='snowfall'||!proceduralCanvas.current)return;
   const canvas=proceduralCanvas.current;
   const bus=interactionEngineRef.current;
+  // Switching scenes discards old events synchronously in selectFloorScene.
+  // Do not skip again in this effect: an immediate first step can arrive
+  // between React commit and effect and must remain eligible to trigger.
   proceduralRuntime.setScene(floorScene,bus.generation);
-  proceduralRuntime.skipExisting(bus.recent,bus.generation);
   let raf=0,last=0,lastRead=0;
   const draw=(now:number)=>{
    raf=requestAnimationFrame(draw);
