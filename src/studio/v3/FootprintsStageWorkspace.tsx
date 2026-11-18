@@ -587,7 +587,11 @@ export function FootprintsStageWorkspace({
     cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
     frameFresh={frameFresh} cameraMatched={cameraMatched}
     outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
-    performerCount={performerCount} devices={cameraDevices}
+    performerCount={performerCount}
+    visibleCount={identityStatus.visible.length}
+    identityAmbiguous={identityStatus.ambiguous}
+    identityMatchedFrame={identityStatus.observedFrameTime===frameRef.current.time}
+    devices={cameraDevices}
     deviceId={selectedCameraId} videoRef={videoRef}
     tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
     onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
