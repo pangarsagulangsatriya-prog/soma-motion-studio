@@ -640,7 +640,17 @@ export function FootprintsStageWorkspace({
         onClick={event=>selectPreviewFocus('input',event.currentTarget)}>
         {focusPreview==='input'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
        </button>}</div>
-      <div className="fp-stage-video-content">
+      <div className="fp-stage-video-content"
+       role={!calibrationOpen?'button':undefined}
+       tabIndex={!calibrationOpen?0:undefined}
+       title={!calibrationOpen?'Klik untuk memperbesar INPUT':undefined}
+       aria-label={!calibrationOpen?'Fokus preview INPUT':undefined}
+       onClick={event=>{if(!calibrationOpen)selectPreviewFocus('input',event.currentTarget);}}
+       onKeyDown={event=>{
+        if(!calibrationOpen&&(event.key==='Enter'||event.key===' ')){
+         event.preventDefault();selectPreviewFocus('input',event.currentTarget);
+        }
+       }}>
        <canvas ref={cameraCanvas} width={768} height={432}
         onPointerDown={onMainCameraPoint}
         data-calibration-active={calibrationOpen&&!!calibrationOverlay}
@@ -709,7 +719,15 @@ export function FootprintsStageWorkspace({
          onClick={event=>selectPreviewFocus('body',event.currentTarget)}>
          {focusPreview==='body'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
         </button></div>
-       <div className="fp-stage-canvas-area">
+       <div className="fp-stage-canvas-area fp-stage-focus-surface" role="button"
+        tabIndex={0} aria-label="Fokus preview BODY"
+        title="Klik untuk memperbesar BODY"
+        onClick={event=>selectPreviewFocus('body',event.currentTarget)}
+        onKeyDown={event=>{
+         if(event.key==='Enter'||event.key===' '){
+          event.preventDefault();selectPreviewFocus('body',event.currentTarget);
+         }
+        }}>
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
         {!experimentalKind&&totalFrames===0&&!footprint.hold&&
@@ -731,7 +749,15 @@ export function FootprintsStageWorkspace({
          onClick={event=>selectPreviewFocus('floor',event.currentTarget)}>
          {focusPreview==='floor'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
         </button></div>
-       <div className="fp-stage-canvas-area">
+       <div className="fp-stage-canvas-area fp-stage-focus-surface" role="button"
+        tabIndex={0} aria-label="Fokus preview FLOOR"
+        title="Klik untuk memperbesar FLOOR"
+        onClick={event=>selectPreviewFocus('floor',event.currentTarget)}
+        onKeyDown={event=>{
+         if(event.key==='Enter'||event.key===' '){
+          event.preventDefault();selectPreviewFocus('floor',event.currentTarget);
+         }
+        }}>
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
         {!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
