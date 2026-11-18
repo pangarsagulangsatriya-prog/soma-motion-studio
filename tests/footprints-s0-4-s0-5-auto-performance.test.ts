@@ -79,7 +79,7 @@ test('S0.5 locks a QA-approved stance heel/toe against small detected jitter',()
  assert.deepEqual(result.lockedFeet,['left']);
  assert.ok(Math.abs(result.pose[29].x-pose(.25)[29].x)<1e-6);
  assert.equal(result.pose[30].x,shifted.rawPoses[0][30].x);
- assert.equal(shifted.rawPoses[0][29].x,.245,'raw landmarks remain unmodified');
+ assert.ok(Math.abs(shifted.rawPoses[0][29].x-.245)<1e-10,'raw landmarks remain unmodified');
 });
 
 test('S0.5 never anchors a pose without a verified contact event and approved identity',()=>{
