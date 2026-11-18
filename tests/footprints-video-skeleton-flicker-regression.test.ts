@@ -92,7 +92,7 @@ test('Flicker fix: active Stage and BODY painter have render-gap and neutral raw
  const painter=readFileSync(new URL('../src/studio/v3/experimentStagePainter.ts',import.meta.url),'utf8');
  const buffer=readFileSync(new URL('../src/stage/actorMotionStateBuffer.ts',import.meta.url),'utf8');
  assert.match(stage,/buffer\.present\(atMs,flow\)/);
- assert.match(stage,/paintExperimentBody\(body,frame,skeletonVisible,motion,masks\)/);
+ assert.match(stage,/paintExperimentBody\(body,frame,skeletonVisible,\s*motion,bodyOutput\?\?undefined,true\)/);
  assert.match(painter,/actor\.tentative\?false:\[actor\.label\]/);
  assert.match(painter,/Decoder-not-ready must not clear/);
  assert.match(painter,/if\(!snapshot\)return/);
