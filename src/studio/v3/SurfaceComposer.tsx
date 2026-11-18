@@ -10,6 +10,8 @@ import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/sta
 import './SurfaceComposer.css';
 import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
 import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
+import {catalogRecipe,catalogThumbnailSvg} from '../../footprints/scenes/artisticCatalog.ts';
+import './vis-r3-gallery.css';
 import './ux-r3-compose.css';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -26,6 +28,7 @@ const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY
 const valid=(v:unknown):v is Snapshot=>{if(!v||typeof v!=='object')return false;const x=v as Snapshot;return x.version===1&&surfaces.includes(x.selected)&&surfaces.every(s=>Array.isArray(x.composition?.[s])&&x.composition[s].length<=24&&x.composition[s].every(l=>l&&typeof l.id==='string'&&typeof l.name==='string'&&typeof l.mediaId==='string'&&typeof l.opacity==='number'&&typeof l.scale==='number'&&Array.isArray(l.points)));};
 type Props={
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
+ visualFloorCanvas?:RefObject<HTMLCanvasElement|null>;previewFloorEnabled?:boolean;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
@@ -33,7 +36,7 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,visualFloorCanvas,previewFloorEnabled=false,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,initialOutputQA=false,experimentLocked=false,embedded=false,sceneId='footprints',onSceneChange}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
@@ -143,7 +146,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   // selected. Presence/touch diagnostics are in another software-only canvas.
   // Hardware projection remains under the existing five-point QA gate.
   if(s==='FLOOR'&&!readyMedia('FLOOR')){
-   const source=floorCanvas.current;
+   const source=!physical&&previewFloorEnabled?visualFloorCanvas?.current??floorCanvas.current:floorCanvas.current;
    if(source&&source.width>=16&&source.height>=16)ctx.drawImage(source,0,0,w,h);
    return;
   }
@@ -286,8 +289,11 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    <aside className="s64-column"><h3>Scene Library</h3><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
      {COMPOSE_SCENES.map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
        onClick={()=>onSceneChange?.(scene.id)} title={"Pilih scene "+scene.name}>
-       <span className="uxr3-scene-swatch" style={{background:scene.defaultColor}} aria-hidden="true"/>
-       <span>{scene.name}</span>
+       <img className="visr3-scene-thumb"
+        src={'data:image/svg+xml,'+encodeURIComponent(catalogThumbnailSvg(catalogRecipe(scene.id)))}
+        alt="" aria-hidden="true"/>
+       <span className="visr3-scene-copy"><strong>{scene.name}</strong>
+        <small>{catalogRecipe(scene.id).subtitle}</small></span>
       </button>)}
      </div><h3>Surface Navigator</h3>{surfaces.map(s=><button key={s} className={selected===s?'active':''} onClick={()=>{setSelected(s);setSelectedLayer(0);}}>{s}<small>{composition[s].length} layer</small></button>)}<h3>Media Library</h3><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>patch({mediaId:m.id,name:m.name})}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media tetap lokal di browser. Pilih ulang berkas setelah reload.</small></aside>
    <section className="s64-center"><div className="uxr3-compose-preview-bar"><strong>STAGE PREVIEW</strong><div role="group" aria-label="Pilih bidang preview">
