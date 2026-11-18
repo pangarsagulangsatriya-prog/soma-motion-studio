@@ -78,16 +78,16 @@ export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
    {warning.length>0?<strong>{warning[0]}{warning.length>1?' · +'+(warning.length-1)+' peringatan':''}</strong>
     :<strong>Tracking utama siap menurut telemetry software</strong>}
   </div>
-  <nav className="fp-operator-cues" aria-label="Cue monitor operator">
+  <nav className="fp-operator-cues" aria-label="Pilihan layout monitor operator">
    {OPERATOR_CUES.map((q,i)=><button key={q.id} type="button"
     aria-pressed={i===index} title={q.description} onClick={()=>onSelect(i)}>
      {q.name}</button>)}
   </nav>
   <div className="fp-operator-dock" role="toolbar" aria-label="Operator performance controls">
    <div className="fp-operator-dock-group">
-    <button type="button" onClick={onPrevious} disabled={index===0}>
+    <button type="button" onClick={onPrevious} disabled={activeSlot===0}>
      <ArrowLeft size={17}/> Sebelumnya</button>
-    <button type="button" onClick={onNext} disabled={index===OPERATOR_CUES.length-1}
+    <button type="button" onClick={onNext} disabled={activeSlot===cueGrid.slots.length-1}
      className="fp-operator-go">GO · Cue Berikutnya <ArrowRight size={18}/></button>
    </div>
    <div className="fp-operator-dock-group">
