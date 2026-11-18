@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCircle,
- Layers3,Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Play,Save,ScanFace,Search,
+ Layers3,Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Save,ScanFace,Search,
  Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
@@ -20,8 +20,8 @@ const labsIcons:Record<LabsId,typeof Footprints>={
  sound:AudioLines,capture:Camera,archive:BookOpen,video:Film,rehearsal:Activity,simulator:Box
 };
 
-export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,selectedTool,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
