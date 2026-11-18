@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState,type RefObject,type PointerEvent} 
 import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
+import {QuickStageSetup} from './QuickStageSetup.tsx';
 import {inlineSetupHint,type InlineSetupAction} from './inlineSetupModel.ts';
 import {InlineFloorCalibration} from './InlineFloorCalibration.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
@@ -61,6 +62,8 @@ type Props={
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
+ cameraDevices:MediaDeviceInfo[];selectedCameraId:string;
+ onSelectCameraDevice:(deviceId:string)=>Promise<void>;
  phoneActive:boolean;sourceStatus:FootprintsInputStatus;
  experimentPuppet:DirectPuppetSession;experimentPuppetRevision:number;
  onSwitchSource:(choice:FootprintsInputChoice)=>Promise<boolean>;
@@ -80,6 +83,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
  navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ cameraDevices,selectedCameraId,onSelectCameraDevice,
  sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
  onPhoneStream,onPhoneDisconnect,
@@ -579,6 +583,15 @@ export function FootprintsStageWorkspace({
       {item.title}</button>)}
     </div>
    </div>
+   <QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
+    cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
+    frameFresh={frameFresh} cameraMatched={cameraMatched}
+    outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
+    performerCount={performerCount} devices={cameraDevices}
+    deviceId={selectedCameraId} videoRef={videoRef}
+    tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
+    onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
+    onOpenProjector={openProjectorQA} onBlackout={onBlackout}/>
    <FootprintsSourceSwitcher status={sourceStatus} onChoose={chooseSource}
     onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(true);setCalibrationOpen(false);}}/>
 
