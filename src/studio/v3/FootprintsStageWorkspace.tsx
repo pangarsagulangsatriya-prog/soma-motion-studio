@@ -1004,6 +1004,7 @@ export function FootprintsStageWorkspace({
      floorReady={floorStatus.confirmed&&cameraMatched}
      floorEvents={()=>tracker.session?.events??[]}
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
+     motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
      onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setComposerStartQA(false);}}/>}
     <div className="fp-stage-overview" hidden={view!=='stage'||composerOpen}>
