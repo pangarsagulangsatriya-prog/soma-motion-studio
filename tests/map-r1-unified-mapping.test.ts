@@ -34,8 +34,11 @@ test('MAP-R1: navigation goes to Stage Map instead of opening legacy Projector w
  const nav=source('../src/studio/v3/GlobalNav.tsx');
  const app=source('../src/App.tsx');
  const stage=source('../src/studio/v3/FootprintsStageWorkspace.tsx');
- assert.match(nav,/target==='map'\)onStageTool\('mapping'\)/);
- assert.match(app,/onStageTool=\{\(tool:StageNavigationTool\)=>/);
+ const local=source('../src/studio/v3/StageModuleNav.tsx');
+ assert.match(nav,/aria-label="Stage Studio"/);
+ assert.match(local,/id:'map',label:'Map'/);
+ assert.match(app,/onNavigateStageWorkspace=\{workspace=>\{/);
+ assert.match(app,/workspace==='map'\?'mapping'/);
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
  assert.match(stage,/<SurfaceComposer embedded sceneId=\{floorScene\} mapMode=\{mappingOpen\}/);
 });

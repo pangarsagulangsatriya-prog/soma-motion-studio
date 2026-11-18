@@ -1,8 +1,8 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 async function chooseVideo(page){
  await page.goto('/?lab=1');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
 }
@@ -23,12 +23,11 @@ test('Pose-based arms and legs panel retains independent actors without finger t
 
 test('MP4 pose-based limb tracking keeps physical projector outputs locked',async({page})=>{
  await page.goto('/');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await expect(page.getByRole('button',{name:'Sembunyikan kerangka tubuh'})).toBeVisible();
  await expect(page.locator('.fp-preview-body')).toBeVisible();
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const route=page.locator('.stage-dual');
  await expect(route).toContainText('Dua output fisik terkunci');
  const open=route.getByRole('button',{name:'Buka output'});

@@ -1,0 +1,150 @@
+/* IA-R1 · one global Stage 1 module; four local workspaces. */
+.soma-v3 .workspace:has(>.soma-primary-sidebar[data-expanded=true]){--soma-sidebar-width:176px}
+.soma-v3 .soma-primary-sidebar{background:#101913;border-right-color:#314538}
+.soma-v3 .soma-primary-nav-list{gap:5px;padding-top:14px}
+.soma-v3 .soma-primary-sidebar .soma-rail-item{min-height:48px;border-radius:8px;font-size:13px}
+.soma-v3 .soma-primary-sidebar .soma-rail-item-copy b{font-size:13px;font-weight:600}
+.soma-v3 .soma-primary-sidebar .soma-rail-item[aria-current=page]{background:#294131;border-color:#587455;color:#eaf3e4}
+.soma-v3 .soma-primary-sidebar .soma-rail-item[aria-current=page]::before{width:3px;background:#c2daa9}
+.soma-v3 .soma-primary-sidebar .soma-primary-labs-launch{border-top-color:#2e4536}
+.soma-v3 .soma-primary-header .v3-brand span{font-weight:600;letter-spacing:.06em}
+.soma-v3 .soma-primary-header .soma-uxr1-health>span{background:transparent;border-color:#334739;color:#b6c6b8;font-size:11px}
+.soma-v3 .soma-primary-header .soma-uxr1-source>summary{border-color:#55735a;background:#263d2d;color:#edf4e6;font-size:11px;font-weight:600}
+.soma-v3 .soma-primary-header .soma-ia-blackout{display:flex;align-items:center;gap:7px;justify-content:center;min-height:37px;padding:7px 12px;border:1px solid #916859;border-radius:7px;background:#3b2624;color:#f5d5c7;font-weight:650;font-size:12px;white-space:nowrap}
+.soma-v3 .soma-primary-header .soma-ia-blackout:hover{background:#59302b;border-color:#c1957f}
+.soma-v3 .soma-primary-header .soma-ia-blackout:focus-visible{outline:2px solid #f0c3a6;outline-offset:2px}
+.soma-v3 .soma-primary-header .v3-help{border-color:transparent;background:transparent;color:#aabda9}
+.soma-v3 .soma-primary-header{background:#101813}
+
+/* Track — clear input monitor and deliberately small setup area. */
+.soma-ia-four-workspaces .soma-ia-track-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;margin:0 0 12px;padding:0 2px 10px;border-bottom:1px solid #344b39}
+.soma-ia-four-workspaces .soma-ia-track-title{display:flex;align-items:baseline;gap:13px;min-width:0}
+.soma-ia-four-workspaces .soma-ia-track-title h1{margin:0;color:#ebf1e9;font-weight:620;letter-spacing:-.035em;font-size:22px}
+.soma-ia-four-workspaces .soma-ia-track-title span{font-size:11px;color:#a5b9aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.soma-ia-four-workspaces .soma-ia-track-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.soma-ia-four-workspaces .soma-ia-advanced-button{border:1px solid #485e4b;border-radius:7px;min-height:36px;padding:7px 12px;background:#1d2c21;color:#d7e8d3;font-size:11px;font-weight:600}
+.soma-ia-four-workspaces .soma-ia-advanced-button[aria-expanded=true]{background:#304c36;border-color:#9bb98b}
+.soma-ia-four-workspaces[data-workspace=track] .fp-floor-scene-controls{display:none!important}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview{align-items:start}
+.soma-ia-four-workspaces[data-workspace=track] .fp-transport-safety{display:none}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout{gap:12px}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video,.soma-ia-four-workspaces[data-workspace=track] .fp-stage-surface{border-radius:10px}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-surface-head{font-size:11px;letter-spacing:.03em}
+.soma-ia-four-workspaces[data-workspace=track] .fp-quick-setup{z-index:75}
+.soma-ia-four-workspaces[data-workspace=track] .fp-quick-setup>summary{font-size:11px;border-radius:7px}
+
+/* Compose — canvas first; long instructions and duplicate projection routes are gone. */
+.soma-ia-four-workspaces[data-workspace=compose] .s64-root.s64-embedded{background:#101712;border-color:#3a5040;padding:12px 14px 14px;border-radius:12px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-heading h2{font-size:22px;letter-spacing:-.035em;font-weight:620}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-heading button{font-size:11px;min-height:34px;padding:6px 10px}
+.soma-ia-four-workspaces .soma-ia-compose-state{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:11px;color:#b9cbbb}
+.soma-ia-four-workspaces .soma-ia-compose-state button{border:1px solid #a0bd91;border-radius:6px;background:#304737;color:#ecf6e4;padding:6px 10px;min-height:33px;font-size:11px;font-weight:600}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout{grid-template-columns:minmax(176px,220px) minmax(0,1fr) minmax(186px,238px);gap:12px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-column h3{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#b9d0b5}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .uxr3-scene-library{max-height:min(64dvh,570px);gap:7px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .uxr3-scene-card{min-height:78px;padding:7px;border-color:#334839;border-radius:8px;transition:background .12s,border-color .12s}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .uxr3-scene-card:focus-visible{outline:2px solid #d4ecb5;outline-offset:2px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-center{min-width:0}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-stage{overflow:hidden;border:1px solid #334b3b;border-radius:9px;background:#000}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-stage canvas{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-safety{display:flex;align-items:center;gap:12px;min-height:33px;margin:0 0 9px;padding:5px 8px;background:#172119;border:1px solid #304436;border-radius:8px;color:#d2e1d0}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-safety>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#a7bcae;font-size:10px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-runtime-status{font-size:10px;line-height:1.3;color:#9cb3a0}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-runtime{display:none}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-bar{flex-wrap:wrap}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-bar span{font-size:10px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-test-events{margin-top:4px}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-media,
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-layers,
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-hydra,
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-presets,
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-display-options{min-width:0;border:1px solid #364d3d;border-radius:8px;background:#18241c;padding:6px 8px}
+.soma-ia-four-workspaces[data-workspace=compose] :is(.soma-ia-media,.soma-ia-layers,.soma-ia-hydra,.soma-ia-presets,.soma-ia-display-options)>summary{cursor:pointer;font-size:11px;font-weight:650;color:#dce9d8;padding:6px 2px}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-media[open],
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-layers[open],
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-hydra[open],
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-presets[open]{display:flex;flex-direction:column;gap:9px}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-hydra label{display:flex;flex-direction:column;gap:5px;font-size:11px}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-hydra label:first-of-type{flex-direction:row;align-items:center}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-hydra :is(select,input[type=range]){width:100%}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-layers{margin:10px 0 0}
+.soma-ia-four-workspaces[data-workspace=compose] .soma-ia-media .s64-upload{margin-top:2px}
+.soma-ia-four-workspaces[data-workspace=compose] .s64-column:last-child{align-self:start}
+
+/* Map and Perform keep the same Stage state, focus the operator's immediate task. */
+.soma-ia-four-workspaces[data-workspace=map] .map-r1-workspace>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.soma-ia-four-workspaces[data-workspace=map] .map-r1-workspace>header h2{margin:0;font-size:22px;letter-spacing:-.03em}
+.soma-ia-four-workspaces[data-workspace=map] .map-r1-workspace>p[role=status]{color:#adbdab;font-size:11px}
+.soma-ia-four-workspaces[data-workspace=perform] .fp-operator-heading h2{font-size:22px;letter-spacing:-.025em}
+.soma-ia-four-workspaces[data-workspace=perform] .fp-operator-heading>div>p{display:none}
+.soma-ia-four-workspaces[data-workspace=perform] .ops-r1-cue-grid header>span{font-size:10px}
+
+/* Focus, reduced motion and small screens */
+.soma-ia-four-workspaces :is(button,summary,input,select):focus-visible{outline:2px solid #d8edb7;outline-offset:2px}
+@media(max-width:1230px){
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout{grid-template-columns:minmax(160px,190px) minmax(0,1fr)}
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout>.s64-column:last-child{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout>.s64-column:last-child>h3{grid-column:1/-1}
+}
+@media(max-width:760px){
+ .soma-v3 .soma-primary-header .soma-ia-blackout{padding:6px 8px;min-width:36px}
+ .soma-v3 .soma-primary-header .soma-ia-blackout span{display:none}
+ .soma-v3 .soma-primary-header .soma-uxr1-health>span{display:none}
+ .soma-ia-four-workspaces .soma-ia-track-head{flex-wrap:wrap;gap:7px}
+ .soma-ia-four-workspaces .soma-ia-track-title h1{font-size:18px}
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout{display:flex;flex-direction:column}
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-center{order:-1}
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .uxr3-scene-library{grid-template-columns:repeat(3,minmax(0,1fr));max-height:245px}
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout>.s64-column:last-child{display:flex}
+}
+@media(prefers-reduced-motion:reduce){.soma-v3 .soma-primary-sidebar .soma-rail-item,.soma-ia-four-workspaces .uxr3-scene-card{transition:none!important}}
+
+/* The old shell hides its only Source picker under 430px. Preserve source access. */
+@media(max-width:430px){
+ .soma-v3 .soma-primary-header .soma-uxr1-health{display:flex!important;flex:1 1 0;min-width:0;margin:0 4px}
+ .soma-v3 .soma-primary-header .soma-uxr1-source{flex:1 1 auto;min-width:0}
+ .soma-v3 .soma-primary-header .soma-uxr1-source>summary{font-size:10px;max-width:100%;padding:7px 6px}
+ .soma-v3 .soma-primary-header .v3-brand b{font-size:16px;letter-spacing:.12em}
+ .soma-v3 .soma-primary-header .v3-global-actions{gap:1px}
+ .soma-v3 .soma-primary-header .v3-help{width:30px;min-width:30px}
+}
+
+/* Module shell: one global entry. Other modules can supply their own local navigation. */
+.soma-v3 .soma-primary-nav-list{padding-top:12px}
+.soma-v3 .soma-stage-module-launch{min-height:52px}
+.soma-ia-four-workspaces .soma-stage-module-nav{
+ display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+ min-height:55px;padding:7px 10px;margin-bottom:12px;
+ border:1px solid #354a3a;border-radius:10px;background:#17231b;
+}
+.soma-ia-four-workspaces .soma-stage-module-name{
+ font-size:10px;font-weight:700;letter-spacing:.10em;
+ white-space:nowrap;color:#a4baa5;padding:7px 5px;
+}
+.soma-ia-four-workspaces .soma-stage-module-tabs{
+ display:flex;align-items:center;gap:4px;flex:1;min-width:0;
+}
+.soma-ia-four-workspaces .soma-stage-module-tab{
+ display:inline-flex;align-items:center;justify-content:center;flex:0 1 auto;
+ min-width:74px;min-height:38px;padding:8px 12px;
+ border:1px solid transparent;border-radius:7px;
+ background:transparent;color:#b5c5b6;
+ font-size:12px;font-weight:580;cursor:pointer;
+}
+.soma-ia-four-workspaces .soma-stage-module-tab:hover{
+ background:#283b2d;color:#e3efdd;
+}
+.soma-ia-four-workspaces .soma-stage-module-tab[aria-current=page]{
+ background:#324b37;border-color:#6b8b66;color:#f1f7e8;
+ font-weight:700;
+}
+.soma-ia-four-workspaces .soma-stage-module-tab:focus-visible{
+ outline:2px solid #d8edb7;outline-offset:2px;
+}
+@media(max-width:760px){
+ .soma-ia-four-workspaces .soma-stage-module-nav{gap:5px;padding:6px}
+ .soma-ia-four-workspaces .soma-stage-module-name{display:none}
+ .soma-ia-four-workspaces .soma-stage-module-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;width:100%}
+ .soma-ia-four-workspaces .soma-stage-module-tab{min-width:0;min-height:44px;padding:7px 3px;font-size:11px}
+}

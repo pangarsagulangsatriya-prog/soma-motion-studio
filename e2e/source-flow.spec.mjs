@@ -1,13 +1,11 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 test.setTimeout(90_000);
 
 async function chooseSource(page,label){
- await page.locator('.fp-source-switch-trigger').click();
- const choice=page.locator('.fp-source-switch-option').filter({hasText:label});
- await expect(choice).toBeVisible();
- await choice.click();
- await expect(page.locator('.fp-source-switch-trigger')).toContainText(label);
+ await selectStageSource(page,label);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText(label);
 }
 
 async function createLocalVideo(page){
@@ -45,13 +43,13 @@ async function createLocalVideo(page){
 test('Source E2E: webcam → phone → video → simulator → webcam',async({page,context})=>{
  await context.grantPermissions(['camera'],{origin:'http://127.0.0.1:4173'});
  await page.goto('/');
- await expect(page.locator('.fp-source-switch-trigger')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toBeVisible();
 
  await chooseSource(page,'Webcam laptop');
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-experimental','false');
 
  await chooseSource(page,'Kamera HP');
- await expect(page.locator('.fp-source-switch-trigger')).toContainText('Kamera HP');
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Kamera HP');
  // Pairing UI only; a physical phone and WebRTC connectivity still require bench QA.
 
  await chooseSource(page,'Video MP4');
@@ -94,7 +92,7 @@ test('Source E2E: MP4 cannot open physical projector output',async({page})=>{
  await page.goto('/');
  await chooseSource(page,'Video MP4');
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-experimental','true');
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const router=page.locator('.stage-dual');
  await expect(router).toBeVisible();
  await expect(router).toContainText('Dua output fisik terkunci');
@@ -107,4 +105,38 @@ test('Source E2E: MP4 cannot open physical projector output',async({page})=>{
  await router.getByRole('button',{name:'Sinyal dikirim'}).click();
  await expect(router.locator('.stage-wysiwyg-card[data-preview-signal=blackout]')).toHaveCount(2);
  expect(popups).toBe(0);
+});
+
+test('IA-R1: four-stage UX keeps one source and one stage session',async({page})=>{
+ await page.goto('/');
+ const destinations=page.locator('.soma-primary-nav-list .soma-primary-destination');
+ await expect(destinations).toHaveCount(4);
+ for(const name of ['Track','Compose','Map','Perform'])
+  await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ await chooseSource(page,'Simulasi 3D');
+ const stage=page.locator('.fp-stage-workspace');
+ await expect(stage).toHaveAttribute('data-workspace','track');
+ await expect(stage).toHaveAttribute('data-experimental','true');
+
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-root')).toBeVisible();
+ await expect(page.locator('.uxr3-scene-card')).toHaveCount(14);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await page.getByRole('button',{name:'Map',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','map');
+ await expect(page.locator('.map-r1-workspace')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await page.getByRole('button',{name:'Perform',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','perform');
+ await expect(page.locator('.ops-r1-cue-slots .ops-r1-slot')).toHaveCount(8);
+ await expect(page.locator('.fp-stage-overview')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
+
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await expect(stage).toHaveAttribute('data-workspace','compose');
+ await expect(page.locator('.s64-root')).toBeVisible();
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Simulasi 3D');
 });

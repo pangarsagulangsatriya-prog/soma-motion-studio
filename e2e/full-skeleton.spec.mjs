@@ -1,9 +1,9 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 async function selectSource(page,name){
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:name}).click();
- await expect(page.locator('.fp-source-switch-trigger')).toContainText(name);
+ await selectStageSource(page,name);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText(name);
 }
 
 test('S6.8.8.1 MP4 full skeleton visible by default, isolated from output',async({page})=>{
@@ -33,7 +33,7 @@ test('S6.8.8.1 live camera and phone have same skeleton toggle; simulator retain
  await expect(page.getByRole('button',{name:'Sembunyikan kerangka tubuh'})).toBeVisible();
  await selectSource(page,'Kamera HP');
  await expect(page.getByRole('button',{name:'Sembunyikan kerangka tubuh'})).toBeVisible();
- await expect(page.locator('.fp-source-switch-trigger')).toContainText('Kamera HP');
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Kamera HP');
  await selectSource(page,'Simulasi 3D');
  await expect(stage).toHaveAttribute('data-experimental','true');
  await expect(page.locator('.fp-full-skeleton-switch')).toHaveCount(0);
@@ -48,7 +48,7 @@ test('S6.8.8.1 visual skeleton mode does not unlock physical MP4 output',async({
  await selectSource(page,'Video MP4');
  await page.getByRole('button',{name:'Sembunyikan kerangka tubuh'}).click();
  await page.getByRole('button',{name:'Tampilkan kerangka tubuh 33 titik'}).click();
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const router=page.locator('.stage-dual');
  await expect(router).toContainText('Dua output fisik terkunci');
  const open=router.getByRole('button',{name:'Buka output'});

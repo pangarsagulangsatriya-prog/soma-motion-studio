@@ -1,17 +1,17 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 test.setTimeout(90_000);
 
 async function selectSource(page,name){
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:name}).click();
- await expect(page.locator('.fp-source-switch-trigger')).toContainText(name);
+ await selectStageSource(page,name);
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText(name);
 }
 
 test('S6.8.8.2 video defaults to automatic actor count and exposes manual override only in Lab',async({page})=>{
  await page.goto('/?lab=1');
  await selectSource(page,'Video MP4');
- await expect(page.locator('.fp-source-switch-trigger')).toContainText('Video MP4');
+ await expect(page.locator('.soma-uxr1-source > summary')).toContainText('Video MP4');
  await expect(page.locator('.fp-preview-body')).toBeVisible();
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
  const advanced=page.locator('.fp-experiment-advanced-details summary');
@@ -30,7 +30,7 @@ test('S6.8.8.2 A/B diagnostics do not authorize physical projector for MP4',asyn
  await page.goto('/');
  await selectSource(page,'Video MP4');
  await expect(page.getByRole('button',{name:'Sembunyikan kerangka tubuh'})).toBeVisible();
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const router=page.locator('.stage-dual');
  await expect(router).toContainText('Dua output fisik terkunci');
  const open=router.getByRole('button',{name:'Buka output'});

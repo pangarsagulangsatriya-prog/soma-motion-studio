@@ -6,6 +6,7 @@ import {defaultFloorSpace} from './footprints/spatial/coordinates.ts';
 import {preserveCurrentSource} from './studio/v3/sourceE2EGuard.ts';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
+import {requestSoftwarePreviewBlackout} from './studio/v3/stagePreviewCommands.ts';
 import {LiveFloorTrackingEngine,cameraBinding,cameraBindingKey} from './footprints/live/LiveFloorTrackingEngine';
 import {MultiPoseGaitRouter} from './footprints/live/MultiPoseGaitRouter';
 import {floorCalibrationSignature} from './projection/floorBridge';
@@ -63,8 +64,9 @@ export default function App(){
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
  const [footprintsOperator,setFootprintsOperator]=useState(false);
+ const [softwareBlackout,setSoftwareBlackout]=useState(false);
  const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
- const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('live');
+ const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('tracking');
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const experimentPuppetRef=useRef<DirectPuppetSession|null>(null);
  if(!experimentPuppetRef.current)experimentPuppetRef.current=new DirectPuppetSession(defaultFloorSpace(8,6));
@@ -351,6 +353,8 @@ export default function App(){
   if(e.code==='Tab'){revealHUD();return;}
    const target=e.target as HTMLElement,insideControl=!!target.closest('input,select,textarea,button,a,summary,[role=tab],[role=menuitem],[contenteditable=true]');
    if(keyboardIsInControl(target.tagName,target.isContentEditable,insideControl)||e.ctrlKey||e.metaKey||e.altKey)return;
+   // Perform owns B/Esc/Space/arrow shortcuts; legacy instrument keys must not steal them.
+   if(footprintsActive&&footprintsOperator&&!clean)return;
   mouse.current.shift=e.shiftKey;if(e.code==='KeyP')mouse.current.keyPinch=e.type==='keydown';
   if(e.type==='keydown'&&!e.repeat){if(e.code==='Space'){e.preventDefault();panic();return;}
    if(e.code==='Escape'&&controlsOpen){setControlsOpen(false);return;}if(document.querySelector('dialog[open]'))return;if(e.code==='Escape'&&cameraCue.frame.open){cameraCue.close();return;}
@@ -370,8 +374,8 @@ export default function App(){
     onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
-     setSelectedStageTool('live');
-     setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'live'}));}}
+     setSelectedStageTool('composer');
+     setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'composer'}));}}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
@@ -406,22 +410,43 @@ export default function App(){
     }}
     selectedTool={selectedStageTool}
     sourceSelection={footprintsChoice} sourceBusy={sourceSwitchBusy||cameraBusy}
-    onSelectSource={choice=>{void switchFootprintsSource(choice);}}
-    sourceLabel={footprintsChoice==='video'?'MP4 · rehearsal':footprintsChoice==='simulator'?'3D · simulation':footprintsChoice==='phone'?'Phone camera':footprintsChoice==='webcam'?'Webcam':'No source'}
-    trackingLabel={sourceSwitchBusy?'Connecting':cameraOn?'Camera connected · check tracking':footprintsChoice==='video'||footprintsChoice==='simulator'?'Preview source':'Tracking offline'}
-    outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Physical output locked':projection.status.connected?'Output connected · verify QA':'Output disconnected'}
+    onSelectSource={choice=>{
+     // Route new sources into Track for upload, pairing and pose diagnostics.
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene('footprints');setSelectedStageTool('tracking');
+     setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));
+     void switchFootprintsSource(choice);
+    }}
+    sourceLabel={footprintsChoice==='video'?'Video MP4':footprintsChoice==='simulator'?'Simulasi 3D':footprintsChoice==='phone'?'Kamera HP':footprintsChoice==='webcam'?'Webcam laptop':'Pilih sumber'}
+    trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
+    outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Output terkunci':projection.status.connected?'QA diperlukan':'Output terkunci'}
     onPreset={()=>setModal('presets')}
     onPerform={()=>{
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      selectScene('footprints');
-     setFootprintsOperator(value=>!value);
+     if(!footprintsOperator)setFootprintsOperator(true);
+    }} onBlackout={()=>{
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     requestSoftwarePreviewBlackout();
+     setSoftwareBlackout(true);
+     updateFootprint({hold:true});
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main>
 
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
      navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
+     onNavigateStageWorkspace={workspace=>{
+      // Only Stage Studio owns these local destinations. Other SOMA modules keep their own routes.
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setArchiveActive(false);setProjectionActive(false);setClean(false);selectScene('footprints');
+      if(workspace==='perform'){setFootprintsOperator(true);return;}
+      setFootprintsOperator(false);
+      const tool=workspace==='track'?'tracking':workspace==='map'?'mapping':'composer';
+      setSelectedStageTool(tool);
+      setStageNavigation(last=>({id:(last?.id??0)+1,tool}));
+     }}
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection} audioAnalyser={audioOn?engine.analyser:null}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
@@ -452,8 +477,12 @@ export default function App(){
       cameraCue.close();setProjectionActive(true);
      }}
      operatorMode={footprintsOperator}
-     onExitOperator={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
-      setFootprintsOperator(false);}}
+     softwareBlackout={softwareBlackout} onResumeSoftwarePreview={()=>setSoftwareBlackout(false)}
+     onExitOperator={()=>{
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(false);setSelectedStageTool('composer');
+      setStageNavigation(last=>({id:(last?.id??0)+1,tool:'composer'}));
+     }}
      onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
      onToggleCamera={()=>{
       if(cameraOn&&settings.input==='body'){

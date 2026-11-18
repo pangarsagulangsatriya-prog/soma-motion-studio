@@ -1,9 +1,9 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 async function openVideoLab(page){
  await page.goto('/?lab=1');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
 }
@@ -30,11 +30,10 @@ test('S6.8.8.6 compact seven-kind event timeline supports A/B filters and safe e
 
 test('S6.8.8.6 semantic timeline cannot unlock physical BODY/FLOOR projector',async({page})=>{
  await page.goto('/');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await expect(page.locator('.fp-preview-body')).toBeVisible();
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const outputs=page.locator('.stage-dual').getByRole('button',{name:'Buka output'});
  await expect(outputs).toHaveCount(2);
  for(const output of await outputs.all())await expect(output).toBeDisabled();
