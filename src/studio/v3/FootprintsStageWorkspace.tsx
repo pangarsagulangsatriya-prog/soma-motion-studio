@@ -456,6 +456,7 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(!calibrationOpen)setCalibrationOverlay(null);},[calibrationOpen]);
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
+ const [previewResumeRevision,setPreviewResumeRevision]=useState(0);
  const [mappingOpen,setMappingOpen]=useState(false);
  const [composerStartQA,setComposerStartQA]=useState(false);
  const [videoLabOpen,setVideoLabOpen]=useState(false);
@@ -1045,7 +1046,7 @@ export function FootprintsStageWorkspace({
       <span>{sourceStatus.selection===null?'Pilih sumber di Track':
        experimentalKind==='video'?'MP4 · Preview':experimentalKind==='simulator'?'3D · Preview':
        cameraOn?'Kamera · Preview':'Tracking belum aktif'}</span>
-      {footprint.hold&&<button type="button" onClick={()=>updateFootprint({hold:false})}>
+      {footprint.hold&&<button type="button" onClick={()=>{updateFootprint({hold:false});setPreviewResumeRevision(v=>v+1);}}>
        Resume preview
       </button>}
      </div>}
@@ -1054,6 +1055,7 @@ export function FootprintsStageWorkspace({
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
      hydraSettings={hydraSettings} onHydraSettingsChange={updateHydra} hydraStatus={hydraStatus}
+     previewResumeRevision={previewResumeRevision}
      archiveHydraCanvas={archiveHydraCanvas}
      onArchiveHydraChange={enabled=>{archiveHydraReady.current=enabled;
       if(enabled)setHydraSettings(v=>v.enabled?v:normalizeHydraFootprintSettings({...v,enabled:true}));}}
