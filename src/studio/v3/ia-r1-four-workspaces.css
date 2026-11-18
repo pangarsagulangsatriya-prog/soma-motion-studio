@@ -205,3 +205,15 @@
  .soma-ia-four-workspaces .soma-ia-source-options{grid-template-columns:minmax(0,1fr)}
  .soma-ia-four-workspaces .soma-ia-source-setup{gap:14px}
 }
+
+
+/* UX-01: source selection belongs to Track; global header only reports status. */
+.soma-ia-four-workspaces .soma-ux01-source-switch{position:relative;z-index:80}
+.soma-ia-four-workspaces .soma-ux01-source-switch>summary{list-style:none;cursor:pointer;min-height:36px;display:flex;align-items:center;border:1px solid #68886b;border-radius:7px;padding:7px 12px;background:#2b4432;color:#edf4e6;font-size:12px;font-weight:650}
+.soma-ia-four-workspaces .soma-ux01-source-switch>summary::-webkit-details-marker{display:none}
+.soma-ia-four-workspaces .soma-ux01-source-options{position:absolute;top:calc(100% + 5px);left:0;min-width:175px;display:grid;gap:3px;padding:7px;background:#18271d;border:1px solid #587459;border-radius:9px;box-shadow:0 12px 24px #0008}
+.soma-ia-four-workspaces .soma-ux01-source-options button{min-height:38px;text-align:left;padding:8px 11px;border:0;border-radius:5px;background:transparent;color:#e4f0dc;cursor:pointer}
+.soma-ia-four-workspaces .soma-ux01-source-options button:hover:not(:disabled){background:#304b36}
+.soma-ia-four-workspaces .soma-ux01-source-options button:disabled{opacity:.5;cursor:default}
+.soma-v3 .soma-primary-header .soma-uxr1-health>span:first-child{font-weight:650;color:#e6f0dc}
+@media(max-width:430px){.soma-v3 .soma-primary-header .soma-uxr1-health{display:none!important}.soma-ia-four-workspaces .soma-ux01-source-options{left:auto;right:0}}
