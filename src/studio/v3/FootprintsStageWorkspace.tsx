@@ -992,6 +992,17 @@ export function FootprintsStageWorkspace({
     <span>{experimentalKind==='video'?'MP4 · Pose A/B':experimentalKind==='simulator'?'3D · Puppet':'Source · Pose A/B'}</span>
    </div>
    <div className="soma-ia-track-actions">
+    <details className="soma-ux01-source-switch">
+     <summary aria-label="Ganti sumber gerak">Sumber: {SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Pilih'}</summary>
+     <div className="soma-ux01-source-options" role="group" aria-label="Sumber gerak Track">
+      {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
+       disabled={sourceStatus.phase==='connecting'||sourceStatus.selection===option.id}
+       aria-pressed={sourceStatus.selection===option.id}
+       onClick={e=>{void chooseSource(option.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
+       {option.label}
+      </button>)}
+     </div>
+    </details>
     {sourceStatus.selection==='phone'&&<button type="button" className="soma-ia-advanced-button"
      onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);}}>
      Pairing HP
