@@ -71,7 +71,7 @@ test('BODY flicker regression: verified actor stays bounded through ordinary AI 
    mask('B',.8,'held',atMs,.9,true)
   ]);
   assert.deepEqual(out.actors.map(a=>a.id),['A','B']);
-  assert.ok(out.actors.every(a=>a.alpha>0&&a.tentative));
+  assert.ok(out.actors.every(a=>a.alpha>0&&!a.tentative));
   assert.ok(out.gates.every(g=>g.status==='held'));
   assert.equal(out.physicalOutputAllowed,false);
  }
