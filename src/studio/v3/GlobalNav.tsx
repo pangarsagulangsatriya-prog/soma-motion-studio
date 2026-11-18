@@ -19,13 +19,14 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset}:{
+ onProjection,onPreset,onPerform,onHelp,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel}:{
  workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;
  onStageTool:(tool:StageNavigationTool)=>void;
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
+ sourceLabel:string;trackingLabel:string;outputLabel:string;
 }){
  const [mobile,setMobile]=useState(()=>window.matchMedia(mobileQuery).matches);
  const [expanded,setExpanded]=useState(()=>{
@@ -164,6 +165,11 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
     <div className="v3-brand"><b>SOMA</b>
      <span> / {workspace==='projection'?'MAP':perform?'PERFORM':labsContext?'LABS':'COMPOSE'}</span>
     </div>
+   </div>
+   <div className="soma-uxr1-health" role="status" aria-label="Status Stage Studio">
+    <span title="Sumber gerak yang sedang dipilih">SOURCE: {sourceLabel}</span>
+    <span title="Status koneksi sumber; bukan konfirmasi kualitas deteksi pose">{trackingLabel}</span>
+    <span title="Koneksi output software bukan bukti proyeksi fisik atau QA">{outputLabel}</span>
    </div>
    <div className="v3-global-actions">
     {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
