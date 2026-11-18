@@ -23,29 +23,48 @@ function drawBufferedBodies(ctx:CanvasRenderingContext2D,rect:{x:number;y:number
  for(const actor of motion.actors){
   ctx.save();ctx.globalAlpha=actor.opacity;
   drawSkeletonBodies(ctx,[actor.pose],rect,
-   {labels:[actor.label],colors:[actor.color]});
+   {labels:actor.tentative?false:[actor.label],colors:[actor.color]});
   ctx.restore();
  }
- // Uncertain A/B must never receive a misleading performer label.
- // Show neutral raw detections briefly when identity is held at crossing.
+ // A second body may have valid raw landmarks while its identity is still
+ // reacquiring. Draw that *unassigned* observation in neutral grey rather than
+ // blanking the whole performer. Avoid duplicate rasters near cached bodies.
  const latest=frame.snapshot,age=latest?frame.timeMs-latest.atMs:Infinity;
- if(motion.actors.length===0&&latest&&age>=0&&age<=130&&
-   (latest.ambiguous||latest.rawPoses.length>0)){
-  const raw=latest.rawPoses.filter(p=>p.length===33).slice(0,2);
+ if(latest&&age>=0&&age<=185){
+  const center=(pose:readonly {x:number;y:number}[])=>{
+   const hip=pose[23],shoulder=pose[11];
+   return hip&&shoulder&&[hip.x,hip.y,shoulder.x,shoulder.y].every(Number.isFinite)?
+    {x:(hip.x+shoulder.x)/2,y:(hip.y+shoulder.y)/2}:null;
+  };
+  const raw=latest.rawPoses.flatMap((pose,index)=>{
+   if(pose.length!==33)return [];
+   const assigned=!latest.ambiguous&&latest.actorStates.find(a=>
+    a.presence==='visible'&&a.rawIndex===index);
+   if(assigned&&motion.actors.some(actor=>
+    actor.id===assigned.id&&!actor.tentative))return [];
+   const point=center(pose);
+   const duplicate=point&&motion.actors.some(actor=>{
+    const old=center(actor.pose);
+    return old&&Math.hypot(old.x-point.x,old.y-point.y)<.12;
+   });
+   return duplicate?[]:[pose];
+  }).slice(0,2);
   if(raw.length){
-   ctx.save();ctx.globalAlpha=.42;
+   ctx.save();ctx.globalAlpha=.55;
    drawSkeletonBodies(ctx,raw,rect,
-    {labels:false,colors:['#82968a','#82968a']});
+    {labels:false,colors:['#9daaa4','#9daaa4']});
    ctx.restore();
   }
  }
 }
 export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
  skeleton=true,motion?:MotionVisualFrame){
+ // Decoder-not-ready must not clear the last presented video raster.
+ if(frame.kind==='video'&&(!frame.video||!frame.ready||
+    frame.video.readyState<2||!frame.video.videoWidth||!frame.video.videoHeight))return;
  const ctx=context(canvas,768,432);if(!ctx)return;
  if(frame.kind==='video'){
-  const v=frame.video;
-  if(!v||!frame.ready||v.readyState<2||!v.videoWidth||!v.videoHeight)return;
+  const v=frame.video!;
   const scale=Math.min(768/v.videoWidth,432/v.videoHeight);
   const w=scale*v.videoWidth,h=scale*v.videoHeight;
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
@@ -66,6 +85,8 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
 }
 export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
  skeleton=true,motion?:MotionVisualFrame){
+ // A momentary decoder gap must not black-flash the previous BODY preview.
+ if(frame.kind==='video'&&!frame.ready)return;
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
  if(frame.kind==='simulator'){
   // BODY preview zooms toward the virtual legs; INPUT retains the full stage view.
@@ -75,11 +96,14 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
   return;
  }
  const snapshot=frame.snapshot;
- if(!snapshot||!frame.ready)return;
+ if(!frame.ready)return;
+ // Software preview still renders the last measured A/B poses when a
+ // React snapshot briefly clears during video/worker handover.
  if(skeleton&&motion){
   drawBufferedBodies(ctx,{x:0,y:0,width:w,height:h},motion,frame);
   return;
  }
+ if(!snapshot)return;
  if(skeleton){
   const preview=replaySkeletonDiagnosticPreview(snapshot,frame.timeMs,frame.previousSnapshot);
   const rect={x:0,y:0,width:w,height:h};

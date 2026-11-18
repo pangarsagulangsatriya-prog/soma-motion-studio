@@ -55,3 +55,62 @@ test('S6.8.8.1 visual skeleton mode does not unlock physical MP4 output',async({
  await expect(open).toHaveCount(2);
  for(const button of await open.all())await expect(button).toBeDisabled();
 });
+
+
+test('S0.6 BODY stays non-black through temporary A/B tracking loss in Chromium',async({page})=>{
+ await page.goto('/');
+ const observed=await page.evaluate(async()=>{
+  const {ActorMotionStateBuffer}=await import('/src/stage/actorMotionStateBuffer.ts');
+  const {drawSkeletonBodies}=await import('/src/stage/fullBodySkeleton.ts');
+  const pose=x=>Array.from({length:33},(_,i)=>({
+   x:x+(i%4)*.006,y:.3+(i%7)*.04,z:0,visibility:.95
+  }));
+  const actors=(atMs,a=true,b=true,ambiguous=false)=>({
+   atMs,segment:1,ambiguous,rawPoses:[...(a?[pose(.2)]:[]),...(b?[pose(.7)]:[])],
+   actorStates:[
+    {id:'A',presence:a&&!ambiguous?'visible':'lost',rawIndex:a&&!ambiguous?0:null},
+    {id:'B',presence:b&&!ambiguous?'visible':'lost',
+     rawIndex:b&&!ambiguous?a?1:0:null}
+   ]
+  });
+  const buffer=new ActorMotionStateBuffer();
+  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw Error('No canvas');
+  function paint(atMs){
+   ctx.fillStyle='#000';ctx.fillRect(0,0,640,360);
+   const displayed=buffer.present(atMs);
+   for(const person of displayed.actors){
+    ctx.save();ctx.globalAlpha=person.opacity;
+    drawSkeletonBodies(ctx,[person.pose],{x:0,y:0,width:640,height:360},
+     {labels:person.tentative?false:[person.label],colors:[person.color]});
+    ctx.restore();
+   }
+   const pixels=ctx.getImageData(0,0,640,360).data;
+   let lit=0;
+   for(let i=0;i<pixels.length;i+=4)if(pixels[i]+pixels[i+1]+pixels[i+2]>45)lit++;
+   return {lit,actors:displayed.actors.map(p=>({
+    id:p.id,label:p.label,mode:p.mode,opacity:p.opacity
+   }))};
+  }
+  buffer.ingest(actors(1000));
+  const before=paint(1020);
+  buffer.ingest(actors(1080,false,true));
+  const missing=paint(1120);
+  buffer.ingest(actors(1160,false,true));
+  const missingAgain=paint(1200);
+  buffer.ingest(actors(1240,true,true));
+  const recovered=paint(1260);
+  buffer.ingest(actors(1300,true,true,true));
+  const crossing=paint(1320);
+  return {before,missing,missingAgain,recovered,crossing};
+ });
+ expect(observed.before.lit).toBeGreaterThan(50);
+ expect(observed.missing.lit).toBeGreaterThan(50);
+ expect(observed.missing.actors).toHaveLength(2);
+ expect(observed.missing.actors.find(p=>p.id==='A').label).toBe('');
+ expect(observed.missingAgain.lit).toBeGreaterThan(50);
+ expect(observed.recovered.actors.find(p=>p.id==='A').label).toBe('ACTOR A');
+ expect(observed.crossing.lit).toBeGreaterThan(50);
+ expect(observed.crossing.actors.every(p=>p.label==='')).toBe(true);
+});
