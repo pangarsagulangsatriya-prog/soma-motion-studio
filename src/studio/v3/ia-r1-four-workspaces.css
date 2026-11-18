@@ -100,3 +100,13 @@
  .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout>.s64-column:last-child{display:flex}
 }
 @media(prefers-reduced-motion:reduce){.soma-v3 .soma-primary-sidebar .soma-rail-item,.soma-ia-four-workspaces .uxr3-scene-card{transition:none!important}}
+
+/* The old shell hides its only Source picker under 430px. Preserve source access. */
+@media(max-width:430px){
+ .soma-v3 .soma-primary-header .soma-uxr1-health{display:flex!important;flex:1 1 0;min-width:0;margin:0 4px}
+ .soma-v3 .soma-primary-header .soma-uxr1-source{flex:1 1 auto;min-width:0}
+ .soma-v3 .soma-primary-header .soma-uxr1-source>summary{font-size:10px;max-width:100%;padding:7px 6px}
+ .soma-v3 .soma-primary-header .v3-brand b{font-size:16px;letter-spacing:.12em}
+ .soma-v3 .soma-primary-header .v3-global-actions{gap:1px}
+ .soma-v3 .soma-primary-header .v3-help{width:30px;min-width:30px}
+}
