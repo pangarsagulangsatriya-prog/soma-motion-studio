@@ -84,10 +84,21 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
    basis:'calibrated-estimate',verified:true});
  }
 }
+// Track the analysis generation, not render-effect lifecycle or currentTime jitter.
+// Reset before ingestion, including empty seek/retry snapshots.
+const videoSegments=new WeakMap<FloorInteractionEngine,{video:HTMLVideoElement|null;segment:number;sessionId?:string}>();
 export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
  frame:Extract<ExperimentalFrame,{kind:'video'}>){
- if(engine.activeSource!=='video'||!frame.ready||frame.video?.seeking)return;
+ if(engine.activeSource!=='video'||!frame.ready)return;
  const s=frame.snapshot,at=frame.timeMs;
+ if(s){
+  const previous=videoSegments.get(engine);
+  if(!previous||previous.video!==frame.video||previous.segment!==s.segment||previous.sessionId!==s.sessionId){
+   engine.reset('video');
+  }
+  videoSegments.set(engine,{video:frame.video,segment:s.segment,sessionId:s.sessionId});
+ }
+ if(frame.video?.seeking)return;
  if(!s||at<s.atMs-70||at-s.atMs>500)return;
  engine.keepActors('video',s.ambiguous||s.people.length===0?
   s.rawPoses.slice(0,2).map((_,i)=>'unassigned-'+i):

@@ -666,7 +666,6 @@ export function FootprintsStageWorkspace({
     if(source!==current.video||current.video?.seeking||
        (lastVideoAt>=0&&atMs<lastVideoAt-50)){
      buffer.reset();flowTracker.reset();maskTracker.reset();bodyBridge.reset();lastFloorAt=-Infinity;
-     if(!touchDemo)interactionEngineRef.current.reset('video');
     }
     source=current.video;
     lastVideoAt=atMs;
@@ -1196,7 +1195,7 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-surface-head"><span>{floorScene==='footprints'?'FLOOR · PATH PREVIEW':
         'FLOOR · '+FLOOR_SCENES.find(item=>item.id===floorScene)?.name.toUpperCase()}</span>
         <small className="fp-floor-bus-status" title="Satu bus presence, movement dan contact untuk seluruh input">
-         BUS · {floorInteractionStats.actors} sumber gerak · {floorInteractionStats.contacts} kontak
+         BUS · {floorInteractionStats.actors} aktor · {floorInteractionStats.contacts} kontak di buffer
         </small>
         <button type="button" className="fp-floor-touch-toggle" aria-pressed={touchDemo}
          title="Simulasikan kaki dengan klik/touch; preview software saja"
@@ -1336,10 +1335,10 @@ export function FootprintsStageWorkspace({
        </div>
        <div className="fp-stage-surface-foot"><span>{selectedExperimentFrame?
  selectedExperimentFrame.kind==='simulator'?selectedExperimentFrame.session.events.filter(e=>e.kind==='contact').length+' kontak sintetis':
- (selectedExperimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0)+' kontak video':
+ (selectedExperimentFrame.snapshot?.gaitCounts.contact??0)+' kontak segmen video':
  experimentalKind?'0 kontak':floorStatus.contacts+' kontak'}</span>
         <span>{selectedExperimentFrame?selectedExperimentFrame.kind==='simulator'?
- selectedExperimentFrame.session.events.length:selectedExperimentFrame.snapshot?.events.length??0:
+ selectedExperimentFrame.session.events.length:selectedExperimentFrame.snapshot?.totalEventCount??0:
  experimentalKind?0:floorStatus.events} event</span></div>
       </div>
      </div>

@@ -29,6 +29,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [scrubPosition,setScrubPosition]=useState<number|null>(null);
  const [playing,setPlaying]=useState(false),[analyzing,setAnalyzing]=useState(false);
  const [analysisError,setAnalysisError]=useState('');
+ const [retry,setRetry]=useState(0);
+ const [backend,setBackend]=useState<'auto'|'main'>('auto');
  const [snapshot,setSnapshot]=useState<ReplayAnalysisSnapshot|null>(null);
  const lastSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
  const previousSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
@@ -69,7 +71,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     previousSnapshot.current=previous&&previous.segment===value.segment&&previous.atMs<value.atMs?previous:null;
     lastSnapshot.current=value;setSnapshot(value);
    }
-  });
+  },{backend});
   // Footprints stage is a two-performer rehearsal space. Keep both actor
   // slots active, even when one person's pose is temporarily invisible.
   engine.setPerformers(2);
@@ -94,7 +96,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    disposed=true;generation.current++;
    engine.dispose();if(videoEngine.current===engine)videoEngine.current=null;
   };
- },[kind,clip,videoReady]);
+ },[kind,clip,videoReady,retry,backend]);
  useEffect(()=>{
   if(kind!=='video'||!videoReady)return;
   const el=video.current;if(!el)return;
@@ -135,8 +137,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  };
  const seek=(seconds:number)=>{
   const el=video.current;if(!el||!videoReady)return;
-  el.pause();setPlaying(false);
-  videoEngine.current?.reset('Timeline dipindah. Event segmen sebelumnya disimpan di arsip analisis.');
+  userPaused.current=true;el.pause();setPlaying(false);
   el.currentTime=seconds;setPosition(seconds);
  };
  const commitScrub=()=>{
@@ -164,6 +165,11 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   sessionRef.current.clear();origin.current=performance.now();
   setSimTime(0);setRevision(x=>x+1);setStatus('Sesi simulasi baru.');
  };
+ const trackingError=analysisError||snapshot?.inference?.error||'';
+ const restartTracking=(next:'auto'|'main')=>{
+  previousSnapshot.current=null;lastSnapshot.current=null;setSnapshot(null);
+  setBackend(next);setRetry(n=>n+1);
+ };
  const handleAdvanced=kind==='video'?onAdvancedVideo:onAdvancedSimulator;
  return <section className="fp-experiment-dock" data-experiment-kind={kind}
   aria-label={kind==='video'?'Sumber video MP4 Footprints':'Sumber simulasi 3D Footprints'}>
@@ -173,9 +179,13 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     <input aria-label="Pilih file video Footprints" type="file"
      accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg" onChange={inputVideo}/>
    </label>
-   <video ref={video} src={url??undefined} playsInline muted loop preload="metadata"
+   <video ref={video} src={url??undefined} playsInline muted loop preload="auto"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
-    onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);setVideoReady(true);}}
+    onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);}}
+    onLoadedData={()=>setVideoReady(true)}
+    onCanPlay={()=>setVideoReady(true)}
+    onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)}
+    onError={()=>{setVideoReady(false);setPlaying(false);setAnalysisError('Video gagal dibaca. Pilih MP4 H.264 yang dapat diputar.');}}
     onSeeking={()=>videoEngine.current?.reset('Timeline diubah: identitas dan peristiwa diulang.')}
     onSeeked={e=>{
      const el=e.currentTarget;
@@ -199,12 +209,25 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     {timecode(scrubPosition??position)} / {timecode(duration)}
    </output>
    <span className="fp-experiment-meta" role="status"
-    data-state={analysisError?'error':analyzing?'busy':snapshot?'ready':'idle'}
-    title={analysisError||'Status deteksi frame saat ini'}>
-    {analysisError?'Tracking gagal':analyzing?'Memuat AI…':
+    data-state={trackingError?'error':analyzing?'busy':snapshot?.inference?.state??'idle'}
+    title={trackingError||snapshot?.status||'Status deteksi frame saat ini'}>
+    {trackingError?'Tracking gagal':analyzing?'Memuat AI…':
+     snapshot?.inference?.state==='stale'?'AI terlambat · kontak ditahan':
+     snapshot?.performance.processedFrames===0?'Menunggu frame AI':
      snapshot?`${snapshot.visibleCount}/2 tubuh`:
      clip?'Menyiapkan AI':'Belum ada video'}
    </span>
+   {clip&&<div className="fp-replay-recovery" role="status" aria-label="Status inferensi MP4">
+    <span>{trackingError||snapshot?.performance.fallbackReason||
+     (snapshot?.inference?.state==='stale'?snapshot.status:
+      snapshot&&snapshot.sampledFrames>0&&snapshot.rawPoses.length===0?
+       'Tidak ada pose pada frame yang diproses. Pastikan tubuh terlihat utuh.':
+       !videoReady?'Menunggu frame video terdekode.':'')}</span>
+    {snapshot&&<span>{snapshot.performance.backend==='pending'?'Menyiapkan backend':
+     snapshot.performance.backend==='worker'?'Worker':'CPU fallback'} · {snapshot.performance.processedFrames} inferensi selesai · {snapshot.sampledFrames} frame diterima · {snapshot.performance.staleResults} terlambat · {snapshot.performance.poseFps.toFixed(1)} FPS AI · {snapshot.inference?.rawPoseCount??snapshot.rawPoses.length}/2 pose hasil terakhir</span>}
+    <button type="button" disabled={!videoReady||analyzing} onClick={()=>restartTracking('auto')}>Coba ulang AI</button>
+    <button type="button" disabled={!videoReady||analyzing} onClick={()=>restartTracking('main')}>Gunakan CPU</button>
+   </div>}
    {snapshot&&<div className="fp-duet-engine-status" role="group"
     aria-label="TRACKING OTOMATIS dua aktor">
     <b>TRACKING</b>
@@ -232,7 +255,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
       <p>Sumber MP4 · output fisik terkunci</p>
       <dl>
        <div><dt>Model</dt><dd>MediaPipe Pose Lite · 33 titik</dd></div>
-       <div><dt>Eksekusi</dt><dd>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</dd></div>
+       <div><dt>Eksekusi</dt><dd>{snapshot.performance.backend==='pending'?'Memuat':snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</dd></div>
        <div><dt>Pose AI mentah</dt><dd>{snapshot.rawPoses.length}/2 terukur</dd></div>
        <div><dt>Identitas aktif</dt><dd>{snapshot.visibleCount}/2 valid</dd></div>
        <div><dt>Inferensi</dt><dd>{snapshot.performance.poseFps.toFixed(1)} FPS</dd></div>
@@ -247,7 +270,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     </details>
    </div>}
    {snapshot&&showTechnicalLab&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
-    <summary>D4 · Performance <b>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
+    <summary>D4 · Performance <b>{snapshot.performance.backend==='pending'?'Memuat':snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
      <span>{snapshot.performance.poseFps.toFixed(1)} FPS AI · lag {snapshot.performance.latestVideoLagMs.toFixed(0)} ms</span></summary>
     <div className="fp-d4-metrics">
      <span>Pipeline p50 / p95 <b>{snapshot.performance.pipelineP50Ms.toFixed(0)} / {snapshot.performance.pipelineP95Ms.toFixed(0)} ms</b></span>

@@ -21,7 +21,9 @@ import type {PoseLandmarker} from '@mediapipe/tasks-vision';
 
 export type ReplayOverlayPerson={id:ReplayPerformer;landmarks:Landmark[];confidence:number};
 export type ReplayAnalysisSnapshot={
- atMs:number;segment:number;sampledFrames:number;performers:1|2;
+ atMs:number;segment:number;sampledFrames:number;performers:1|2;sessionId?:string;
+ /** Completed inference is distinct from accepted, fresh tracking frames. */
+ inference?:{state:'loading'|'ready'|'stale'|'error';error:string;rawPoseCount:number;requests:number};
  firstAtMs?:number|null;truncatedEvents?:number;
  people:ReplayOverlayPerson[];events:ReplayGaitEvent[];
  /** Independent diagnostic output from MediaPipe; not an identity or gait approval. */
@@ -42,16 +44,19 @@ export type ReplayAnalysisSnapshot={
  gait:Record<string,ReplayGaitState>;qa?:ReplayIdentityQA;archivedSegments?:number;
 };
 type Listener=(snapshot:ReplayAnalysisSnapshot)=>void;
+let replaySessionSerial=0;
 const configs={...defaults(),input:'body' as const,mirror:false};
 const sideName=(side:0|1):ReplayFoot=>side===0?'left':'right';
 
 /** Completely isolated offline video inference; never writes to live camera,
  * StageSession, calibrated FloorSession, or dual projector renderer. */
 export class VideoPoseGaitEngine{
+ private readonly sessionId='replay-'+(++replaySessionSerial);
  private model:PoseLandmarker|null=null;
  private worker:ReplayInferenceWorkerClient|null=null;
  private workerDisabled=false;
  private workerFailureReason='';
+ private inference:NonNullable<ReplayAnalysisSnapshot['inference']>={state:'loading',error:'',rawPoseCount:0,requests:0};
  private meter=new ReplayPerformanceMeter();
  private epoch=0;
  private lastEmitAt=-Infinity;
@@ -93,7 +98,10 @@ export class VideoPoseGaitEngine{
  private status='Belum dimulai';
  private ambiguous=false;
  private count:1|2=1;
- constructor(private readonly report:Listener){}
+ constructor(private readonly report:Listener,options:{backend?:'auto'|'main'}={}){
+  this.workerDisabled=options.backend==='main';
+  if(this.workerDisabled)this.workerFailureReason='CPU dipilih operator.';
+ }
  get ready(){return (!!this.model||!!this.worker)&&!this.disposed;}
  get performance(){return this.meter.snapshot;}
  recordPresentedFrame(count:number|null){if(count!==null)this.meter.observePresented(count);}
@@ -127,7 +135,7 @@ export class VideoPoseGaitEngine{
  }
  get snapshot():ReplayAnalysisSnapshot{return this.buildSnapshot(true);}
  private buildSnapshot(full:boolean):ReplayAnalysisSnapshot{
-  return {atMs:Math.max(0,this.lastTime),segment:this.segment,
+  return {atMs:Math.max(0,this.lastTime),segment:this.segment,sessionId:this.sessionId,inference:{...this.inference},
    firstAtMs:this.firstAtMs,truncatedEvents:this.truncatedEvents,
    sampledFrames:this.frames,performers:this.count,people:this.people.map(person=>({
     ...person,landmarks:person.landmarks.map(point=>({...point}))
@@ -158,6 +166,7 @@ export class VideoPoseGaitEngine{
     worker=new ReplayInferenceWorkerClient();await worker.init();
     if(this.disposed){worker.dispose();return;}
     this.worker=worker;this.workerFailureReason='';this.meter.setBackend('worker');
+    this.inference.state='ready';
     this.status='Analisis worker siap. Video dan AI berjalan terpisah.';
     this.emit(true);return;
    }catch(error){
@@ -181,6 +190,7 @@ export class VideoPoseGaitEngine{
    minPosePresenceConfidence:.46,minTrackingConfidence:.52,outputSegmentationMasks:false
   });
   if(this.disposed){pose.close();return;}
+  this.inference.state='ready';this.inference.error='';
   this.model=pose;this.meter.setBackend('main',this.workerFailureReason);
   this.status='CPU utama aktif'+(this.workerFailureReason?': '+this.workerFailureReason:'.');
   this.emit(true);this.consumeForced();
@@ -192,6 +202,7 @@ export class VideoPoseGaitEngine{
  }
  reset(reason='Seek atau loop: event lama dikosongkan agar tidak tercampur.'){
   this.epoch++;this.queuedForced=null;
+  this.inference={state:this.ready?'ready':'loading',error:'',rawPoseCount:0,requests:0};
   this.closeSegment(reason);this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;
   this.truncatedEvents=0;this.gaitCounts={contact:0,swing:0,slide:0,pivot:0};
@@ -258,7 +269,7 @@ export class VideoPoseGaitEngine{
    if(!force&&diff<1000/effectiveFPS*.85)return;
    if(Math.abs(diff)<1)return;
   }
-  this.inProgress=true;
+  this.inProgress=true;this.inference.requests++;
   const epoch=this.epoch,startedAt=performance.now();
   const clock=Math.max(this.lastInference+1,startedAt);this.lastInference=clock;
   if(this.worker){
@@ -267,10 +278,18 @@ export class VideoPoseGaitEngine{
     (this.actorStates.some(a=>a.id==='B'&&a.lastSeenAtMs!==null)?2:1),
     this.cropGuides(video,atMs)).then(result=>{
     if(this.disposed||epoch!==this.epoch)return;
+    this.inference.rawPoseCount=result.landmarks.length;
+    this.inference.error='';
     this.meter.observeVideoLag(video.currentTime*1000,atMs);
     if(video.seeking||replayResultTooLate(atMs,video.currentTime*1000)){
-     this.meter.observeStaleResult();this.emit(true);return;
+     // The model completed work even when its result cannot drive current contacts.
+     this.meter.observeInference(performance.now(),result.poseMs,0,0,
+      performance.now()-startedAt,false,0);
+     this.meter.observeStaleResult();this.inference.state='stale';
+     this.status='Hasil AI terlambat; kontak ditahan. Jeda video untuk memeriksa pose atau pilih CPU.';
+     this.emit(true);return;
     }
+    this.inference.state='ready';
     this.rescueCount=result.rescuedCount??0;
     this.d3=result.d3??{status:'warming',attempted:0,accepted:0,refined:[],elapsedMs:0};
     this.d3Totals.attempted+=this.d3.attempted;
@@ -286,10 +305,12 @@ export class VideoPoseGaitEngine{
     worker.dispose();if(this.worker===worker)this.worker=null;
     this.workerDisabled=true;
     this.workerFailureReason=error instanceof Error?error.message:String(error);
-    this.meter.setBackend('main',this.workerFailureReason);
+    this.meter.setBackend('pending',this.workerFailureReason);
     this.reset('Inferensi worker terputus; memulihkan pelacakan CPU.');
     void this.loadMainModels().catch(e=>{
-     this.status='Fallback CPU gagal: '+(e instanceof Error?e.message:String(e));
+     this.inference.state='error';
+     this.inference.error='Fallback CPU gagal: '+(e instanceof Error?e.message:String(e));
+     this.status=this.inference.error;
      this.emit(true);
     });
    }).finally(()=>{this.inProgress=false;this.consumeForced();});
@@ -299,6 +320,7 @@ export class VideoPoseGaitEngine{
    const beginPose=performance.now();
    const result=this.model!.detectForVideo(video,clock);
    const poseMs=performance.now()-beginPose;
+   this.inference={...this.inference,state:'ready',error:'',rawPoseCount:result.landmarks.length};
    this.d3={status:'fallback',attempted:0,accepted:0,refined:[],elapsedMs:0,
     reason:'Worker tidak tersedia; MediaPipe multipose memakai CPU utama.'};
    try{
@@ -402,6 +424,7 @@ export class VideoPoseGaitEngine{
  }
  private handleError(e:unknown){
   this.status='Analisis frame gagal: '+(e instanceof Error?e.message:String(e));
+  this.inference.state='error';this.inference.error=this.status;
   this.people=[];this.rawPoses=[];this.detectedCount=0;this.visibleCount=0;
   this.actorStates=this.actorStates.map(person=>({
    ...person,presence:'lost',rawIndex:null,confidence:0
