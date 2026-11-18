@@ -88,7 +88,8 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
   frame.performers.length,frame.session.events,null,true);
 }
 export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
- skeleton=true,motion?:MotionVisualFrame,masks?:BodyMaskPresentation){
+ skeleton=true,motion?:MotionVisualFrame,masks?:BodyMaskPresentation,
+ cleanBodyOutput=false){
  // A momentary decoder gap must not black-flash the previous BODY preview.
  if(frame.kind==='video'&&!frame.ready)return;
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
@@ -101,6 +102,25 @@ export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalF
  }
  const snapshot=frame.snapshot;
  if(!frame.ready)return;
+ // S0.6.5: clean BODY raster can only draw actor-owned, bridge-approved
+ // masks. Unassigned raw poses and buffered tentative skeletons may remain
+ // visible in INPUT diagnostics but cannot leak into this output channel.
+ if(cleanBodyOutput){
+  if(masks?.actors.length){
+   paintIndependentBodyMasks(ctx,masks,{x:0,y:0,width:w,height:h},1);
+   if(skeleton&&motion){
+    const safeIds=new Set(masks.actors.filter(a=>!a.tentative).map(a=>a.id));
+    for(const actor of motion.actors){
+     if(!safeIds.has(actor.id)||actor.tentative)continue;
+     ctx.save();ctx.globalAlpha=actor.opacity*.65;
+     drawSkeletonBodies(ctx,[actor.pose],{x:0,y:0,width:w,height:h},
+      {labels:[actor.label],colors:[actor.color]});
+     ctx.restore();
+    }
+   }
+  }
+  return;
+ }
  // Independent pose-guided A/B masks persist and move under optical flow.
  // The pixels below remain software preview only, not live projector output.
  if(masks?.actors.length)
