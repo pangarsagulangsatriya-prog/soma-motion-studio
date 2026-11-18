@@ -37,9 +37,21 @@ test('F0 source bus emits presence then movement, never contact from motion alon
  assert.equal(engine.observe(observed('camera','A',.3,1000))?.kind,'presence');
  assert.equal(engine.observe(observed('camera','A',.3,1010)),null);
  assert.equal(engine.observe(observed('camera','A',.4,1100))?.kind,'movement');
+ assert.equal(engine.observe(observed('camera','A',.4,1550))?.kind,'presence');
  assert.equal(engine.snapshot.counts.contact,0);
  assert.equal(engine.snapshot.actors.length,1);
  assert.equal(engine.observe(observed('video','A',.4,1200)),null);
+});
+test('F0 source identity change prunes old slots without resetting persisted events',()=>{
+ const engine=new FloorInteractionEngine();engine.reset('camera');
+ engine.observe(observed('camera','unassigned-0',.25,100));
+ engine.observe(observed('camera','unassigned-1',.75,100));
+ engine.keepActors('camera',['A','B']);
+ assert.equal(engine.snapshot.actors.length,0);
+ assert.equal(engine.snapshot.events.length,2);
+ engine.observe(observed('camera','A',.22,200));
+ engine.observe(observed('camera','B',.78,200));
+ assert.deepEqual(engine.snapshot.actors.sort(),['A','B']);
 });
 test('F0 two actors are isolated and invalid input is refused',()=>{
  const engine=new FloorInteractionEngine();engine.reset('touch');
