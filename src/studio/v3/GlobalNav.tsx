@@ -168,10 +168,10 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
      {expanded?<PanelLeftClose size={17}/>:<PanelLeftOpen size={17}/>}
     </button>
     <div className="v3-brand"><b>SOMA</b>
-     <span> / {stageModuleActive?'STAGE STUDIO':'TOOLS'}</span>
+     <span> / {stageModuleActive?'STAGE 1':'TOOLS'}</span>
     </div>
    </div>
-   {stageModuleActive&&<div className="soma-uxr1-health" role="group" aria-label="Source dan status Stage Studio">
+   {stageModuleActive&&<div className="soma-uxr1-health" role="group" aria-label="Source dan status Stage 1">
     <details className="soma-uxr1-source" aria-label="Pilih sumber gerak SOMA">
      <summary title="Satu sumber untuk Track, Compose, Map, Perform">SOURCE: {sourceLabel}</summary>
      <div className="soma-uxr1-source-menu" role="group" aria-label="Pilihan sumber gerak">
@@ -202,14 +202,14 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
    data-labs-open={labsOpen}>
    <div className="soma-rail-scroll soma-primary-nav-list" aria-label="Modul SOMA">
     <button type="button" className="soma-rail-item soma-primary-destination soma-stage-module-launch"
-     aria-label="Stage Studio" aria-current={stageModuleActive?'page':undefined}
-     title={expanded?'Stage Studio · Motion & Projection':undefined}
-     onMouseEnter={e=>showTip('Stage Studio',e.currentTarget,'hover')}
+     aria-label="Stage 1" aria-current={stageModuleActive?'page':undefined}
+     title={expanded?'Stage 1 · Motion & Projection':undefined}
+     onMouseEnter={e=>showTip('Stage 1',e.currentTarget,'hover')}
      onMouseLeave={clearTip}
-     onFocus={e=>showTip('Stage Studio',e.currentTarget,'focus')}
+     onFocus={e=>showTip('Stage 1',e.currentTarget,'focus')}
      onBlur={clearTip} onClick={openStageStudio}>
      <Monitor size={20} aria-hidden="true"/>
-     <span className="soma-rail-item-copy"><b>Stage Studio</b></span>
+     <span className="soma-rail-item-copy"><b>Stage 1</b></span>
     </button>
    </div>
    <div className="soma-primary-labs-launch">
