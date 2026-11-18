@@ -21,6 +21,7 @@ import {drawSkeletonBodies} from '../../stage/fullBodySkeleton.ts';
 import {ActorMotionStateBuffer} from '../../stage/actorMotionStateBuffer.ts';
 import {FootprintsVideoOpticalFlow} from '../../stage/footprintsVideoOpticalFlow.ts';
 import {PersistentBodyMaskEngine} from '../../stage/persistentBodyMaskEngine.ts';
+import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -99,10 +100,12 @@ export function FootprintsStageWorkspace({
  const motionBufferRef=useRef<ActorMotionStateBuffer>(new ActorMotionStateBuffer());
  const opticalFlowRef=useRef<FootprintsVideoOpticalFlow>(new FootprintsVideoOpticalFlow());
  const bodyMaskRef=useRef<PersistentBodyMaskEngine>(new PersistentBodyMaskEngine());
+ const bodyProjectionRef=useRef<LiveBodyProjectionBridge>(new LiveBodyProjectionBridge());
  useEffect(()=>{
   motionBufferRef.current.reset();
   opticalFlowRef.current.reset();
   bodyMaskRef.current.reset();
+  bodyProjectionRef.current.reset();
  },[experimentalKind,experimentClip]);
  const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
@@ -285,6 +288,7 @@ export function FootprintsStageWorkspace({
   const buffer=motionBufferRef.current;
   const flowTracker=opticalFlowRef.current;
   const maskTracker=bodyMaskRef.current;
+  const bodyBridge=bodyProjectionRef.current;
   const cam=cameraCanvas.current,body=bodyCanvas.current,floor=floorCanvas.current;
   const draw=(now:number)=>{
    const current=experimentFrameRef.current;
@@ -293,7 +297,7 @@ export function FootprintsStageWorkspace({
     const frame={...current,timeMs:atMs};
     if(source!==current.video||current.video?.seeking||
        (lastVideoAt>=0&&atMs<lastVideoAt-50)){
-     buffer.reset();flowTracker.reset();maskTracker.reset();lastFloorAt=-Infinity;
+     buffer.reset();flowTracker.reset();maskTracker.reset();bodyBridge.reset();lastFloorAt=-Infinity;
     }
     source=current.video;
     lastVideoAt=atMs;
@@ -311,8 +315,15 @@ export function FootprintsStageWorkspace({
     // S0.6.3: independent A/B alpha masks track pixel flow through
     // short AI gaps, with no contact/identity/hardware side effects.
     const masks=maskTracker.present(atMs,flow);
+    // S0.6.5: one per-actor continuity gate owns the clean BODY output.
+    // INPUT remains a diagnostic display of all raw observations.
+    const bodyOutput=current.snapshot&&!current.video?.seeking?
+     bodyBridge.present({atMs,segment:current.snapshot.segment,masks,
+      actorStates:current.snapshot.actorStates,
+      persistentActors:current.snapshot.persistentActors??[]}):null;
     if(cam)paintExperimentCamera(cam,frame,skeletonVisible,motion,masks);
-    if(body&&!footprint.hold)paintExperimentBody(body,frame,skeletonVisible,motion,masks);
+    if(body&&!footprint.hold)paintExperimentBody(body,frame,skeletonVisible,
+     motion,bodyOutput??undefined,true);
     if(floor&&!footprint.hold&&current.snapshot?.atMs!==lastFloorAt){
      paintExperimentFloor(floor,frame,footprint);
      lastFloorAt=current.snapshot?.atMs??-Infinity;
