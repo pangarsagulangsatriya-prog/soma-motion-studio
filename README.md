@@ -1,18 +1,18 @@
 # SOMA — S6.7.2.5 Browser QA
 
-**Result:** CANCELLED  
-**Commit:** `4666f10d197c6d69b949bf98188c38a14dbe7c2c`  
-**Run:** [GitHub Actions #44244538116](https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/actions/runs/44244538116)  
-**Generated:** 2026-11-18T05:31:17.557Z  
+**Result:** FAILURE  
+**Commit:** `91f3f795a1baee9a90f170ffc15984d595951904`  
+**Run:** [GitHub Actions #44244810193](https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/actions/runs/44244810193)  
+**Generated:** 2026-11-18T05:33:30.374Z  
 
 ## Playwright results
 
 | Metric | Count |
 |---|---:|
-| Expected passed | unknown |
-| Unexpected failed | unknown |
-| Flaky | unknown |
-| Skipped | unknown |
+| Expected passed | 43 |
+| Unexpected failed | 4 |
+| Flaky | 0 |
+| Skipped | 121 |
 
 ## Checked browser viewports
 
