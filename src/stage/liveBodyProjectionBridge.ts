@@ -104,7 +104,7 @@ export class LiveBodyProjectionBridge{
      actors.push({...mask,alpha:clamp(alpha),
       // Optical flow backed by this actor's own anchor remains identity-colored.
       // Only held/occluded silhouettes use the neutral uncertainty palette.
-      tentative:mode==='held'});
+      tentative:mode==='held'&&status.presence!=='visible'});
     }else{
      mode='blocked';reason='Mask duplikat ditahan.';alpha=0;
     }
