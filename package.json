@@ -7,6 +7,7 @@
     "dev": "vite --host 0.0.0.0 --port 4173",
     "build": "tsc -b && vite build",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "qa:release": "node --experimental-strip-types scripts/qa-release.mjs",
     "setup:assets": "node scripts/setup-assets.mjs",
     "predev": "node scripts/setup-assets.mjs && node scripts/prepare-pose-worker.mjs",
     "prebuild": "node scripts/setup-assets.mjs && node scripts/prepare-pose-worker.mjs"
