@@ -151,3 +151,6 @@
 .fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status>b{font-size:10px}
 .fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status>.fp-video-actor-status{margin-left:auto}
 .fp-stage-workspace.fp-persistent-layout .fp-duet-engine-status>.fp-video-actor-status>span{padding:3px 6px}
+
+.fp-replay-recovery{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:1 1 100%;font-size:11px;color:#d7e5cd}
+.fp-replay-recovery>span{max-width:100%;overflow-wrap:anywhere}

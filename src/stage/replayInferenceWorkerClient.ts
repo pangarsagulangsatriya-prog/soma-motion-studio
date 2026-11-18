@@ -15,6 +15,8 @@ export class ReplayInferenceWorkerClient{
  boot:ReplayWorkerBoot|null=null;
  private pending:Pending|null=null;
  private stopped=false;
+ private capturing=false;
+ private cancelBoot:((reason:Error)=>void)|null=null;
  private serial=0;
  constructor(){
   // Prebuilt IIFE is a classic worker in dev and production: MediaPipe WASM
@@ -23,14 +25,17 @@ export class ReplayInferenceWorkerClient{
    {type:'classic',name:'soma-mp-pose-classic'});
  }
  init():Promise<void>{
+  if(this.stopped)return Promise.reject(Error('Worker telah dihentikan.'));
   return new Promise((resolve,reject)=>{
    const timeout=setTimeout(()=>{
-    this.worker.removeEventListener('message',receive);reject(Error('Worker inference tidak siap.'));
+    this.cancelBoot?.(Error('Worker inference tidak siap setelah 30 detik.'));
    },30000);
+   const clean=()=>{clearTimeout(timeout);this.worker.removeEventListener('message',receive);this.cancelBoot=null;};
+   this.cancelBoot=reason=>{clean();reject(reason);};
    const receive=(event:MessageEvent)=>{
     const data=event.data;
     if(data.type!=='ready'&&data.type!=='error')return;
-    clearTimeout(timeout);this.worker.removeEventListener('message',receive);
+    clean();
     if(data.type==='error'){reject(Error(data.message??'Worker gagal'));return;}
     this.boot={runtime:data.runtime==='classic'?'classic':'classic',
      poseReady:data.poseReady===true,d3Ready:data.d3Ready===true,
@@ -42,15 +47,18 @@ export class ReplayInferenceWorkerClient{
    };
    this.worker.addEventListener('message',receive);
    this.worker.onerror=event=>{
-    clearTimeout(timeout);this.worker.removeEventListener('message',receive);
-    reject(Error('Worker classic gagal: '+(event.message||'runtime tidak tersedia.')));
+    this.cancelBoot?.(Error('Worker classic gagal: '+(event.message||'runtime tidak tersedia.')));
    };
-   this.worker.postMessage({type:'init',base:import.meta.env.BASE_URL});
+   try{this.worker.postMessage({type:'init',base:import.meta.env.BASE_URL});}
+   catch(error){this.cancelBoot?.(error instanceof Error?error:Error(String(error)));}
   });
  }
  async detect(video:HTMLVideoElement,clock:number,targetCount:1|2=1,guides:D3Guide[]=[]):Promise<ReplayWorkerResult>{
-  if(this.stopped||this.pending)throw Error('Worker inference masih sibuk.');
-  const bitmap=await createImageBitmap(video);
+  if(this.stopped||this.pending||this.capturing)throw Error('Worker inference masih sibuk.');
+  this.capturing=true;
+  let bitmap:ImageBitmap;
+  try{bitmap=await createImageBitmap(video);}
+  finally{this.capturing=false;}
   if(this.stopped){bitmap.close();throw Error('Worker telah dihentikan.');}
   return new Promise((resolve,reject)=>{
    const id=++this.serial;
@@ -72,7 +80,7 @@ export class ReplayInferenceWorkerClient{
  }
  dispose(){
   if(this.stopped)return;
-  this.stopped=true;this.fail(Error('Worker dihentikan.'));
+  this.stopped=true;this.cancelBoot?.(Error('Worker dihentikan saat memuat model.'));this.fail(Error('Worker dihentikan.'));
   this.worker.terminate();
  }
 }
