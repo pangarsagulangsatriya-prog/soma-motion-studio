@@ -29,8 +29,12 @@ void main(){
  // and its persistence are owned by the deterministic floor-height texture.
  float fine=noise(uv*vec2(790.,450.));
  float soft=noise(uv*vec2(83.,48.));
- float flakes=step(.995,hash(floor(uv*vec2(420.,235.)+
-  vec2(uTime*.7,uTime*1.8))))*uFlurry;
+ // Smooth-scrolling procedural flakes preserve continuity between frames.
+ // Hard hash thresholds on time-quantized cells would visibly flicker.
+ float fieldA=noise(uv*vec2(210.,135.)+vec2(uTime*.25,-uTime*4.2));
+ float fieldB=noise(uv*vec2(330.,220.)+vec2(-uTime*.13,-uTime*8.));
+ float flakes=(smoothstep(.78,.96,fieldA)*.14+
+  smoothstep(.81,.98,fieldB)*.095)*uFlurry;
  float ridge=smoothstep(.21,.7,snow);
  vec3 powder=vec3(.11,.135,.15)+ridge*vec3(.63,.65,.65);
  powder+=(fine-.5)*.055*ridge+(soft-.5)*.038*ridge;
