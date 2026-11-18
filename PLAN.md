@@ -5,6 +5,26 @@ Scope: whole SOMA application, priority Footprints Stage (video MP4), then Proje
 Evidence: four supplied MP4 UI screenshots (0.5 s, 6.1 s, crossing, source selector), connected GitHub Pages tab, code on main as of 2026-11-18.
 Ownership: UI shell / presentation / interaction only. Preserve A/B identity and projector interlocks.
 
+## V3.1 — Quick Start & Saved Stage Profiles (18 Nov 2026)
+
+**Status:** implemented on main; browser QA and physical <2-minute acceptance gate remain separate.
+The existing Footprints stage now contains one compact **Stage Setup** action.
+No new camera stream, pose tracker, projector output route, or wizard.
+
+Operator flow:
+1. Click Stage Setup, select device (or saved camera); click **Hubungkan kamera**.
+2. Select a local stage profile and **Gunakan profil** only if the real camera deviceId and resolution match the saved geometry.
+3. The four floor corners are loaded as **draft**, never as a confirmed calibration. Inspect the actual camera framing and confirm via the existing 4-point editor.
+4. Verify tracking status and connect Projector through the existing QA panel; BLACKOUT stays accessible.
+5. After the first verified setup, click **Simpan profil** with a useful name. Profiles contain local camera ID/label, raster, stage dimensions, corners, performers; no photo/video or physical-output approval.
+6. The panel displays session elapsed time from **Hubungkan kamera** plus 4 software readiness indicators. The gate **repeat session ≤2 minutes** is a target, **not yet measured**.
+
+Failure semantics: profile from wrong camera/resolution cannot restore; disconnected camera, missing current-frame A/B identities, unconfirmed floor, and disconnected software output never show 4/4 ready. Projector hardware authorization is unchanged; the 4/4 indicator measures software state only.
+
+Files: `src/studio/v3/quickStageProfiles.ts`, `QuickStageSetup.tsx`, `quick-stage-setup.css`, `FootprintsStageWorkspace.tsx`, `src/App.tsx`; tests: `tests/quick-stage-profiles-v3-1.test.ts`, `e2e/quick-stage-v3-1.spec.mjs`.
+
+**Remaining UAT:** first-time vs saved profile timings on actual camera/projector; camera disconnect/reconnect; same device different resolution; quad reprojection; physical BLACKOUT; accessibility, 320px mobile and storage-disabled recovery. Do not treat a green build as physical setup acceptance.
+
 ## FLOOR next: Phantom Floor benchmark parity (18 Nov 2026)
 
 **Document:** [SOMA FLOOR — Operator Flow & Feature Parity V2](docs/SOMA-FLOOR-PHANTOM-PARITY-V2-IMPLEMENTATION-PLAN.md)
