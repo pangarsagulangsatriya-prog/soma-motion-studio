@@ -7,3 +7,15 @@
 @media(max-width:1140px){.soma-primary-header .soma-uxr1-health>span:nth-child(2){display:none}.soma-primary-header .soma-uxr1-health>span{max-width:175px}}
 @media(max-width:760px){.soma-primary-header .soma-uxr1-health{margin-inline:5px;gap:4px}.soma-primary-header .soma-uxr1-health>span{max-width:115px;padding:4px 5px;font-size:9px}.soma-primary-header .soma-uxr1-health>span:last-child{display:none}}
 @media(max-width:430px){.soma-primary-header .soma-uxr1-health{display:none}}
+
+/* One shared source switch: only UI, calls the existing source state machine. */
+.soma-primary-header .soma-uxr1-source{position:relative;min-width:0;flex:0 1 195px;z-index:200}
+.soma-primary-header .soma-uxr1-source>summary{display:block;cursor:pointer;list-style:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 9px;border:1px solid #46634a;border-radius:6px;background:#223426;color:#d6e6cf;font-size:11px}
+.soma-primary-header .soma-uxr1-source>summary::-webkit-details-marker{display:none}
+.soma-primary-header .soma-uxr1-source>summary:focus-visible{outline:2px solid #d7eead;outline-offset:2px}
+.soma-primary-header .soma-uxr1-source-menu{position:absolute;top:calc(100% + 7px);left:0;width:min(290px,calc(100vw - 30px));padding:7px;background:#14201a;border:1px solid #56765b;border-radius:9px;box-shadow:0 16px 40px #0009;display:grid;gap:4px;max-height:min(500px,70dvh);overflow:auto}
+.soma-primary-header .soma-uxr1-source-menu button{border:1px solid #314739;border-radius:5px;background:#202e24;color:#e4ebdb;text-align:left;padding:9px;display:flex;flex-direction:column;gap:4px;cursor:pointer;font:inherit}
+.soma-primary-header .soma-uxr1-source-menu button:hover:not(:disabled){background:#31503a}
+.soma-primary-header .soma-uxr1-source-menu button:disabled{opacity:.55;cursor:default}
+.soma-primary-header .soma-uxr1-source-menu button small{font-size:10px;color:#aabbac}
+@media(max-width:760px){.soma-primary-header .soma-uxr1-source{flex-basis:126px}.soma-primary-header .soma-uxr1-source>summary{font-size:9px;padding:5px}}
