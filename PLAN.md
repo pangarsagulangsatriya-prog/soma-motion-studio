@@ -5,6 +5,20 @@ Scope: whole SOMA application, priority Footprints Stage (video MP4), then Proje
 Evidence: four supplied MP4 UI screenshots (0.5 s, 6.1 s, crossing, source selector), connected GitHub Pages tab, code on main as of 2026-11-18.
 Ownership: UI shell / presentation / interaction only. Preserve A/B identity and projector interlocks.
 
+## V3.5 — One-Click Projection & Safe Perform (18 Nov 2026)
+
+**Code delivered to main:** guided projection preflight in the original Footprints Stage / Quick Start, clean default FLOOR artwork routed from the existing FloorSession canvas, secondary-window output via existing ProjectionLink, reusable local BODY/FLOOR optical drafts, QA-gated **PERFORM · FLOOR**, latched BLACKOUT on lost source/renderer/connection and one-click stale-window recovery. No new stream, detector, output renderer or bypass around StageHardwareGate/5-point QA.
+
+**Documentation:** [V3.5 One-Click Projection & Safe Perform / UAT](docs/SOMA-V3-5-ONE-CLICK-PROJECTION-SAFE-PERFORM.md)
+
+**Operator route:** Connect camera → (save/load stage profile) → Tracking → confirm floor → Projector (existing Output QA opens in blackout) → open clean FLOOR window on second display → five measured QA targets + physical-blackout and spill checklist → **PERFORM · FLOOR**. If source/projection artwork becomes unsafe, commands latch Blackout and never automatically resume on reconnection. Production hardware output remains locked unless a supervised build explicitly opts in. MP4/3D remain local software preview.
+
+**Saved optical plan contract:** save both geometries/brightness/resolution with stable device ID + video raster + floor geometry + performer count. Restoring plans always blackouts both outputs and invalidates all proof, arm state and requested Live. The saved profile is a draft, not approval. Previous session geometry reduces typing; physical 5-point QA must be repeated for each new output session.
+
+**Gate:** physical camera-to-FLOOR setup **<10 minutes** on stable test rig, measured from first Quick Start/Projector action to operator-confirmed correctly aligned light, with documented notes. The stopwatch and result storage are local; a software Live command is insufficient. Repeat-session profile target **≤2 minutes** remains separate. No physical timing result has been measured in CI.
+
+**Tests:** `tests/safe-projection-v3-5.test.ts`, `tests/safe-projection-bench-v3-5.test.ts`, `e2e/safe-projection-v3-5.spec.mjs` plus existing safety/projector suites. Browser QA and supervised optical tests must be evaluated independently before declaring the release gate complete.
+
 ## V3.1 — Quick Start & Saved Stage Profiles (18 Nov 2026)
 
 **Status:** implemented on main; browser QA and physical <2-minute acceptance gate remain separate.
