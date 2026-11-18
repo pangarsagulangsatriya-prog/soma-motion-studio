@@ -82,7 +82,8 @@ test('Flicker fix: hard seek, segment change, and source reset never retain ghos
  assert.equal(buffer.present(120).actors.length,0);
  buffer.ingest(tracked(140));
  buffer.ingest(tracked(160));
- buffer.ingest({...tracked(170),ambiguous:true});
+ buffer.ingest({...tracked(170),ambiguous:true,
+  actorStates:tracked(170).actorStates.map(a=>({...a,presence:'uncertain',rawIndex:null}))});
  assert.ok(buffer.present(180).actors.every(a=>a.label===''));
 });
 
@@ -95,6 +96,6 @@ test('Flicker fix: active Stage and BODY painter have render-gap and neutral raw
  assert.match(painter,/actor\.tentative\?false:\[actor\.label\]/);
  assert.match(painter,/Decoder-not-ready must not clear/);
  assert.match(painter,/if\(!snapshot\)return/);
- assert.match(buffer,/bank\.verified=false;bank\.previous=null/);
+ assert.match(buffer,/if\(old\)\{old\.verified=false;old\.previous=null;\}/);
  assert.doesNotMatch(buffer,/if\(frame\.ambiguous\)\{this\.actors\.clear\(\)/);
 });
