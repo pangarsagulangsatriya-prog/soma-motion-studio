@@ -27,7 +27,7 @@ export function toFootMotionEvent(event:FloorInteractionEvent,sessionId:string,g
  const originEventId=event.originEventId??event.id;
  return {
   schema:FOOT_MOTION_SCHEMA,version:FOOT_MOTION_VERSION,
-  eventId:`${sessionId}:${generation}:${event.source}:${originEventId}`,
+  eventId:`${sessionId}:${generation}:${event.source}:${event.actorId}:${event.foot??'unknown'}:${originEventId}`,
   originEventId,sessionId,generation,
   actorId:event.actorId,foot:event.foot??'unknown',kind,
   source:event.source,x:event.x,y:event.y,atMs:event.atMs,
@@ -61,5 +61,7 @@ export function validFootMotionEvent(value:unknown):value is FootMotionEventV2{
   bounded(e.x)&&bounded(e.y)&&bounded(e.confidence)&&bounded(e.speed)&&
   typeof e.atMs==='number'&&Number.isFinite(e.atMs)&&e.atMs>=0&&
   typeof e.verified==='boolean'&&
-  (e.kind==='contact'||!e.verified);
+  (e.kind==='contact'||!e.verified)&&
+  (!e.verified||e.verification!=='unverified')&&
+  (e.verified||e.verification==='unverified');
 }
