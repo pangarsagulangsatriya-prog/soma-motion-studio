@@ -22,6 +22,15 @@ export function inlineSetupHint(input:{
  const {source,cameraOn,cameraBusy,cameraError,bodySelected,videoReady,
   frameFresh,performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
   floorCalibrated,floorConfirmed,cameraMatched}=input;
+ // Errors are reported before experiment-ready hints; an invalid MP4 must not look ready.
+ if(source.phase==='error')
+  return hint('source-error','Sumber belum siap',source.message,
+   source.selection==='video'||source.selection==='simulator'?'experiment':
+   source.selection==='phone'?'phone':'webcam',
+   source.selection==='video'?'Periksa video':source.selection==='simulator'?'Periksa simulasi':
+   source.selection==='phone'?'Buka pairing HP':'Coba webcam lagi','warning');
+ if(source.phase==='connecting')
+  return hint('source-connecting','Menyiapkan sumber',source.message,'source','Lihat sumber','busy');
  if(source.selection==='video'){
   if(!input.experiment?.ready)
    return hint('video-input','Pilih video gerak','Pilih rekaman MP4/WebM pada panel input. BODY dan FLOOR akan membaca hasil analisis video 2D.','experiment','Pilih video','idle');
