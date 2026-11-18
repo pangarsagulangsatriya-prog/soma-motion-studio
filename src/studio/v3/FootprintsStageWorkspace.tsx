@@ -874,7 +874,7 @@ export function FootprintsStageWorkspace({
         <canvas ref={interactionCanvas} className="fp-floor-interaction-layer"
          width={1280} height={720} aria-hidden="true"/>
         {touchDemo&&<span className="fp-floor-touch-hint" aria-hidden="true">
-         Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>
+         Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>}
         {!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
         {footprint.hold&&<span className="fp-stage-hold-label">
