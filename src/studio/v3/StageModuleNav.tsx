@@ -11,10 +11,9 @@ export function StageModuleNav({active,onNavigate}:{
  onNavigate:(workspace:StageModuleWorkspace)=>void;
 }){
  return <nav className="soma-stage-module-nav" aria-label="Stage 1 — workspace" data-module="stage-studio">
-  <span className="soma-stage-module-name">STAGE 1</span>
-  <div className="soma-stage-module-tabs" role="group" aria-label="Navigasi Stage 1">
+  <div className="soma-stage-module-tabs" role="group" aria-label="Pilih workspace">
    {workspaces.map(item=><button key={item.id} type="button"
-    className="soma-stage-module-tab" aria-current={active===item.id?'page':undefined}
+    className="soma-stage-module-tab" aria-current={active===item.id?'page':undefined} aria-label={`${item.label} workspace` }
     onClick={()=>{if(active!==item.id)onNavigate(item.id);}}>
     {item.label}
    </button>)}
