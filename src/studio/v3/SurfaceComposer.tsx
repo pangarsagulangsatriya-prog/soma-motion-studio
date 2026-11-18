@@ -7,6 +7,7 @@ import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrack
 import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
+import {STAGE_BLACKOUT_EVENT} from '../../footprints/stage-optics/StageBlackout.ts';
 import './SurfaceComposer.css';
 import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
 import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
@@ -38,7 +39,7 @@ type Props={
  onArchiveHydraChange?:(enabled:boolean)=>void;
  hydraSettings?:HydraFootprintSettings;
  onHydraSettingsChange?:(patch:Partial<HydraFootprintSettings>)=>void;
- hydraStatus?:string;
+ hydraStatus?:string;previewResumeRevision?:number;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
@@ -48,7 +49,7 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus}:Props){
+export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0}:Props){
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
@@ -68,6 +69,12 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [hint,setHint]=useState('');
  // Software preview starts enabled in Compose. Physical output still requires the existing routing/QA panel.
  const [blackout,setBlackout]=useState(false);
+ useEffect(()=>{
+  const onGlobalBlackout=()=>setBlackout(true);
+  window.addEventListener(STAGE_BLACKOUT_EVENT,onGlobalBlackout);
+  return()=>window.removeEventListener(STAGE_BLACKOUT_EVENT,onGlobalBlackout);
+ },[]);
+ useEffect(()=>{if(previewResumeRevision>0){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision]);
  const [previewLive,setPreviewLive]=useState(true);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
