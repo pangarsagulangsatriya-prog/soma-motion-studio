@@ -94,6 +94,7 @@ type Props={
  onPhoneDisconnect:()=>void;onEnterOperator:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  operatorMode:boolean;onExitOperator:()=>void;
+ softwareBlackout:boolean;onResumeSoftwarePreview:()=>void;
  videoRecording:boolean;canRecordVideo:boolean;
  footprint:FootprintConfig;
  updateFootprint:(value:Partial<FootprintConfig>)=>void;
@@ -108,7 +109,7 @@ export function FootprintsStageWorkspace({
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
  onPhoneStream,onPhoneDisconnect,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
- operatorMode,onExitOperator,footprint,updateFootprint
+ operatorMode,onExitOperator,softwareBlackout,onResumeSoftwarePreview,footprint,updateFootprint
 }:Props){
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
@@ -818,8 +819,8 @@ export function FootprintsStageWorkspace({
  };
  const closePhonePanel=()=>{
   setPhonePanelOpen(false);
-  requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>(
-   '.fp-source-switch-trigger')?.focus({preventScroll:true}));
+  requestAnimationFrame(()=>document.querySelector<HTMLElement>(
+   '.soma-uxr1-source > summary')?.focus({preventScroll:true}));
  };
  const closeInspector=()=>{setCalibrationOpen(false);setInspectorOpen(false);restoreFlowFocus();};
  useEffect(()=>{
@@ -986,6 +987,10 @@ export function FootprintsStageWorkspace({
     <span>{experimentalKind==='video'?'MP4 · Pose A/B':experimentalKind==='simulator'?'3D · Puppet':'Source · Pose A/B'}</span>
    </div>
    <div className="soma-ia-track-actions">
+    {sourceStatus.selection==='phone'&&<button type="button" className="soma-ia-advanced-button"
+     onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);}}>
+     Pairing HP
+    </button>}
     {!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
      cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
      frameFresh={frameFresh} cameraMatched={cameraMatched}
@@ -1046,7 +1051,7 @@ export function FootprintsStageWorkspace({
       <span>{sourceStatus.selection===null?'Pilih sumber di Track':
        experimentalKind==='video'?'MP4 · Preview':experimentalKind==='simulator'?'3D · Preview':
        cameraOn?'Kamera · Preview':'Tracking belum aktif'}</span>
-      {footprint.hold&&<button type="button" onClick={()=>{updateFootprint({hold:false});setPreviewResumeRevision(v=>v+1);}}>
+      {(footprint.hold||softwareBlackout)&&<button type="button" onClick={()=>{updateFootprint({hold:false});onResumeSoftwarePreview();setPreviewResumeRevision(v=>v+1);}}>
        Resume preview
       </button>}
      </div>}
@@ -1055,7 +1060,7 @@ export function FootprintsStageWorkspace({
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
      hydraSettings={hydraSettings} onHydraSettingsChange={updateHydra} hydraStatus={hydraStatus}
-     previewResumeRevision={previewResumeRevision}
+     previewResumeRevision={previewResumeRevision} previewBlackout={softwareBlackout}
      archiveHydraCanvas={archiveHydraCanvas}
      onArchiveHydraChange={enabled=>{archiveHydraReady.current=enabled;
       if(enabled)setHydraSettings(v=>v.enabled?v:normalizeHydraFootprintSettings({...v,enabled:true}));}}
