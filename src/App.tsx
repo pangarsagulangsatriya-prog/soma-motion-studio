@@ -98,7 +98,9 @@ export default function App(){
  const [tab,setTab]=useState<ControlTab>('visual'),[modal,setModal]=useState<null|'help'|'settings'|'mapping'|'visual-mapping'|'presets'|'sessions'|'save'|'status'|'photos'>(null);
  const [clean,setClean]=useState(false),[notice,setNotice]=useState(''),[presets,setPresets]=useState<Preset[]>([]),[presetName,setPresetName]=useState(''),[activePreset,setActivePreset]=useState('Clean / Serat');
  const [takes,setTakes]=useState<Take[]>([]),[recording,setRecording]=useState(false),[recordSeconds,setRecordSeconds]=useState(0),[playing,setPlaying]=useState<string|null>(null);
- const [logging,setLogging]=useState(false),[logCount,setLogCount]=useState(0),[calibration,setCalibration]=useState<number|null>(null),[deviceId,setDeviceId]=useState(''),[devices,setDevices]=useState<MediaDeviceInfo[]>([]);
+ const [logging,setLogging]=useState(false),[logCount,setLogCount]=useState(0),[calibration,setCalibration]=useState<number|null>(null),[deviceId,setDeviceId]=useState(()=>{
+  try{return localStorage.getItem('soma-quick-camera-v1')??'';}catch{return '';}
+ }),[devices,setDevices]=useState<MediaDeviceInfo[]>([]);
  const [mousePinch,setMousePinch]=useState(0),[mouseOpen,setMouseOpen]=useState(true);
  const video=useRef<HTMLVideoElement>(null),stage=useRef<HTMLDivElement>(null),importRef=useRef<HTMLInputElement>(null),playback=useRef<HTMLAudioElement|null>(null);
  const frameRef=useRef<MotionFrame>(emptyFrame()),engine=useRef(new AudioEngine()).current,mapper=useRef(new MappingEngine()).current,tracker=useRef(new CameraTracker()).current,recorder=useRef(new Recorder()).current,motionLog=useRef(new MotionLog()).current;
@@ -140,7 +142,7 @@ export default function App(){
   if(cal.current){if(f.tracked){cal.current.xs.push(f.features.x);cal.current.ys.push(f.features.y);}const left=cal.current.end-performance.now();setCalibration(Math.max(0,Math.ceil(left/1000)));if(left<=0){const c=cal.current;cal.current=null;setCalibration(null);const minX=Math.min(...c.xs),maxX=Math.max(...c.xs),minY=Math.min(...c.ys),maxY=Math.max(...c.ys);if(c.xs.length<20||maxX-minX<.12||maxY-minY<.12)notify('Jangkauan belum cukup. Coba lagi sambil bergerak ke kiri, kanan, atas, dan bawah.');else{update({calibration:{minX,maxX,minY,maxY}});notify('Jangkauan gerak tersimpan.');}}}
   if(f.time-lastUI.current>100){lastUI.current=f.time;setFrame({...f});setTriggerProgress(hold.progress);setLogCount(motionLog.rows.length);if(motionLog.full){setLogging(false);notify('Log mencapai batas 18.000 sampel. Silakan ekspor datanya.');motionLog.full=false;}}
  },[engine,mapper,visualMapper,holdTrigger,motionLog,notify,update,cameraCue.processFrame]);
- async function startCamera(){
+ async function startCamera(overrideDeviceId?:string){
   const op=++cameraOperation.current;
   requestedFootprintsChoice.current='webcam';setFootprintsChoice('webcam');
   setSourceSwitchError('');
@@ -154,7 +156,7 @@ export default function App(){
    setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum siap');
    setCameraError(message);notify(message);
    const f=emptyFrame();f.time=performance.now();processFrame(f);
-  },deviceId||undefined);
+  },(overrideDeviceId??deviceId)||undefined);
   if(navigator.mediaDevices)try{setDevices((await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'));}catch{}
  }
  async function startPhoneCamera(stream:MediaStream){
@@ -216,6 +218,26 @@ export default function App(){
    if(!tracker.running){notify('Kamera belum siap. Periksa izin dan pilih Mulai kamera.');return;}
    cameraCue.open();
   }catch(e){notify('Gagal membuka kamera tubuh: '+(e instanceof Error?e.message:'coba lagi.'));}
+ }
+ /** V3.1: use the existing CameraTracker; changing devices invalidates
+  * floor/projection approval before restarting the capture stream. */
+ async function selectFootprintsCameraDevice(nextId:string):Promise<void>{
+  if(nextId===deviceId)return;
+  if(footprintRecording&&!window.confirm(
+   'Rekaman berjalan. Simpan rekaman dan ganti kamera?'))return;
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  if(footprintRecording)footprintRef.current?.toggleVideo();
+  liveFloorEngine.revoke('Kamera diganti; periksa dan konfirmasi ulang kalibrasi.');
+  multiPoseRouter.reset();setLiveFloorApproval(null);
+  const restart=requestedFootprintsChoice.current==='webcam'&&cameraOn;
+  if(restart)stopCamera();
+  setDeviceId(nextId);
+  try{localStorage.setItem('soma-quick-camera-v1',nextId);}catch{}
+  if(restart){
+   setCameraError('');
+   await startCamera(nextId);
+  }
+  notify('Kamera dipilih. Profil lantai perlu diverifikasi untuk perangkat ini.');
  }
  /** S6.8.5: Source Switcher is the only operator transaction for camera/experiment changes.
   * All sources share the persistent Stage Workspace; experimental hardware output stays locked. */
@@ -407,6 +429,8 @@ export default function App(){
      })}
      experimentPuppet={experimentPuppetRef.current} experimentPuppetRevision={experimentPuppetRevision}
      onSwitchSource={switchFootprintsSource}
+     cameraDevices={devices} selectedCameraId={deviceId}
+     onSelectCameraDevice={selectFootprintsCameraDevice}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>{void switchFootprintsSource('webcam');}}
      onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
