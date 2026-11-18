@@ -191,7 +191,7 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      type="button" title="Preset instrumen SOMA Labs" onClick={onPreset}>
      <Save size={15}/><span>{preset}</span></button>}
     <button type="button" className="soma-ia-blackout" onClick={onBlackout}
-     aria-label="Blackout software semua output" title="BLACKOUT · padamkan preview dan kirim perintah output">
+     aria-label="Kirim perintah blackout SOMA" title="BLACKOUT · periksa keluaran cahaya fisik">
      <MonitorOff size={15}/><span>Blackout</span></button>
     <button className="v3-help" type="button" onClick={onHelp} aria-label="Bantuan SOMA">
      <HelpCircle size={18}/></button>
