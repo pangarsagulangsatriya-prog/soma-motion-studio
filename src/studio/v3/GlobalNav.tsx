@@ -125,10 +125,10 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
   if(mode==='focus')setTip({label,top});
   else tipTimer.current=setTimeout(()=>{setTip({label,top});tipTimer.current=null;},RAIL_TOOLTIP_DELAY_MS);
  };
- const navigate=(target:'footprints'|'projector')=>{
+ const navigate=(target:'compose'|'map'|'perform')=>{
   setLabsOpen(false);clearTip();
   if(mobile){setExpanded(false);requestAnimationFrame(()=>toggleRef.current?.focus({preventScroll:true}));}
-  if(target==='footprints')onFootprints();else onProjection();
+  if(target==='compose')onFootprints();else if(target==='map')onProjection();else onPerform();
  };
  const action:Record<LabsId,()=>void>={
   liquid:()=>onInstrument('liquid'),echo:()=>onInstrument('echo'),
@@ -162,14 +162,14 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
      {expanded?<PanelLeftClose size={17}/>:<PanelLeftOpen size={17}/>}
     </button>
     <div className="v3-brand"><b>SOMA</b>
-     <span> / {workspace==='projection'?'PROJECTOR':labsContext?'LABS':'FOOTPRINTS'}</span>
+     <span> / {workspace==='projection'?'MAP':perform?'PERFORM':labsContext?'LABS':'COMPOSE'}</span>
     </div>
    </div>
    <div className="v3-global-actions">
     {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
      type="button" title="Preset instrumen SOMA Labs" onClick={onPreset}>
      <Save size={15}/><span>{preset}</span></button>}
-    {workspace!=='projection'&&<button className="v3-perform" type="button"
+    {labsContext&&workspace!=='projection'&&<button className="v3-perform" type="button"
      aria-pressed={perform} onClick={onPerform}>
      <Play size={15}/>{perform?'Kembali Edit':'Perform'}</button>}
     <button className="v3-help" type="button" onClick={onHelp} aria-label="Bantuan SOMA">
@@ -183,28 +183,40 @@ export function GlobalNav({workspace,scene,perform,onFootprints,onInstrument,onA
    data-labs-open={labsOpen}>
    <div className="soma-rail-scroll soma-primary-nav-list">
     <button type="button" className="soma-rail-item soma-primary-destination"
-     aria-current={workspace==='studio'&&scene==='footprints'?'page':undefined}
-     aria-label="Footprints" aria-describedby={tip?.label==='Footprints'?'soma-rail-tooltip':undefined}
-     title={expanded?'Footprints · Kamera, tracking dan komposisi':undefined}
-     onMouseEnter={e=>showTip('Footprints',e.currentTarget,'hover')}
+     aria-current={workspace==='studio'&&scene==='footprints'&&!perform?'page':undefined}
+     aria-label="Compose" aria-describedby={tip?.label==='Compose'?'soma-rail-tooltip':undefined}
+     title={expanded?'Compose · gerak, scene dan komposisi':undefined}
+     onMouseEnter={e=>showTip('Compose',e.currentTarget,'hover')}
      onMouseLeave={clearTip}
      onFocus={e=>showTip('Footprints',e.currentTarget,'focus')}
      onBlur={clearTip}
-     onClick={()=>navigate('footprints')}>
+     onClick={()=>navigate('compose')}>
      <Footprints size={20} aria-hidden="true"/>
-     <span className="soma-rail-item-copy"><b>Footprints</b><small>Gerak & komposisi</small></span>
+     <span className="soma-rail-item-copy"><b>Compose</b><small>Gerak &amp; visual</small></span>
     </button>
     <button type="button" className="soma-rail-item soma-primary-destination"
-     aria-current={workspace==='projection'?'page':undefined}
-     aria-label="Projector" aria-describedby={tip?.label==='Projector'?'soma-rail-tooltip':undefined}
-     title={expanded?'Projector · Mapping dan output fisik':undefined}
-     onMouseEnter={e=>showTip('Projector',e.currentTarget,'hover')}
+     aria-current={workspace==='projection'&&!perform?'page':undefined}
+     aria-label="Map" aria-describedby={tip?.label==='Map'?'soma-rail-tooltip':undefined}
+     title={expanded?'Map · kalibrasi dan output fisik':undefined}
+     onMouseEnter={e=>showTip('Map',e.currentTarget,'hover')}
      onMouseLeave={clearTip}
      onFocus={e=>showTip('Projector',e.currentTarget,'focus')}
      onBlur={clearTip}
-     onClick={()=>navigate('projector')}>
+     onClick={()=>navigate('map')}>
      <Monitor size={20} aria-hidden="true"/>
-     <span className="soma-rail-item-copy"><b>Projector</b><small>Output & kalibrasi</small></span>
+     <span className="soma-rail-item-copy"><b>Map</b><small>Kalibrasi &amp; output</small></span>
+    </button>
+    <button type="button" className="soma-rail-item soma-primary-destination"
+     aria-current={perform?'page':undefined}
+     aria-label="Perform" aria-describedby={tip?.label==='Perform'?'soma-rail-tooltip':undefined}
+     title={expanded?'Perform · operator dan cue':undefined}
+     onMouseEnter={e=>showTip('Perform',e.currentTarget,'hover')}
+     onMouseLeave={clearTip}
+     onFocus={e=>showTip('Perform',e.currentTarget,'focus')}
+     onBlur={clearTip}
+     onClick={()=>navigate('perform')}>
+     <Play size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>Perform</b><small>Cue &amp; operator</small></span>
     </button>
    </div>
    <div className="soma-primary-labs-launch">
