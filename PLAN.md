@@ -1,11 +1,38 @@
 # SOMA — UI/UX AUDIT & IMPLEMENTATION PLAN
 Version: UX-R1 · 2026-11-18
-Status: PLANNING / AUDIT COMPLETE — implementation not started by this document
+Status: UX-R1 implementation pass delivered to main · automated and physical QA tracked separately
 Scope: whole SOMA application, priority Footprints Stage (video MP4), then Projector, Perform, Labs
 Evidence: four supplied MP4 UI screenshots (0.5 s, 6.1 s, crossing, source selector), connected GitHub Pages tab, code on main as of 2026-11-18.
 Ownership: UI shell / presentation / interaction only. Preserve A/B identity and projector interlocks.
 
-## 0. Executive decision
+## Implementation progress — 2026-11-18
+
+The code updates in UX-R1 are an incremental stage UX pass on the original engine and canvas refs, not a new app.
+
+| Sprint | Delivered in main | Remaining explicit gate |
+| --- | --- | --- |
+| UX-R1.1 Baseline | Audit of four provided MP4 screenshots; initial acceptance checks in `e2e/ux-r1-stage.spec.mjs` | Capture approved visual baselines / pixel diffs during UAT |
+| UX-R1.2 Stable status | Short A/B presence chips, fixed MM:SS timecode, MP4 scrub commits when released | Replay real 8s and 15s videos for timing/identity behavior |
+| UX-R1.3 Focus preview | Click, keyboard or focus button to enlarge BODY/FLOOR/INPUT, Escape/Split restore; BODY/FLOOR thumbnails preserve canvas instances | Real MP4 focus replay and crossing capture |
+| UX-R1.4 Source switcher | Trigger-anchored viewport collision placement, capped menu scroll, Tab wrapping, Escape focus restoration | Manual Safari/mobile device review |
+| UX-R1.5 Responsive composition | Scoped CSS for desktop, tablet/mobile and short viewports; no new style architecture or engine duplicate | Capture actual 320px/390px/768px/1024px/1440px screenshots and zoom 200% |
+| UX-R1.6 Context inspector | Compact stage-level tracking with optional detailed A/B/performance popover; full feature panels kept | Keyboard and screen-reader field test |
+| UX-R1.7 Projector/Perform | Shorter status chrome, explicit software-only terminology, sticky Perform operator control, maintained blackout action | Projector hardware test and blackout drill remain separate |
+| UX-R1.8 Micro-interaction | Focus/hover/pressed state, actor presence colors, reduced-motion CSS, minimum operator touch controls | Device testing for touch and reduced motion |
+| UX-R1.9 Regression & release | New browser E2E checks for canvas persistence, focus restore, source dialog, timecode and overflow; existing broad QA retained | All checks must be green at same latest SHA; visual/performance baselines still outstanding |
+
+Critical guardrails: `VideoPoseGaitEngine`, A/B identity tracker, persistent mask bridge and projector authorization were not modified in this UX pass. Physical output from MP4 must remain locked. All projectors must retain manual physical cut-off procedures. Failed/unfinished CI runs must never be described as passed.
+
+Files modified:
+- `src/studio/v3/FootprintsStageWorkspace.tsx`
+- `src/studio/v3/FootprintsExperimentalSource.tsx`
+- `src/studio/v3/FootprintsSourceSwitcher.tsx`
+- `src/studio/v3/UnifiedStageConsole.tsx`
+- `src/studio/v3/ux-r1-stage.css` (new, last-stage scoped presentation override)
+- `tests/footprints-s0-6-1-persistent-actor-registry.test.ts` (status assertion follows new UI while preserving engine invariant)
+- `e2e/ux-r1-stage.spec.mjs` (new, runs in existing Browser QA matrix)
+
+\n## 0. Executive decision
 Use a **stage-first operator workspace**: one persistent production canvas region, one compact transport, explicit preview focus, stable diagnostics, contextual controls. Do not add another wizard, a duplicate tracking engine, a second preview pipeline, or a second projector transport. UI should show what's happening, allow inspection quickly, and remain still while actor positions and counts change.
 
 Recommended order:
