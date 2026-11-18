@@ -358,6 +358,46 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   <button type="button" className="stage-dual-emergency" onClick={allBlackout}>
    <Square size={15}/> BLACKOUT KEDUA OUTPUT
   </button>
+  <div className="stage-dual-perform-quick" role="group" aria-label="One-click FLOOR projection setelah QA">
+   <div>
+    <b>SAFE PERFORM · FLOOR</b>
+    <small>Output bersih ke jendela kedua. LIVE memerlukan QA fisik lima titik serta konfirmasi operator.</small>
+    <small>{!STAGE_HARDWARE_ENABLED?'Build Production: output fisik terkunci.':
+     experimentLocked?'MP4/3D: preview software saja.':
+     !devices.floor.connected?'Hubungkan output FLOOR dan tekan F untuk fullscreen pada layar proyektor.':
+     assessment('floor').status!=='within-provisional-target'?
+      'Lakukan lima pengukuran, cek blackout nyata dan area aman, lalu tanda tangan.':
+      devices.floor.mode==='live'?'Perintah LIVE dikirim; periksa cahaya fisik.':
+      'QA tercatat; operator dapat menekan Perform FLOOR.'}</small>
+   </div>
+   <button type="button" className="stage-dual-perform-go"
+    disabled={devices.floor.mode!=='live'&&
+     (!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||
+      !devices.floor.connected||assessment('floor').status!=='within-provisional-target')}
+    onClick={()=>changeMode('floor',devices.floor.mode==='live'?'blackout':'live')}>
+    {devices.floor.mode==='live'?'BLACKOUT FLOOR':'PERFORM · FLOOR'}
+   </button>
+  </div>
+  <details className="stage-dual-profile">
+   <summary>Profil proyektor tersimpan · geometri BODY/FLOOR</summary>
+   <p>Pengaturan proyeksi tersimpan lokal pada kamera, resolusi, lantai dan jumlah performer yang sama. QA dan izin LIVE selalu diulang.</p>
+   <label>Nama profil output
+    <input value={draftName} maxLength={100} onChange={e=>setDraftName(e.target.value)}/>
+   </label>
+   <button type="button" onClick={saveOutputDraft}>Simpan draf output</button>
+   <label>Profil lokal
+    <select value={draftId} onChange={e=>{
+     setDraftId(e.target.value);
+     const p=savedDrafts.find(q=>q.id===e.target.value);
+     if(p)setDraftName(p.name);
+    }}>
+     <option value="">Pilih profil</option>
+     {savedDrafts.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+    </select>
+   </label>
+   <button type="button" onClick={applyOutputDraft} disabled={!draftId}>Gunakan profil · QA ulang</button>
+   <button type="button" onClick={removeOutputDraft} disabled={!draftId}>Hapus profil</button>
+  </details>
   <div className="stage-dual-outputs">
    {ids.map(id=>{
     const s=devices[id],a=assessment(id);
