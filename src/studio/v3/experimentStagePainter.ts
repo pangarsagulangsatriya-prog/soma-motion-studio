@@ -38,9 +38,10 @@ function drawBufferedBodies(ctx:CanvasRenderingContext2D,rect:{x:number;y:number
   };
   const raw=latest.rawPoses.flatMap((pose,index)=>{
    if(pose.length!==33)return [];
-   const assigned=!latest.ambiguous&&latest.actorStates.some(a=>
+   const assigned=!latest.ambiguous&&latest.actorStates.find(a=>
     a.presence==='visible'&&a.rawIndex===index);
-   if(assigned)return [];
+   if(assigned&&motion.actors.some(actor=>
+    actor.id===assigned.id&&!actor.tentative))return [];
    const point=center(pose);
    const duplicate=point&&motion.actors.some(actor=>{
     const old=center(actor.pose);
@@ -58,10 +59,12 @@ function drawBufferedBodies(ctx:CanvasRenderingContext2D,rect:{x:number;y:number
 }
 export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
  skeleton=true,motion?:MotionVisualFrame){
+ // Decoder-not-ready must not clear the last presented video raster.
+ if(frame.kind==='video'&&(!frame.video||!frame.ready||
+    frame.video.readyState<2||!frame.video.videoWidth||!frame.video.videoHeight))return;
  const ctx=context(canvas,768,432);if(!ctx)return;
  if(frame.kind==='video'){
-  const v=frame.video;
-  if(!v||!frame.ready||v.readyState<2||!v.videoWidth||!v.videoHeight)return;
+  const v=frame.video!;
   const scale=Math.min(768/v.videoWidth,432/v.videoHeight);
   const w=scale*v.videoWidth,h=scale*v.videoHeight;
   try{ctx.drawImage(v,(768-w)/2,(432-h)/2,w,h);}catch{/* decoder switched */ }
@@ -82,6 +85,8 @@ export function paintExperimentCamera(canvas:HTMLCanvasElement,frame:Experimenta
 }
 export function paintExperimentBody(canvas:HTMLCanvasElement,frame:ExperimentalFrame,
  skeleton=true,motion?:MotionVisualFrame){
+ // A momentary decoder gap must not black-flash the previous BODY preview.
+ if(frame.kind==='video'&&!frame.ready)return;
  const w=640,h=360,ctx=context(canvas,w,h);if(!ctx)return;
  if(frame.kind==='simulator'){
   // BODY preview zooms toward the virtual legs; INPUT retains the full stage view.
