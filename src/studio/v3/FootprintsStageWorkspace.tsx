@@ -178,7 +178,12 @@ export function FootprintsStageWorkspace({
    });
   }else if(!hydraSettings.enabled)setHydraStatus('off');
  },[hydraSettings]);
- useEffect(()=>()=>hydraRuntime.current.dispose(),[]);
+ useEffect(()=>()=>{
+  hydraRuntime.current.dispose();
+  // React StrictMode replays effects in development: the next setup needs a fresh shell.
+  hydraRuntime.current=new PersistentHydraFootprintRuntime();
+ },[]);
+ useEffect(()=>{hydraRuntime.current.resetFeedback();},[floorScene]);
 
  // Changing Jeda/intensity/refill must never recreate the WebGL context,
  // otherwise a stage slider interaction can flash the projection.
