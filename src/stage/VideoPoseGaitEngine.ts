@@ -3,6 +3,7 @@ import {defaults,type Landmark,type MotionFrame} from '../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../footprints/gait-analysis/index.ts';
 import type {VideoActorState} from './videoAutoActorTracker.ts';
 import {MoveNetIdentityTracker} from './moveNetIdentityTracker.ts';
+import {PersistentActorRegistry,type PersistentActorState} from './persistentActorRegistry.ts';
 import {pose33AsD2,descriptorsFor33,d2ToVideoActorFrame} from './mediaPipeD2Bridge.ts';
 import {d3GuideForPose,type D3Guide,type D3Report} from './duetPose33.ts';
 import {TemporalJointAnalyzer,type TemporalFrame,type TemporalTracePoint} from './temporalJointIntelligence.ts';
@@ -26,6 +27,8 @@ export type ReplayAnalysisSnapshot={
  /** Independent diagnostic output from MediaPipe; not an identity or gait approval. */
  rawPoses:Landmark[][];
  actorStates:VideoActorState[];detectedCount:number;visibleCount:number;rescueCount?:number;
+ /** S0.6.1: lifetime A/B registry, distinct from current detected poseCount. */
+ persistentActors?:PersistentActorState[];
  d3?:D3Report;d3Total?:{attempted:number;accepted:number};
  performerMode:'auto'|'manual';
  temporal:TemporalFrame|null;temporalFrameCount:number;
@@ -56,6 +59,7 @@ export class VideoPoseGaitEngine{
  private gaitCounts={contact:0,swing:0,slide:0,pivot:0};
  private processor=new MotionProcessor();
  private actorTracker=new MoveNetIdentityTracker();
+ private readonly actorRegistry=new PersistentActorRegistry();
  private appearanceCanvas:HTMLCanvasElement|null=null;
  private temporalAnalyzer=new TemporalJointAnalyzer();
  private handLimbAnalyzer=new HandLimbDetailAnalyzer();
@@ -129,6 +133,7 @@ export class VideoPoseGaitEngine{
     ...person,landmarks:person.landmarks.map(point=>({...point}))
    })),rawPoses:this.rawPoses.map(pose=>pose.map(p=>({...p}))),
    actorStates:this.actorStates.map(actor=>({...actor})),
+   persistentActors:this.actorRegistry.snapshot,
    detectedCount:this.detectedCount,visibleCount:this.visibleCount,rescueCount:this.rescueCount,
     d3:{...this.d3,refined:[...this.d3.refined]},d3Total:{...this.d3Totals},
    performerMode:this.manualCount===null?'auto':'manual',
@@ -190,7 +195,8 @@ export class VideoPoseGaitEngine{
   this.closeSegment(reason);this.qa.reset(reason,this.lastTime>=0?this.lastTime:null);
   this.segment++;this.history=[];this.frames=0;this.firstAtMs=null;
   this.truncatedEvents=0;this.gaitCounts={contact:0,swing:0,slide:0,pivot:0};
-  this.feet.clear();this.actorTracker.reset();this.temporalAnalyzer.reset();
+  this.feet.clear();this.actorTracker.reset();this.actorRegistry.reset();
+  this.temporalAnalyzer.reset();
   this.handLimbAnalyzer.reset();this.semanticEngine.reset();
   this.meter.reset();
   this.analyzers.clear();this.processor.reset();
@@ -340,6 +346,9 @@ export class VideoPoseGaitEngine{
     const mapped=this.rawPoses.map(pose=>pose33AsD2(pose,width,height));
     const identity=this.actorTracker.observeDescriptors(mapped,descriptors,width,height,atMs);
     const observed=d2ToVideoActorFrame(identity,this.rawPoses);
+    // Persist A/B independently. A missing B can neither erase A's track
+    // nor fabricate a current B pose/footprint.
+    this.actorRegistry.observe(atMs,observed.actors,observed.assignments);
     this.actorStates=observed.actors;
     this.detectedCount=observed.detectedCount;
     this.visibleCount=observed.visibleCount;

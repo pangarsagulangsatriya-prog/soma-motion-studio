@@ -194,13 +194,17 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     aria-label="Pelacakan otomatis dua aktor">
     <b>TRACKING OTOMATIS</b>
     <span>{snapshot.visibleCount===2?'A dan B terlacak':
+     snapshot.persistentActors?.filter(a=>a.registered).length===2?
+      'A/B tersimpan · memulihkan aktor yang terhalang':
      snapshot.detectedCount>=2?'Memastikan identitas kedua aktor':
       snapshot.visibleCount===1?'Memindai ulang tubuh yang belum terbaca':
       'Mencari aktor A dan B'}</span>
     <span className="fp-video-actor-status" aria-label="Status masing-masing aktor MP4">
      {snapshot.actorStates.map(actor=><span key={actor.id}
       data-actor={actor.id} data-presence={actor.presence}>
-      <b>{actor.id}</b> {actor.presence==='visible'?'Terdeteksi':'Dicari'}
+      <b>{actor.id}</b> {actor.presence==='visible'?'Terdeteksi':
+       snapshot.persistentActors?.find(saved=>saved.id===actor.id)?.registered?
+        'Tersimpan · pulihkan':'Dicari'}
      </span>)}
     </span>
    </div>}

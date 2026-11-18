@@ -12,9 +12,10 @@
 import type {Landmark} from '../engine/types.ts';
 import {POSE_LANDMARK_COUNT,SKELETON_COLORS} from './fullBodySkeleton.ts';
 import {ContactAwareFootLock,type FootLockSample} from './contactAwareFootLock.ts';
+import type {PersistentActorState} from './persistentActorRegistry.ts';
 
 export type MotionActorId='A'|'B';
-export type MotionSnapshot=FootLockSample;
+export type MotionSnapshot=FootLockSample&{persistentActors?:PersistentActorState[]};
 export type MotionVisualActor={
  id:MotionActorId;pose:Landmark[];opacity:number;mode:'measured'|'interpolated'|'predicted'|'held';
  ageMs:number;color:string;label:string;lockedFeet?:Array<'left'|'right'>;
@@ -102,15 +103,9 @@ export class ActorMotionStateBuffer{
   // filter is restarted independently; seek/segment still clears immediately.
   this.lastAtMs=frame.atMs;
   this.footLock.observe(frame);
-  // The event/identity gate already blocks unsafe labels and foot contacts.
-  // Preserve only the last measured raster pose as an UNLABELED neutral
-  // silhouette during crossing. The buffer can never confirm A/B by itself.
-  if(frame.ambiguous){
-   for(const bank of this.actors.values()){
-    bank.verified=false;bank.previous=null;
-   }
-   return true;
-  }
+  // S0.6.1: an ambiguous *frame* can still contain a valid observation for
+  // actor A while B is reacquiring. Evaluate them independently.
+  // Uncertain actors retain only their last measured, unlabeled pose.
   for(const id of ids){
    const assignment=frame.actorStates?.find(s=>s.id===id&&s.presence==='visible'&&
     s.rawIndex!==null);
@@ -119,6 +114,19 @@ export class ActorMotionStateBuffer{
    if(!observed||observed.length!==POSE_LANDMARK_COUNT){
     const old=this.actors.get(id);
     if(old){old.verified=false;old.previous=null;}
+    else{
+     // Rehydrate a recently observed track after a React preview remount.
+     // Its original measurement timestamp remains unchanged: no fake freshness.
+     const saved=frame.persistentActors?.find(a=>a.id===id&&a.registered&&
+      a.lastPose?.length===POSE_LANDMARK_COUNT&&
+      a.lastObservedAtMs!==null&&
+      frame.atMs-a.lastObservedAtMs>=0&&
+      frame.atMs-a.lastObservedAtMs<=this.config.staleLimitMs);
+     if(saved?.lastPose&&saved.lastObservedAtMs!==null)
+      this.actors.set(id,{filters:this.createFilters(),previous:null,
+       verified:false,latest:{atMs:saved.lastObservedAtMs,
+        pose:saved.lastPose.map(p=>({...p}))}});
+    }
     continue;
    }
    let bank=this.actors.get(id);

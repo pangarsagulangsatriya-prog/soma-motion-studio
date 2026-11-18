@@ -53,8 +53,12 @@ export class ContactAwareFootLock{
   if(frame.segment!==undefined)this.segment=frame.segment;
   if(this.lastAtMs>=0&&atMs<=this.lastAtMs)return;
   this.lastAtMs=atMs;
-  // Collision/ambiguous identity invalidates any labeled visual foot anchor.
-  if(frame.ambiguous){this.anchors.clear();return;}
+  // An ambiguous B must not erase A's independently verified foot anchor.
+  // Clear anchors only for actors without a trusted visible assignment.
+  if(frame.ambiguous)
+   for(const id of ['A','B'] as const)
+    if(frame.actorStates?.find(a=>a.id===id)?.presence!=='visible')
+     this.dropActor(id);
   for(const id of ['A','B'] as const){
    const actor=frame.actorStates?.find(a=>a.id===id);
    const approved=frame.people?.some(p=>p.id===id);
