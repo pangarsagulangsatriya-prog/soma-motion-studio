@@ -27,7 +27,7 @@ import {FootprintsVideoOpticalFlow} from '../../stage/footprintsVideoOpticalFlow
 import {PersistentBodyMaskEngine} from '../../stage/persistentBodyMaskEngine.ts';
 import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
-import type {FootprintsInputChoice,FootprintsInputStatus} from './sourceSwitchModel.ts';
+import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
@@ -944,7 +944,7 @@ export function FootprintsStageWorkspace({
   }:undefined
  });
  // Only interrupt the Stage for an actionable setup problem.
- const showSetupHint=!experimentalKind&&(
+ const showSetupHint=sourceStatus.selection!==null&&!experimentalKind&&(
   setupHint.severity==='warning'||setupHint.severity==='busy'||
   (sourceStatus.selection===null&&setupHint.id==='source')
  );
@@ -978,6 +978,7 @@ export function FootprintsStageWorkspace({
  };
  return <section className={'fp-stage-workspace fp-persistent-layout soma-ia-four-workspaces'+(operatorMode?' fp-operator-mode':'')}
   data-workspace={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
+  data-stage-source={sourceStatus.selection??'none'}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
   data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
   data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode} data-focus-preview={focusPreview}
@@ -995,7 +996,7 @@ export function FootprintsStageWorkspace({
      onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);}}>
      Pairing HP
     </button>}
-    {!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
+    {sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
      cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
      frameFresh={frameFresh} cameraMatched={cameraMatched}
      outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
@@ -1015,6 +1016,20 @@ export function FootprintsStageWorkspace({
     </button>
    </div>
   </div>}
+  {!operatorMode&&!composerOpen&&view==='stage'&&sourceStatus.selection===null&&
+   <div className="soma-ia-source-setup" role="group" aria-label="Pilih sumber Stage 1">
+    <div className="soma-ia-source-heading">
+     <strong>Pilih sumber gerak</strong>
+     <span>Siapkan input untuk mulai Track. Sumber yang sama dipakai Compose, Map dan Perform.</span>
+    </div>
+    <div className="soma-ia-source-options">
+     {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
+      disabled={sourceStatus.busy} onClick={()=>{void chooseSource(option.id);}}
+      aria-label={'Gunakan '+option.label}>
+      <strong>{option.label}</strong><small>{option.description}</small>
+     </button>)}
+    </div>
+   </div>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={operatorBlackout}
@@ -1195,7 +1210,7 @@ export function FootprintsStageWorkspace({
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
         {!experimentalKind&&totalFrames===0&&!footprint.hold&&
          <span className="fp-stage-canvas-empty">{maskStatus}</span>}
-        {footprint.hold&&<span className="fp-stage-hold-label">
+        {footprint.hold&&sourceStatus.selection!==null&&<span className="fp-stage-hold-label">
          HOLD · frame BODY ditahan, tracking tetap berjalan</span>}
        </div>
        <div className="fp-stage-surface-foot"><span>{experimentalKind?
@@ -1342,7 +1357,7 @@ export function FootprintsStageWorkspace({
          Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>}
         {floorScene==='footprints'&&!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
          {blockedReason(cameraOn,floorStatus.calibrated,floorStatus.confirmed)}</span>}
-        {footprint.hold&&<span className="fp-stage-hold-label">
+        {footprint.hold&&sourceStatus.selection!==null&&<span className="fp-stage-hold-label">
          HOLD · frame FLOOR ditahan, event tetap tercatat</span>}
        </div>
        <div className="fp-stage-surface-foot"><span>{selectedExperimentFrame?
