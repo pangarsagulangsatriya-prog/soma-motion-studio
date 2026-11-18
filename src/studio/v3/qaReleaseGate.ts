@@ -90,7 +90,7 @@ export function evaluateQaRelease(raw:QaReleaseRecord,expectedCommit:string):{
   record.items.find(v=>v.id===id)?.status==='pass'&&
   !blocking.some(b=>b.startsWith(id+':')));
  return {eligible:blocking.length===0,blocking,
-  automatedPass:record.items.find(v=>v.id==='automated')?.status==='pass',
+  automatedPass:record.items.some(v=>v.id==='automated'&&v.status==='pass'),
   physicalPass};
 }
 export function releaseIsProductionReady(record:QaReleaseRecord,commit:string):boolean{
