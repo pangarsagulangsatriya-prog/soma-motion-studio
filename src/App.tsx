@@ -64,7 +64,7 @@ export default function App(){
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
  const [footprintsOperator,setFootprintsOperator]=useState(false);
  const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
- const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('live');
+ const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('tracking');
  const [simulatorOpen,setSimulatorOpen]=useState(false);
  const experimentPuppetRef=useRef<DirectPuppetSession|null>(null);
  if(!experimentPuppetRef.current)experimentPuppetRef.current=new DirectPuppetSession(defaultFloorSpace(8,6));
@@ -370,8 +370,8 @@ export default function App(){
     onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
-     setSelectedStageTool('live');
-     setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'live'}));}}
+     setSelectedStageTool('composer');
+     setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'composer'}));}}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
@@ -406,16 +406,25 @@ export default function App(){
     }}
     selectedTool={selectedStageTool}
     sourceSelection={footprintsChoice} sourceBusy={sourceSwitchBusy||cameraBusy}
-    onSelectSource={choice=>{void switchFootprintsSource(choice);}}
+    onSelectSource={choice=>{
+     // Route new sources into Track for upload, pairing and pose diagnostics.
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene('footprints');setSelectedStageTool('tracking');
+     setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));
+     void switchFootprintsSource(choice);
+    }}
     sourceLabel={footprintsChoice==='video'?'MP4 · rehearsal':footprintsChoice==='simulator'?'3D · simulation':footprintsChoice==='phone'?'Phone camera':footprintsChoice==='webcam'?'Webcam':'No source'}
-    trackingLabel={sourceSwitchBusy?'Connecting':cameraOn?'Camera connected · check tracking':footprintsChoice==='video'||footprintsChoice==='simulator'?'Preview source':'Tracking offline'}
-    outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Physical output locked':projection.status.connected?'Output connected · verify QA':'Output disconnected'}
+    trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
+    outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Output terkunci':projection.status.connected?'QA diperlukan':'Output terkunci'}
     onPreset={()=>setModal('presets')}
     onPerform={()=>{
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      selectScene('footprints');
-     setFootprintsOperator(value=>!value);
+     if(!footprintsOperator)setFootprintsOperator(true);
+    }} onBlackout={()=>{
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     updateFootprint({hold:true});
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main>
@@ -452,8 +461,11 @@ export default function App(){
       cameraCue.close();setProjectionActive(true);
      }}
      operatorMode={footprintsOperator}
-     onExitOperator={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
-      setFootprintsOperator(false);}}
+     onExitOperator={()=>{
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      setFootprintsOperator(false);setSelectedStageTool('composer');
+      setStageNavigation(last=>({id:(last?.id??0)+1,tool:'composer'}));
+     }}
      onBlackout={()=>requestStageBlackout(()=>projection.setTransport('blackout'))}
      onToggleCamera={()=>{
       if(cameraOn&&settings.input==='body'){
