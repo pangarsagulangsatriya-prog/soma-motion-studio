@@ -131,6 +131,14 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   const body=s!=='FLOOR';
   const currentMask=s==='BODY A'?maskCache.current.A:s==='BODY B'?maskCache.current.B:null;
   if(body?(!maskCache.current.safe||!currentMask):!floorReadyRef.current)return;
+  // Reuse the clean Footprints FLOOR raster when no imported media is
+  // selected. Presence/touch diagnostics are in another software-only canvas.
+  // Hardware projection remains under the existing five-point QA gate.
+  if(s==='FLOOR'&&!readyMedia('FLOOR')){
+   const source=floorCanvas.current;
+   if(source&&source.width>=16&&source.height>=16)ctx.drawImage(source,0,0,w,h);
+   return;
+  }
   const now=performance.now();
   for(const layer of compositionRef.current[s]||[]){
    if(!layer.visible)continue;
@@ -200,7 +208,9 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    const cameraKey=floorRef.current.boundCamera;
    const floorKey=floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,performerRef.current]):null;
    const bodyMedia=masks.safe&&readyMedia('BODY A')&&(performerRef.current===1||readyMedia('BODY B'));
-   const floorMedia=floorReadyRef.current&&readyMedia('FLOOR');
+   const defaultFloor=floorCanvas.current;
+   const floorMedia=floorReadyRef.current&&
+    (readyMedia('FLOOR')||!!(defaultFloor&&defaultFloor.width>=16&&defaultFloor.height>=16));
    const cameraSafe=live&&masks.safe&&!!cameraKey;
    outputReadyRef.current={body:cameraSafe&&bodyMedia,floor:cameraSafe&&floorMedia};
    stageRoute.current={
