@@ -3,6 +3,7 @@ import {moveOperatorCue,operatorCueAt,operatorShortcut} from './OperatorStageMod
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
 import {QuickStageSetup} from './QuickStageSetup.tsx';
+import {safeProjectionPreflight} from './safeProjectionPreflight.ts';
 import {inlineSetupHint,type InlineSetupAction} from './inlineSetupModel.ts';
 import {InlineFloorCalibration} from './InlineFloorCalibration.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
@@ -481,6 +482,16 @@ export function FootprintsStageWorkspace({
   cameraOn,frameFresh,floorConfirmed:floorStatus.confirmed,cameraMatched,
   dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
+ const projectionPreflight=safeProjectionPreflight({
+  source:sourceStatus.selection,cameraOn,cameraBusy,bodySelected,frameFresh,
+  identities:performerCount===1?
+   (frameFresh&&frameRef.current.pose.length>=29?1:0):identityStatus.visible.length,
+  performers:performerCount,identityAmbiguous:identityStatus.ambiguous,
+  matchedFrame:performerCount===1||
+   identityStatus.observedFrameTime===frameRef.current.time,
+  floorConfirmed:floorStatus.confirmed,cameraMatched,
+  hardwareEnabled,floorOutput:dual.floor
+ });
  const setupTrigger=useRef<HTMLElement|null>(null);
  const restoreFlowFocus=()=>{
   window.requestAnimationFrame(()=>{
@@ -573,8 +584,20 @@ export function FootprintsStageWorkspace({
  const openSimulatorInput=()=>{void chooseSource('simulator');};
  const openCalibration=()=>{
   setupTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
-  setFlowStep('process');setView('stage');
-  setPhonePanelOpen(false);setInspectorOpen(true);setCalibrationOpen(true);
+  setFlowStep('process');setPhonePanelOpen(false);setView('stage');
+  setInspectorOpen(true);setCalibrationOpen(true);
+ };
+ /** Single guided action: check current state; existing QA retains optical permission. */
+ const prepareProjection=()=>{
+  switch(projectionPreflight.action){
+   case 'choose-camera':
+    if(!cameraBusy)void chooseSource(sourceStatus.selection==='phone'?'phone':'webcam');
+    break;
+   case 'inspect-tracking':selectFlowStep('process',undefined,true);break;
+   case 'confirm-floor':openCalibration();break;
+   case 'open-output-qa':
+   case 'monitor-output':openProjectorQA();break;
+  }
  };
  const sourceMode=deriveSourceScreenMode({
   cameraOn,cameraBusy,cameraError,bodySelected,videoReady
@@ -672,6 +695,7 @@ export function FootprintsStageWorkspace({
     deviceId={selectedCameraId} videoRef={videoRef}
     tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
     onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
+    projectionPreflight={projectionPreflight} onPrepareProjection={prepareProjection}
     onOpenProjector={openProjectorQA} onBlackout={onBlackout}/>
    <FootprintsSourceSwitcher status={sourceStatus} onChoose={chooseSource}
     onPhoneManager={()=>{setPhonePanelOpen(true);setInspectorOpen(true);setCalibrationOpen(false);}}/>
@@ -971,6 +995,6 @@ export function FootprintsStageWorkspace({
    onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
    onHold={()=>updateFootprint({hold:true})}
    onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={openProjectorQA}/>}
+   onOutputSettings={prepareProjection}/>}
  </section>;
 }
