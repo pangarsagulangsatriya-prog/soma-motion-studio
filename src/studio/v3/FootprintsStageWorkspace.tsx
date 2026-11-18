@@ -12,6 +12,7 @@ import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
 import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
+import {StageModuleNav,type StageModuleWorkspace} from './StageModuleNav.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2} from 'lucide-react';
 import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
@@ -78,6 +79,7 @@ type WorkspaceView='stage'|'archive';
 type Props={
  navigationRequest?:StageNavigationRequest|null;
  onActiveToolChange?:(tool:StageNavigationRequest['tool'])=>void;
+ onNavigateStageWorkspace:(workspace:StageModuleWorkspace)=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
  audioAnalyser?:AnalyserNode|null;
@@ -103,7 +105,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- navigationRequest,onActiveToolChange,frameRef,videoRef,tracker,router,projection,audioAnalyser,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ navigationRequest,onActiveToolChange,onNavigateStageWorkspace,frameRef,videoRef,tracker,router,projection,audioAnalyser,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  cameraDevices,selectedCameraId,onSelectCameraDevice,
  phoneActive,sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
@@ -981,7 +983,9 @@ export function FootprintsStageWorkspace({
   data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode} data-focus-preview={focusPreview}
   data-experimental={!!experimentalKind} data-skeleton-visible={skeletonVisible}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
-  aria-label="Workspace utama SOMA Footprints">
+  aria-label="Stage Studio — Motion Projection">
+  <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
+   onNavigate={onNavigateStageWorkspace}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<div className="soma-ia-track-head">
    <div className="soma-ia-track-title"><h1>Track</h1>
     <span>{experimentalKind==='video'?'MP4 · Pose A/B':experimentalKind==='simulator'?'3D · Puppet':'Source · Pose A/B'}</span>
