@@ -64,6 +64,7 @@ export default function App(){
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
  const [footprintsOperator,setFootprintsOperator]=useState(false);
+ const [softwareBlackout,setSoftwareBlackout]=useState(false);
  const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
  const [selectedStageTool,setSelectedStageTool]=useState<StageNavigationTool>('tracking');
  const [simulatorOpen,setSimulatorOpen]=useState(false);
@@ -428,6 +429,7 @@ export default function App(){
     }} onBlackout={()=>{
      requestStageBlackout(()=>projection.setTransport('blackout'));
      requestSoftwarePreviewBlackout();
+     setSoftwareBlackout(true);
      updateFootprint({hold:true});
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
@@ -465,6 +467,7 @@ export default function App(){
       cameraCue.close();setProjectionActive(true);
      }}
      operatorMode={footprintsOperator}
+     softwareBlackout={softwareBlackout} onResumeSoftwarePreview={()=>setSoftwareBlackout(false)}
      onExitOperator={()=>{
       requestStageBlackout(()=>projection.setTransport('blackout'));
       setFootprintsOperator(false);setSelectedStageTool('composer');
