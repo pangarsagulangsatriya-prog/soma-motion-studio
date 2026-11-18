@@ -192,7 +192,7 @@ export function FootprintsStageWorkspace({
    if(scene.paused!==freeze)scene.setPaused(freeze);
    scene.consume(bus.recent,bus.generation,!freeze);
    scene.step(now,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
-   renderer.render(scene,now,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
+   renderer.render(scene,scene.visualTimeMs,{snowfall:snowfallRate,recoverySeconds:snowfallRecovery,paused:freeze});
    cleanFloorOutput.current=snowfallCanvas.current;
    if(now-lastRead>180){
     lastRead=now;setSnowfallCount(old=>old===scene.count?old:scene.count);
