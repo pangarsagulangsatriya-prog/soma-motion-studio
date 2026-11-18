@@ -37,7 +37,7 @@ test('MAP-R1: navigation goes to Stage Map instead of opening legacy Projector w
  assert.match(nav,/target==='map'\)onStageTool\('mapping'\)/);
  assert.match(app,/onStageTool=\{\(tool:StageNavigationTool\)=>/);
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
- assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen\}/);
+ assert.match(stage,/<SurfaceComposer embedded sceneId=\{floorScene\} mapMode=\{mappingOpen\}/);
 });
 test('MAP-R1: 4-point editor reuses safety-critical editPlan and numerical controls as advanced',()=>{
  const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
