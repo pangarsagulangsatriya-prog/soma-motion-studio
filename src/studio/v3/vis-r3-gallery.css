@@ -1,0 +1,12 @@
+/* VIS-R3: gallery thumbnails share the canonical fourteen scene IDs. */
+.s64-embedded .uxr3-scene-library{grid-template-columns:repeat(2,minmax(0,1fr));max-height:340px;gap:7px}
+.s64-embedded .uxr3-scene-card{display:flex;align-items:stretch;flex-direction:column;min-width:0;min-height:106px;padding:5px;gap:6px}
+.s64-embedded .visr3-scene-thumb{width:100%;height:67px;display:block;object-fit:cover;border-radius:4px;border:1px solid #536158;background:#090b0c}
+.s64-embedded .visr3-scene-copy{display:flex;flex-direction:column;gap:3px;min-width:0;overflow:visible;white-space:normal!important}
+.s64-embedded .visr3-scene-copy strong{font-size:10px;font-weight:650;color:#ecf0e4;line-height:1.2}
+.s64-embedded .visr3-scene-copy small{font-size:9px!important;color:#aab8a8;line-height:1.25;white-space:normal}
+.s64-embedded .uxr3-scene-card[aria-pressed=true] .visr3-scene-thumb{border-color:#d8e9b0;box-shadow:0 0 0 1px #d8e9b0}
+.s64-embedded .uxr3-scene-card:hover .visr3-scene-thumb{filter:brightness(1.14)}
+.s64-embedded .uxr3-scene-card:focus-visible{outline:2px solid #ddedb4;outline-offset:2px}
+@media(max-width:720px){.s64-embedded .uxr3-scene-library{grid-template-columns:repeat(3,minmax(0,1fr));max-height:310px}}
+@media(max-width:420px){.s64-embedded .uxr3-scene-library{grid-template-columns:repeat(2,minmax(0,1fr))}}
