@@ -522,6 +522,7 @@ export function FootprintsStageWorkspace({
   // Archive unmounts when entering Perform; its dual windows are also
   // disarmed by the App-level global Blackout before the mode is changed.
   setCalibrationOpen(false);
+  setComposerOpen(false);setMappingOpen(false);
   setView('stage');setOperatorCue(0);setActivePerformSlot(0);setPerformBlackout(true);
   updateFootprint({hold:true});
  },[operatorMode]);
@@ -1015,7 +1016,10 @@ export function FootprintsStageWorkspace({
     cueGrid={performGrid} activeSlot={activePerformSlot} onApplySlot={applyPerformSlot}
     onUpdateSlot={(index,changes)=>setPerformGrid(grid=>updatePerformCueSlot(grid,index,changes))}
     onSaveCue={savePerformGrid} onResetCues={resetPerformGrid} cueMessage={performMessage}
-    scene={floorScene} previewStatus={cameraLabel}
+    scene={floorScene} previewStatus={experimentalKind==='video'?
+     (selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
+      selectedExperimentFrame.snapshot.visibleCount+'/2 · '+selectedExperimentFrame.snapshot.performance.poseFps.toFixed(1)+' FPS':'MP4 · menunggu pose'):
+     experimentalKind==='simulator'?'Simulasi 3D':cameraLabel}
     sourceLabel={sourceStatus.selection??'Belum dipilih'}
     hardwareStatus={dual.body.mode.toUpperCase()+' BODY · '+dual.floor.mode.toUpperCase()+' FLOOR'}
     unreadyReason={performReadiness.state==='attention'||performReadiness.state==='qa-required'?performReadiness.reason:''}
