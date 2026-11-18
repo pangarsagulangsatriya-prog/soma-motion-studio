@@ -32,12 +32,13 @@ export class FloorInteractionEngine{
  private source:FloorInteractionSource|null=null;
  private events:FloorInteractionEvent[]=[];
  private actorPositions=new Map<string,Last>();
+ private lastPresenceEmit=new Map<string,number>();
  private seenContacts=new Set<string>();
  private seenOrder:string[]=[];
  private serial=0;
  get activeSource(){return this.source;}
  reset(source:FloorInteractionSource|null=null){
-  this.source=source;this.events=[];this.actorPositions.clear();
+  this.source=source;this.events=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
   this.seenContacts.clear();this.seenOrder=[];this.serial=0;
  }
  private push(part:Omit<FloorInteractionEvent,'id'>){
@@ -56,8 +57,12 @@ export class FloorInteractionEngine{
   const distance=previous?Math.hypot(o.x-previous.x,o.y-previous.y):0;
   const delta=previous?o.atMs-previous.atMs:0;
   this.actorPositions.set(key,{x:o.x,y:o.y,atMs:o.atMs});
-  if(previous&&delta<=550&&distance<.006)return null;
-  const kind:FloorInteractionKind=!previous||delta>550?'presence':'movement';
+  const still=!!previous&&delta<=550&&distance<.006;
+  // Stationary presence must still drive fog/swarm/firefly scenes while a
+  // person stays in place. Heartbeats do NOT create footprint contacts.
+  if(still&&o.atMs-(this.lastPresenceEmit.get(key)??0)<420)return null;
+  const kind:FloorInteractionKind=!previous||delta>550||still?'presence':'movement';
+  if(kind==='presence')this.lastPresenceEmit.set(key,o.atMs);
   const speed=kind==='movement'?Math.min(1,distance/Math.max(1,delta)*750):0;
   return this.push({...o,kind,speed,radius:.035,verified:false});
  }
@@ -79,12 +84,25 @@ export class FloorInteractionEngine{
  release(o:FloorObservation):FloorInteractionEvent|null{
   if(!this.accepts(o))return null;
   const key=o.source+':'+o.actorId;
-  this.actorPositions.delete(key);
+  this.actorPositions.delete(key);this.lastPresenceEmit.delete(key);
   return this.push({...o,kind:'release',radius:.025,speed:0,verified:false});
  }
  expire(nowMs:number,ageMs=800){
   for(const [key,last] of this.actorPositions){
-   if(nowMs-last.atMs>ageMs)this.actorPositions.delete(key);
+   if(nowMs-last.atMs>ageMs){
+    this.actorPositions.delete(key);this.lastPresenceEmit.delete(key);
+   }
+  }
+ }
+ /** Atomically replace currently visible identities for one source while
+  * retaining historical contact events. Unknown poses never masquerade as A/B. */
+ keepActors(source:FloorInteractionSource,ids:readonly string[]){
+  if(this.source!==source)return;
+  const allowed=new Set(ids.map(id=>source+':'+id));
+  for(const key of this.actorPositions.keys()){
+   if(key.startsWith(source+':')&&!allowed.has(key)){
+    this.actorPositions.delete(key);this.lastPresenceEmit.delete(key);
+   }
   }
  }
  get snapshot():FloorInteractionSnapshot{
