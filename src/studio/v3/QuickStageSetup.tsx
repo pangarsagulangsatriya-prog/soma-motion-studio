@@ -1,5 +1,6 @@
 import {useEffect,useState,type RefObject} from 'react';
 import type {SafeProjectionPreflight} from './safeProjectionPreflight.ts';
+import {startSetupBench} from './safeProjectionBench.ts';
 import {Camera,CheckCircle2,ChevronDown,Clock3,HardDrive,Monitor,RefreshCw,
  ShieldAlert,SlidersHorizontal} from 'lucide-react';
 import {cameraBinding,type LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -58,6 +59,7 @@ export function QuickStageSetup({
  const start=async()=>{
   if(busy)return;
   setBusy(true);setFeedback('');setSessionStarted(Date.now());setElapsed(0);
+  try{startSetupBench(sessionStorage,Date.now(),true);}catch{}
   try{
    const ok=await onConnectCamera();
    setFeedback(ok?'Kamera diminta. Tunggu gambar pertama lalu periksa profil lantai.':
@@ -184,7 +186,10 @@ export function QuickStageSetup({
      <small>{projectionPreflight.detail}</small>
     </div>
     <button type="button" className="fp-quick-setup-primary"
-     onClick={onPrepareProjection} disabled={cameraBusy&&projectionPreflight.step==='source'}>
+     onClick={()=>{
+      try{startSetupBench(sessionStorage,Date.now());}catch{}
+      onPrepareProjection();
+     }} disabled={cameraBusy&&projectionPreflight.step==='source'}>
      <Monitor size={14}/>{projectionPreflight.label}
     </button>
     <button type="button" className="fp-quick-setup-output" onClick={onOpenProjector}>
