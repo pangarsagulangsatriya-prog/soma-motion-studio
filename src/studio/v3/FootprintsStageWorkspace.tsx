@@ -808,7 +808,7 @@ export function FootprintsStageWorkspace({
   window.requestAnimationFrame(()=>{
    const target=setupTrigger.current;
    if(target?.isConnected)target.focus({preventScroll:true});
-   else document.querySelector<HTMLButtonElement>('.fp-flow-local-tabs button[aria-current="step"]')
+   else document.querySelector<HTMLButtonElement>('.soma-ia-advanced-button')
     ?.focus({preventScroll:true});
    setupTrigger.current=null;
   });
