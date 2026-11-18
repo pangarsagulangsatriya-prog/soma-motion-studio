@@ -351,6 +351,8 @@ export default function App(){
   if(e.code==='Tab'){revealHUD();return;}
    const target=e.target as HTMLElement,insideControl=!!target.closest('input,select,textarea,button,a,summary,[role=tab],[role=menuitem],[contenteditable=true]');
    if(keyboardIsInControl(target.tagName,target.isContentEditable,insideControl)||e.ctrlKey||e.metaKey||e.altKey)return;
+   // Perform owns B/Esc/Space/arrow shortcuts; legacy instrument keys must not steal them.
+   if(footprintsActive&&footprintsOperator&&!clean)return;
   mouse.current.shift=e.shiftKey;if(e.code==='KeyP')mouse.current.keyPinch=e.type==='keydown';
   if(e.type==='keydown'&&!e.repeat){if(e.code==='Space'){e.preventDefault();panic();return;}
    if(e.code==='Escape'&&controlsOpen){setControlsOpen(false);return;}if(document.querySelector('dialog[open]'))return;if(e.code==='Escape'&&cameraCue.frame.open){cameraCue.close();return;}
