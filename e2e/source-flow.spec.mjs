@@ -110,7 +110,9 @@ test('Source E2E: MP4 cannot open physical projector output',async({page})=>{
 test('IA-R1: four-stage UX keeps one source and one stage session',async({page})=>{
  await page.goto('/');
  const destinations=page.locator('.soma-primary-nav-list .soma-primary-destination');
- await expect(destinations).toHaveCount(4);
+ await expect(destinations).toHaveCount(1);
+ await expect(destinations.first()).toHaveAttribute('aria-label','Stage 1');
+ await expect(page.locator('.soma-stage-module-nav .soma-stage-module-tab')).toHaveCount(4);
  for(const name of ['Track','Compose','Map','Perform'])
   await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
  await chooseSource(page,'Simulasi 3D');
