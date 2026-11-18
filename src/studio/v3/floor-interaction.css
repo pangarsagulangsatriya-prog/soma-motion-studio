@@ -175,3 +175,18 @@
   right:auto;left:0;max-height:50vh;
  }
 }
+
+
+/* F5: let the Audio/Preset popover cross the FLOOR card boundary. */
+.fp-stage-workspace.fp-persistent-layout .fp-preview-floor:has(.fp-scene-advanced[open]){
+ overflow:visible!important;position:relative;z-index:12;
+}
+.fp-stage-workspace.fp-persistent-layout .fp-preview-floor .fp-scene-advanced-panel{
+ scrollbar-width:thin;overscroll-behavior:contain;
+}
+@media(max-width:630px){
+ .fp-stage-workspace.fp-persistent-layout .fp-preview-floor .fp-scene-advanced-panel{
+  position:fixed;left:8px;right:8px;top:20vh;
+  width:calc(100vw - 16px);max-width:none;max-height:68vh;
+ }
+}
