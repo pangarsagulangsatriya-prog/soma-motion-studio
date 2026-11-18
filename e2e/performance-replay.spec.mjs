@@ -1,8 +1,8 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 test('Video Lab profiler stays available without hand inference controls',async({page})=>{
  await page.goto('/?lab=1');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
  const panel=page.locator('.vml-perf');
@@ -23,11 +23,10 @@ test('Video Lab profiler stays available without hand inference controls',async(
 });
 test('S6.8.8.7 profiler and worker code do not unlock MP4 hardware output',async({page})=>{
  await page.goto('/');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await expect(page.locator('.fp-preview-body')).toBeVisible();
  await expect(page.locator('.fp-preview-floor')).toBeVisible();
- await page.locator('.fp-transport-projector').click();
+ await openStageMap(page);
  const controls=page.locator('.stage-dual').getByRole('button',{name:'Buka output'});
  await expect(controls).toHaveCount(2);
  for(const item of await controls.all())await expect(item).toBeDisabled();
