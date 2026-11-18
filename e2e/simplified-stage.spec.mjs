@@ -15,7 +15,8 @@ test('S6.8.7 one source switcher and no beginner observation in production',asyn
  await expect(page.locator('#fp-beginner-usability')).toHaveCount(0);
  await expect(page.locator('.fp-compact-status')).toHaveCount(0);
  await expect(page.locator('.fp-flow-local-tabs')).toHaveCount(0);
- await expect(page.locator('.soma-primary-nav-list .soma-primary-destination')).toHaveCount(4);
+ await expect(page.locator('.soma-primary-nav-list .soma-primary-destination')).toHaveCount(1);
+ await expect(page.locator('.soma-stage-module-nav .soma-stage-module-tab')).toHaveCount(4);
  await expect(stage).toHaveAttribute('data-inspector-open','false');
 
  await page.locator('.soma-uxr1-source > summary').click();
@@ -79,8 +80,11 @@ test('S6.8.7 source switch preserves input and locked physical output',async({pa
 test('IA-R1: shared source crosses all four workspaces with one active selection',async({page})=>{
  await page.goto('/');
  const stage=page.locator('.fp-stage-workspace');
- const nav=page.locator('.soma-primary-nav-list .soma-primary-destination');
- await expect(nav).toHaveCount(4);
+ const modules=page.locator('.soma-primary-nav-list .soma-primary-destination');
+ const workspaces=page.locator('.soma-stage-module-nav .soma-stage-module-tab');
+ await expect(modules).toHaveCount(1);
+ await expect(modules.first()).toHaveAttribute('aria-label','Stage Studio');
+ await expect(workspaces).toHaveCount(4);
  await expect(stage).toHaveAttribute('data-workspace','track');
 
  await selectSource(page,'Simulasi 3D');
