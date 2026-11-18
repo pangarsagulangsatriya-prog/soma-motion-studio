@@ -70,6 +70,10 @@ test('OPS-R1: stage uses same scene renderer and latches blackout on tracking fa
  assert.match(stage,/setOperatorCue\(\['overview','body','floor','split'\]\.indexOf\(slot\.view\)\)/);
  assert.match(stage,/onBlackoutRef\.current\(\);setPerformBlackout\(true\)/);
  assert.match(stage,/onResume=\{\(\)=>\{if\(performUnsafeRef\.current\)return;/);
+ assert.match(stage,/const nextCue=\(\)=>applyPerformSlot/);
+ assert.match(stage,/cueNavigationRef\.current\.next\(\)/);
+ assert.match(stage,/cueNavigationRef\.current\.previous\(\)/);
+ assert.match(console,/disabled=\{activeSlot===cueGrid\.slots\.length-1\}/);
  assert.match(console,/cueGrid\.slots\.map/);
  assert.match(console,/GO menerapkan scene dan tata letak preview/);
  assert.ok(!console.includes('setTransport('));
