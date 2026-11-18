@@ -1,0 +1,21 @@
+/* MAP-R1 — visual geometry editor placed over existing output QA. */
+.map-r1-editor{display:flex;flex-direction:column;gap:10px;padding:12px;background:#111b1b;border:1px solid #557167;border-radius:10px;min-width:0}
+.map-r1-editor header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.map-r1-editor header strong{font-size:11px;letter-spacing:.08em;color:#d6f5da}
+.map-r1-editor header span,.map-r1-editor p{font-size:11px;line-height:1.5;color:#aec1b7}
+.map-r1-switch{display:flex;gap:6px}
+.map-r1-switch button{background:#25382d;border:1px solid #65816a;color:#deebdd;padding:7px 10px;border-radius:6px;min-height:32px}
+.map-r1-switch button[aria-pressed=true]{background:#496650;border-color:#d9efc7}
+.map-r1-quad{display:block;width:min(100%,420px);aspect-ratio:1/1;max-height:440px;margin:0 auto;border:1px solid #607b78;border-radius:7px;touch-action:none;user-select:none}
+.map-r1-editor .map-r1-corners{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.map-r1-corners label{display:flex;flex-direction:column;gap:3px;padding:6px 8px;background:#1c2a28;border-radius:5px;font-size:11px;color:#e4e9dd}
+.map-r1-corners label span{font-size:10px;color:#b0c6b5}
+.map-r1-editor button:focus-visible,.map-r1-editor :focus-visible{outline:2px solid #e6f7b9;outline-offset:2px}
+.map-r1-workspace{padding:10px;background:#0e1715;border:1px solid #52675c;border-radius:10px;min-width:0}
+.map-r1-workspace>header{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.map-r1-workspace h2{font-size:19px;margin:5px 0}
+.map-r1-workspace p{color:#b4c8b9;font-size:12px}
+.map-r1-workspace .stage-dual{margin-top:8px}
+.map-r1-workspace .stage-dual-calibration{display:flex;flex-direction:column;gap:12px}
+.map-r1-workspace .stage-dual-quad{max-width:800px}
+@media(max-width:650px){.map-r1-editor .map-r1-corners{grid-template-columns:1fr}}
