@@ -164,7 +164,7 @@ test('S0.6.3 masks are integrated into the actual BODY/CAMERA rAF, not a separat
  assert.match(stage,/new PersistentBodyMaskEngine\(\)/);
  assert.match(stage,/maskTracker\.ingest\(/);
  assert.match(stage,/maskTracker\.present\(atMs,flow\)/);
- assert.match(stage,/paintExperimentBody\(body,frame,skeletonVisible,motion,masks\)/);
+ assert.match(stage,/paintExperimentBody\(body,frame,skeletonVisible,\s*motion,bodyOutput\?\?undefined,true\)/);
  assert.match(stage,/paintExperimentCamera\(cam,frame,skeletonVisible,motion,masks\)/);
  assert.match(stage,/maskTracker\.reset\(\)/);
  assert.match(painter,/paintIndependentBodyMasks\(ctx,masks/);
