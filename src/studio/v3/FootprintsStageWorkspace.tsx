@@ -40,6 +40,7 @@ import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
 import {SnowfallScene} from '../../footprints/scenes/SnowfallScene.ts';
 import {SnowfallRenderer} from '../../footprints/scenes/SnowfallRenderer.ts';
+import {floorPointerCoordinates} from '../../footprints/scenes/floorPointerCoordinates.ts';
 import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
  feedTouchFloorInteraction,paintFloorInteractionOverlay} from '../../footprints/scenes/interactionAdapters.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
@@ -496,16 +497,19 @@ export function FootprintsStageWorkspace({
  },[experimentalKind,experimentFrame,footprint,skeletonVisible,touchDemo]);
  const floorPointer=(event:PointerEvent<HTMLDivElement>,kind:'down'|'move'|'up')=>{
   if(!touchDemo||operatorMode)return;
-  const target=event.currentTarget,rect=target.getBoundingClientRect();
-  if(!rect.width||!rect.height)return;
+  const target=event.currentTarget;
+  const surface=floorScene==='snowfall'?snowfallCanvas.current:floorCanvas.current;
+  const rect=surface?.getBoundingClientRect()??target.getBoundingClientRect();
+  const uv=floorPointerCoordinates(event.clientX,event.clientY,rect);
+  if(!uv)return;
   if(kind==='down'){
+   if(!uv.inside)return; // Ignore letterboxed empty space.
    event.preventDefault();event.stopPropagation();
    target.setPointerCapture(event.pointerId);
    touchPointers.current.add(event.pointerId);
   }else if(!touchPointers.current.has(event.pointerId))return;
-  const x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
   feedTouchFloorInteraction(interactionEngineRef.current,{
-   kind,pointerId:event.pointerId,x,y,atMs:performance.now()
+   kind,pointerId:event.pointerId,x:uv.x,y:uv.y,atMs:performance.now()
   });
   if(kind==='up'){
    touchPointers.current.delete(event.pointerId);
