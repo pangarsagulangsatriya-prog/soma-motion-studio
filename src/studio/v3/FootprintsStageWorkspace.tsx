@@ -4,6 +4,7 @@ import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
 import {QuickStageSetup} from './QuickStageSetup.tsx';
 import {safeProjectionPreflight} from './safeProjectionPreflight.ts';
+import {startSetupBench} from './safeProjectionBench.ts';
 import {inlineSetupHint,type InlineSetupAction} from './inlineSetupModel.ts';
 import {InlineFloorCalibration} from './InlineFloorCalibration.tsx';
 import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
@@ -589,6 +590,9 @@ export function FootprintsStageWorkspace({
  };
  /** Single guided action: check current state; existing QA retains optical permission. */
  const prepareProjection=()=>{
+  // Start the end-to-end supervised timer on the first setup action.
+  // It never proves physical correctness without operator UAT signoff.
+  try{startSetupBench(sessionStorage,Date.now());}catch{}
   switch(projectionPreflight.action){
    case 'choose-camera':
     if(!cameraBusy)void chooseSource(sourceStatus.selection==='phone'?'phone':'webcam');
