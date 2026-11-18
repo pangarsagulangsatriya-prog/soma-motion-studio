@@ -205,7 +205,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      snapshot?`${snapshot.visibleCount}/2 tubuh`:
      clip?'Menyiapkan AI':'Belum ada video'}
    </span>
-   {snapshot&&<div className="fp-duet-engine-status" role="status"
+   {snapshot&&<div className="fp-duet-engine-status" role="group"
     aria-label="TRACKING OTOMATIS dua aktor">
     <b>TRACKING</b>
     <span className="fp-tracking-summary"
@@ -217,13 +217,31 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     </span>
     <span className="fp-video-actor-status" aria-label="Status masing-masing aktor MP4">
      {snapshot.actorStates.map(actor=><span key={actor.id}
-      data-actor={actor.id} data-presence={actor.presence}>
+      data-actor={actor.id} data-presence={actor.presence}
+      title={`Aktor ${actor.id}: ${videoActorPresenceLabel(actor.presence)}`}>
       <b>{actor.id}</b> {actor.presence==='visible'?'Aktif':
        actor.presence==='occluded'?'Tertahan':
        actor.presence==='reacquiring'||actor.presence==='uncertain'?'Pulih':
        actor.presence==='lost'?'Hilang':'Dicari'}
      </span>)}
     </span>
+    <details className="fp-tracking-details">
+     <summary aria-label="Detail tracking A dan B">Detail</summary>
+     <div className="fp-tracking-details-panel">
+      <strong>TRACKING / VIDEO</strong>
+      <p>Sumber MP4 · output fisik terkunci</p>
+      <dl>
+       <div><dt>Model</dt><dd>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</dd></div>
+       <div><dt>Inferensi</dt><dd>{snapshot.performance.poseFps.toFixed(1)} FPS</dd></div>
+       <div><dt>Lag video</dt><dd>{snapshot.performance.latestVideoLagMs.toFixed(0)} ms</dd></div>
+       <div><dt>Identitas</dt><dd>{snapshot.persistentActors?.filter(a=>a.registered).length??0}/2 tersimpan</dd></div>
+      </dl>
+      {snapshot.actorStates.map(actor=><p key={actor.id}>
+       <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
+      </p>)}
+      <small>Saat crossing, output BODY mengikuti pengaman identitas per aktor.</small>
+     </div>
+    </details>
    </div>}
    {snapshot&&showTechnicalLab&&<details className="fp-d4-performance" aria-label="D4 Performance Integration">
     <summary>D4 · Performance <b>{snapshot.performance.backend==='worker'?'Worker':'CPU fallback'}</b>
