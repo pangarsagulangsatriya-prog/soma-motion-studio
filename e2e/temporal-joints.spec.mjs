@@ -1,9 +1,9 @@
+import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 test('S6.8.8.3 temporal inspector exposes all 33 joints, metrics, and safe export controls',async({page})=>{
  await page.goto('/?lab=1');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
+ await selectStageSource(page,'Video MP4');
  await page.locator('.fp-experiment-advanced-details summary').click();
  await page.getByRole('button',{name:'Buka Video Motion Lab'}).click();
 
@@ -35,9 +35,8 @@ test('S6.8.8.3 temporal inspector exposes all 33 joints, metrics, and safe expor
 
 test('S6.8.8.3 video temporal diagnostics never bypass physical projector safety',async({page})=>{
  await page.goto('/');
- await page.locator('.fp-source-switch-trigger').click();
- await page.locator('.fp-source-switch-option').filter({hasText:'Video MP4'}).click();
- await page.locator('.fp-transport-projector').click();
+ await selectStageSource(page,'Video MP4');
+ await openStageMap(page);
  const gate=page.locator('.stage-dual');
  await expect(gate).toContainText('Dua output fisik terkunci');
  const buttons=gate.getByRole('button',{name:'Buka output'});
