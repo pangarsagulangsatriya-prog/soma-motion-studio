@@ -958,7 +958,7 @@ export function FootprintsStageWorkspace({
     break;
    }
    case 'source':{
-    const trigger=document.querySelector<HTMLButtonElement>('.fp-source-switch-trigger');
+    const trigger=document.querySelector<HTMLElement>('.soma-uxr1-source > summary');
     trigger?.focus({preventScroll:true});trigger?.click();break;
    }
    case 'webcam':void chooseSource('webcam');break;
