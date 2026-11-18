@@ -8,7 +8,8 @@ import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTra
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
 import './SurfaceComposer.css';
-import {FLOOR_SCENES,type FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
+import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
+import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
 import './ux-r3-compose.css';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -282,7 +283,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'terkalibrasi':'belum siap'}. Output fisik memerlukan pemeriksaan operator.</div>
   <div className="s64-layout">
    <aside className="s64-column"><h3>Scene Library</h3><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
-     {([{id:"footprints" as const,name:"Footprints",defaultColor:"#dce5cc"},...FLOOR_SCENES]).map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
+     {COMPOSE_SCENES.map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
        onClick={()=>onSceneChange?.(scene.id)} title={"Pilih scene "+scene.name}>
        <span className="uxr3-scene-swatch" style={{background:scene.defaultColor}} aria-hidden="true"/>
        <span>{scene.name}</span>
