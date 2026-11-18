@@ -51,15 +51,26 @@ Files: `src/studio/v3/quickStageProfiles.ts`, `QuickStageSetup.tsx`, `quick-stag
 
 **Next:** F1 — procedural Snowfall scene consuming this bus, accumulation/persistence/re-cover and multi-input visual QA; then optimize live calibration and the 13-scene catalogue. Do not merge BODY skeleton quality, physical projector QA or true biomechanical contact claims into an F0 pass.
 
+## F1 — Snowfall & Procedural GPU (18 Nov 2026)
+
+**Integrated code:** `SnowfallScene.ts` deterministic 320×180 density field; `SnowfallRenderer.ts` procedural WebGL2 grain/flakes at 1280×720 with true 2D fallback; F0 `FloorInteractionEngine` generation counter prevents replays; Footprints Stage now offers **FLOOR → SCENE → Snowfall** with running unique mark count, Jeda/Lanjut, Reset salju, snowfall intensity and refill duration. Existing Footprints rendering remains selectable. Surface Composer consumes the same clean Snowfall raster as output input (no diagnostic overlay). No new camera, decoder, tracker, projector window or hardware authorization.
+
+**Gate logic:** only verified `contact`/`touch` creates a stamp; movement/presence/standing still cannot stamp; repeated polling uses `generation:event.id` de-duplication; MP4 seek/source switch resets epoch and old snow; two actors retain independent ownership and left/right foot; snow continuously closes visible impressions without changing stamp count. Six distinct contacts yield six distinct marks, count stays six while stationary.
+
+**Documentation:** [Snowfall F1 — Procedural GPU & QA](docs/SOMA-F1-SNOWFALL-PROCEDURAL-GPU.md).  
+**Tests:** `tests/snowfall-procedural-f1.test.ts`, `e2e/snowfall-procedural-f1.spec.mjs`; end-to-end physical performance and visual acceptance remain pending for real camera/second-screen rig. Do not claim physical QA or 30 FPS until measured.
+
+**Next:** scene GPU stress test, presets/export, 13-scene library (Fog, Swarm, Leaves), confidence diagnostics, documented overhead camera/dual-performer hardware trial.
+
 ## FLOOR next: Phantom Floor benchmark parity (18 Nov 2026)
 
 **Document:** [SOMA FLOOR — Operator Flow & Feature Parity V2](docs/SOMA-FLOOR-PHANTOM-PARITY-V2-IMPLEMENTATION-PLAN.md)
 
-**Current state:** source switching, A/B tracking, floor coordinate/contact event, preview, calibration and projector safety code exist. The F0 shared presence/movement/contact/touch bus and Touch Demo software preview have been integrated. The procedural Snowfall scene engine and the 13 benchmark scenes are not delivered. Overhead A/B tracking and physical projector accuracy remain unverified.
+**Current state:** source switching, A/B tracking, floor coordinate/contact events, F0 unified source bus, F1 procedural persistent Snowfall GPU scene/2D fallback, Touch Demo and clean FLOOR preview are integrated. The remaining 12 benchmark scenes are not delivered. Overhead A/B tracking and physical projector accuracy remain unverified.
 
 **One operator flow:** Select input → Select Floor scene → Test interaction → Calibrate floor → Open projector → Go Live (only after hardware safety approval). Rehearsal MP4/3D/touch remains software-only.
 
-**Next tasks:** F0 shared interaction bus delivered for software preview (pending final QA) → F1 procedural persistent Snowfall consuming the same event bus → F2 Camera presence/contact + calibration → F3 Clean gated Projector output → F4 GPU primitives → F5 13-scene catalog → F6 audio/performance/privacy UAT → F7 advanced SOMA gait research.
+**Next tasks:** F0/F1 shared bus and Snowfall implemented (software QA pending) → F2 camera presence/contact + calibration physical QA → F3 clean gated projector optical QA → F4 remaining GPU primitives → F5 remaining 12-scene catalog → F6 audio/performance/privacy UAT → F7 advanced SOMA gait research.
 
 **Release gate:** six touches produce six footprints with no duplicates when stationary, graceful fade, two simultaneous inputs, output locked for rehearsal sources, real camera/projection acceptance before claiming parity. No second video decoder, body tracker or projector transport.
 
