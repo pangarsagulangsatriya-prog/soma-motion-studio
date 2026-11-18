@@ -9,7 +9,7 @@ import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Camera,Film,Layers3,MonitorPlay} from 'lucide-react';
+import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2} from 'lucide-react';
 import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
 import {isDismissEscape,shouldOpenInspector,shouldEnterInspectorByArrow} from './interactionPolicy.ts';
 import {FootprintsSourceSwitcher} from './FootprintsSourceSwitcher.tsx';
@@ -52,6 +52,7 @@ import './persistent-stage-workspace.css';
 import './inline-setup-assistant.css';
 import './s6-8-7-simplified-stage.css';
 import './s6-8-8-1-full-skeleton.css';
+import './ux-r1-stage.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -117,6 +118,27 @@ export function FootprintsStageWorkspace({
   catch{return 'split';}
  });
  useEffect(()=>{try{localStorage.setItem('soma-stage-preview-mode-v1',previewMode);}catch{}},[previewMode]);
+ const [focusPreview,setFocusPreview]=useState<'split'|'body'|'floor'|'input'>('split');
+ const restoreFocusRef=useRef<HTMLElement|null>(null);
+ const selectPreviewFocus=(pane:'body'|'floor'|'input',trigger?:HTMLElement|null)=>{
+  if(focusPreview===pane){setFocusPreview('split');setPreviewMode('split');return;}
+  restoreFocusRef.current=trigger??null;
+  setFocusPreview(pane);
+  // The same canvases and MP4 element remain mounted through every focus change.
+  setPreviewMode(pane==='input'?'split':pane);
+ };
+ useEffect(()=>{
+  if(focusPreview==='split')return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key!=='Escape'||event.defaultPrevented||
+    event.target instanceof HTMLElement&&event.target.closest(
+     'input,select,textarea,[contenteditable="true"],dialog,[role="dialog"]'))return;
+   event.preventDefault();setFocusPreview('split');setPreviewMode('split');
+   restoreFocusRef.current?.focus({preventScroll:true});
+  };
+  window.addEventListener('keydown',onEscape);
+  return()=>window.removeEventListener('keydown',onEscape);
+ },[focusPreview]);
  const [calibrationOverlay,setCalibrationOverlay]=useState<{marks:Array<Point|null>;editing:number}|null>(null);
  const calibrationTap=useRef<((x:number,y:number)=>void)|null>(null);
  const bindCalibrationTap=useCallback((handler:((x:number,y:number)=>void)|null)=>{
@@ -534,7 +556,7 @@ export function FootprintsStageWorkspace({
  return <section className={'fp-stage-workspace fp-persistent-layout'+(operatorMode?' fp-operator-mode':'')}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
   data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
-  data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode}
+  data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode} data-focus-preview={focusPreview}
   data-experimental={!!experimentalKind} data-skeleton-visible={skeletonVisible}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Workspace utama SOMA Footprints">
@@ -610,6 +632,13 @@ export function FootprintsStageWorkspace({
         title="Kerangka tubuh 33 titik · diagnostik, bukan output proyektor"
         onClick={()=>setSkeletonVisible(current=>!current)}>
         Skeleton <span aria-hidden="true">{skeletonVisible?'ON':'OFF'}</span>
+       </button>}
+       {!calibrationOpen&&<button type="button" className="fp-preview-focus-action"
+        aria-label={focusPreview==='input'?'Kembali ke Split':'Perbesar INPUT'}
+        aria-pressed={focusPreview==='input'}
+        title={focusPreview==='input'?'Kembali ke Split · Esc':'Fokus INPUT'}
+        onClick={event=>selectPreviewFocus('input',event.currentTarget)}>
+        {focusPreview==='input'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
        </button>}</div>
       <div className="fp-stage-video-content">
        <canvas ref={cameraCanvas} width={768} height={432}
@@ -658,14 +687,28 @@ export function FootprintsStageWorkspace({
        <div className="fp-stage-preview-modes" role="group" aria-label="Pilih tampilan preview">
         {STAGE_PREVIEW_MODES.map(item=><button type="button" key={item.id}
          aria-pressed={previewMode===item.id} aria-label={'Tampilkan '+item.description}
-         title={item.description} onClick={()=>setPreviewMode(item.id)}>
+         title={item.description} onClick={()=>{
+          setPreviewMode(item.id);setFocusPreview(item.id==='split'?'split':item.id);
+         }}>
          {item.id==='split'&&<Layers3 size={13} aria-hidden="true"/>}{item.label}</button>)}
        </div>
+       {focusPreview!=='split'&&<button type="button" className="fp-preview-restore"
+        onClick={()=>{setFocusPreview('split');setPreviewMode('split');restoreFocusRef.current?.focus({preventScroll:true});}}
+        aria-label="Kembali ke Split" title="Kembali ke Split · Esc">
+        <Minimize2 size={13}/> Split
+       </button>}
       </div>
       <div className="fp-stage-surface fp-preview-body">
        <div className="fp-stage-surface-head"><span>{experimentalKind?experimentalKind==='video'?(skeletonVisible?'BODY · SKELETON 33':'BODY · MASK VIDEO 2D'):
  'BODY · RIG VIRTUAL':'BODY · MASK PREVIEW'}</span><small>{experimentalKind?
- experimentalKind==='video'?'Pose AI + optical flow · pratinjau':'Rig 3D virtual':'Lower body'}</small></div>
+ experimentalKind==='video'?'Pose AI + optical flow · pratinjau':'Rig 3D virtual':'Lower body'}</small>
+        <button type="button" className="fp-preview-focus-action"
+         aria-label={focusPreview==='body'?'Kembali ke Split':'Perbesar BODY'}
+         aria-pressed={focusPreview==='body'}
+         title={focusPreview==='body'?'Kembali ke Split · Esc':'Fokus BODY'}
+         onClick={event=>selectPreviewFocus('body',event.currentTarget)}>
+         {focusPreview==='body'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
+        </button></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={bodyCanvas} width={160} height={90}
          aria-label="Pratinjau mask paha sampai telapak dengan latar hitam"/>
@@ -680,7 +723,14 @@ export function FootprintsStageWorkspace({
       </div>
       <div className="fp-stage-surface fp-preview-floor">
        <div className="fp-stage-surface-head"><span>FLOOR · PATH PREVIEW</span><small>{experimentalKind?
- experimentalKind==='video'?'Estimasi video 2D':'Meter virtual':'Metric floor'}</small></div>
+ experimentalKind==='video'?'Estimasi video 2D':'Meter virtual':'Metric floor'}</small>
+        <button type="button" className="fp-preview-focus-action"
+         aria-label={focusPreview==='floor'?'Kembali ke Split':'Perbesar FLOOR'}
+         aria-pressed={focusPreview==='floor'}
+         title={focusPreview==='floor'?'Kembali ke Split · Esc':'Fokus FLOOR'}
+         onClick={event=>selectPreviewFocus('floor',event.currentTarget)}>
+         {focusPreview==='floor'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
+        </button></div>
        <div className="fp-stage-canvas-area">
         <canvas ref={floorCanvas} width={1280} height={720}
          aria-label="Pratinjau kontak kaki dan lintasan dari FloorSession V3"/>
