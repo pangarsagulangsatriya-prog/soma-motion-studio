@@ -81,7 +81,7 @@ test('S0.3 stage runs a continuous rAF renderer while FLOOR remains event-bound'
  assert.doesNotMatch(code,/now-lastPaintAt>=1000\/30/);
  assert.match(code,/buffer\.ingest\(current\.snapshot\)/);
  assert.match(code,/buffer\.present\(atMs,flow\)/);
- assert.match(code,/paintExperimentBody\(body,frame,skeletonVisible,motion\)/);
+ assert.match(code,/paintExperimentBody\(body,frame,skeletonVisible,motion,masks\)/);
  assert.match(code,/current\.snapshot\?\.atMs!==lastFloorAt/);
  assert.match(painter,/drawBufferedBodies/);
  assert.match(skeleton,/parentAlpha\*\(bone\.level/);
