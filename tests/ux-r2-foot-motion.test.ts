@@ -42,12 +42,17 @@ test('UX-R2: actor, foot and session boundary keep event IDs separate',()=>{
  engine.reset('video');
  assert.ok(engine.contact({...input,actorId:'A',foot:'left'}));
  assert.ok(!first.includes(engine.canonicalRecent[0].eventId));
+ const another=make();
+ assert.ok(another.contact({...input,actorId:'A',foot:'left'}));
+ assert.notEqual(engine.canonicalRecent[0].eventId,another.canonicalRecent[0].eventId);
 });
 test('UX-R2: ambiguous identities cannot stamp from a presence observation',()=>{
  const engine=make('camera');
  assert.ok(engine.observe({...observation('camera'),actorId:'unassigned-0',basis:'presence-only'}));
  assert.equal(engine.contact({...observation('camera'),actorId:'unassigned-0',basis:'presence-only',
    foot:'left',eventId:'bad',verified:true}),null);
+ assert.equal(engine.contact({...observation('camera'),actorId:'unassigned-0',basis:'calibrated-estimate',
+   foot:'left',eventId:'still-bad',verified:true}),null);
  const event=engine.canonicalRecent[0];
  assert.equal(event.foot,'unknown');
  assert.equal(event.verified,false);
