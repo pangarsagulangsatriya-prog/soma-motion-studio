@@ -150,7 +150,15 @@
 }
 
 /* Stage 1 recovery — no-source state is a usable selector, not three black panes. */
-.soma-ia-four-workspaces[data-workspace=track][data-stage-source=none] .fp-stage-layout{display:none}
+.soma-ia-four-workspaces[data-workspace=track][data-stage-source=none] .fp-stage-layout{display:none!important}
+/* Track may hide its unused canvases before first source, while other workspaces
+   must always show their own compositor and physical-safety controls. */
+.soma-ia-four-workspaces[data-workspace=compose] .fp-stage-layout,
+.soma-ia-four-workspaces[data-workspace=map] .fp-stage-layout,
+.soma-ia-four-workspaces[data-workspace=track]:not([data-stage-source=none]) .fp-stage-layout{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+}
 .soma-ia-four-workspaces .soma-ia-source-setup{
  max-width:1020px;margin:10px auto 0;padding:clamp(18px,3vw,30px);
  background:#17251c;border:1px solid #405b45;border-radius:12px;
