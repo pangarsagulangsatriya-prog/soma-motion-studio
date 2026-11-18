@@ -82,6 +82,9 @@ test('VIS-R4: composer uses canonical FLOOR V2 event bus and keeps legacy preset
  const stage=source('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const composer=source('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(stage,/motionEvents=\{\(\)=>interactionEngineRef\.current\.canonicalRecent\}/);
+ assert.match(stage,/motionSession=\{\(\)=>interactionEngineRef\.current\.currentSessionId\}/);
+ assert.match(composer,/activeMotionSession\.current!==session/);
+ assert.match(composer,/motionClocks\.current\.clear\(\)/);
  assert.match(composer,/motionClocks\.current\.set\(item\.id,cue\)/);
  assert.match(composer,/layer\.recipe==='motion-v2'/);
  assert.match(composer,/layer\?\.recipe==='motion-v2'/);
