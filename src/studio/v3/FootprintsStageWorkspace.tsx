@@ -520,11 +520,13 @@ export function FootprintsStageWorkspace({
   // disarmed by the App-level global Blackout before the mode is changed.
   setCalibrationOpen(false);
   setView('stage');setOperatorCue(0);setActivePerformSlot(0);setPerformBlackout(true);
+  updateFootprint({hold:true});
  },[operatorMode]);
  const nextCue=()=>setOperatorCue(index=>moveOperatorCue(index,1));
  const previousCue=()=>setOperatorCue(index=>moveOperatorCue(index,-1));
- const onBlackoutRef=useRef(onBlackout);
- onBlackoutRef.current=onBlackout;
+ const operatorBlackout=()=>{onBlackout();setPerformBlackout(true);updateFootprint({hold:true});};
+ const onBlackoutRef=useRef(operatorBlackout);
+ onBlackoutRef.current=operatorBlackout;
  useEffect(()=>{
   if(!operatorMode)return;
   const handle=(event:KeyboardEvent)=>{
@@ -1009,7 +1011,7 @@ export function FootprintsStageWorkspace({
   </nav>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
-    onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={onBlackout}
+    onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={operatorBlackout}
     held={footprint.hold||performBlackout} onHold={()=>updateFootprint({hold:true})}
     onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});}}
     videoRecording={videoRecording} canRecordVideo={canRecordVideo}
@@ -1022,7 +1024,7 @@ export function FootprintsStageWorkspace({
     sourceLabel={sourceStatus.selection??'Belum dipilih'}
     hardwareStatus={dual.body.mode.toUpperCase()+' BODY · '+dual.floor.mode.toUpperCase()+' FLOOR'}
     unreadyReason={performReadiness.state==='attention'||performReadiness.state==='qa-required'?performReadiness.reason:''}
-    onRecovery={()=>{onBlackout();onExitOperator();setFlowStep('process');setInspectorOpen(true);}}
+    onRecovery={()=>{operatorBlackout();onExitOperator();setView('stage');setMappingOpen(true);setComposerStartQA(true);setComposerOpen(true);setInspectorOpen(false);}}
     canResume={!performUnsafe}/>
    :null}
   {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab initialFile={experimentClip}
