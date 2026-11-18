@@ -62,6 +62,36 @@ test('S0.6.5 bounded occlusion fades; stale actor disappears',()=>{
   [registered('A','occluded',false),registered('B','lost',false)]);
  assert.equal(expired.actors.length,0);
 });
+test('BODY flicker regression: verified actor stays bounded through ordinary AI sample gaps',()=>{
+ const bridge=new LiveBodyProjectionBridge();
+ deliver(bridge,1000,[mask('A',.2),mask('B',.8)]);
+ for(const atMs of [1080,1160,1200]){
+  const out=deliver(bridge,atMs,[
+   mask('A',.2,'held',atMs,.9,true),
+   mask('B',.8,'held',atMs,.9,true)
+  ]);
+  assert.deepEqual(out.actors.map(a=>a.id),['A','B']);
+  assert.ok(out.actors.every(a=>a.alpha>0&&a.tentative));
+  assert.ok(out.gates.every(g=>g.status==='held'));
+  assert.equal(out.physicalOutputAllowed,false);
+ }
+ const stale=deliver(bridge,1300,[
+  mask('A',.2,'held',1300,.9,true),
+  mask('B',.8,'held',1300,.9,true)
+ ]);
+ assert.equal(stale.actors.length,0);
+});
+test('BODY flicker regression: optical flow preserves actor identity palette after age 145ms',()=>{
+ const bridge=new LiveBodyProjectionBridge();
+ deliver(bridge,1000,[mask('A',.2),mask('B',.8)]);
+ const out=deliver(bridge,1180,[
+  mask('A',.24,'propagated',1180,.75,true),
+  mask('B',.76,'propagated',1180,.75,true)
+ ]);
+ assert.deepEqual(out.actors.map(a=>a.id),['A','B']);
+ assert.ok(out.actors.every(a=>!a.tentative));
+ assert.ok(out.gates.every(g=>g.status==='continuity'));
+});
 test('S0.6.5 optical flow accepts only matching actor measurement anchors',()=>{
  const bridge=new LiveBodyProjectionBridge();
  const accepted=deliver(bridge,1080,[mask('A',.28,'propagated',1080,.7,true)]);
