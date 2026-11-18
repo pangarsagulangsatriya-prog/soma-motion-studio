@@ -145,7 +145,8 @@ test('F1 clean GPU Snowfall never renders diagnostic labels into physical floor'
  const stage=readFileSync(new URL('../src/studio/v3/FootprintsStageWorkspace.tsx',import.meta.url),'utf8');
  const renderer=readFileSync(new URL('../src/footprints/scenes/SnowfallRenderer.ts',import.meta.url),'utf8');
  const composer=readFileSync(new URL('../src/studio/v3/SurfaceComposer.tsx',import.meta.url),'utf8');
- assert.match(stage,/floorScene==='snowfall'\?snowfallCanvas\.current:floorCanvas\.current/);
+ assert.match(stage,/floorScene==='snowfall'\?snowfallCanvas\.current:/);
+ assert.match(stage,/floorScene==='footprints'\?floorCanvas\.current:proceduralCanvas\.current/);
  assert.match(stage,/floorCanvas=\{cleanFloorOutput\}/);
  assert.match(stage,/ref=\{snowfallCanvas\}/);
  assert.match(stage,/ref=\{interactionCanvas\}/);
