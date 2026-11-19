@@ -288,6 +288,36 @@ const run=async()=>{
      assert.ok(m.width>=220,'Camera monitor collapsed while active');
      await screenshot(page,v.id,'webcam-active-controls');
      if(v.id==='mobile-390x844'){
+      const setup=root.locator('.fp-quick-setup');
+      await setup.locator('summary').first().click();
+      const panel=setup.locator('.fp-quick-setup-panel');
+      await panel.waitFor({state:'visible'});
+      const sourceBox=await bounds(root.locator('.soma-track-source-panel'));
+      const setupBox=await bounds(panel);
+      assert.ok(setupBox.x>=sourceBox.x-3 &&
+       setupBox.x+setupBox.width<=sourceBox.x+sourceBox.width+3,
+       'Quick Start breaks out of the narrow source rail');
+      const transportBox=await bounds(bar);
+      assert.ok(transportBox.y>=setupBox.y+setupBox.height-4,
+       'Recording toolbar overlaps expanded Quick Start');
+      await screenshot(page,v.id,'setup-in-rail');
+      const settings=root.getByRole('button',{name:'Pengaturan'});
+      await settings.click();
+      const inspector=root.locator('.fp-stage-inspector');
+      await inspector.waitFor({state:'visible'});
+      await page.waitForTimeout(100);
+      assert.equal(await setup.getAttribute('open'),null,
+       'Opening inspector should collapse Quick Start');
+      const drawer=await bounds(inspector);
+      const input=await bounds(monitor);
+      assert.ok(drawer.y>=input.y+input.height-6,
+       'Mobile inspector overlays the INPUT monitor');
+      assert.ok(drawer.x>=0&&drawer.x+drawer.width<=v.width+5,
+       'Mobile inspector exceeds viewport width');
+      await screenshot(page,v.id,'inspector-below-camera');
+      await inspector.getByRole('button',{name:'Tutup pengaturan'}).click();
+      await settings.focus();
+      assert.equal(await settings.getAttribute('aria-expanded'),'false');
       // A real MediaRecorder cycle on the narrowest tested viewport.
       const downloaded=page.waitForEvent('download',{timeout:14000});
       await record.click();
@@ -344,6 +374,64 @@ const run=async()=>{
   assert.equal(await stage(page).locator('.fp-inline-assistant').count(),0);
   assert.equal(await stage(page).locator('.fp-source-correction').count(),0);
   await screenshot(page,'desktop-e2e','webcam');
+ });
+ await check('TRK-07 Quick Start stays inside source rail with stable toolbar',async()=>{
+  const root=stage(page),rail=root.locator('.soma-track-source-panel');
+  const setup=root.locator('.fp-quick-setup');
+  await setup.locator('summary').first().click();
+  const panel=setup.locator('.fp-quick-setup-panel');
+  await panel.waitFor({state:'visible'});
+  const source=await bounds(rail),detail=await bounds(panel);
+  assert.ok(detail.x>=source.x-3 && detail.x+detail.width<=source.x+source.width+3,
+   'Quick Start extends outside source rail: '+JSON.stringify({source,detail}));
+  assert.equal(await panel.getByText('Periksa lantai').count()>0,true);
+  assert.equal(await panel.getByText('Periksa kamera').count(),0,
+   'A live webcam should not show the no-op camera check');
+  const toolbar=root.locator('.fp-unified-transport');
+  const bar=await bounds(toolbar),monitor=await bounds(root.locator('.fp-stage-video'));
+  assert.ok(bar.y>=detail.y+detail.height-5,
+   'Toolbar covers expanded setup controls');
+  assert.ok(bar.x>=monitor.x-5&&bar.x+bar.width<=monitor.x+monitor.width+6,
+   'Toolbar should align with the camera, not the entire workspace');
+  assert.notEqual(await toolbar.evaluate(el=>getComputedStyle(el).position),'sticky');
+  await screenshot(page,'desktop-e2e','setup-contained');
+  const profile=panel.locator('.fp-quick-profile-details');
+  await profile.locator('summary').click();
+  const expanded=await bounds(profile);
+  assert.ok(expanded.x+expanded.width<=source.x+source.width+3);
+  await screenshot(page,'desktop-e2e','setup-profile-open');
+  await setup.locator('summary').first().click();
+ });
+ await check('TRK-07 inspector docks beside camera, never overlays video',async()=>{
+  const root=stage(page),settings=root.getByRole('button',{name:'Pengaturan'});
+  await settings.click();
+  const inspector=root.locator('.fp-stage-inspector');
+  await inspector.waitFor({state:'visible'});
+  const screen=await bounds(root.locator('.fp-stage-video'));
+  const drawer=await bounds(inspector);
+  assert.ok(drawer.x>=screen.x+screen.width+5,
+   'Inspector overlaps live camera: '+JSON.stringify({screen,drawer}));
+  assert.ok(drawer.x+drawer.width<=1445,
+   'Inspector extends beyond browser viewport');
+  assert.equal(await settings.getAttribute('aria-expanded'),'true');
+  await screenshot(page,'desktop-e2e','inspector-docked');
+  await inspector.getByRole('button',{name:'Tutup pengaturan'}).click();
+  assert.equal(await settings.getAttribute('aria-expanded'),'false');
+  assert.ok(await settings.evaluate(el=>el===document.activeElement),
+   'Closing the inspector should restore focus to Settings');
+ });
+ await check('TRK-07 Track toolbar has one output for each action',async()=>{
+  const root=stage(page),toolbar=root.locator('.fp-unified-transport');
+  assert.equal(await toolbar.locator('.fp-transport-preview').count(),0,
+   'BODY/FLOOR Live and Hold should not appear on INPUT toolbar');
+  assert.equal(await toolbar.getByText('PREVIEW LOKAL').count(),0);
+  const results=toolbar.getByRole('button',{name:'Buka hasil rekaman dan pola'});
+  await results.click();
+  const hub=page.getByRole('dialog').filter({hasText:'Capture & Sesi'});
+  await hub.waitFor({state:'visible'});
+  assert.equal(await hub.getByRole('tab',{name:'Pola'}).getAttribute('aria-selected'),'true');
+  await screenshot(page,'desktop-e2e','results-hub');
+  await hub.getByRole('button',{name:'Tutup'}).click();
  });
  await check('TRK-06D recording starts, stops and creates a video file',async()=>{
   const root=stage(page);
