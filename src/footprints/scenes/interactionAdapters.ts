@@ -75,11 +75,11 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  }
  if(!tracker.isConfirmed||!cameraMatched||
   performerCount===2&&!idsValid)return;
- const visibleActors=performerCount===1?new Set(['performer-1']):
+ const visibleActors:Set<string>=performerCount===1?new Set(['performer-1']):
   new Set(identity.visible.filter(id=>identity.poseIndices[id]!==null));
  for(const e of tracker.session?.events??[]){
   if(e.kind!=='contact'||e.source!=='camera'||e.confidence<.55||
-   !visibleActors.has(e.performerId as 'A'|'B')||
+   !visibleActors.has(e.performerId)||
    e.timestampMs>frame.time+70)continue;
   const uv=floorToUV(tracker.floor!,e.positionM);
   engine.contact({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
