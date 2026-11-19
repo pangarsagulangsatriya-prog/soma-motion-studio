@@ -1,0 +1,57 @@
+/* TRK-06C: subtle state transitions; feedback stays beside the live input.
+ * No new overlays; motion never substitutes for a text status.
+ */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-feedback{
+ min-height:22px;
+ transition:color .16s ease,border-color .16s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-feedback-indicator{
+ transition:background-color .16s ease,box-shadow .16s ease,opacity .16s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-feedback[data-state=uncertain] .soma-track-feedback-indicator{
+ background:#d4b779;
+ box-shadow:0 0 0 3px #d4b77916;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-feedback[data-state=ready] .soma-track-feedback-indicator{
+ background:#c4e3a2;
+ box-shadow:0 0 0 3px #c4e3a226;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-feedback[data-state=framing] .soma-track-feedback-hint{
+ color:#d6c19d;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-feedback[data-state=uncertain] .soma-track-actor-chip[data-state=unstable]{
+ border-color:#6c6247;
+ background:#2b2920;
+ color:#d9c5a1;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-actor-chip{
+ transition:border-color .16s ease,background-color .16s ease,color .16s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-full-skeleton-switch{
+ transition:background-color .14s ease,border-color .14s ease,color .14s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-full-skeleton-switch[aria-pressed=false]{
+ opacity:.84;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-status[data-kind=error] .soma-track-state-indicator{
+ background:#d6a476;
+ box-shadow:0 0 0 3px #d6a4761b;
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  :is(.soma-track-feedback,.soma-track-feedback-indicator,
+   .soma-track-actor-chip,.fp-full-skeleton-switch){
+  transition:none!important;
+  animation:none!important;
+ }
+}
