@@ -1,0 +1,215 @@
+/* TRK-09 — final interaction layer. Scoped to Track; Compose/Map/Perform untouched.
+   Design goals: stable camera monitor, compact controls, one readable state,
+   deliberate feedback and keyboard/touch parity. */
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] {
+  --trk-surface:#121c16;
+  --trk-border:#38503e;
+  --trk-highlight:#cbe9a7;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-ia-track-head {
+  margin-bottom:10px;
+  padding-bottom:8px;
+  border-bottom:1px solid #2c3d31;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-ia-track-title h1 {
+  margin:0;
+  font-size:clamp(18px,1.6vw,23px);
+  line-height:1.25;
+  letter-spacing:-.025em;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-overview {
+  min-width:0;
+  align-items:start;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-panel {
+  box-sizing:border-box;
+  min-width:0!important;
+  gap:10px!important;
+  padding:12px!important;
+  border:1px solid var(--trk-border)!important;
+  background:var(--trk-surface)!important;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-select {
+  min-width:0;
+  width:100%;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-select>summary {
+  min-height:44px!important;
+  box-sizing:border-box;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-select[open]>summary {
+  background:#2c4633!important;
+  border-color:#a1c892!important;
+  box-shadow:0 0 0 2px #c9e9a716;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-select>.soma-ux01-source-options {
+  position:relative;
+  z-index:4;
+  width:100%;
+  box-sizing:border-box;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-select>.soma-ux01-source-options button {
+  width:100%;
+  text-align:left;
+  transition:background-color .14s ease,color .14s ease;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-select>.soma-ux01-source-options button:disabled {
+  opacity:.58;
+  cursor:default;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-side-action {
+  width:100%;
+  min-height:44px!important;
+  border-radius:8px;
+  transition:background-color .16s ease,border-color .16s ease,transform .12s ease;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-side-action[aria-busy="true"] {
+  cursor:progress;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-side-action:disabled {
+  opacity:.68;
+  cursor:wait;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-video {
+  min-width:0;
+  overflow:hidden;
+  border:1px solid var(--trk-border)!important;
+  background:#050806;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-video-content {
+  position:relative;
+  min-width:0;
+  isolation:isolate;
+  overflow:hidden;
+  aspect-ratio:16/9;
+  transition:border-color .18s ease;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-video-content>canvas {
+  display:block;
+  width:100%;
+  height:100%;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-input-placeholder {
+  pointer-events:none;
+  text-align:center;
+  padding:20px;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .trk06a-preview-warming {
+  pointer-events:none;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-surface-head {
+  flex-wrap:wrap;
+  gap:7px;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-surface-foot {
+  min-height:42px;
+  padding-block:8px;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-feedback {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px 9px;
+  min-width:0;
+  width:100%;
+  font-size:12px;
+  line-height:1.4;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-feedback strong {
+  font-weight:650;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-feedback-hint {
+  min-width:0;
+  flex:1 1 180px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-actor-list {
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-left:auto;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-actor-chip {
+  min-height:26px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-variant-numeric:tabular-nums;
+  transition:background-color .18s ease,border-color .18s ease,color .18s ease;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-feedback-indicator {
+  flex:0 0 auto;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-feedback[data-state="ready"] .soma-track-feedback-indicator {
+  box-shadow:0 0 0 3px #c4e3a21f;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-status {
+  overflow-wrap:anywhere;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-source-status p {
+  margin-left:0!important;
+  padding-left:17px;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-unified-transport.fp-compact-transport {
+  box-sizing:border-box!important;
+  max-width:100%!important;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-compact-transport button {
+  min-height:44px;
+  touch-action:manipulation;
+  transition:background-color .15s ease,border-color .15s ease,transform .12s ease,opacity .15s ease;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] :is(button,summary,input,select):focus-visible {
+  outline:2px solid var(--trk-highlight)!important;
+  outline-offset:3px!important;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] button:disabled {
+  cursor:not-allowed;
+  transform:none!important;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] :is(.soma-track-side-action,.fp-compact-transport button):active:not(:disabled) {
+  transform:scale(.985);
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"][data-stage-source="video"] .soma-track-source-panel .fp-experiment-controls {
+  align-content:start;
+}
+.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"][data-stage-source="video"] .soma-track-source-panel .fp-experiment-controls>output {
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:850px) {
+  .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-overview {
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] :is(.soma-track-source-panel,.fp-stage-video) {
+    width:100%;
+    max-width:100%;
+  }
+  .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-surface-foot {
+    min-height:44px;
+  }
+  .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-actor-list {
+    margin-left:0;
+  }
+}
+@media(hover:hover) and (pointer:fine) {
+  .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-track-side-action:hover:not(:disabled) {
+    transform:translateY(-1px);
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] :is(
+    .soma-track-source-select>summary,
+    .soma-track-source-select>.soma-ux01-source-options,
+    .soma-track-source-select>.soma-ux01-source-options button,
+    .soma-track-side-action,.fp-stage-video-content,.soma-track-feedback,
+    .soma-track-actor-chip,.fp-compact-transport button
+  ) {
+    animation:none!important;
+    transition:none!important;
+    transform:none!important;
+  }
+}
