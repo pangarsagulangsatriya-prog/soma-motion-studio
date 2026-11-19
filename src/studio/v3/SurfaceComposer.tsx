@@ -466,7 +466,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
  </section>;
  return <div className={'s64-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
-  role="region" aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
+  role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
   <div className="s64-heading"><div><h2>Composition</h2><small>Scene · Layers · Media · Inspector</small></div>
    <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">
     <span className="cp04-save-status" role="status">{loadingMedia>0?'Memuat '+loadingMedia+' media…':saveStatus}</span>
