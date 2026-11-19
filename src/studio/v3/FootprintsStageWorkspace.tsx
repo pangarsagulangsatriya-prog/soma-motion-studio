@@ -1198,7 +1198,8 @@ export function FootprintsStageWorkspace({
      {/* BODY/FLOOR canvases remain mounted for shared scene engines.
           Track displays the source video with skeleton; Compose owns art preview. */}
      <div className="fp-stage-side-previews" data-preview-mode={previewMode}
-      aria-label="Preview BODY dan FLOOR untuk Compose" aria-hidden={!composerOpen||mappingOpen}>
+      aria-label="Preview BODY dan FLOOR untuk Compose"
+      hidden={!composerOpen||mappingOpen} aria-hidden={!composerOpen||mappingOpen}>
       <div className="fp-stage-preview-toolbar">
        <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> PREVIEW</span>
         <small>{experimentalKind?experimentFrameLabel(experimentalKind):previewLabel(previewMode)+' · Preview software'}</small></div>
