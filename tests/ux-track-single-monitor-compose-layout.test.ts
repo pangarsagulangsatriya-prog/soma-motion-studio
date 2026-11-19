@@ -13,12 +13,12 @@ test('Track selects source from one canonical picker, keeping four supported sou
 
 test('Track uses one mounted camera/video/simulator canvas with skeleton toggle',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
- const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ const css=read('../src/studio/v3/trk02-layout.css');
  assert.match(stage,/className="fp-stage-video-content"/);
  assert.match(stage,/<canvas ref=\{cameraCanvas\}/);
  assert.match(stage,/className="fp-full-skeleton-switch"/);
  assert.match(stage,/INPUT · VIDEO \+ POSE A\/B/);
- assert.match(css,/data-workspace=track\] \.fp-stage-side-previews\{\s*display:none!important/);
+ assert.match(css,/data-workspace=track\] \.fp-stage-overview>\.fp-stage-side-previews\{[\s\S]*?display:none!important/);
  assert.match(css,/data-workspace=track\] \.fp-stage-video-content\{[\s\S]*?aspect-ratio:16\/9/);
 });
 
@@ -54,23 +54,26 @@ test('Compose exposes original three monitors only when editor is active',()=>{
 
 test('Track follows WYSIWYG source/status rail and one camera input preview',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
- const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ const css=read('../src/studio/v3/trk02-layout.css');
  assert.match(stage,/className="soma-track-source-panel"/);
  assert.match(stage,/className="soma-track-source-status"/);
  assert.match(stage,/className="fp-stage-video"/);
  assert.match(stage,/className="soma-track-input-placeholder"/);
- assert.match(css,/WYSIWYG Track: source\/status at left/);
- assert.match(css,/grid-template-columns:minmax\(260px,292px\) minmax\(0,1fr\)!important/);
+ assert.match(css,/TRK-02 — Track owns its desktop\/tablet\/mobile geometry/);
+ assert.match(css,/grid-template-columns:minmax\(0,var\(--trk-sidebar\)\) minmax\(0,1fr\)!important/);
  assert.match(css,/data-workspace=track\] \.fp-stage-overview>\.fp-stage-video/);
 });
 
 test('Track camera sizing wins against persistent legacy source grid rule',()=>{
- const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ const css=read('../src/studio/v3/trk02-layout.css');
  const legacy=read('../src/studio/v3/persistent-stage-workspace.css');
  assert.match(legacy,/grid-template-columns:minmax\(0,1fr\) minmax\(198px,\.34fr\)!important/);
  const next='.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden])';
- assert.ok(css.includes(next+'{display:grid!important;grid-template-columns:minmax(260px,292px) minmax(0,1fr)!important'));
- assert.match(css,/grid-column:2!important;grid-row:1\/span 4!important/);
+ assert.ok(css.includes(next+'{'));
+ assert.match(css,/grid-template-columns:minmax\(0,var\(--trk-sidebar\)\) minmax\(0,1fr\)!important/);
+ assert.match(css,/grid-column:2!important;/);
+ assert.match(css,/grid-row:1\/span 4!important/);
+ assert.match(css,/--trk-camera-limit:960px/);
  assert.match(css,/data-workspace=track\] \.fp-stage-bottom-status\{display:none!important\}/);
 });
 test('Track microinteractions announce state, support focus and reduced motion',()=>{
