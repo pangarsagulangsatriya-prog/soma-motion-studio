@@ -379,3 +379,28 @@
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content>canvas{width:100%!important;height:100%!important;display:block}
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){position:absolute!important;top:0!important;right:0!important;left:auto!important;width:min(380px,calc(100% - 12px))!important;max-height:78dvh!important;height:auto!important;min-height:0!important;z-index:95!important;overflow:auto;box-shadow:0 18px 50px #000b!important}
 @media(max-width:700px){.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){grid-template-columns:minmax(0,1fr)!important}.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}}
+
+/* Sidebar source dropdown and immediate tracking health. */
+.soma-ia-four-workspaces .soma-track-source-select{width:100%;min-width:0;z-index:5}
+.soma-ia-four-workspaces .soma-track-source-select>summary{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:6px;box-sizing:border-box;min-height:70px!important;width:100%;padding:12px 14px!important;border:1px solid #759977!important;background:#294331!important}
+.soma-ia-four-workspaces .soma-track-source-select>summary span{font-size:11px;font-weight:600;color:#c2d5bf}
+.soma-ia-four-workspaces .soma-track-source-select>summary strong{font-size:14px;color:#f3f8ed}
+.soma-ia-four-workspaces .soma-track-source-select:not([open])>.soma-ux01-source-options{display:none!important}
+.soma-ia-four-workspaces .soma-track-source-select>.soma-ux01-source-options{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:5;width:100%;min-width:0;box-sizing:border-box;margin:8px 0 0;padding:6px;display:grid;grid-template-columns:minmax(0,1fr);gap:4px;box-shadow:none}
+.soma-ia-four-workspaces .soma-track-source-select>.soma-ux01-source-options button{width:100%;min-height:50px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:9px 10px}
+.soma-ia-four-workspaces .soma-track-source-select>.soma-ux01-source-options button strong{font-size:12px}
+.soma-ia-four-workspaces .soma-track-source-select>.soma-ux01-source-options button small{font-size:10px;color:#a9bfaa}
+.soma-ia-four-workspaces .soma-track-source-status{padding:14px;min-width:0;border-radius:8px;border:1px solid #3b5842;background:#111d16;overflow-wrap:anywhere}
+.soma-ia-four-workspaces .soma-track-status-title{display:flex;align-items:center;gap:9px;font-size:13px;color:#e8f2e4}
+.soma-ia-four-workspaces .soma-track-state-indicator{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#8e9d8e;box-shadow:0 0 0 3px #91a3941b}
+.soma-ia-four-workspaces .soma-track-source-status[data-phase=ready] .soma-track-state-indicator{background:#b7dc91}
+.soma-ia-four-workspaces .soma-track-source-status[data-phase=pairing] .soma-track-state-indicator,
+.soma-ia-four-workspaces .soma-track-source-status[data-phase=connecting] .soma-track-state-indicator{background:#d4bc80}
+.soma-ia-four-workspaces .soma-track-source-status[data-phase=error] .soma-track-state-indicator{background:#e49b8a}
+.soma-ia-four-workspaces .soma-track-source-status p{margin:8px 0 10px;font-size:12px;line-height:1.5;color:#b9cbba}
+.soma-ia-four-workspaces .soma-track-source-status small{display:block;padding-top:8px;border-top:1px solid #34493a;font-size:11px;line-height:1.45;color:#9fb49f}
+.soma-ia-four-workspaces .soma-track-side-action{min-height:44px;width:100%;padding:9px;border:1px solid #71946e;border-radius:8px;background:#2b4933;color:#eaf4df;font-weight:650;cursor:pointer}
+.soma-ia-four-workspaces .soma-track-source-utilities{display:flex;flex-direction:column;gap:8px;min-width:0;padding-top:8px;border-top:1px solid #35513b}
+.soma-ia-four-workspaces .soma-track-source-utilities>.fp-quick-setup,
+.soma-ia-four-workspaces .soma-track-source-utilities>.soma-ia-advanced-button{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+.soma-ia-four-workspaces :is(.soma-track-source-select>summary,.soma-track-source-select button,.soma-track-side-action):focus-visible{outline:2px solid #d6edb2;outline-offset:2px}
