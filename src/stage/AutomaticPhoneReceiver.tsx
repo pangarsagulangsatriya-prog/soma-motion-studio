@@ -155,7 +155,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
   }
  };
  const url=room?pairedPhoneUrl(window.location.origin,{
-  room:room.room,ticket:room.ticket}):'';
+  room:room.room,ticket:room.ticket},window.location.pathname):'';
  const [copied,setCopied]=useState(false);
  const copy=async()=>{
   try{
