@@ -49,6 +49,9 @@
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.soma-track-source-panel{
  display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ gap:12px;
  grid-column:1!important;
  grid-row:1!important;
  width:100%;
@@ -58,6 +61,12 @@
  box-sizing:border-box;
  position:relative;
  z-index:20;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel> :where(*){
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ box-sizing:border-box;
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel[hidden]{
  display:none!important;
