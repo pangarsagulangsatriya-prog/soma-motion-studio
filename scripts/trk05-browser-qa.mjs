@@ -294,6 +294,8 @@ const run=async()=>{
       await panel.waitFor({state:'visible'});
       const sourceBox=await bounds(root.locator('.soma-track-source-panel'));
       const setupBox=await bounds(panel);
+      assert.ok(setupBox.height<=430,
+       'Mobile Stage Setup contains too many default controls: '+setupBox.height);
       assert.ok(setupBox.x>=sourceBox.x-3 &&
        setupBox.x+setupBox.width<=sourceBox.x+sourceBox.width+3,
        'Quick Start breaks out of the narrow source rail');
@@ -384,9 +386,17 @@ const run=async()=>{
   const source=await bounds(rail),detail=await bounds(panel);
   assert.ok(detail.x>=source.x-3 && detail.x+detail.width<=source.x+source.width+3,
    'Quick Start extends outside source rail: '+JSON.stringify({source,detail}));
-  assert.equal(await panel.getByText('Periksa lantai').count()>0,true);
+  assert.ok(detail.height<=430,
+   'Quick Start grew beyond compact one-step setup: '+detail.height);
   assert.equal(await panel.getByText('Periksa kamera').count(),0,
    'A live webcam should not show the no-op camera check');
+  const device=panel.locator('.fp-quick-device-details');
+  assert.equal(await device.getAttribute('open'),null,
+   'Advanced camera and output controls should stay collapsed by default');
+  await device.locator('summary').click();
+  assert.ok(await device.getByRole('button',{name:'Periksa lantai',exact:true}).isVisible());
+  assert.ok(await device.getByRole('button',{name:'Output QA',exact:true}).isVisible());
+  await device.locator('summary').click();
   const toolbar=root.locator('.fp-unified-transport');
   const bar=await bounds(toolbar),monitor=await bounds(root.locator('.fp-stage-video'));
   assert.ok(bar.y>=detail.y+detail.height-5,
