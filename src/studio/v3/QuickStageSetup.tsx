@@ -131,7 +131,6 @@ export function QuickStageSetup({
    <span>Stage Setup</span><small>{ready}/4</small><ChevronDown size={14}/>
   </summary>
   <div className="fp-quick-setup-panel">
-   <header><strong>Persiapan panggung</strong><span>{ready}/4 siap</span></header>
    <div className="fp-quick-setup-readiness" role="list" aria-label="Diagnosis persiapan panggung">
     {diagnostics.map(d=><div role="listitem" key={d.id}
      data-ready={d.state} title={d.detail}>
@@ -140,6 +139,21 @@ export function QuickStageSetup({
       d.state==='warning'?'Periksa':'Belum siap'}</small>
     </div>)}
    </div>
+   <div className="fp-quick-projection" role="group" aria-label="Langkah berikutnya">
+    <div className="fp-quick-projection-status">
+     <small title={projectionPreflight.detail}>{projectionPreflight.detail}</small>
+    </div>
+    <button type="button" className="fp-quick-setup-primary"
+     onClick={()=>{
+      try{startSetupBench(sessionStorage,Date.now());}catch{}
+      onPrepareProjection();
+     }} disabled={cameraBusy&&projectionPreflight.step==='source'}>
+     <Monitor size={14}/>{projectionPreflight.label}
+    </button>
+
+   </div>
+   <details className="fp-quick-device-details">
+    <summary>Perangkat & lantai <ChevronDown size={14}/></summary>
    <label className="fp-quick-setup-field">Kamera
     <select value={deviceId} disabled={cameraBusy||busy}
      onChange={event=>{
@@ -159,6 +173,13 @@ export function QuickStageSetup({
     onClick={onOpenCalibration} disabled={!cameraOn||cameraBusy}>
     <SlidersHorizontal size={15}/>Periksa lantai
    </button>
+
+    <button type="button" className="fp-quick-setup-output"
+     onClick={onOpenProjector}><SlidersHorizontal size={14}/> Output QA</button>
+    <p className="fp-quick-setup-note" title="Profil lokal menyimpan geometri saja, bukan izin proyektor">
+     <ShieldAlert size={13}/>Periksa perangkat dan output fisik sebelum Perform.
+    </p>
+   </details>
    <details className="fp-quick-profile-details">
     <summary>Profil panggung <ChevronDown size={14}/></summary>
    <label className="fp-quick-setup-field">Profil tersimpan
@@ -181,9 +202,7 @@ export function QuickStageSetup({
     <button type="button" onClick={restore} disabled={!selected||!cameraOn||cameraBusy}>
      <RefreshCw size={14}/> Gunakan profil
     </button>
-    <button type="button" onClick={onOpenCalibration}>
-     <SlidersHorizontal size={14}/> Periksa lantai
-    </button>
+
    </div>
    <label className="fp-quick-setup-field">Nama profil
     <input maxLength={100} value={profileName}
@@ -194,31 +213,12 @@ export function QuickStageSetup({
     {selected&&<button type="button" onClick={remove}>Hapus</button>}
    </div>
    </details>
-   <div className="fp-quick-projection" role="group" aria-label="Persiapan proyeksi aman">
-    <div className="fp-quick-projection-status">
-     <strong>PROJECTION · {projectionPreflight.progress}/4</strong>
-     <small>{projectionPreflight.detail}</small>
-    </div>
-    <button type="button" className="fp-quick-setup-primary"
-     onClick={()=>{
-      try{startSetupBench(sessionStorage,Date.now());}catch{}
-      onPrepareProjection();
-     }} disabled={cameraBusy&&projectionPreflight.step==='source'}>
-     <Monitor size={14}/>{projectionPreflight.label}
-    </button>
-    <button type="button" className="fp-quick-setup-output" onClick={onOpenProjector}>
-     <SlidersHorizontal size={14}/> Output QA · pengaturan lengkap
-    </button>
-   </div>
    {sessionStarted!==null&&<p className="fp-quick-setup-timer">
     <Clock3 size={14}/> Sesi: {Math.floor(elapsed/60).toString().padStart(2,'0')}:
     {(elapsed%60).toString().padStart(2,'0')} / target 02:00
     {ready===4?' · 4 indikator software siap':''}
    </p>}
    {feedback&&<p className="fp-quick-setup-message" role="status">{feedback}</p>}
-   <p className="fp-quick-setup-note"><ShieldAlert size={13}/>
-    Profil lokal menyimpan geometri, bukan izin proyektor. Periksa lantai dan
-    output fisik sebelum Perform. Tidak ada upload video.</p>
   </div>
  </details>;
 }
