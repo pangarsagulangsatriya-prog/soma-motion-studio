@@ -131,14 +131,15 @@ export function deriveTrackFeedback(input:{
  * are assigned only when a current-frame identity mapping is verified.
  */
 export function liveSkeletonPresentation(
- frame:MotionFrame,identity:MultiPoseStatus,performerCount:1|2
+ frame:MotionFrame,identity:MultiPoseStatus,performerCount:1|2,
+ allowIdentityColors=true
 ):{poses:Landmark[][];colors:string[]}{
  const poses=frame.poses?.length?frame.poses:(frame.pose?.length?[frame.pose]:[]);
  if(performerCount===1)return {
   poses:poses.slice(0,1),colors:['#d4edb3']
  };
  const a=identity.poseIndices.A,b=identity.poseIndices.B;
- if(!identity.ambiguous&&identity.observedFrameTime===frame.time&&
+ if(allowIdentityColors&&!identity.ambiguous&&identity.observedFrameTime===frame.time&&
   a!==null&&b!==null&&a!==b&&poses[a]&&poses[b]){
   return {poses:[poses[a],poses[b]],colors:['#d4edb3','#88d6e2']};
  }
