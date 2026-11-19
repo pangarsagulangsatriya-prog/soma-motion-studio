@@ -234,6 +234,16 @@ export function FootprintsStageWorkspace({
    if(canvas&&ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
   }
  },[sourceStatus.selection,experimentClip]);
+ // The phone can disconnect without changing the selected source.
+ // Clear the live buffer on pairing/error so no old body pixels survive.
+ useLayoutEffect(()=>{
+  if((sourceStatus.selection!=='webcam'&&sourceStatus.selection!=='phone')||
+   sourceStatus.phase==='ready')return;
+  for(const canvas of [cameraCanvas.current,bodyCanvas.current,floorCanvas.current]){
+   const ctx=canvas?.getContext('2d');
+   if(canvas&&ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
+  }
+ },[sourceStatus.selection,sourceStatus.phase]);
  const interactionSource:FloorInteractionSource|null=touchDemo?'touch':
   experimentalKind??(sourceStatus.selection==='phone'?'phone':
    sourceStatus.selection==='webcam'?'camera':null);
@@ -241,7 +251,7 @@ export function FootprintsStageWorkspace({
   interactionEngineRef.current.reset(interactionSource);
   touchPointers.current.clear();
   setFloorInteractionStats({actors:0,contacts:0,events:0});
- },[interactionSource,experimentClip]);
+ },[interactionSource,experimentClip,sourceStatus.phase]);
  // The same preview event bus accepts all four source adapters and Touch.
  // It draws an independent SOFTWARE overlay; existing FloorSession/projector
  // raster and its hardware authorization are never modified.
