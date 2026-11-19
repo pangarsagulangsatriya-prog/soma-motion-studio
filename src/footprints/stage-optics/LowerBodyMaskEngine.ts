@@ -10,6 +10,8 @@ export type MaskPolygon={points:{x:number;y:number}[];part:'pelvis'|'thigh'|'shi
 export type LowerBodyMaskConfig={
  width:number;height:number;performers:1|2;
  torsoExtension:number;featherPx:number;minimumVisibility:number;
+ /** Optional preview tuning: fraction of hip→knee removed from the upper thigh. */
+ thighStartRatio?:number;includePelvis?:boolean;
  requireSegmentation:boolean;
 };
 export const LOWER_BODY_MASK_DEFAULTS:LowerBodyMaskConfig={
@@ -78,10 +80,15 @@ export function lowerBodyPosePolygons(pose:Landmark[],poseIndex:number,
   {x:hipR.x+pelvicRadius,y:hipR.y+.045},
   {x:hipL.x-pelvicRadius,y:hipL.y+.045}
  ];
+ const thighStart=config.thighStartRatio??0;
+ const fromThigh=(hip:Vec,knee:Vec):Vec=>({
+  x:hip.x+(knee.x-hip.x)*thighStart,
+  y:hip.y+(knee.y-hip.y)*thighStart
+ });
  const shapes:{part:MaskPolygon['part'];points:Vec[]}[]=[
-  {part:'pelvis',points:pelvis},
-  {part:'thigh',points:segment(hipL,kneeL,hipWidth*.23)},
-  {part:'thigh',points:segment(hipR,kneeR,hipWidth*.23)},
+  ...(config.includePelvis===false?[]:[{part:'pelvis' as const,points:pelvis}]),
+  {part:'thigh',points:segment(fromThigh(hipL,kneeL),kneeL,hipWidth*.23)},
+  {part:'thigh',points:segment(fromThigh(hipR,kneeR),kneeR,hipWidth*.23)},
   {part:'shin',points:segment(kneeL,ankleL,hipWidth*.16)},
   {part:'shin',points:segment(kneeR,ankleR,hipWidth*.16)},
   {part:'foot',points:segment(heelL,toeL,hipWidth*.11)},
@@ -103,6 +110,8 @@ export function validateLowerBodyMaskConfig(input:LowerBodyMaskConfig):LowerBody
   input.width<32||input.width>512||input.height<32||input.height>512||
   ![1,2].includes(input.performers)||!valid(input.torsoExtension)||
   input.torsoExtension<0||input.torsoExtension>.4||
+  (input.thighStartRatio!==undefined&&(!valid(input.thighStartRatio)||input.thighStartRatio<0||input.thighStartRatio>.4))||
+  (input.includePelvis!==undefined&&typeof input.includePelvis!=='boolean')||
   !Number.isInteger(input.featherPx)||input.featherPx<0||input.featherPx>8||
   !valid(input.minimumVisibility)||input.minimumVisibility<.4||input.minimumVisibility>.95||
   typeof input.requireSegmentation!=='boolean')

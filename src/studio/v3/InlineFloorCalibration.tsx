@@ -9,7 +9,7 @@ import type {Point,Quad} from '../../projection/geometry.ts';
 import './inline-floor-calibration.css';
 
 const corners=['Kiri atas','Kanan atas','Kanan bawah','Kiri bawah'] as const;
-const sizes=[{label:'4 × 3 m',w:4,d:3},{label:'6 × 4 m',w:6,d:4},
+const sizes=[{label:'5 × 5 m',w:5,d:5},{label:'4 × 3 m',w:4,d:3},{label:'6 × 4 m',w:6,d:4},
  {label:'8 × 6 m',w:8,d:6},{label:'10 × 8 m',w:10,d:8}] as const;
 const emptyCorners=():Array<Point|null>=>[null,null,null,null];
 export type InlineCalibrationOverlay={marks:Array<Point|null>;editing:number};

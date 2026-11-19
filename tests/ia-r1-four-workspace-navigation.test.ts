@@ -62,7 +62,9 @@ test('IA-R1: Compose has compact media/layers/presets and one Hydra inspector',(
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  for(const cls of ['soma-ia-media','soma-ia-layers','soma-ia-presets','soma-ia-hydra'])
   assert.ok(composer.includes(cls),cls);
- assert.match(composer,/onHydraSettingsChange\?\.\(\{enabled:e.target.checked\}\)/);
+ const hydra=read('../src/studio/v3/HydraEffectInspector.tsx');
+ assert.match(composer,/<HydraEffectInspector value=\{hydraSettings\}/);
+ assert.match(hydra,/onChange\?\.\(\{enabled:e.currentTarget.checked\}\)/);
  assert.match(stage,/hydraSettings=\{hydraSettings\} onHydraSettingsChange=\{updateHydra\}/);
  assert.ok(!composer.includes('Advanced Mapping &amp; Output QA'));
  assert.match(composer,/if\(mapMode\)return <section className="map-r1-workspace"/);

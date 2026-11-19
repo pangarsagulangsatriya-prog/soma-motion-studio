@@ -24,6 +24,8 @@ import {useCompositionHistory} from './useCompositionHistory.ts';
 import {FootprintDemo,LegDemo} from './MappingStudioDemo.tsx';
 import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
+import {HydraEffectInspector} from './HydraEffectInspector.tsx';
+import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -152,6 +154,16 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
  const stageRoute=useRef<StageRouteInput|null>(null);
  const maskCache=useRef<{at:number;A:HTMLCanvasElement|null;B:HTMLCanvasElement|null;safe:boolean;reason:string;union:ReturnType<typeof buildLowerBodyMask>['mask']|null}>({at:-1,A:null,B:null,safe:false,reason:'Tracking belum siap.',union:null});
  const maskScratch=useRef<{A:HTMLCanvasElement;B:HTMLCanvasElement}|null>(null);
+ const [legTuning,setLegTuning]=useState<LegPreviewTuning>(LEG_PREVIEW_TUNING_DEFAULT);
+ const legTuningRef=useRef(legTuning);legTuningRef.current=legTuning;
+ const previewMaskCache=useRef<{
+  at:number;A:HTMLCanvasElement|null;B:HTMLCanvasElement|null;safe:boolean
+ }>({at:-1,A:null,B:null,safe:false});
+ const previewMaskScratch=useRef<{A:HTMLCanvasElement;B:HTMLCanvasElement}|null>(null);
+ const updateLegTuning=(patch:Partial<LegPreviewTuning>)=>{
+  setLegTuning(prev=>validateLegPreviewTuning({...prev,...patch}));
+  previewMaskCache.current.at=-1;
+ };
  const outputReadyRef=useRef({body:false,floor:false});
  
  const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
@@ -254,6 +266,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   const idsSafe=count===1||(!ids.ambiguous&&ids.mode===2&&ids.visible.includes('A')&&ids.visible.includes('B')&&ids.observedFrameTime===frame.time&&ids.poseIndices.A!==null&&ids.poseIndices.B!==null&&ids.poseIndices.A!==ids.poseIndices.B);
   const safe=!!(cameraOnRef.current&&bodySelectedRef.current&&floorReadyRef.current&&bindingSafe&&validClock&&identitySafeRef.current&&idsSafe);
   if(!safe){
+   previewMaskCache.current={at:-1,A:null,B:null,safe:false};
    maskCache.current={at:-1,A:null,B:null,safe:false,reason:!cameraOnRef.current?'Kamera mati':!floorReadyRef.current||!bindingSafe?'Kalibrasi kamera/lantai belum cocok':!validClock?'Frame kedaluwarsa':'Identitas A/B ambigu',union:null};
    return;
   }
@@ -261,6 +274,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   if(maskCache.current.at===frame.time&&maskCache.current.safe)return;
   const result=buildLowerBodyMask(frame,{...LOWER_BODY_MASK_DEFAULTS,performers:count,requireSegmentation:true},now,'camera');
   if(result.status!=='ready'){
+   previewMaskCache.current={at:-1,A:null,B:null,safe:false};
    maskCache.current={at:-1,A:null,B:null,safe:false,reason:result.reason,union:null};
    return;
   }
@@ -275,6 +289,30 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   maskImage(a.data,a.width,a.height,maskScratch.current.A);
   if(b)maskImage(b.data,b.width,b.height,maskScratch.current.B);
   maskCache.current={at:frame.time,A:maskScratch.current.A,B:b?maskScratch.current.B:null,safe:true,reason:'Mask performer terpisah dan identitas cocok.',union:result.mask};
+  // The editable LEG mask is a SECOND preview-only raster. Physical output retains
+  // its original strictly gated segmentation mask, independent of operator tuning.
+  const tuning=legTuningRef.current;
+  const previewResult=buildLowerBodyMask(frame,{
+   ...LOWER_BODY_MASK_DEFAULTS,performers:count,requireSegmentation:true,
+   torsoExtension:0,thighStartRatio:tuning.thighStartRatio,
+   includePelvis:tuning.includePelvis,featherPx:tuning.featherPx,
+   minimumVisibility:tuning.minimumVisibility
+  },now,'camera');
+  if(previewResult.status!=='ready'){
+   previewMaskCache.current={at:-1,A:null,B:null,safe:false};return;
+  }
+  const pa=indexA===null?null:previewResult.perPoseMasks[indexA];
+  const pb=indexB===null?null:previewResult.perPoseMasks[indexB];
+  if(!pa||(count===2&&!pb)){
+   previewMaskCache.current={at:-1,A:null,B:null,safe:false};return;
+  }
+  if(!previewMaskScratch.current)previewMaskScratch.current={
+   A:document.createElement('canvas'),B:document.createElement('canvas')
+  };
+  maskImage(pa.data,pa.width,pa.height,previewMaskScratch.current.A);
+  if(pb)maskImage(pb.data,pb.width,pb.height,previewMaskScratch.current.B);
+  previewMaskCache.current={at:frame.time,A:previewMaskScratch.current.A,
+   B:pb?previewMaskScratch.current.B:null,safe:true};
  };
  const readyMedia=(s:Surface)=>{
   return compositionRef.current[s].some(l=>{
@@ -288,9 +326,15 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
   const body=s!=='FLOOR';
-  const currentMask=s==='BODY A'?maskCache.current.A:s==='BODY B'?maskCache.current.B:null;
+  const selectedMask=physical?maskCache.current:previewMaskCache.current;
+  const currentMask=s==='BODY A'?selectedMask.A:s==='BODY B'?selectedMask.B:null;
   if(!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
-   bodyMaskSafe:maskCache.current.safe,bodyMaskPresent:!!currentMask}))return;
+   bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
+  // In Compose, a tracked lower-body mask is itself useful visual material.
+  // Never insert this unverified preview texture into the physical BODY raster.
+  if(body&&!physical&&!readyMedia(s)&&currentMask){
+   ctx.save();ctx.globalAlpha=.9;ctx.drawImage(currentMask,0,0,w,h);ctx.restore();return;
+  }
   // Reuse the clean Footprints FLOOR raster when no imported media is
   // selected. Presence/touch diagnostics are in another software-only canvas.
   // Hardware projection remains under the existing five-point QA gate.
@@ -574,6 +618,8 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   <h3>INSPECTOR <small>{selected}</small></h3>
+  {selected!=='FLOOR'&&<LegPreviewInspector value={legTuning}
+   onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>}
   {selected==='FLOOR'&&footprint&&updateFootprint&&<MappingStudioFootprintControls value={footprint} onChange={updateFootprint}/>}
   <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
    {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
@@ -592,16 +638,9 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    {COMPOSE_SCENES.map(scene=><option value={scene.id} key={scene.id}>{scene.name}</option>)}
   </select>
  </label>}
- {inspectorTab==='scene'&&<details className="soma-ia-hydra" open><summary>Hydra · {hydraSettings?.enabled?hydraStatus??'ON':'OFF'}</summary>
-  <label><input type="checkbox" checked={hydraSettings?.enabled??false}
-   onChange={e=>onHydraSettingsChange?.({enabled:e.target.checked})}/> Aktif</label>
-  <label>Style<select value={hydraSettings?.style??'off'}
-   onChange={e=>onHydraSettingsChange?.({style:e.target.value as HydraFootprintSettings['style']})}>
-   {HYDRA_FOOTPRINT_STYLES.map(style=><option value={style.id} key={style.id}>{style.label}</option>)}
-  </select></label>
-  <label>Feedback · {Math.round((hydraSettings?.feedback??0)*100)}%
-   <input type="range" min="0" max=".65" step=".05" value={hydraSettings?.feedback??0}
-    onChange={e=>onHydraSettingsChange?.({feedback:Number(e.target.value)})}/></label>
+ {inspectorTab==='scene'&&<details className="soma-ia-hydra" open>
+  <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
+  <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
  </details>}
  {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
  {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
