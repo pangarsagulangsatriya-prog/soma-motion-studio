@@ -285,3 +285,5 @@
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .msv4-root.s64-embedded .msv4-editor-hint{
  color:#808d96;font-size:10px;line-height:1.55;margin:0;
 }
+
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .msv4-root.s64-embedded .msv4-browser-meta{font-size:9px;color:#8c949e;letter-spacing:.07em;margin:-3px 0 7px}
