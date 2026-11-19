@@ -34,6 +34,7 @@ test('phone pairing opens inline in the left rail while preview remains visible'
 test('closing QR hides the panel and keeps its WebRTC component mounted',()=>{
  assert.match(stage,/hidden=\{!phonePanelOpen\|\|operatorMode\} aria-hidden=\{!phonePanelOpen\|\|operatorMode\}/);
  assert.match(stage,/setPhonePanelOpen\(v=>!v\)/);
+ assert.match(stage,/if\(sourceStatus\.selection==='phone'\)setPhonePanelOpen\(!phoneActive\)/);
  assert.match(stage,/onClick=\{closePhonePanel\}/);
  assert.match(stage,/soma-track-side-action'\)\?\?document\.querySelector/);
  assert.match(flowCss,/\.soma-track-phone-pairing\[hidden\]\{\s*display:none!important/);
