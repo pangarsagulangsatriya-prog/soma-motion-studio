@@ -404,3 +404,25 @@
 .soma-ia-four-workspaces .soma-track-source-utilities>.fp-quick-setup,
 .soma-ia-four-workspaces .soma-track-source-utilities>.soma-ia-advanced-button{width:100%;max-width:none;min-width:0;box-sizing:border-box}
 .soma-ia-four-workspaces :is(.soma-track-source-select>summary,.soma-track-source-select button,.soma-track-side-action):focus-visible{outline:2px solid #d6edb2;outline-offset:2px}
+
+/* Camera canvas stays the only Track visual, with contextual empty states. */
+.soma-ia-four-workspaces .soma-track-input-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;box-sizing:border-box;text-align:center;background:rgba(0,0,0,.74);color:#e5eddf;pointer-events:none;z-index:3}
+.soma-ia-four-workspaces .soma-track-input-placeholder strong{font-size:15px;font-weight:650}
+.soma-ia-four-workspaces .soma-track-input-placeholder span{font-size:12px;line-height:1.5;color:#a8baaa;max-width:340px}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-side-previews,
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-side-previews:not([hidden]){display:none!important;visibility:hidden!important}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video{border-radius:11px;min-height:0!important}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{overflow:hidden!important}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-surface-head{min-width:0}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-surface-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.soma-ia-four-workspaces[data-workspace=track] .fp-experiment-dock{grid-template-columns:minmax(0,1fr)!important;overflow-wrap:anywhere}
+.soma-ia-four-workspaces[data-workspace=track] .fp-experiment-controls{display:flex;flex-wrap:wrap;min-width:0;gap:7px}
+.soma-ia-four-workspaces[data-workspace=track] .fp-experiment-controls button,
+.soma-ia-four-workspaces[data-workspace=track] .fp-experiment-upload{min-height:40px}
+@media(max-width:700px){
+ .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.soma-track-source-panel{grid-column:1!important;grid-row:1!important}
+ .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-inline-assistant{grid-column:1!important;grid-row:2!important}
+ .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-experiment-dock{grid-column:1!important;grid-row:3!important}
+ .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{padding:14px}
+}
