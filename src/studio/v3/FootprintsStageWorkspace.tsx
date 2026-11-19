@@ -1163,25 +1163,26 @@ export function FootprintsStageWorkspace({
        </div>
       </details>
       <section className="soma-track-source-status" data-phase={sourceStatus.phase}
+       hidden={sourceStatus.selection==='phone'&&phonePanelOpen}
        data-kind={trackSummary.kind} aria-label="Status sumber" role="status" aria-live="polite">
        <div className="soma-track-status-title">
         <span className="soma-track-state-indicator" aria-hidden="true"/>
         <strong>{trackSummary.label}</strong>
        </div>
-       {trackSummary.detail&&<p>{trackSummary.detail}</p>}
+       {trackSummary.detail&&trackSummary.kind==='error'&&<p>{trackSummary.detail}</p>}
       </section>
       {sourceStatus.selection==='webcam'&&!cameraOn&&sourceStatus.phase!=='connecting'&&
        <button type="button" className="soma-track-side-action" onClick={onStartBody}
         disabled={cameraBusy}>Aktifkan webcam</button>}
-      {sourceStatus.selection==='phone'&&<button type="button" className="soma-track-side-action"
+      {sourceStatus.selection==='phone'&&!phonePanelOpen&&<button type="button" className="soma-track-side-action"
        aria-expanded={phonePanelOpen} aria-controls="soma-track-phone-pairing"
        onClick={()=>{setPhonePanelOpen(v=>!v);setCalibrationOpen(false);setInspectorOpen(false);}}>
-       {phonePanelOpen?'Tutup pairing':phoneActive?'Lihat koneksi HP':'Hubungkan HP'}
+       {phoneActive?'Lihat koneksi HP':'Hubungkan HP'}
       </button>}
       {sourceStatus.selection==='phone'&&<section id="soma-track-phone-pairing" className="soma-track-phone-pairing"
        hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}
        aria-label="Pairing kamera HP">
-       <header className="soma-track-phone-heading"><strong>Hubungkan HP</strong>
+       <header className="soma-track-phone-heading"><strong>Pairing kamera</strong>
         <button type="button" aria-label="Tutup pairing kamera HP" onClick={closePhonePanel}>×</button>
        </header>
        <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
@@ -1221,7 +1222,9 @@ export function FootprintsStageWorkspace({
         (experimentalKind==='video'?'INPUT · VIDEO + POSE A/B':experimentalKind==='simulator'?
          'INPUT · PUPPET 3D + POSE A/B':'INPUT · KAMERA + SKELETON'):
         (experimentalKind==='video'?'Video MP4':experimentalKind==='simulator'?'Simulasi 3D':'Kamera')}</span>
-       {experimentalKind!=='simulator'&&<button type="button" className="fp-full-skeleton-switch"
+       {experimentalKind!=='simulator'&&
+        (composerOpen||sourceStatus.phase==='ready'||(experimentalKind==='video'&&!!experimentClip))&&
+        <button type="button" className="fp-full-skeleton-switch"
         aria-pressed={skeletonVisible}
         aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
         title="Kerangka tubuh 33 titik · diagnostik, bukan output proyektor"
@@ -1251,11 +1254,9 @@ export function FootprintsStageWorkspace({
         data-calibration-active={calibrationOpen&&!!calibrationOverlay}
         aria-label={experimentalKind?experimentalKind==='video'?'Input video rekaman 2D':'Input puppet 3D virtual':
          calibrationOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
-       {!composerOpen&&!calibrationOpen&&!experimentalKind&&sourceStatus.phase!=='ready'&&
+       {!composerOpen&&!calibrationOpen&&!experimentalKind&&!sourceStatus.selection&&
         <div className="soma-track-input-placeholder" role="status">
-         <strong>{sourceStatus.selection==='phone'?'Menunggu HP':
-          sourceStatus.selection==='webcam'?'Kamera belum aktif':'Pilih sumber'}</strong>
-         {sourceStatus.selection==='webcam'&&<span>Izinkan akses kamera</span>}
+         <strong>Pilih sumber</strong>
         </div>}
        {!composerOpen&&experimentalKind==='video'&&!canPaintVideoFrame(selectedExperimentFrame)&&
         <div className="soma-track-input-placeholder" role="status">
@@ -1290,7 +1291,9 @@ export function FootprintsStageWorkspace({
         <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
        </div>}
       </div>
-      <div className="fp-stage-surface-foot">
+      <div className="fp-stage-surface-foot"
+       hidden={!composerOpen&&!operatorMode&&
+        (feedback.state==='idle'||feedback.state==='waiting')}>
        {!composerOpen&&!operatorMode?
         <div className="soma-track-feedback" data-state={feedback.state}
          title="Kaki terlihat dihitung dari landmark pergelangan, tumit dan ujung kaki pada frame aktif; bukan kontak lantai."
