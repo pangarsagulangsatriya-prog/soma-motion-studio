@@ -10,7 +10,7 @@ const persistent=read('../src/studio/v3/persistent-stage-workspace.css');
 
 test('TRK-02 is the last imported stylesheet and only scopes Track',()=>{
  const imports=[...stage.matchAll(/import '\.\/([\w-]+\.css)'/g)].map(m=>m[1]);
- assert.deepEqual(imports.slice(-7),['trk02-layout.css','trk03-source-flow.css','trk04-feedback.css','trk06-control-polish.css','trk06a-status-ownership.css','trk06c-micro-feedback.css','trk07-functional-layout.css']);
+ assert.deepEqual(imports.slice(-8),['trk02-layout.css','trk03-source-flow.css','trk04-feedback.css','trk06-control-polish.css','trk06a-status-ownership.css','trk06c-micro-feedback.css','trk07-functional-layout.css','trk08-mp4-compact.css']);
  assert.match(layout,/\.fp-stage-workspace\.fp-persistent-layout\.soma-ia-four-workspaces\[data-workspace=track\]/);
  assert.ok(!layout.includes('[data-workspace=compose]'));
  assert.ok(!layout.includes('[data-workspace=map]'));
