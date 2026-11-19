@@ -50,8 +50,9 @@ export function trackStatusOwnership(input:{
    !(selection==='phone'&&phonePanelOpen),
   sourceStatusError,
   webcamAction,
-  showBodyAction:(selection==='webcam'||(selection==='phone'&&!phonePanelOpen))&&
-   cameraOn&&sourceMode==='switch-body',
+  // The current Body recovery handler selects the laptop camera. Never
+  // advertise it for HP: that would silently replace the paired source.
+  showBodyAction:selection==='webcam'&&cameraOn&&sourceMode==='switch-body',
   showPreviewWarming:!!selection&&!experimentalKind&&
    cameraOn&&sourceMode==='warming',
   showTrackingFeedback:feedbackState!=='idle'&&feedbackState!=='waiting',
