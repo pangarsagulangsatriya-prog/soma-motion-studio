@@ -47,7 +47,7 @@ test('CP06: Track owns video, Composer imports registered assets without startin
  assert.match(composer,/sharedAssetChoices\(media\)/);
  assert.match(registry,/URL\.revokeObjectURL\(url\)/);
 });
-test('CP06: shared MP4 source keeps CP05's physical projector lock',()=>{
+test("CP06: shared MP4 source keeps CP05 physical projector lock",()=>{
  const plan=read('../src/studio/v3/composeLayerPlan.ts');
  assert.match(plan,/if\(physical&&experiment\)return \[\]/);
  assert.match(plan,/if\(physical&&\(kind==='input'\|\|kind==='hydra'\)\)return \[\]/);
