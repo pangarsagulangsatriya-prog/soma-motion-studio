@@ -626,7 +626,17 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    setComposition(state=>{const order=[...state[selected]];const [moving]=order.splice(dragLayer,1);order.splice(i,0,moving);return {...state,[selected]:order};});
    setSelectedLayer(i);setSaveStatus('Urutan layer diubah');
   }setDragLayer(null);setDropLayer(null);}}
-  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('layer');}}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
+  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('layer');}}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button>
+  <div className="cp05-source-actions" role="group" aria-label="Tambahkan sumber komposisi">
+   {([{id:COMPOSE_STAGE_INPUT,label:'+ MP4 / INPUT'},
+     {id:COMPOSE_STAGE_FLOOR,label:'+ Footprints'},
+     {id:COMPOSE_STAGE_HYDRA,label:'+ Hydra'}] as const).map(source=>
+    <button key={source.id} type="button" onClick={()=>{
+     setComposition(c=>({...c,[selected]:[...c[selected],makeLayer(source.id,
+      COMPOSE_SOURCE_CHOICES.find(x=>x.id===source.id)?.label??'Source')]}));
+     setSelectedLayer(layers.length);setInspectorTab('layer');
+    }}>{source.label}</button>)}
+  </div><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
    <aside className="s64-column cp02-inspector"
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
@@ -642,7 +652,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   </div>
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
-   <span>{media.find(m=>m.id===layer?.mediaId)?.name??'Belum ada media'}</span>
+   <span>{COMPOSE_SOURCE_CHOICES.find(o=>o.id===layer?.mediaId)?.label??media.find(m=>m.id===layer?.mediaId)?.name??(composerSourceKind(layer??{mediaId:'',name:''},selected)==='floor'?'Footprints / FLOOR':'Belum ada media')}</span>
   </div>}
  {inspectorTab==='scene'&&<label className="cp04-scene-select">Scene aktif
   <select value={sceneId} onChange={e=>{
@@ -656,7 +666,18 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
  </details>}
- {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
+ {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Layer source<select aria-label="Pilih sumber layer"
+  value={layer?.mediaId??''} onChange={e=>patch({mediaId:e.target.value,
+   name:COMPOSE_SOURCE_CHOICES.find(x=>x.id===e.target.value)?.label??
+    media.find(x=>x.id===e.target.value)?.name??layer?.name??'Layer'})}>
+   <option value="">No source / empty</option>
+   {COMPOSE_SOURCE_CHOICES.map(source=><option key={source.id} value={source.id}>{source.label}</option>)}
+   {media.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+  </select></label>
+  <label>Opacity · {layer?.opacity??100}%
+   <input type="range" min="0" max="100" value={layer?.opacity??100}
+    onChange={e=>patch({opacity:Number(e.target.value)})}/></label>
+  <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
  {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
   <strong>EVENT → MEDIA TREATMENT</strong>
   <label>Input event<select value={normalizeMotionRecipeRule(layer.motionRecipe).trigger}
