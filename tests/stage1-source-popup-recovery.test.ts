@@ -25,7 +25,7 @@ test('Stage 1 no-source: the left source/status panel and right camera stay visi
  assert.match(stage,/className="soma-track-source-status"/);
  assert.match(stage,/className="fp-stage-video"/);
  assert.match(css,/WYSIWYG Track: source\/status at left/);
- assert.match(css,/grid-template-columns:minmax\(236px,292px\) minmax\(0,1fr\)!important/);
+ assert.match(css,/grid-template-columns:minmax\(260px,292px\) minmax\(0,1fr\)!important/);
  assert.match(stage,/sourceStatus\.selection!==null&&!experimentalKind&&<QuickStageSetup/);
 });
 
