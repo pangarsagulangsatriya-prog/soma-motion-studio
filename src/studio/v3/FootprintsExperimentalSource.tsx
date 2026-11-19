@@ -106,9 +106,10 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  useEffect(()=>{
   if(kind!=='video')return;
   const el=video.current;
-  onFrame({kind:'video',snapshot,previousSnapshot:previousSnapshot.current,
+  onFrame({kind:'video',snapshot:previousSnapshot.current!==snapshot&&lastSnapshot.current!==snapshot?
+    null:snapshot,previousSnapshot:previousSnapshot.current,
    video:el,timeMs:(el?.currentTime??position)*1000,
-   ready:videoReady,name:clip?.name??'Belum ada video'});
+   ready:videoReady,name:clip?.name??'Belum ada video',clip});
  },[kind,snapshot,clip,position,videoReady,onFrame]);
  useEffect(()=>{
   if(kind!=='video')return;
