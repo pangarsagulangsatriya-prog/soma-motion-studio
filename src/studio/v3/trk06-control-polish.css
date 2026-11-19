@@ -325,3 +325,24 @@
   transform:none!important;
  }
 }
+
+/* On GitHub Pages the QR opens the sender page; SDP transport stays manual. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-static-qr{
+ display:flex;
+ align-items:center!important;
+ gap:10px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-static-qr-hint{
+ margin:0!important;
+ max-width:220px;
+ text-align:center;
+ font-size:11px;
+ line-height:1.45;
+ color:#b6cbb7;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-static-qr>.soma-track-create-qr{
+ margin-top:2px!important;
+}
