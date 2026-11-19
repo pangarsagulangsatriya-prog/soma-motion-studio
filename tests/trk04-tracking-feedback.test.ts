@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {deriveTrackFeedback,visiblePoseFeet} from '../src/studio/v3/trackFeedbackModel.ts';
+import {deriveTrackFeedback,liveSkeletonPresentation,visiblePoseFeet} from '../src/studio/v3/trackFeedbackModel.ts';
 import type {Landmark,MotionFrame} from '../src/engine/types.ts';
 import type {MultiPoseStatus} from '../src/footprints/live/MultiPoseGaitRouter.ts';
 import type {ReplayAnalysisSnapshot} from '../src/stage/VideoPoseGaitEngine.ts';
@@ -103,6 +103,43 @@ test('video actor landmarks use named A/B from the analyzed snapshot',()=>{
  assert.equal(uncertain.visibleFeet,0);
 });
 
+test('one visible performer and missing B give positioning guidance',()=>{
+ const onlyA=identity({visible:['A'],poseIndices:{A:0,B:null},observedFrameTime:null});
+ const status=deriveTrackFeedback({
+  ...base,performerCount:2,
+  liveFrame:liveFrame([pose()]),liveIdentity:onlyA
+ });
+ assert.equal(status.state,'framing');
+ assert.equal(status.label,'Aktor 1/2');
+ assert.match(status.hint??'',/kedua aktor/);
+ assert.equal(status.visibleFeet,0);
+});
+
+test('MP4 with only A visible requests both performers before foot evaluation',()=>{
+ const snapshot={people:[{id:'A',landmarks:pose(),confidence:.9}],
+  ambiguous:false} as ReplayAnalysisSnapshot;
+ const status=deriveTrackFeedback({
+  ...base,selection:'video',phase:'experiment',
+  videoReady:true,videoSnapshot:snapshot,performerCount:2
+ });
+ assert.equal(status.state,'framing');
+ assert.equal(status.label,'Aktor 1/2');
+ assert.equal(status.actors[1].state,'missing');
+});
+
+test('skeleton stays keyed to A/B when raw pose order switches',()=>{
+ const a=pose(),b=pose();
+ const ordered=liveSkeletonPresentation(liveFrame([a,b]),identity(),2);
+ const swapped=liveSkeletonPresentation(liveFrame([b,a]),
+  identity({poseIndices:{A:1,B:0}}),2);
+ assert.deepEqual(ordered.poses,[a,b]);
+ assert.deepEqual(swapped.poses,[a,b]);
+ assert.deepEqual(ordered.colors,['#d4edb3','#88d6e2']);
+ const uncertain=liveSkeletonPresentation(liveFrame([b,a]),
+  identity({ambiguous:true}),2);
+ assert.deepEqual(uncertain.colors,['#aab8ad','#aab8ad']);
+});
+
 test('simulator explicitly reports synthetic motion without measured feet',()=>{
  const status=deriveTrackFeedback({...base,
   selection:'simulator',phase:'experiment',performerCount:2
@@ -123,6 +160,8 @@ test('Track footer reads actual diagnostics, preserves Compose and physical safe
  assert.match(stage,/className="soma-track-actor-chip" data-state=\{actor.state\}/);
  assert.match(stage,/experimentalKind&&<span className="soma-track-feedback-safety"/);
  assert.match(stage,/aria-pressed=\{skeletonVisible\}/);
+ assert.match(stage,/liveSkeletonPresentation\(f,identities,performerCount\)/);
+ assert.match(stage,/data-actor=\{actor.id\}/);
  assert.match(css,/data-workspace=track/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/:focus-visible/);
