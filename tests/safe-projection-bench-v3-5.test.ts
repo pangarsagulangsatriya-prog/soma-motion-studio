@@ -51,7 +51,8 @@ test('V3.5 default FLOOR artwork reads original clean canvas, not software inter
  const stage=readFileSync(new URL('../src/studio/v3/FootprintsStageWorkspace.tsx',import.meta.url),'utf8');
  assert.match(composer,/floorCanvas,cameraOn,bodySelected/);
  assert.match(composer,/for\(const \{layer,kind\} of composerLayerOrder\(/);
- assert.match(composer,/if\(experiment&&physical\)return/);\n assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+ assert.match(composer,/if\(experiment&&physical\)return/);
+ assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
  assert.match(composer,/floorMedia=floorReadyRef\.current/);
  assert.match(stage,/ref=\{floorCanvas\}/);
  assert.match(stage,/ref=\{interactionCanvas\}/);
