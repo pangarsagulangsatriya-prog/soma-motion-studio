@@ -1064,7 +1064,13 @@ export function FootprintsStageWorkspace({
     sourceLabel={sourceStatus.selection??'Belum dipilih'}
     hardwareStatus={dual.body.mode.toUpperCase()+' BODY · '+dual.floor.mode.toUpperCase()+' FLOOR'}
     unreadyReason={performReadiness.state==='attention'||performReadiness.state==='qa-required'?performReadiness.reason:''}
-    onRecovery={()=>{operatorBlackout();onExitOperator();setView('stage');setMappingOpen(true);setComposerStartQA(true);setComposerOpen(true);setInspectorOpen(false);}}
+    onRecovery={()=>{
+     operatorBlackout();onExitOperator();setView('stage');
+     const needsTrack=projectionPreflight.step==='source'||projectionPreflight.step==='tracking';
+     setMappingOpen(!needsTrack);setComposerStartQA(!needsTrack);setComposerOpen(!needsTrack);
+     setInspectorOpen(needsTrack);
+     setFlowStep(needsTrack?'process':'output');
+    }}
     canResume={!performUnsafe}/>
    :null}
   {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab initialFile={experimentClip}
