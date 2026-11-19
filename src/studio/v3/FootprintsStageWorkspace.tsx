@@ -1210,15 +1210,15 @@ export function FootprintsStageWorkspace({
         data-calibration-active={calibrationOpen&&!!calibrationOverlay}
         aria-label={experimentalKind?experimentalKind==='video'?'Input video rekaman 2D':'Input puppet 3D virtual':
          calibrationOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
-       {!composerOpen&&!calibrationOpen&&!cameraOn&&!experimentalKind&&
+       {!composerOpen&&!calibrationOpen&&!experimentalKind&&sourceStatus.phase!=='ready'&&
         <div className="soma-track-input-placeholder" role="status">
          <strong>{sourceStatus.selection==='phone'?'Menunggu HP':
           sourceStatus.selection==='webcam'?'Kamera belum aktif':'Pilih sumber'}</strong>
          {sourceStatus.selection==='webcam'&&<span>Izinkan akses kamera</span>}
         </div>}
-       {!composerOpen&&experimentalKind==='video'&&!experimentClip&&
+       {!composerOpen&&experimentalKind==='video'&&!canPaintVideoFrame(selectedExperimentFrame)&&
         <div className="soma-track-input-placeholder" role="status">
-         <strong>Pilih video MP4</strong>
+         <strong>{experimentClip?'Menyiapkan video':'Pilih video MP4'}</strong>
         </div>}
 
        {calibrationOpen&&calibrationOverlay&&<div className="fp-stage-calibration-overlay" aria-hidden="true">
