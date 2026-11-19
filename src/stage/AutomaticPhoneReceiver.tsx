@@ -160,29 +160,27 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
   catch{setStatus('Salin tautan secara manual bila clipboard tidak tersedia.');}
  };
  return <div className="soma-auto-pair" aria-label="QR pairing kamera HP">
-  <div className="soma-setup-eyebrow">S6.1.1 / AUTOMATIC PHONE PAIRING</div>
-  <p>HP cukup memindai QR, memberi izin kamera, lalu SOMA laptop menerima video. QR sekali pakai dan otomatis kedaluwarsa.</p>
+  <p>Scan QR di HP, lalu izinkan kamera.</p>
   {!room&&phase!=='connected'&&<button className="soma-setup-primary" type="button"
    onClick={()=>void start()} disabled={phase==='creating'}>
-   {phase==='creating'?'Membuat QR…':'Buat QR kamera HP'}</button>}
+   {phase==='creating'?'Membuat QR…':'Buat QR'}</button>}
   {room&&<div className="soma-auto-pair-code">
    <PhonePairQr value={url}/>
-   <div><strong>Scan dengan kamera HP</strong>
+   <div><strong>Scan QR dengan HP</strong>
     <span className="soma-pair-expiry" role="status">
      QR tersisa {Math.floor(secondsLeft/60)}:{String(secondsLeft%60).padStart(2,'0')}
     </span>
-    <p>Gunakan kamera belakang. Setelah halaman HP terbuka, tekan Aktifkan kamera.</p>
+    <p>Buka tautan, lalu aktifkan kamera.</p>
     <a href={url} rel="noreferrer" target="_blank">Buka halaman kamera HP</a>
     <button type="button" onClick={()=>void copy()}>Salin tautan HP</button>
     <button type="button" onClick={()=>terminate()}>Batalkan QR</button>
-    <small>Ruang berlaku 3 menit; satu HP per QR. Kode akses disembunyikan dari riwayat permintaan server.</small>
+    <small>QR berlaku 3 menit.</small>
    </div>
   </div>}
   {phase==='connected'&&<button type="button" className="soma-setup-secondary"
    onClick={()=>terminate()}>Putuskan kamera HP</button>}
   <div className="soma-setup-status" role="status" aria-live="polite">{status}</div>
   {phase==='error'&&<p className="soma-setup-hint">
-   Pairing otomatis membutuhkan Redis pada Vercel Preview. Saat layanan belum tersedia,
-   gunakan opsi Pairing Manual di bawah atau ulangi setelah jaringan diperiksa.</p>}
+   QR tidak tersedia. Coba opsi Manual.</p>}
  </div>;
 }
