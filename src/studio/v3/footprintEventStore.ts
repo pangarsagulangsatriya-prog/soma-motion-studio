@@ -17,7 +17,7 @@ export type FootprintStamp={
 };
 export type FootprintState={
  imprints:FootprintStamp[];active:Partial<Record<`${PerformerId}:${FootSide}`,string>>;
- seenIds:string[];lastEvent:FootprintEventKind|null;
+ seenIds:string[];lastEvent:FootEventKind|null;
 };
 export type FootprintTiming={holdMs:number;decayMs:number};
 export const emptyFootprintState=():FootprintState=>({imprints:[],active:{},seenIds:[],lastEvent:null});
