@@ -499,3 +499,24 @@
   transition:none!important;
  }
 }
+
+/* Connection state feedback is visible but stays still when reduced motion is set. */
+@keyframes soma-track-connecting{
+ 0%,100%{opacity:1;box-shadow:0 0 0 3px #d4bc801c}
+ 50%{opacity:.58;box-shadow:0 0 0 6px #d4bc8010}
+}
+@media(prefers-reduced-motion:no-preference){
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-status[data-phase=connecting] .soma-track-state-indicator,
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-status[data-phase=pairing] .soma-track-state-indicator{
+  animation:soma-track-connecting 1.6s ease-in-out infinite;
+ }
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-status[data-phase=error]{
+ border-color:#995f52;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch[aria-pressed=true]{
+ border-color:#a6c99a;color:#eaf4dc;background:#34583b;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch[aria-pressed=false]{
+ border-color:#526453;color:#b0c3ad;background:#233429;
+}
