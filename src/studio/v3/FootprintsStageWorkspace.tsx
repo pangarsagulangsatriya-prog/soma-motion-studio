@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
+import {useCallback,useEffect,useLayoutEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {PERFORM_CUE_STORAGE_KEY,defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,evaluatePerformReadiness,type PerformCueGrid} from './performCueModel.ts';
@@ -19,7 +19,7 @@ import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreview
 import {isDismissEscape,shouldOpenInspector} from './interactionPolicy.ts';
 import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
-import {activeExperimentKind,currentExperimentFrame,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
+import {activeExperimentKind,currentExperimentFrameForClip,canPaintVideoFrame,experimentFrameLabel,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {paintExperimentBody,paintExperimentCamera,paintExperimentFloor} from './experimentStagePainter.ts';
 import {drawSkeletonBodies} from '../../stage/fullBodySkeleton.ts';
 import {ActorMotionStateBuffer} from '../../stage/actorMotionStateBuffer.ts';
@@ -212,7 +212,6 @@ export function FootprintsStageWorkspace({
  const [experimentClip,setExperimentClip]=useState<File|null>(null);
  const [experimentFrame,setExperimentFrame]=useState<ExperimentalFrame|null>(null);
  const experimentFrameRef=useRef<ExperimentalFrame|null>(null);
- experimentFrameRef.current=experimentFrame;
  const motionBufferRef=useRef<ActorMotionStateBuffer>(new ActorMotionStateBuffer());
  const opticalFlowRef=useRef<FootprintsVideoOpticalFlow>(new FootprintsVideoOpticalFlow());
  const bodyMaskRef=useRef<PersistentBodyMaskEngine>(new PersistentBodyMaskEngine());
@@ -223,7 +222,18 @@ export function FootprintsStageWorkspace({
   bodyMaskRef.current.reset();
   bodyProjectionRef.current.reset();
  },[experimentalKind,experimentClip]);
- const selectedExperimentFrame=currentExperimentFrame(experimentalKind,experimentFrame);
+ const selectedExperimentFrame=currentExperimentFrameForClip(experimentalKind,experimentFrame,experimentClip);
+ experimentFrameRef.current=selectedExperimentFrame;
+ // Clear old source pixels before the next browser paint, including BODY/FLOOR
+ // buffers consumed by Compose. Source changes may not reuse the prior epoch.
+ useLayoutEffect(()=>{
+  experimentFrameRef.current=null;
+  setExperimentFrame(null);
+  for(const canvas of [cameraCanvas.current,bodyCanvas.current,floorCanvas.current]){
+   const ctx=canvas?.getContext('2d');
+   if(canvas&&ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
+  }
+ },[sourceStatus.selection,experimentClip]);
  const interactionSource:FloorInteractionSource|null=touchDemo?'touch':
   experimentalKind??(sourceStatus.selection==='phone'?'phone':
    sourceStatus.selection==='webcam'?'camera':null);
@@ -424,6 +434,9 @@ export function FootprintsStageWorkspace({
   }catch{setSceneAudioError('Tidak dapat menghapus preset lokal.');}
  };
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
+ const onExperimentClip=useCallback((clip:File|null)=>{
+  experimentFrameRef.current=null;setExperimentFrame(null);setExperimentClip(clip);
+ },[]);
  const [flowStep,setFlowStep]=useState<FootprintsStep>('process');
  const [inspectorOpen,setInspectorOpen]=useState(false);
  const [skeletonVisible,setSkeletonVisible]=useState(true);
@@ -684,7 +697,16 @@ export function FootprintsStageWorkspace({
     }
     source=current.video;
     lastVideoAt=atMs;wasSeeking=seeking;
-    if(!touchDemo&&!seeking)
+    // Never paint last webcam/MP4 pixels while metadata loads or the decoder seeks.
+    if(!canPaintVideoFrame(current)){
+     for(const canvas of [cam,body,floor]){
+      const ctx=canvas?.getContext('2d');
+      if(canvas&&ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
+     }
+     raf=requestAnimationFrame(draw);
+     return;
+    }
+    if(!touchDemo)
      feedVideoFloorInteractions(interactionEngineRef.current,frame);
     if(!current.video?.seeking&&current.snapshot){
      buffer.ingest(current.snapshot);
@@ -1147,7 +1169,7 @@ export function FootprintsStageWorkspace({
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind}
       model={experimentPuppet} externalRevision={experimentPuppetRevision}
-      clip={experimentClip} onClip={setExperimentClip} onFrame={onExperimentFrame}
+      clip={experimentClip} onClip={onExperimentClip} onFrame={onExperimentFrame}
       onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
       onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
 
