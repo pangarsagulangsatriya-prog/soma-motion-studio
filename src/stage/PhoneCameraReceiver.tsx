@@ -118,9 +118,9 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
  return <div className="soma-setup-phone-choices">
   <div className="soma-setup-pair-tabs" role="group" aria-label="Pilihan pairing kamera HP">
    <button type="button" aria-pressed={mode==='qr'} onClick={()=>setMode('qr')}>
-    Scan QR · otomatis</button>
+    QR</button>
    <button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>
-    Kode manual · cadangan</button>
+    Manual</button>
   </div>
   {mode==='qr'?
    <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}/>:
