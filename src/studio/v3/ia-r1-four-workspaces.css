@@ -150,7 +150,7 @@
 }
 
 /* Stage 1 recovery — no-source state is a usable selector, not three black panes. */
-.soma-ia-four-workspaces[data-workspace=track][data-stage-source=none] .fp-stage-layout{display:none!important}
+/* TRK-02: no-source keeps the source rail and empty camera visible. */
 /* Track may hide its unused canvases before first source, while other workspaces
    must always show their own compositor and physical-safety controls. */
 .soma-ia-four-workspaces[data-workspace=compose] .fp-stage-layout,
@@ -219,44 +219,6 @@
 @media(max-width:430px){.soma-v3 .soma-primary-header .soma-uxr1-health{display:none!important}.soma-ia-four-workspaces .soma-ux01-source-options{left:auto;right:0}}
 
 
-/* UX-TRACK-ONE-MONITOR — one input canvas per source.
- * Camera, phone, MP4 and 3D render into the existing input canvas.
- * The original BODY/FLOOR canvases stay mounted for Compose/Map engines,
- * but do not appear as competing previews in the Track workspace.
- */
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview{
- display:grid!important;
- grid-template-columns:minmax(0,1fr)!important;
- gap:12px;
- width:100%;
- min-width:0;
-}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-side-previews{
- display:none!important;
-}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video{
- grid-column:1/-1;
- width:100%;
- min-width:0;
- max-width:none;
-}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{
- width:100%;
- min-width:0;
- aspect-ratio:16/9;
- overflow:hidden;
- background:#000;
-}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content>canvas{
- display:block;
- width:100%;
- height:100%;
- object-fit:contain;
-}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-preview-toolbar,
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-preview-modes{
- display:none!important;
-}
 /* Compose preserves the screenshot's three-column library / stage / inspector. */
 @media(min-width:1024px){
  .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout{
@@ -340,7 +302,7 @@
  }
 }
 /* Track keeps only the source monitor; no BODY/FLOOR display alongside it. */
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-side-previews{display:none!important}
+/* Secondary preview visibility belongs to trk02-layout.css. */
 
 /* Fail closed: Track must show INPUT alone, even when older stage CSS sets display:grid.
    Keep hidden canvases mounted; only Compose exposes the BODY and FLOOR monitors. */
@@ -349,36 +311,10 @@
  display:none!important;
  visibility:hidden!important;
 }
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview > .fp-stage-video{
- display:flex!important;
- flex-direction:column;
- grid-column:1/-1!important;
- width:100%!important;
- max-width:none!important;
-}
 .soma-ia-four-workspaces[data-workspace=compose] .fp-stage-overview > .fp-stage-side-previews:not([hidden]){
  display:contents!important;
  visibility:visible!important;
 }
-
-/* WYSIWYG Track: source/status at left, one INPUT video at right. */
-.soma-ia-four-workspaces[data-workspace=track][data-stage-source=none] .fp-stage-layout,
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout{display:grid!important;grid-template-columns:minmax(0,1fr)!important;position:relative}
-.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){display:grid!important;grid-template-columns:minmax(260px,292px) minmax(0,1fr)!important;grid-template-rows:auto auto minmax(0,1fr)!important;align-items:start!important;gap:12px 18px}
-.soma-ia-four-workspaces .soma-track-source-panel[hidden]{display:none!important}
-.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{display:flex;flex-direction:column;gap:12px;grid-column:1!important;grid-row:1!important;align-self:start;min-width:0;padding:18px;border:1px solid #385540;border-radius:11px;background:#17251c;position:relative;z-index:20}
-.soma-ia-four-workspaces .soma-track-source-heading{display:flex;flex-direction:column;gap:5px}
-.soma-ia-four-workspaces .soma-track-source-heading span{font-size:10px;letter-spacing:.1em;color:#a6bca5;font-weight:650}
-.soma-ia-four-workspaces .soma-track-source-heading strong{font-size:17px;color:#edf4e7}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-inline-assistant{grid-column:1!important;grid-row:2!important;align-self:start;min-width:0;margin:0}
-.soma-ia-four-workspaces[data-workspace=track].fp-stage-workspace.fp-persistent-layout[data-experimental=true] .fp-stage-overview>.fp-experiment-dock,
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-experiment-dock{grid-column:1!important;grid-row:3!important;align-self:start;min-width:0}
-.soma-ia-four-workspaces[data-workspace=track].fp-stage-workspace.fp-persistent-layout[data-experimental=true] .fp-stage-overview>.fp-stage-video,
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:2!important;grid-row:1/span 4!important;width:100%!important;max-width:none!important;height:auto;align-self:start}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{position:relative;min-height:0!important;max-height:none!important;height:auto!important;flex:0 0 auto!important;aspect-ratio:16/9;background:#000}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content>canvas{width:100%!important;height:100%!important;display:block}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){position:absolute!important;top:0!important;right:0!important;left:auto!important;width:min(380px,calc(100% - 12px))!important;max-height:78dvh!important;height:auto!important;min-height:0!important;z-index:95!important;overflow:auto;box-shadow:0 18px 50px #000b!important}
-@media(max-width:700px){.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){grid-template-columns:minmax(0,1fr)!important}.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}}
 
 /* Sidebar source dropdown and immediate tracking health. */
 .soma-ia-four-workspaces .soma-track-source-select{width:100%;min-width:0;z-index:5}
@@ -419,23 +355,6 @@
 .soma-ia-four-workspaces[data-workspace=track] .fp-experiment-controls{display:flex;flex-wrap:wrap;min-width:0;gap:7px}
 .soma-ia-four-workspaces[data-workspace=track] .fp-experiment-controls button,
 .soma-ia-four-workspaces[data-workspace=track] .fp-experiment-upload{min-height:40px}
-@media(max-width:700px){
- .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.soma-track-source-panel{grid-column:1!important;grid-row:1!important}
- .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-inline-assistant{grid-column:1!important;grid-row:2!important}
- .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-experiment-dock{grid-column:1!important;grid-row:3!important}
- .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}
- .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{padding:14px}
-}
-
-/* UX Track camera-first polish: override older source/preparing grid weights.
-   Source stays 260-292px; remaining width belongs to the actual input canvas. */
-.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{
- grid-column:2!important;grid-row:1/span 4!important;min-width:0;width:100%!important;
-}
-.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{
- aspect-ratio:16/9;min-height:0!important;max-height:none!important;overflow:hidden;
-}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-bottom-status{display:none!important}
 .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{
  transition:border-color .16s ease,background-color .16s ease;
 }
@@ -482,11 +401,6 @@
 .soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch:focus-visible,
 .soma-ia-four-workspaces[data-workspace=track] .fp-preview-focus-action:focus-visible{
  outline:2px solid #e5f4b9;outline-offset:2px;
-}
-@media(max-width:700px){
- .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{
-  grid-column:1!important;grid-row:4!important;
- }
 }
 @media(prefers-reduced-motion:reduce){
  .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel,
