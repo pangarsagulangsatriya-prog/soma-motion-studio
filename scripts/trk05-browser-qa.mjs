@@ -47,7 +47,7 @@ const waitUntilReady=async()=>{
  throw Error('Local Vite preview did not start at '+base);
 };
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview',
- '--host','127.0.0.1','--port',String(port),'--strictPort'],{
+ '--mode','githubpages','--host','127.0.0.1','--port',String(port),'--strictPort'],{
  cwd:process.cwd(),stdio:['ignore','pipe','pipe']});
 server.stdout.on('data',()=>{});
 server.stderr.on('data',b=>process.stderr.write(b));
@@ -169,11 +169,28 @@ const run=async()=>{
   });
   const page=await context.newPage();
   page.setDefaultTimeout(10000);
-  page.on('pageerror',err=>issue(v.id+' runtime exception',err));
+  const browserFailures=[];
+  page.on('pageerror',err=>{browserFailures.push(err.message);issue(v.id+' runtime exception',err);});
+  page.on('response',res=>{if(res.status()>=400&&/\\.(js|css|wasm)(\\?|$)/.test(res.url()))
+   browserFailures.push('HTTP '+res.status()+' '+res.url());});
+  page.on('console',msg=>{if(msg.type()==='error')browserFailures.push('Console '+msg.text());});
   await check(v.id+' Track load',async()=>{
    await page.goto(base,{waitUntil:'domcontentloaded',timeout:35000});
-   await stage(page).waitFor({state:'visible',timeout:30000});
+   try{await stage(page).waitFor({state:'visible',timeout:12000});}
+   catch(error){
+    const title=await page.title().catch(()=>'<title unavailable>');
+    const html=await page.content().catch(()=>'<html unavailable>');
+    writeFileSync(join(output,v.id+'__load-failure.html'),html);
+    writeFileSync(join(output,v.id+'__load-failure.json'),
+     JSON.stringify({url:page.url(),title,browserFailures},null,2));
+    await page.screenshot({path:join(output,v.id+'__load-failure.png')}).catch(()=>{});
+    throw Error('Track failed to render at '+page.url()+
+     '; see load-failure screenshot/HTML. '+String(error));
+   }
   });
+  if(!(await stage(page).count())){
+   await context.close();throw Error('Track did not mount; abort QA after first viewport');
+  }
   if(await stage(page).count()){
    await check(v.id+' measured layout',()=>layoutCheck(page,v));
    await check(v.id+' screenshot no source',()=>screenshot(page,v.id,'track-empty'));
