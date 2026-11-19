@@ -1,0 +1,173 @@
+/* CP-02 / CP-03: one composition control dock tied to the three-monitor shell.
+   Scope strictly Compose; Track, Map, Perform and physical output unchanged. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-main{
+ gap:8px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview:not([hidden]){
+ height:clamp(350px,53dvh,620px)!important;
+ margin-bottom:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-root.s64-embedded{
+ padding:10px 12px 12px!important;
+ margin:0!important;
+ border-radius:9px!important;
+ border-color:#344e3c!important;
+ background:#101a14!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-heading{
+ min-height:30px;margin:0 0 7px!important;align-items:center!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-heading h2{
+ font-size:15px!important;margin:0!important;letter-spacing:-.02em;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-heading small{
+ display:block;font-size:10px;color:#9db6a3;margin-top:2px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-safety{
+ min-height:31px!important;margin:0 0 7px!important;padding:4px 8px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-safety>span{
+ max-width:none;font-variant-numeric:tabular-nums;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-runtime-status{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-layout{
+ display:grid!important;
+ grid-template-columns:minmax(190px,.95fr) minmax(230px,1.15fr) minmax(220px,1fr)!important;
+ gap:10px!important;align-items:start!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-column,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor{
+ min-width:0!important;padding:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-column h3{
+ margin:0 0 7px!important;font-size:11px!important;letter-spacing:.03em!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .uxr3-scene-library{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:6px!important;max-height:220px!important;overflow-y:auto!important;
+ padding:1px!important;scrollbar-width:thin!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .uxr3-scene-card{
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ padding:4px!important;min-width:0!important;min-height:0!important;
+ border-radius:6px!important;gap:3px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .uxr3-scene-card .visr3-scene-thumb{
+ width:100%!important;height:55px!important;object-fit:cover!important;flex:0 0 auto!important;
+ border-radius:4px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .visr3-scene-copy{
+ display:flex!important;flex-direction:column!important;min-width:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .visr3-scene-copy strong{
+ font-size:10px!important;line-height:1.2!important;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .visr3-scene-copy small{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .uxr3-scene-card[aria-pressed=true]{
+ outline:1px solid #c5e5a0;outline-offset:-1px;
+ background:#324b37!important;border-color:#a8cd93!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .uxr3-compose-preview-bar{
+ min-height:29px!important;margin:0 0 7px!important;
+ display:flex!important;gap:8px!important;flex-wrap:wrap!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .uxr3-compose-preview-bar>div{
+ display:flex!important;gap:3px!important;flex-wrap:wrap;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .uxr3-compose-preview-bar button{
+ font-size:10px!important;padding:5px 8px!important;min-height:28px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .s64-bar{
+ margin:0 0 6px!important;gap:5px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .s64-bar>span{
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .s64-bar button,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .s64-test-events button{
+ min-height:31px!important;padding:5px 7px!important;font-size:10px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor .s64-test-events{
+ display:flex;flex-wrap:wrap;gap:5px!important;margin:0 0 8px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .soma-ia-layers{
+ display:block!important;margin:0!important;min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .soma-ia-layers>summary,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .soma-ia-media>summary{
+ min-height:31px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-layer{
+ gap:4px!important;min-width:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-layer button{
+ min-width:0!important;min-height:29px!important;
+ padding:4px 7px!important;font-size:10px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-layer button:first-child{
+ min-width:75px!important;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-inspector{
+ max-height:310px;overflow-y:auto;scrollbar-width:thin;padding-right:3px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-floor .fp-floor-scene-controls>label:first-child{
+ display:none!important; /* Scene selection owns the library gallery, not a second dropdown */
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-floor .fp-floor-scene-controls{
+ padding:4px 7px!important;max-height:65px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-floor .fp-stage-canvas-area{
+ position:relative!important;isolation:isolate;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp03-composition-overlay{
+ position:absolute!important;inset:0!important;display:block!important;
+ width:100%!important;height:100%!important;max-height:100%!important;
+ z-index:4!important;object-fit:contain!important;
+ background:transparent!important;pointer-events:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-floor[data-compose-events=true] .fp-floor-interaction-layer{
+ display:block!important;z-index:3!important;
+}
+/* Do not show composition media on Track; canvas stays mounted for frame continuity. */
+.fp-stage-workspace[data-workspace="track"] .cp03-composition-overlay,
+.fp-stage-workspace[data-workspace="map"] .cp03-composition-overlay,
+.fp-stage-workspace[data-workspace="perform"] .cp03-composition-overlay{
+ display:none!important;
+}
+@media(max-width:1050px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-layout{
+  grid-template-columns:minmax(170px,1fr) minmax(180px,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-inspector{
+  grid-column:1/-1!important;max-height:none!important;overflow:visible!important;
+ }
+}
+@media(max-width:650px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-layout{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-library,
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-editor,
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp02-inspector{
+  grid-column:1!important;grid-row:auto!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .uxr3-scene-library{
+  max-height:170px!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] :is(
+  .uxr3-scene-card,.cp02-editor button){transition:none!important;animation:none!important}
+}
+
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp03-pending-contact{
+ color:#dcc397;font-size:10px;white-space:nowrap;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-floor .fp-stage-surface-foot{
+ flex-wrap:wrap;gap:4px 10px;
+}
