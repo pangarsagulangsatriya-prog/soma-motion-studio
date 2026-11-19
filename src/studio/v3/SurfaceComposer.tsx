@@ -29,11 +29,11 @@ import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,
 import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
 import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
+import {sharedAssetChoices,SHARED_TRACK_MP4_ID,type SharedAsset} from './sharedAssetModel.ts';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
 type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][];recipe:string;motionRecipe?:MotionRecipeRule};
-type Media={id:string;name:string;kind:'image'|'video';url:string;mime:string};
 type Composition=Record<Surface,Layer[]>;
 type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
 const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
@@ -64,6 +64,10 @@ const valid=(v:unknown):v is Snapshot=>{
 };
 type Props={
  footprint?:FootprintConfig;
+ sharedAssets:readonly SharedAsset[];
+ onImportAssets:(files:File[])=>readonly SharedAsset[];
+ onRemoveAsset:(id:string)=>boolean;
+ assetNotice:string;
  updateFootprint?:(patch:Partial<FootprintConfig>)=>void;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
  experimentSource?:ComposeExperimentSource;
@@ -87,7 +91,7 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
@@ -102,7 +106,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
  const [resetArmed,setResetArmed]=useState(false);
  const [saveStatus,setSaveStatus]=useState('Tersimpan lokal');
  const [loadingMedia,setLoadingMedia]=useState(0);
- const [media,setMedia]=useState<Media[]>([]);
+ const media=sharedAssets;
  const [archiveHydra,setArchiveHydra]=useState(false);
  const archiveReadyRef=useRef(false);
  const onArchiveHydraChangeRef=useRef(onArchiveHydraChange);
@@ -239,10 +243,19 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    history.beginGroup();
  };
  const onInspectorKeyUp=()=>history.endGroup();
- useEffect(()=>{return()=>{for(const item of mediaEls.current.values())if(item instanceof HTMLVideoElement)item.pause();};},[]);
+ useEffect(()=>{return()=>{for(const item of mediaEls.current.values()){
+  if(item instanceof HTMLVideoElement){item.pause();item.removeAttribute('src');item.load();}
+ }mediaEls.current.clear();};},[]);
  useEffect(()=>{
+  const imported=new Set(media.filter(item=>item.origin==='import').map(item=>item.id));
+  for(const [id,item] of mediaEls.current){
+   if(imported.has(id))continue;
+   if(item instanceof HTMLVideoElement){item.pause();item.removeAttribute('src');item.load();}
+   mediaEls.current.delete(id);
+  }
   for(const m of media){
-   if(mediaEls.current.has(m.id))continue;
+   // A Track MP4 lives in Track's decoder and input canvas. Never create another player.
+   if(m.origin==='track'||!m.url||mediaEls.current.has(m.id))continue;
    setLoadingMedia(n=>n+1);
    const done=()=>setLoadingMedia(n=>Math.max(0,n-1));
    if(m.kind==='image'){
@@ -258,7 +271,10 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    }
   }
  },[media]);
- const upload=(e:ChangeEvent<HTMLInputElement>)=>{const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/'));setMedia(old=>[...old,...files.map(f=>({id:crypto.randomUUID(),name:f.name.slice(0,90),kind:f.type.startsWith('video/')?'video' as const:'image' as const,url:URL.createObjectURL(f),mime:f.type}))].slice(0,48));e.target.value='';};
+ const upload=(e:ChangeEvent<HTMLInputElement>)=>{
+  const files=Array.from(e.target.files||[]);
+  onImportAssets(files);e.target.value='';
+ };
  const maskImage=(data:Uint8Array,width:number,height:number,canvas:HTMLCanvasElement)=>{
   if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
   const ctx=canvas.getContext('2d');if(!ctx)return;
@@ -612,7 +628,18 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
  Process FLOOR archive media with Hydra (software preview)</label>
- <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');}}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media lokal · pilih ulang setelah reload</small></details></aside>
+ <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
+ <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
+  onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');setPreviewArrangement('surface');}}>
+  {m.kind==='image'&&m.url?<img src={m.url} alt=""/>:
+   <span>{m.origin==='track'?'TRACK MP4':'VIDEO'}</span>}
+  <span>{m.name}</span></button>
+ {m.origin==='import'&&<button type="button" className="cp06-remove"
+  aria-label={'Lepas aset '+m.name} onClick={()=>onRemoveAsset(m.id)}>×</button>}
+ </div>)}</div>
+ {media.some(m=>m.origin==='track')&&<small>MP4 Track dipakai langsung dari decoder Track. Tidak perlu unggah ulang.</small>}
+ {assetNotice&&<small role="status">{assetNotice}</small>}
+ <small>Impor berlaku selama sesi Stage terbuka; file lokal perlu dipilih lagi setelah reload.</small></details></aside>
    <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>STAGE MONITOR <small>· Layer target / Workspace 01</small></strong><div role="group" aria-label="Pilih bidang preview">
      {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab("layer");setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
@@ -673,8 +700,9 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    name:COMPOSE_SOURCE_CHOICES.find(x=>x.id===e.target.value)?.label??
     media.find(x=>x.id===e.target.value)?.name??layer?.name??'Layer'})}>
    <option value="">No source / empty</option>
-   {COMPOSE_SOURCE_CHOICES.map(source=><option key={source.id} value={source.id}>{source.label}</option>)}
-   {media.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+   {COMPOSE_SOURCE_CHOICES.filter(source=>source.id!==SHARED_TRACK_MP4_ID||!media.some(m=>m.id===SHARED_TRACK_MP4_ID)).map(source=>
+    <option key={source.id} value={source.id}>{source.label}</option>)}
+   {sharedAssetChoices(media).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
   </select></label>
   <label>Opacity · {layer?.opacity??100}%
    <input type="range" min="0" max="100" value={layer?.opacity??100}
