@@ -92,7 +92,6 @@ import './trk09-ux-polish.css';
 import './cp01-compose-shell.css';
 import './cp02-cp03-composition.css';
 import './cp04-compose-microinteraction.css';
-import './mapping-studio-v4.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -1143,7 +1142,8 @@ export function FootprintsStageWorkspace({
        Resume preview
       </button>}
      </div>}
-    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded footprint={footprint} updateFootprint={updateFootprint} sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
+    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
+     footprint={footprint} updateFootprint={updateFootprint}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      composePreviewCanvas={composeFloorOverlay}
