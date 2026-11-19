@@ -24,7 +24,7 @@ test('UX-R3: compositor is embedded in original FootprintsStageWorkspace, not a 
  const stage=readFileSync(new URL('../src/studio/v3/FootprintsStageWorkspace.tsx',import.meta.url),'utf8');
  const composer=readFileSync(new URL('../src/studio/v3/SurfaceComposer.tsx',import.meta.url),'utf8');
  assert.match(stage,/<SurfaceComposer embedded sceneId=\{floorScene\}/);
- assert.match(stage,/className="fp-stage-overview" hidden=\{view!=='stage'\|\|composerOpen\}/);
+ assert.match(stage,/className="fp-stage-overview" hidden=\{view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
  assert.match(stage,/onSceneChange=\{selectFloorScene\}/);
  assert.match(composer,/COMPOSE_SCENES\.map\(/);
  assert.ok(!composer.includes('getUserMedia('));
