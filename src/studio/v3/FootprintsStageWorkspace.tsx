@@ -1465,8 +1465,7 @@ export function FootprintsStageWorkspace({
     {sourceStatus.selection==='phone'&&<div className="fp-phone-source-panel"
      hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}>
       <header className="fp-phone-source-heading">
-       <div><small>INPUT / KAMERA HP</small><h2>Hubungkan kamera HP</h2>
-        <p>Pairing tetap berjalan ketika panel ditutup.</p></div>
+       <div><h2>Pairing HP</h2></div>
        <button type="button" aria-label="Tutup panel kamera HP"
         onClick={closePhonePanel}>✕</button>
       </header>
