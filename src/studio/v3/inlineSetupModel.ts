@@ -46,11 +46,11 @@ export function inlineSetupHint(input:{
    'experiment','Buat langkah','idle');
  if(source.selection===null)
   return hint('source','Pilih sumber gerak','Hubungkan webcam atau kamera HP. Semua pengaturan visual Footprints tetap tersedia.','source','Pilih sumber','idle');
- if(source.phase==='error'||cameraError&&source.selection==='webcam')
+ if(cameraError&&source.selection==='webcam')
   return hint('error','Periksa sambungan kamera',source.message||cameraError,
    source.selection==='phone'?'phone':'webcam',
    source.selection==='phone'?'Buka pairing HP':'Coba webcam lagi','warning');
- if(source.phase==='connecting'||cameraBusy)
+ if(cameraBusy)
   return hint('connecting','Menghubungkan kamera','Periksa permintaan izin dari browser atau sambungan perangkat.','source','Lihat sumber','busy');
  if(source.selection==='phone'&&source.phase==='pairing')
   return hint('pairing','Menunggu kamera HP','Scan QR pada panel Kamera HP. Tutup panel kapan saja; koneksi yang aktif tetap berjalan.','phone','Buka pairing HP','busy');
