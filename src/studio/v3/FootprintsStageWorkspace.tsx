@@ -864,8 +864,9 @@ export function FootprintsStageWorkspace({
  };
  const closePhonePanel=()=>{
   setPhonePanelOpen(false);
-  requestAnimationFrame(()=>document.querySelector<HTMLElement>(
-   '.soma-ux01-source-switch > summary')?.focus({preventScroll:true}));
+  requestAnimationFrame(()=>(document.querySelector<HTMLElement>(
+   '.soma-track-side-action')??document.querySelector<HTMLElement>(
+   '.soma-ux01-source-switch > summary'))?.focus({preventScroll:true}));
  };
  const closeInspector=()=>{setCalibrationOpen(false);setInspectorOpen(false);restoreFlowFocus();};
  useEffect(()=>{
@@ -930,7 +931,7 @@ export function FootprintsStageWorkspace({
  const chooseSource=async(choice:FootprintsInputChoice):Promise<boolean>=>{
   const accepted=await onSwitchSource(choice);
   if(!accepted)return false;
-  setView('stage');setCalibrationOpen(false);setInspectorOpen(choice==='phone');
+  setView('stage');setCalibrationOpen(false);setInspectorOpen(false);
   setPhonePanelOpen(choice==='phone');
   setVideoLabOpen(false);setRehearsalOpen(false);setComposerOpen(false);
   return true;
@@ -1012,7 +1013,7 @@ export function FootprintsStageWorkspace({
    case 'webcam':void chooseSource('webcam');break;
    case 'phone':
     if(sourceStatus.selection==='phone'){
-     setCalibrationOpen(false);setInspectorOpen(true);setPhonePanelOpen(true);
+     setCalibrationOpen(false);setInspectorOpen(false);setPhonePanelOpen(true);
     }else void chooseSource('phone');
     break;
    case 'body':
@@ -1036,7 +1037,7 @@ export function FootprintsStageWorkspace({
   data-workspace={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
   data-stage-source={sourceStatus.selection??'none'}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
-  data-inspector-open={(inspectorOpen||phonePanelOpen)&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
+  data-inspector-open={inspectorOpen&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
   data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode} data-focus-preview={focusPreview}
   data-experimental={!!experimentalKind} data-skeleton-visible={skeletonVisible}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
@@ -1153,10 +1154,28 @@ export function FootprintsStageWorkspace({
        </div>
        {trackSummary.detail&&<p>{trackSummary.detail}</p>}
       </section>
+      {sourceStatus.selection==='webcam'&&!cameraOn&&sourceStatus.phase!=='connecting'&&
+       <button type="button" className="soma-track-side-action" onClick={onStartBody}
+        disabled={cameraBusy}>Aktifkan webcam</button>}
       {sourceStatus.selection==='phone'&&<button type="button" className="soma-track-side-action"
-       onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);setInspectorOpen(true);}}>
-       {phoneActive?'Koneksi HP':'Pairing HP'}
+       aria-expanded={phonePanelOpen} aria-controls="soma-track-phone-pairing"
+       onClick={()=>{setPhonePanelOpen(v=>!v);setCalibrationOpen(false);setInspectorOpen(false);}}>
+       {phonePanelOpen?'Tutup pairing':phoneActive?'Lihat koneksi HP':'Hubungkan HP'}
       </button>}
+      {sourceStatus.selection==='phone'&&<section id="soma-track-phone-pairing" className="soma-track-phone-pairing"
+       hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}
+       aria-label="Pairing kamera HP">
+       <header className="soma-track-phone-heading"><strong>Hubungkan HP</strong>
+        <button type="button" aria-label="Tutup pairing kamera HP" onClick={closePhonePanel}>×</button>
+       </header>
+       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
+      </section>}
+      {experimentalKind&&<FootprintsExperimentalSource
+       key={experimentalKind} kind={experimentalKind}
+       model={experimentPuppet} externalRevision={experimentPuppetRevision}
+       clip={experimentClip} onClip={onExperimentClip} onFrame={onExperimentFrame}
+       onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
+       onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
       <div className="soma-track-source-utilities">
        {sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
      cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
@@ -1179,12 +1198,6 @@ export function FootprintsStageWorkspace({
       </div>
      </aside>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
-     {experimentalKind&&<FootprintsExperimentalSource
-      key={experimentalKind} kind={experimentalKind}
-      model={experimentPuppet} externalRevision={experimentPuppetRevision}
-      clip={experimentClip} onClip={onExperimentClip} onFrame={onExperimentFrame}
-      onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
-      onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
 
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>{composerOpen?
@@ -1487,33 +1500,24 @@ export function FootprintsStageWorkspace({
       onStageHoldMs={ms=>stageSession.patch({bridgeHoldMs:ms})}/>
     </div>}
    </div>
-   {((!operatorMode&&inspectorOpen)||sourceStatus.selection==='phone')&&<aside id="fp-context-panel"
-    className="fp-stage-inspector" data-phone-visible={phonePanelOpen&&!operatorMode}
-    data-panel-hidden={operatorMode||(!inspectorOpen&&!phonePanelOpen)}
+   {!operatorMode&&inspectorOpen&&<aside id="fp-context-panel"
+    className="fp-stage-inspector" data-phone-visible={false}
+    data-panel-hidden={!inspectorOpen}
     data-mode={calibrationOpen?'calibration':'inspector'} aria-label={calibrationOpen?'Kalibrasi lantai':'Pengaturan tahap '+flowStep}
     onKeyDown={event=>{
      if(isDismissEscape(event)){
       event.preventDefault();event.stopPropagation();
-      if(phonePanelOpen)closePhonePanel();else if(calibrationOpen)closeCalibration();else closeInspector();
+      if(calibrationOpen)closeCalibration();else closeInspector();
      }
     }}>
-    {sourceStatus.selection==='phone'&&<div className="fp-phone-source-panel"
-     hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}>
-      <header className="fp-phone-source-heading">
-       <div><h2>Pairing HP</h2></div>
-       <button type="button" aria-label="Tutup panel kamera HP"
-        onClick={closePhonePanel}>✕</button>
-      </header>
-      <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
-     </div>}
-    {!operatorMode&&calibrationOpen&&!phonePanelOpen&&<InlineFloorCalibration
+    {!operatorMode&&calibrationOpen&&<InlineFloorCalibration
      key={sourceStatus.selection??'none'}
      videoRef={videoRef} tracker={tracker} router={router}
      cameraOn={cameraOn} bodySelected={bodySelected} videoReady={videoReady}
      cameraMatched={cameraMatched} onBlackout={onBlackout}
      onClose={closeCalibration} onOpenQA={onOpenLiveFloor}
      onOverlay={setCalibrationOverlay} onTap={bindCalibrationTap}/>}
-    {!operatorMode&&!calibrationOpen&&!phonePanelOpen&&inspectorOpen&&<FootprintsFlowInspector
+    {!operatorMode&&!calibrationOpen&&inspectorOpen&&<FootprintsFlowInspector
      key={flowStep} step={flowStep} onClose={closeInspector}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      cameraLabel={cameraLabel}
