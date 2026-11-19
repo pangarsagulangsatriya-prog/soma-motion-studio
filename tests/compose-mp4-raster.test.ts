@@ -28,6 +28,6 @@ test('Track passes original MP4 decoded raster to Compose; no separate decoder',
  assert.match(stage,/experimentInputCanvas=\{cameraCanvas\} experimentFloorCanvas=\{floorCanvas\}/);
  assert.match(stage,/experimentSource=\{experimentalKind\}/);
  assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
- assert.match(composer,/composeExperimentRaster\(/);
+ assert.match(composer,/composerLayerOrder\(/);
  assert.match(composer,/experimentSource&&<button type="button"/);
 });
