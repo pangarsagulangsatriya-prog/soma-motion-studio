@@ -32,5 +32,7 @@ test('UX-R3: compositor is embedded in original FootprintsStageWorkspace, not a 
 test('UX-R3: experimental output stays hardware gated by the existing composer',()=>{
  const composer=readFileSync(new URL('../src/studio/v3/SurfaceComposer.tsx',import.meta.url),'utf8');
  assert.match(composer,/experimentLocked=\{experimentLocked\}/);
- assert.match(composer,/physical\|\|!experimentLocked/);
+ assert.match(composer,/canRenderComposeSurface\(\{/);
+ const gate=readFileSync(new URL('../src/studio/v3/composePreviewGate.ts',import.meta.url),'utf8');
+ assert.match(gate,/input\.physical\|\|input\.floorReady/);
 });
