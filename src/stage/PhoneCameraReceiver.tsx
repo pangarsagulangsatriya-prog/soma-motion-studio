@@ -86,7 +86,7 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
   try{await navigator.clipboard.writeText(text);setConnection('Kode disalin. Tempel melalui chat pribadi ke perangkat tujuan.');}
   catch{setConnection('Pilih teks kode dan salin secara manual.');}
  };
- const url=phoneCameraUrl(window.location.origin);
+ const url=phoneCameraUrl(window.location.origin,window.location.pathname);
  return <section className="soma-setup-phone" aria-label="Hubungkan kamera HP">
   <h3>Gunakan HP sebagai kamera</h3>
   <p>SOMA berjalan di laptop. HP cukup membuka halaman kamera melalui HTTPS, mengirim video tanpa audio, dan tetap menyala selama latihan.</p>
