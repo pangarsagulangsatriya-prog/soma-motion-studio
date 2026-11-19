@@ -58,7 +58,7 @@
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
  .fp-quick-setup-panel button{min-width:0;max-width:100%;white-space:normal;line-height:1.3}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details{
+ :is(.fp-quick-profile-details,.fp-quick-device-details){
  display:block;
  border:1px solid #38523e;
  border-radius:7px;
@@ -67,9 +67,9 @@
  min-width:0;
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details:not([open]){padding-bottom:0}
+ :is(.fp-quick-profile-details,.fp-quick-device-details):not([open]){padding-bottom:0}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details>summary{
+ :is(.fp-quick-profile-details,.fp-quick-device-details)>summary{
  display:flex;align-items:center;justify-content:space-between;
  gap:8px;min-height:40px;
  font-size:11px;font-weight:650;
@@ -77,17 +77,17 @@
  color:#d9e8d3;
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details>summary::-webkit-details-marker{display:none}
+ :is(.fp-quick-profile-details,.fp-quick-device-details)>summary::-webkit-details-marker{display:none}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details>summary svg{transition:transform .16s ease;flex:0 0 auto}
+ :is(.fp-quick-profile-details,.fp-quick-device-details)>summary svg{transition:transform .16s ease;flex:0 0 auto}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details[open]>summary svg{transform:rotate(180deg)}
+ :is(.fp-quick-profile-details,.fp-quick-device-details)[open]>summary svg{transform:rotate(180deg)}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details[open]>:not(summary){margin-block:9px 0}
+ :is(.fp-quick-profile-details,.fp-quick-device-details)[open]>:not(summary){margin-block:9px 0}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details:focus-within{border-color:#91b485}
+ :is(.fp-quick-profile-details,.fp-quick-device-details):focus-within{border-color:#91b485}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
- .fp-quick-profile-details>summary:focus-visible{outline:2px solid #d9ebac;outline-offset:2px}
+ :is(.fp-quick-profile-details,.fp-quick-device-details)>summary:focus-visible{outline:2px solid #d9ebac;outline-offset:2px}
 
 /* Inspector uses its own layout column, never covering camera pixels. */
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-inspector-open=true]
@@ -187,6 +187,40 @@
  color:#ffe3dc;
  font-variant-numeric:tabular-nums;
  padding-left:5px;
+}
+/* Keep Stage Setup short: one contextual next step, advanced options closed. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-projection{
+ background:transparent!important;
+ border:0!important;
+ border-radius:0!important;
+ padding:0!important;
+ gap:7px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-projection-status{
+ display:block;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-projection-status small{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ overflow:hidden;
+ font-size:11px;
+ line-height:1.4;
+ color:#b7cdb7;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ :is(.fp-quick-device-details,.fp-quick-profile-details)>:not(summary){
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-device-details>.fp-quick-setup-output{
+ margin-top:9px;
+ width:100%;
 }
 @keyframes trk07-record-pulse{50%{opacity:.58}}
 
