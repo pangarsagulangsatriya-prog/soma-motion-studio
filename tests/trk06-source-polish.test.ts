@@ -10,8 +10,8 @@ const css=read('../src/studio/v3/trk06-control-polish.css');
 
 test('one pairing CTA, no duplicate waiting copy inside camera',()=>{
  assert.match(stage,/sourceStatus.selection==='phone'&&!phonePanelOpen&&<button/);
- assert.match(stage,/hidden=\{\(sourceStatus.selection==='phone'&&phonePanelOpen\)\|\|/);
- assert.match(stage,/hidden=\{!composerOpen&&!operatorMode&&\s*\(feedback.state==='idle'\|\|feedback.state==='waiting'\)\}/);
+ assert.match(stage,/hidden=\{!ownership\.sourceStatusVisible\}/);
+ assert.match(stage,/hidden=\{!composerOpen&&!operatorMode&&!ownership\.showTrackingFeedback\}/);
  assert.match(stage,/!composerOpen&&!calibrationOpen&&!experimentalKind&&!sourceStatus.selection&&/);
  assert.doesNotMatch(stage,/sourceStatus.selection==='phone'\?'Menunggu HP'/);
  assert.match(stage,/<PhoneCameraReceiver onStream=\{onPhoneStream\} onDisconnect=\{onPhoneDisconnect\}\/>/);
