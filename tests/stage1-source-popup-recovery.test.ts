@@ -27,7 +27,7 @@ test('Stage 1 no-source: the left source/status panel and right camera stay visi
  assert.match(stage,/className="fp-stage-video"/);
  assert.match(css,/TRK-02 — Track owns its desktop\/tablet\/mobile geometry/);
  assert.match(css,/grid-template-columns:minmax\(0,var\(--trk-sidebar\)\) minmax\(0,1fr\)!important/);
- assert.match(stage,/sourceStatus\.selection!==null&&!experimentalKind&&<QuickStageSetup/);
+ assert.match(stage,/sourceStatus\.selection!==null&&!experimentalKind&&cameraOn&&<QuickStageSetup/);
 });
 
 test('Stage 1 preview: HOLD is transient and overlay text fits the canvas',()=>{
