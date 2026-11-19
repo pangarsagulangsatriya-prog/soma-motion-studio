@@ -74,7 +74,7 @@ test('Track camera sizing wins against persistent legacy source grid rule',()=>{
  assert.match(css,/grid-column:2!important;/);
  assert.match(css,/grid-row:1\/span 4!important/);
  assert.match(css,/--trk-camera-limit:960px/);
- assert.match(css,/data-workspace=track\] \.fp-stage-bottom-status\{display:none!important\}/);
+ assert.match(css,/data-workspace=track\] \.fp-stage-bottom-status\{\s*display:none!important/);
 });
 test('Track microinteractions announce state, support focus and reduced motion',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
