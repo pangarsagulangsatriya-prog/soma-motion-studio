@@ -168,6 +168,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  };
  const handleAdvanced=kind==='video'?onAdvancedVideo:onAdvancedSimulator;
  return <section className="fp-experiment-dock" data-experiment-kind={kind}
+  data-player-state={kind==='video'?(analysisError?'error':!videoReady?'loading':playing?'playing':'paused'):'simulation'}
   aria-label={kind==='video'?'Sumber video MP4 Footprints':'Sumber simulasi 3D Footprints'}>
   {kind==='video'?<div className="fp-experiment-controls">
    <label className="fp-experiment-upload"><UploadCloud size={16}/>
@@ -191,11 +192,13 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     onTimeUpdate={e=>setPosition(e.currentTarget.currentTime)}
     onEnded={()=>setPlaying(false)}/>
    <button type="button" onClick={play} disabled={!videoReady}
-    aria-label={playing?'Jeda video':'Putar video'}>
+    aria-label={playing?'Jeda video':'Putar video'}
+    aria-pressed={playing}>
     {playing?<Pause size={15}/>:<Play size={15}/>}
     {playing?'Jeda':'Putar'}</button>
    <input type="range" min={0} max={duration||1} step={.02}
     value={scrubPosition??position} aria-label="Geser waktu video"
+    aria-valuetext={timecode(scrubPosition??position)+' dari '+timecode(duration)}
     disabled={!videoReady} onChange={e=>setScrubPosition(+e.target.value)}
     onPointerUp={commitScrub} onPointerCancel={commitScrub}
     onKeyUp={commitScrub} onBlur={commitScrub}/>
@@ -231,7 +234,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      </span>)}
     </span>
     <details className="fp-tracking-details">
-     <summary aria-label="Detail tracking A dan B">Detail</summary>
+     <summary aria-label="Rincian tracking A dan B">Rincian tracking</summary>
      <div className="fp-tracking-details-panel">
       <strong>TRACKING / VIDEO</strong>
       <p>Sumber MP4 · output fisik terkunci</p>
