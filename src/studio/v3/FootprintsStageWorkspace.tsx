@@ -1164,7 +1164,10 @@ export function FootprintsStageWorkspace({
        </div>
       </details>
       <section className="soma-track-source-status" data-phase={sourceStatus.phase}
-       hidden={sourceStatus.selection==='phone'&&phonePanelOpen}
+       hidden={(sourceStatus.selection==='phone'&&phonePanelOpen)||
+        (!!experimentalKind&&trackSummary.kind!=='error')||
+        (sourceStatus.phase==='ready'&&
+         ['ready','framing','uncertain'].includes(feedback.state))}
        data-kind={trackSummary.kind} aria-label="Status sumber" role="status" aria-live="polite">
        <div className="soma-track-status-title">
         <span className="soma-track-state-indicator" aria-hidden="true"/>
