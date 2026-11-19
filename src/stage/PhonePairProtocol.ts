@@ -15,9 +15,10 @@ export type PairResponse={
  ticket?:string;phoneToken?:string;expiresAt?:number;sdp?:string;
  error?:string;code?:string;
 };
-export function pairedPhoneUrl(origin:string,pair:PhoneJoin):string{
+export function pairedPhoneUrl(origin:string,pair:PhoneJoin,basePath='/'):string{
  if(!validRoom(pair.room)||!validToken(pair.ticket))throw Error('Identitas QR tidak valid.');
- const url=new URL('/?phoneCamera=1',origin);
+ const url=new URL(basePath,origin);
+ url.searchParams.set('phoneCamera','1');
  url.hash=new URLSearchParams({room:pair.room,ticket:pair.ticket}).toString();
  return url.toString();
 }
