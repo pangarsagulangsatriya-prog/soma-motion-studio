@@ -29,7 +29,7 @@ import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts'
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {trackStatus} from './trackViewModel.ts';
-import {deriveTrackFeedback} from './trackFeedbackModel.ts';
+import {deriveTrackFeedback,liveSkeletonPresentation} from './trackFeedbackModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
@@ -636,8 +636,10 @@ export function FootprintsStageWorkspace({
      // physical BODY/FLOOR output, gait event gate or projector approval.
      if(skeletonVisible&&!calibrationOpen&&f.source==='camera'&&f.time>0&&
       now>=f.time&&now-f.time<450){
-      drawSkeletonBodies(cam,f.poses??[],
-       {x:(camera.width-w)/2,y:(camera.height-h)/2,width:w,height:h});
+      const presentation=liveSkeletonPresentation(f,identities,performerCount);
+      drawSkeletonBodies(cam,presentation.poses,
+       {x:(camera.width-w)/2,y:(camera.height-h)/2,width:w,height:h},
+       {colors:presentation.colors});
      }
     }
    }
@@ -1302,6 +1304,7 @@ export function FootprintsStageWorkspace({
           role="group" aria-label="Status aktor dan landmark kaki">
           {feedback.actors.map(actor=><span key={actor.id}
            className="soma-track-actor-chip" data-state={actor.state}
+           data-actor={actor.id}
            title={actor.state==='unstable'?'Identitas belum stabil':
             actor.state==='missing'?'Aktor belum terdeteksi':
             actor.feet===2?'Kedua kaki terdeteksi dari landmark 2D':
