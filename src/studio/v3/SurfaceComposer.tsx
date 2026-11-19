@@ -330,6 +330,11 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   const currentMask=s==='BODY A'?selectedMask.A:s==='BODY B'?selectedMask.B:null;
   if(!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
+  // In Compose, a tracked lower-body mask is itself useful visual material.
+  // Never insert this unverified preview texture into the physical BODY raster.
+  if(body&&!physical&&!readyMedia(s)&&currentMask){
+   ctx.save();ctx.globalAlpha=.9;ctx.drawImage(currentMask,0,0,w,h);ctx.restore();return;
+  }
   // Reuse the clean Footprints FLOOR raster when no imported media is
   // selected. Presence/touch diagnostics are in another software-only canvas.
   // Hardware projection remains under the existing five-point QA gate.
