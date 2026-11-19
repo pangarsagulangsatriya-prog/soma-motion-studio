@@ -26,7 +26,10 @@ test('Track hides secondary previews but keeps engine BODY/FLOOR raster canvases
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  assert.match(stage,/<canvas ref=\{bodyCanvas\}/);
  assert.match(stage,/<canvas ref=\{floorCanvas\}/);
- assert.match(stage,/aria-hidden=\{!composerOpen\|\|mappingOpen\}/);
+ assert.match(stage,/hidden=\{!composerOpen\|\|mappingOpen\} aria-hidden=\{!composerOpen\|\|mappingOpen\}/);
+ const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ assert.match(css,/data-workspace=track\] \.fp-stage-overview > \.fp-stage-side-previews/);
+ assert.match(css,/\.fp-stage-side-previews\[hidden\]\{/);
  assert.match(stage,/motionEvents=\{\(\)=>interactionEngineRef\.current\.canonicalRecent\}/);
 });
 
@@ -37,4 +40,14 @@ test('Compose keeps three columns: Scene Library / Stage Preview / Inspector',()
  assert.match(composer,/STAGE PREVIEW|Stage Preview/);
  assert.match(composer,/INSPECTOR|Inspector/);
  assert.match(css,/data-workspace=compose\] \.s64-embedded \.s64-layout\{grid-template-columns:minmax\(176px,220px\) minmax\(0,1fr\) minmax\(186px,238px\)/);
+});
+
+test('Compose exposes original three monitors only when editor is active',()=>{
+ const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ assert.match(stage,/hidden=\{view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
+ assert.match(css,/data-workspace=compose\] \.fp-stage-overview > \.fp-stage-side-previews:not\(\[hidden\]\)/);
+ for(const cls of ['fp-preview-floor','fp-preview-body','fp-stage-video']){
+  assert.match(css,new RegExp('data-workspace=compose\\] \\.'+cls));
+ }
 });
