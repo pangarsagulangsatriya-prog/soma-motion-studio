@@ -1178,7 +1178,7 @@ export function FootprintsStageWorkspace({
        onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
        onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
       <div className="soma-track-source-utilities">
-       {sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
+       {sourceStatus.selection!==null&&!experimentalKind&&cameraOn&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
      cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
      frameFresh={frameFresh} cameraMatched={cameraMatched}
      outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
@@ -1192,7 +1192,8 @@ export function FootprintsStageWorkspace({
      projectionPreflight={projectionPreflight} onPrepareProjection={prepareProjection}
      onOpenProjector={openProjectorQA} onBlackout={onBlackout}/>}
        <button type="button" className="soma-ia-advanced-button" aria-expanded={inspectorOpen}
-        onClick={()=>{if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
+        onClick={()=>{setPhonePanelOpen(false);
+         if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
          else {setFlowStep('process');setInspectorOpen(v=>!v);}}}>
         Pengaturan
        </button>
