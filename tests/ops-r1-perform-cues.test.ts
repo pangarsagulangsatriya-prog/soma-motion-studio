@@ -75,7 +75,7 @@ test('OPS-R1: stage uses same scene renderer and latches blackout on tracking fa
  assert.match(stage,/cueNavigationRef\.current\.previous\(\)/);
  assert.match(console,/disabled=\{activeSlot===cueGrid\.slots\.length-1\}/);
  assert.match(console,/cueGrid\.slots\.map/);
- assert.match(console,/GO menerapkan scene dan tata letak preview/);
+ assert.match(console,/Pilih cue untuk mengganti scene dan layout monitor/);
  assert.ok(!console.includes('setTransport('));
 });
 test('OPS-R1: cue recall never activates projector, and Map QA remains separate',()=>{
