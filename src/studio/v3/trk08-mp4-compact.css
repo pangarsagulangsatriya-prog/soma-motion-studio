@@ -1,3 +1,4 @@
+@import './trk09-ux-polish.css';
 /* TRK-08 · MP4 Track: restore single-column source sizing and WYSIWYG video.
    The previous horizontal transport's flex-basis (138px + 320px) became
    vertical height inside the 272px source rail and pushed status over video.
