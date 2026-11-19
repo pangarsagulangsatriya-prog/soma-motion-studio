@@ -586,7 +586,9 @@ export function FootprintsStageWorkspace({
    lastDraw=now;
    const f=frameRef.current,v=videoRef.current;
    const identities=router.status;
-   if(!touchDemo&&cameraOn&&bodySelected){
+   const cameraSourceReady=cameraOn&&sourceStatus.phase==='ready'&&
+    (sourceStatus.selection==='webcam'||sourceStatus.selection==='phone');
+   if(!touchDemo&&cameraSourceReady&&bodySelected){
     const binding=cameraBinding(v);
     feedLiveFloorInteractions(interactionEngineRef.current,{
      source:sourceStatus.selection==='phone'?'phone':'camera',
@@ -597,19 +599,19 @@ export function FootprintsStageWorkspace({
     });
    }
    const gate=stageBodyPreviewGate({
-    cameraOn:cameraOn&&bodySelected,tracked:f.tracked,source:f.source,ageMs:now-f.time,
+    cameraOn:cameraSourceReady&&bodySelected,tracked:f.tracked,source:f.source,ageMs:now-f.time,
     performerCount,visibleCount:identities.visible.length,
     identityAmbiguous:identities.ambiguous,matchedFrame:identities.observedFrameTime===f.time
    });
-   const fresh=cameraOn&&bodySelected&&f.source==='camera'&&f.tracked&&
+   const fresh=cameraSourceReady&&bodySelected&&f.source==='camera'&&f.tracked&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
-   const videoAvailable=!!(cameraOn&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight);
+   const videoAvailable=!!(cameraSourceReady&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight);
    setVideoReady(prev=>prev===videoAvailable?prev:videoAvailable);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
    if(camera&&cam){
     cam.fillStyle='#050807';cam.fillRect(0,0,camera.width,camera.height);
-    if(cameraOn&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight){
+    if(videoAvailable&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight){
      const scale=Math.min(camera.width/v.videoWidth,camera.height/v.videoHeight);
      const w=v.videoWidth*scale,h=v.videoHeight*scale;
      try{cam.drawImage(v,(camera.width-w)/2,(camera.height-h)/2,w,h);}
@@ -667,7 +669,7 @@ export function FootprintsStageWorkspace({
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen,touchDemo,sourceStatus.selection]);
+ },[frameRef,videoRef,tracker,router,cameraOn,bodySelected,performerCount,experimentalKind,skeletonVisible,calibrationOpen,touchDemo,sourceStatus.selection,sourceStatus.phase]);
  // S0.2/S0.3: AI snapshots update a per-actor motion buffer; software
  // canvases paint at DISPLAY refresh (rAF), not only on AI arrival or 30 FPS.
  // FLOOR continues to render only measured contact events.
