@@ -337,6 +337,13 @@ const run=async()=>{
   const white=await root.locator('.soma-track-qr-frame').evaluate(el=>getComputedStyle(el).backgroundColor);
   assert.equal(white,'rgb(255, 255, 255)');
   assert.ok(await root.getByRole('button',{name:'Salin tautan'}).isVisible());
+  const controls=root.locator('.soma-track-qr-actions');
+  const direction=await controls.evaluate(el=>getComputedStyle(el).flexDirection);
+  assert.equal(direction,'row','QR toolbar must stay in one horizontal row');
+  const copyBox=await bounds(root.getByRole('button',{name:'Salin tautan'}));
+  const regenerateBox=await bounds(root.getByRole('button',{name:'Buat ulang kode QR'}));
+  assert.ok(Math.abs(copyBox.y-regenerateBox.y)<=6,
+   'QR controls unexpectedly stacked or misaligned');
   await screenshot(page,'desktop-e2e','phone-qr-visible');
   await root.getByRole('button',{name:'Tutup pairing kamera HP'}).click();
   assert.ok(await pairing.isHidden());
