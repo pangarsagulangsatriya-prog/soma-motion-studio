@@ -50,7 +50,8 @@ export function trackStatusOwnership(input:{
    !(selection==='phone'&&phonePanelOpen),
   sourceStatusError,
   webcamAction,
-  showBodyAction:selection==='webcam'&&cameraOn&&sourceMode==='switch-body',
+  showBodyAction:(selection==='webcam'||(selection==='phone'&&!phonePanelOpen))&&
+   cameraOn&&sourceMode==='switch-body',
   showPreviewWarming:!!selection&&!experimentalKind&&
    cameraOn&&sourceMode==='warming',
   showTrackingFeedback:feedbackState!=='idle'&&feedbackState!=='waiting',
