@@ -1,0 +1,225 @@
+/* TRK-07 — Functional WYSIWYG layout after TRK-06:
+   one Track INPUT monitor, one source rail, contextual in-flow panels.
+   Strictly Track only: Compose/Map/Perform styling remains unchanged. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]{
+ --trk-inspector-width:310px;
+ --trk-inspector-gap:12px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-panel,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-utilities{
+ min-width:0!important;
+ max-width:100%!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup{
+ position:relative!important;
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+ z-index:1!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-panel{
+ position:static!important;
+ inset:auto!important;
+ top:auto!important;
+ left:auto!important;
+ right:auto!important;
+ width:100%!important;
+ max-width:100%!important;
+ max-height:none!important;
+ overflow:visible!important;
+ margin:7px 0 0!important;
+ padding:10px!important;
+ border-color:#385341!important;
+ border-radius:8px!important;
+ box-shadow:none!important;
+ background:#13221a!important;
+ box-sizing:border-box!important;
+ min-width:0!important;
+ gap:9px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup:not([open]) .fp-quick-setup-panel{display:none!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-panel>*{max-width:100%;min-width:0;box-sizing:border-box}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-panel header{gap:5px;flex-wrap:wrap}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-panel header strong{font-size:11px;letter-spacing:0}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-panel header span{font-size:10px;white-space:nowrap}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-readiness>div{padding:7px 6px}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-readiness b{font-size:10px}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-setup-panel button{min-width:0;max-width:100%;white-space:normal;line-height:1.3}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details{
+ display:block;
+ border:1px solid #38523e;
+ border-radius:7px;
+ background:#17271c;
+ padding:0 9px 9px;
+ min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details:not([open]){padding-bottom:0}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details>summary{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:8px;min-height:40px;
+ font-size:11px;font-weight:650;
+ cursor:pointer;list-style:none;
+ color:#d9e8d3;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details>summary::-webkit-details-marker{display:none}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details>summary svg{transition:transform .16s ease;flex:0 0 auto}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details[open]>summary svg{transform:rotate(180deg)}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details[open]>:not(summary){margin-block:9px 0}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details:focus-within{border-color:#91b485}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-quick-profile-details>summary:focus-visible{outline:2px solid #d9ebac;outline-offset:2px}
+
+/* Inspector uses its own layout column, never covering camera pixels. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-inspector-open=true]
+ .fp-stage-layout:has(>.fp-stage-inspector){
+ grid-template-columns:minmax(0,1fr) minmax(0,var(--trk-inspector-width))!important;
+ gap:var(--trk-inspector-gap)!important;
+ align-items:start!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-inspector-open=true]
+ .fp-stage-layout>.fp-stage-main{
+ grid-column:1!important;grid-row:1!important;
+ min-width:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){
+ position:relative!important;
+ inset:auto!important;
+ left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
+ grid-column:2!important;grid-row:1!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ height:auto!important;min-height:0!important;
+ max-height:min(75dvh,690px)!important;
+ overflow-y:auto!important;overflow-x:hidden!important;
+ z-index:2!important;
+ margin:0!important;
+ box-sizing:border-box!important;
+ box-shadow:none!important;
+ border:1px solid #3c5642!important;
+ border-radius:9px!important;
+ scrollbar-gutter:stable;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-stage-inspector :is(button,input,select,summary):focus-visible{
+ outline:2px solid #cee5a5;outline-offset:2px;
+}
+
+/* Camera toolbar follows the camera in normal flow. It cannot cover a form. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-unified-transport.fp-compact-transport{
+ display:flex!important;
+ position:relative!important;
+ bottom:auto!important;inset:auto!important;
+ z-index:1!important;
+ align-items:center!important;justify-content:flex-start!important;
+ width:min(calc(100% - var(--trk-sidebar) - var(--trk-gap)),var(--trk-camera-limit))!important;
+ max-width:100%!important;min-width:0!important;
+ margin:10px 0 12px calc(var(--trk-sidebar) + var(--trk-gap))!important;
+ padding:7px 9px!important;
+ min-height:52px!important;
+ border-color:#324c39!important;border-radius:9px!important;
+ background:#14231a!important;
+ backdrop-filter:none!important;
+ box-shadow:none!important;
+ overflow:visible!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-unified-transport[data-has-input=false]{display:none!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-unified-transport .fp-transport-local{
+ display:flex;flex:1 1 auto;
+ min-width:0;
+ gap:6px;justify-content:flex-start;
+ flex-wrap:wrap;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-unified-transport .fp-transport-group{
+ display:flex;flex-wrap:wrap;
+ gap:7px;min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-unified-transport .fp-transport-caption,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-unified-transport .fp-transport-preview{display:none!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-compact-transport button{
+ min-height:40px;
+ border-radius:7px;
+ font-size:12px;
+ font-weight:620;
+ transition:background .14s ease,border-color .14s ease,transform .12s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-compact-transport button:hover:not(:disabled){transform:translateY(-1px)}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-compact-transport button:active:not(:disabled){transform:translateY(1px)}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-compact-transport .fp-transport-recording{
+ border-color:#b77766!important;background:#492f2b!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .fp-compact-transport .fp-transport-recording svg{
+ color:#f7a9a4;animation:trk07-record-pulse 1.7s ease-in-out infinite;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .trk-transport-timer{
+ font:650 11px ui-monospace,monospace;
+ color:#ffe3dc;
+ font-variant-numeric:tabular-nums;
+ padding-left:5px;
+}
+@keyframes trk07-record-pulse{50%{opacity:.58}}
+
+/* Narrow and short viewports preserve camera width and reachability. */
+@media(max-width:1250px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-inspector-open=true]
+  .fp-stage-layout:has(>.fp-stage-inspector){
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){
+  grid-column:1!important;grid-row:2!important;
+  max-height:none!important;overflow:visible!important;
+ }
+}
+@media(min-width:1251px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-inspector-open=true]
+  .fp-unified-transport.fp-compact-transport{
+  width:min(calc(100% - var(--trk-sidebar) - var(--trk-gap) - var(--trk-inspector-width) - var(--trk-inspector-gap)),var(--trk-camera-limit))!important;
+ }
+}
+@media(max-width:850px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  .fp-unified-transport.fp-compact-transport{
+  width:100%!important;
+  margin:10px 0 12px!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  .fp-quick-setup-panel{width:100%!important;max-height:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  :is(.fp-quick-profile-details>summary svg,
+   .fp-compact-transport button,
+   .fp-compact-transport .fp-transport-recording svg){transition:none!important;animation:none!important}
+}
