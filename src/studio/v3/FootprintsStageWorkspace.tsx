@@ -998,60 +998,11 @@ export function FootprintsStageWorkspace({
   aria-label="Stage 1 — Motion Projection">
   <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
    onNavigate={onNavigateStageWorkspace}/>
-  {!operatorMode&&!composerOpen&&view==='stage'&&<div className="soma-ia-track-head">
+  {!operatorMode&&!composerOpen&&view==='stage'&&<header className="soma-ia-track-head">
    <div className="soma-ia-track-title"><h1>Track</h1>
-    <span>{experimentalKind==='video'?'MP4 · Pose A/B':experimentalKind==='simulator'?'3D · Puppet':'Source · Pose A/B'}</span>
+    <span>Input source · Motion / Pose A/B</span>
    </div>
-   <div className="soma-ia-track-actions">
-    <details className="soma-ux01-source-switch">
-     <summary aria-label="Ganti sumber gerak" title={sourceStatus.message}>Sumber: {SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Pilih'}</summary>
-     <div className="soma-ux01-source-options" role="group" aria-label="Sumber gerak Track">
-      {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
-       disabled={sourceStatus.phase==='connecting'||sourceStatus.selection===option.id}
-       aria-pressed={sourceStatus.selection===option.id}
-       onClick={e=>{void chooseSource(option.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
-       {option.label}
-      </button>)}
-     </div>
-    </details>
-    {sourceStatus.selection==='phone'&&<button type="button" className="soma-ia-advanced-button"
-     onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);}}>
-     Pairing HP
-    </button>}
-    {sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
-     cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
-     frameFresh={frameFresh} cameraMatched={cameraMatched}
-     outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
-     performerCount={performerCount}
-     visibleCount={identityStatus.visible.length}
-     identityAmbiguous={identityStatus.ambiguous}
-     identityMatchedFrame={identityStatus.observedFrameTime===frameRef.current.time}
-     devices={cameraDevices} deviceId={selectedCameraId} videoRef={videoRef}
-     tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
-     onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
-     projectionPreflight={projectionPreflight} onPrepareProjection={prepareProjection}
-     onOpenProjector={openProjectorQA} onBlackout={onBlackout}/>}
-    <button type="button" className="soma-ia-advanced-button" aria-expanded={inspectorOpen}
-     onClick={()=>{if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
-      else {setFlowStep('process');setInspectorOpen(v=>!v);}}}>
-      Advanced
-    </button>
-   </div>
-  </div>}
-  {!operatorMode&&!composerOpen&&view==='stage'&&sourceStatus.selection===null&&
-   <div className="soma-ia-source-setup" role="group" aria-label="Pilih sumber Stage 1">
-    <div className="soma-ia-source-heading">
-     <strong>Pilih sumber gerak</strong>
-     <span>Siapkan input untuk mulai Track. Sumber yang sama dipakai Compose, Map dan Perform.</span>
-    </div>
-    <div className="soma-ia-source-options">
-     {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
-      disabled={sourceStatus.phase==='connecting'} onClick={()=>{void chooseSource(option.id);}}
-      aria-label={'Gunakan '+option.label}>
-      <strong>{option.label}</strong><small>{option.description}</small>
-     </button>)}
-    </div>
-   </div>}
+  </header>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onExit={onExitOperator} onBlackout={operatorBlackout}
@@ -1121,6 +1072,71 @@ export function FootprintsStageWorkspace({
      identitySafe={!identityStatus.ambiguous}
      onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/>}
     <div className="fp-stage-overview" hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
+     <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
+      aria-label="Pilih sumber dan lihat status tracking">
+      <div className="soma-track-source-heading">
+       <span>INPUT SOURCE</span>
+       <strong>Pilih sumber gerak</strong>
+      </div>
+      <details className="soma-ux01-source-switch soma-track-source-select">
+       <summary aria-label="Ganti sumber gerak" title="Pilih satu sumber untuk Track dan Compose">
+        <span>Pilih sumber</span>
+        <strong>{SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Belum dipilih'}</strong>
+       </summary>
+       <div className="soma-ux01-source-options" role="group" aria-label="Sumber gerak Track">
+        {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
+         disabled={sourceStatus.phase==='connecting'||sourceStatus.selection===option.id}
+         aria-pressed={sourceStatus.selection===option.id}
+         onClick={e=>{void chooseSource(option.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
+         <strong>{option.label}</strong><small>{option.description}</small>
+        </button>)}
+       </div>
+      </details>
+      <section className="soma-track-source-status" data-phase={sourceStatus.phase}
+       aria-label="Status sumber" role="status" aria-live="polite">
+       <div className="soma-track-status-title">
+        <span className="soma-track-state-indicator" aria-hidden="true"/>
+        <strong>{sourceStatus.phase==='ready'?'Terhubung':
+         sourceStatus.phase==='pairing'?'Menunggu kamera HP':
+         sourceStatus.phase==='connecting'?'Menghubungkan sumber':
+         sourceStatus.phase==='error'?'Sumber bermasalah':
+         sourceStatus.phase==='experiment'?'Sumber percobaan':
+         sourceStatus.selection===null?'Belum ada sumber':'Belum terhubung'}</strong>
+       </div>
+       <p>{sourceStatus.message}</p>
+       <small>{experimentalKind==='video'?
+        (selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
+         selectedExperimentFrame.snapshot.visibleCount+' aktor terbaca · video 2D':'Menunggu pose video'):
+        experimentalKind==='simulator'?'Puppet 3D · gerak sintetis':
+        frameFresh&&cameraOn?
+         identityStatus.visible.length+' / '+performerCount+' aktor terdeteksi':
+         'Skeleton dan pose A/B tampil setelah input aktif'}</small>
+      </section>
+      {sourceStatus.selection==='phone'&&<button type="button" className="soma-track-side-action"
+       onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);setInspectorOpen(true);}}>
+       {phoneActive?'Lihat koneksi kamera HP':'Buka pairing kamera HP'}
+      </button>}
+      <div className="soma-track-source-utilities">
+       {sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
+     cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
+     frameFresh={frameFresh} cameraMatched={cameraMatched}
+     outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
+     performerCount={performerCount}
+     visibleCount={identityStatus.visible.length}
+     identityAmbiguous={identityStatus.ambiguous}
+     identityMatchedFrame={identityStatus.observedFrameTime===frameRef.current.time}
+     devices={cameraDevices} deviceId={selectedCameraId} videoRef={videoRef}
+     tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
+     onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
+     projectionPreflight={projectionPreflight} onPrepareProjection={prepareProjection}
+     onOpenProjector={openProjectorQA} onBlackout={onBlackout}/>}
+       <button type="button" className="soma-ia-advanced-button" aria-expanded={inspectorOpen}
+        onClick={()=>{if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
+         else {setFlowStep('process');setInspectorOpen(v=>!v);}}}>
+        Advanced
+       </button>
+      </div>
+     </aside>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind}
@@ -1162,6 +1178,20 @@ export function FootprintsStageWorkspace({
         data-calibration-active={calibrationOpen&&!!calibrationOverlay}
         aria-label={experimentalKind?experimentalKind==='video'?'Input video rekaman 2D':'Input puppet 3D virtual':
          calibrationOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
+       {!composerOpen&&!calibrationOpen&&!cameraOn&&!experimentalKind&&
+        <div className="soma-track-input-placeholder" role="status">
+         <strong>{sourceStatus.selection==='phone'?'Menunggu gambar kamera HP':
+          sourceStatus.selection==='webcam'?'Webcam belum aktif':'Input kamera'}</strong>
+         <span>{sourceStatus.selection==='phone'?'Hubungkan HP dari panel di sebelah kiri.':
+          sourceStatus.selection==='webcam'?'Periksa akses kamera dan izin browser.':
+          'Pilih sumber di panel sebelah kiri untuk memulai.'}</span>
+        </div>}
+       {!composerOpen&&experimentalKind==='video'&&!experimentClip&&
+        <div className="soma-track-input-placeholder" role="status">
+         <strong>Belum ada video</strong>
+         <span>Pilih MP4 atau WebM dari panel kiri.</span>
+        </div>}
+
        {calibrationOpen&&calibrationOverlay&&<div className="fp-stage-calibration-overlay" aria-hidden="true">
         <svg viewBox="0 0 768 432" preserveAspectRatio="none">
          {calibrationOverlay.marks.every(p=>p!==null)&&<polygon
