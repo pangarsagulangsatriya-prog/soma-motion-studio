@@ -1193,7 +1193,7 @@ export function FootprintsStageWorkspace({
         ownership.webcamAction==='connecting'?'Menghubungkan…':'Aktifkan webcam'}
       </button>}
       {ownership.showBodyAction&&<button type="button" className="soma-track-side-action"
-       onClick={onStartBody}>Aktifkan Body</button>}}
+       onClick={onStartBody}>Aktifkan Body</button>}
       {sourceStatus.selection==='phone'&&!phonePanelOpen&&<button type="button" className="soma-track-side-action"
        aria-expanded={phonePanelOpen} aria-controls="soma-track-phone-pairing"
        onClick={()=>{setPhonePanelOpen(v=>!v);setCalibrationOpen(false);setInspectorOpen(false);}}>
