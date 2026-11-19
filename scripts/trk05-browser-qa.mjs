@@ -518,13 +518,60 @@ const run=async()=>{
   const time=await video.evaluate(el=>el.currentTime);
   assert.ok(time>=0);
   await screenshot(page,'desktop-e2e','video-loaded');
+  const rail=root.locator('.soma-track-source-panel');
+  const controls=rail.locator('.fp-experiment-controls');
+  const railRect=await bounds(rail);
+  const dockRect=await bounds(rail.locator('.fp-experiment-dock'));
+  const controlRect=await bounds(controls);
+  assert.ok(dockRect.width<=railRect.width+2 && controlRect.width<=railRect.width+2,
+   'MP4 controls overflow source rail: '+JSON.stringify({railRect,dockRect,controlRect}));
+  assert.ok(controlRect.height<270,
+   'MP4 controls contain legacy phantom 320px height: '+controlRect.height);
+  const uploadRect=await bounds(rail.locator('.fp-experiment-upload'));
+  const playbackRect=await bounds(controls.getByRole('button',{name:/Putar video|Jeda video/}));
+  assert.ok(Math.abs(uploadRect.y-playbackRect.y)<6,
+   'Change video and playback no longer share a row');
+  const monitorRect=await bounds(root.locator('.fp-stage-video'));
+  assert.ok(dockRect.x+dockRect.width<monitorRect.x,
+   'MP4 controls overlap the camera monitor');
+  const meta=controls.locator('.fp-experiment-meta');
+  if(await meta.isVisible())assert.ok((await bounds(meta)).height<=55,
+   'MP4 state label creates a 138px vertical blank area');
+  const readout=controls.locator('.fp-duet-engine-status');
+  if(await readout.count()){
+   const bar=await bounds(readout);
+   assert.ok(bar.height<=45&&bar.width<=railRect.width+2,
+    'Tracking A/B status is stretching beyond source rail: '+JSON.stringify(bar));
+   assert.equal(await readout.locator('> .fp-video-actor-status').isVisible(),false,
+    'A/B status must be owned by the monitor footer');
+   const details=readout.locator('.fp-tracking-details');
+   await details.locator('summary').click();
+   const panelRect=await bounds(details.locator('.fp-tracking-details-panel'));
+   assert.ok(panelRect.x>=railRect.x-4&&panelRect.x+panelRect.width<=railRect.x+railRect.width+4,
+    'Tracking diagnostics spill over the monitor');
+   assert.ok(panelRect.height<=235,'Tracking details exceed bounded diagnostics height');
+   await screenshot(page,'desktop-e2e','mp4-tracking-details');
+   await details.locator('summary').click();
+  }
   const range=root.getByRole('slider',{name:'Geser waktu video'});
+  assert.ok((await range.getAttribute('aria-valuetext'))?.includes('dari'),
+   'Video scrubber lacks accessible timecode');
   await range.evaluate(el=>{
    const input=el;input.value=String(Math.max(.1,Number(input.max)*.5));
    input.dispatchEvent(new Event('input',{bubbles:true}));
    input.dispatchEvent(new Event('change',{bubbles:true}));
   });
   assert.equal(await root.locator('.fp-experiment-dock').count(),1);
+  await page.setViewportSize({width:390,height:844});
+  await layoutCheck(page,{id:'mp4-mobile',width:390,height:844});
+  const mobileRail=await bounds(rail);
+  const mobileControls=await bounds(controls);
+  assert.ok(mobileControls.x>=0&&
+   mobileControls.x+mobileControls.width<=mobileRail.x+mobileRail.width+3,
+   'MP4 player overflows mobile rail');
+  assert.ok(mobileControls.height<300,'MP4 player excessively tall on mobile');
+  await screenshot(page,'desktop-e2e','mp4-mobile-loaded');
+  await page.setViewportSize({width:1440,height:900});
   await choose(page,'Simulasi 3D');
   assert.equal(await root.getAttribute('data-stage-source'),'simulator');
   assert.equal(await root.locator('.fp-experiment-dock').count(),1);
