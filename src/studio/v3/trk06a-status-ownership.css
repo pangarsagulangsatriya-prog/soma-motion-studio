@@ -1,0 +1,94 @@
+/* TRK-06A — One recovery action in the Track source rail.
+ * Scoped to Track, no changes to Compose, Map, Perform or media engines. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-status:not([hidden]){
+ width:100%;
+ padding:8px 9px!important;
+ border:1px solid #6c503e;
+ border-radius:7px;
+ background:#2b241e;
+ box-sizing:border-box;
+ overflow:hidden;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-status[data-kind=error] :is(strong,p){
+ overflow-wrap:anywhere;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-status[data-kind=error] p{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ overflow:hidden;
+ margin:4px 0 0;
+ max-width:100%;
+ font-size:11px;
+ line-height:1.4;
+ color:#e7c5b6;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-side-action{
+ display:inline-flex!important;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ width:100%;
+ min-height:42px!important;
+ border-radius:7px;
+ font-weight:680;
+ transition:background-color .15s ease,border-color .15s ease,transform .12s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-side-action[aria-busy=true]{
+ cursor:progress;
+ opacity:.76;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-side-action:hover:not(:disabled){
+ transform:translateY(-1px);
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-side-action:active:not(:disabled){
+ transform:translateY(1px);
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .trk06a-button-spinner,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .trk06a-preview-warming .fp-source-spinner{
+ flex:0 0 15px;
+ width:15px!important;
+ height:15px!important;
+ border:2px solid #afc4ac;
+ border-top-color:transparent;
+ border-radius:50%;
+ animation:trk06a-spinner .85s linear infinite;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .trk06a-preview-warming{
+ position:absolute;
+ inset:0;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ padding:12px;
+ background:#020403b0;
+ pointer-events:none;
+ z-index:4;
+ color:#c1d2c2;
+ font-size:12px;
+ letter-spacing:.01em;
+}
+@keyframes trk06a-spinner{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  :is(.trk06a-button-spinner,.trk06a-preview-warming .fp-source-spinner){
+  animation:none!important;
+  border-top-color:#afc4ac;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  .soma-track-side-action{
+  transition:none!important;
+  transform:none!important;
+ }
+}
