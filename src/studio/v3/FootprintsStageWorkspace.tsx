@@ -29,7 +29,8 @@ import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts'
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {trackStatus} from './trackViewModel.ts';
-import {deriveTrackFeedback,liveSkeletonPresentation} from './trackFeedbackModel.ts';
+import {liveSkeletonPresentation} from './trackFeedbackModel.ts';
+import {useTrackFeedbackPulse} from './useTrackFeedbackPulse.ts';
 import {trackStatusOwnership} from './trackStatusOwnership.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
@@ -639,7 +640,13 @@ export function FootprintsStageWorkspace({
      // physical BODY/FLOOR output, gait event gate or projector approval.
      if(skeletonVisible&&!calibrationOpen&&f.source==='camera'&&f.time>0&&
       now>=f.time&&now-f.time<450){
-      const presentation=liveSkeletonPresentation(f,identities,performerCount);
+      const actorFeedback=trackingFeedbackRef.current;
+      // Color A/B only once the visible identity/landmark state is confirmed.
+      const identityConfirmed=actorFeedback.state==='ready'||
+       (actorFeedback.state==='framing'&&
+        actorFeedback.actors.length===performerCount&&
+        actorFeedback.actors.every(a=>a.state==='visible'||a.state==='partial'));
+      const presentation=liveSkeletonPresentation(f,identities,performerCount,identityConfirmed);
       drawSkeletonBodies(cam,presentation.poses,
        {x:(camera.width-w)/2,y:(camera.height-h)/2,width:w,height:h},
        {colors:presentation.colors});
@@ -1043,14 +1050,16 @@ export function FootprintsStageWorkspace({
    selectedExperimentFrame.snapshot.visibleCount:null,
   cameraOn,frameFresh,visibleCount:identityStatus.visible.length,performerCount
  });
- const feedback=deriveTrackFeedback({
+ const feedback=useTrackFeedbackPulse({
   selection:sourceStatus.selection,phase:sourceStatus.phase,
-  cameraOn,frameFresh,performerCount,liveFrame:frameRef.current,
-  liveIdentity:identityStatus,
+  cameraOn,bodySelected,frameFresh,performerCount,frameRef,router,
   videoSnapshot:selectedExperimentFrame?.kind==='video'?
    selectedExperimentFrame.snapshot:null,
-  videoReady:canPaintVideoFrame(selectedExperimentFrame)
+  videoReady:canPaintVideoFrame(selectedExperimentFrame),
+  videoClip:experimentClip,active:!composerOpen&&!operatorMode
  });
+ const trackingFeedbackRef=useRef(feedback);
+ trackingFeedbackRef.current=feedback;
  const ownership=trackStatusOwnership({
   selection:sourceStatus.selection,phase:sourceStatus.phase,
   cameraOn,cameraBusy,cameraError,phonePanelOpen,experimentalKind,
@@ -1062,7 +1071,8 @@ export function FootprintsStageWorkspace({
   data-stage-source={sourceStatus.selection??'none'}
   data-operator-cue={operatorCueAt(operatorCue).id} data-context="inspector"
   data-inspector-open={inspectorOpen&&!operatorMode} data-source-ready={operatorMode||gaitPreviewVisible}
-  data-screen={screenMode} data-source-mode={sourceMode} data-preview-mode={previewMode} data-focus-preview={focusPreview}
+  data-screen={screenMode} data-source-mode={sourceMode}
+  data-tracking-state={feedback.state} data-preview-mode={previewMode} data-focus-preview={focusPreview}
   data-experimental={!!experimentalKind} data-skeleton-visible={skeletonVisible}
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Stage 1 — Motion Projection">
@@ -1325,6 +1335,7 @@ export function FootprintsStageWorkspace({
        {!composerOpen&&!operatorMode?
         <div className="soma-track-feedback" data-state={feedback.state}
          title="Kaki terlihat dihitung dari landmark pergelangan, tumit dan ujung kaki pada frame aktif; bukan kontak lantai."
+         role="status" aria-live="polite" aria-atomic="true"
          aria-label={feedback.label}>
          <span className="soma-track-feedback-indicator" aria-hidden="true"/>
          <strong>{feedback.label}</strong>
