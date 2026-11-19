@@ -26,7 +26,8 @@ import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprint
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import {HydraEffectInspector} from './HydraEffectInspector.tsx';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
-import {composeExperimentRaster,composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
+import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
+import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -328,42 +329,29 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    return !!item&&(item instanceof HTMLImageElement?item.complete&&item.naturalWidth>0:item.readyState>=2);
   });
  };
- const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true,physical=false)=>{
+ const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true,physical=false,overlayOnly=false)=>{
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
-  const offlineRaster=composeExperimentRaster({
-   source:experimentSourceRef.current,view:'surface',selected:s,physical
-  });
-  if(offlineRaster!=='none'){
-   const source=offlineRaster==='floor'?(experimentFloorCanvas?.current??floorCanvas.current):bodyCanvas.current;
-   if(source&&source.width>0&&source.height>0)ctx.drawImage(source,0,0,w,h);
-   return;
-  }
-  const body=s!=='FLOOR';
+  const body=s!=='FLOOR',experiment=!!experimentSourceRef.current;
   const selectedMask=physical?maskCache.current:previewMaskCache.current;
   const currentMask=s==='BODY A'?selectedMask.A:s==='BODY B'?selectedMask.B:null;
-  if(!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
+  // Physical outputs NEVER inherit the special MP4/3D preview bypass.
+  if(experiment&&physical)return;
+  if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
-  // In Compose, a tracked lower-body mask is itself useful visual material.
-  // Never insert this unverified preview texture into the physical BODY raster.
-  if(body&&!physical&&!readyMedia(s)&&currentMask){
-   ctx.save();ctx.globalAlpha=.9;ctx.drawImage(currentMask,0,0,w,h);ctx.restore();return;
-  }
-  // Reuse the clean Footprints FLOOR raster when no imported media is
-  // selected. Presence/touch diagnostics are in another software-only canvas.
-  // Hardware projection remains under the existing five-point QA gate.
-  if(s==='FLOOR'&&!readyMedia('FLOOR')){
-   const source=floorCanvas.current;
-   const softwareSource=!physical&&previewFloorEnabled?visualFloorCanvas?.current??source:source;
-   if(softwareSource&&softwareSource.width>=16&&softwareSource.height>=16)ctx.drawImage(softwareSource,0,0,w,h);
-   return;
-  }
   const now=performance.now();
-  for(const layer of compositionRef.current[s]||[]){
-   if(!layer.visible)continue;
-   const el=mediaEls.current.get(layer.mediaId);
-   if(!el||(el instanceof HTMLImageElement?!(el.complete&&el.naturalWidth):el.readyState<2))continue;
+  for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
+   if(overlayOnly&&kind!=='media')continue;
+   const el=kind==='media'?mediaEls.current.get(layer.mediaId):
+    kind==='floor'?(experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
+    kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null):
+    kind==='hydra'?(!physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
+    kind==='body'?bodyCanvas.current:null;
+   if(!el)continue;
+   if(el instanceof HTMLImageElement&&(!el.complete||!el.naturalWidth))continue;
+   if(el instanceof HTMLVideoElement&&(el.readyState<2||!el.videoWidth))continue;
+   if(el instanceof HTMLCanvasElement&&(!el.width||!el.height))continue;
    const key=s+':'+layer.id;
    let off=surfaceBuffers.current.get(key);
    if(!off){off=document.createElement('canvas');surfaceBuffers.current.set(key,off);}
@@ -440,7 +428,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
      ctx.clearRect(0,0,previewOverlay.width,previewOverlay.height);
      if(readyMedia('FLOOR')&&!blackoutRef.current&&previewLiveRef.current)
-      render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false);
+      render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false,true);
     }
    }
    const archiveReady=archiveHydra&&!blackoutRef.current&&previewLiveRef.current&&readyMedia('FLOOR')&&!!archiveHydraCanvas;
