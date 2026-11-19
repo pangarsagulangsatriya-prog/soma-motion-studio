@@ -12,6 +12,7 @@ import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
 import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
+import {useComposeMonitorLayout,type ComposeLayoutPreset} from './useComposeMonitorLayout.ts';
 import {StageModuleNav,type StageModuleWorkspace} from './StageModuleNav.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2} from 'lucide-react';
@@ -88,6 +89,7 @@ import './trk06c-micro-feedback.css';
 import './trk07-functional-layout.css';
 import './trk08-mp4-compact.css';
 import './trk09-ux-polish.css';
+import './cp01-compose-shell.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -127,6 +129,7 @@ export function FootprintsStageWorkspace({
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  operatorMode,onExitOperator,softwareBlackout,onResumeSoftwarePreview,footprint,updateFootprint
 }:Props){
+ const composeLayout=useComposeMonitorLayout();
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
@@ -1153,7 +1156,7 @@ export function FootprintsStageWorkspace({
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
      onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/>}
-    <div className="fp-stage-overview" hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
+    <div className="fp-stage-overview" ref={composeLayout.overview} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
       <div className="soma-track-source-heading"><strong>Sumber</strong></div>
@@ -1379,6 +1382,13 @@ export function FootprintsStageWorkspace({
       <div className="fp-stage-preview-toolbar">
        <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> PREVIEW</span>
         <small>{experimentalKind?experimentFrameLabel(experimentalKind):previewLabel(previewMode)+' · Preview software'}</small></div>
+       {composerOpen&&!mappingOpen&&<div className="cp01-preset-tools" role="group" aria-label="Layout monitor Compose">
+        {([['balanced','Seimbang'],['floor','FLOOR besar'],['input','INPUT besar'],['body','BODY besar']] as const).map(([id,label])=>
+         <button type="button" key={id} aria-pressed={composeLayout.layout.preset===id}
+          title={'Gunakan layout '+label} onClick={()=>composeLayout.preset(id as ComposeLayoutPreset)}>{label}</button>)}
+        <button type="button" title="Kembalikan ukuran monitor ke default"
+         onClick={()=>composeLayout.preset('balanced')}>Reset layout</button>
+       </div>}
        <div className="fp-stage-preview-modes" role="group" aria-label="Pilih tampilan preview">
         {STAGE_PREVIEW_MODES.map(item=><button type="button" key={item.id}
          aria-pressed={previewMode===item.id} aria-label={'Tampilkan '+item.description}
@@ -1576,6 +1586,24 @@ export function FootprintsStageWorkspace({
  experimentalKind?0:floorStatus.events} event</span></div>
       </div>
      </div>
+     {composerOpen&&!mappingOpen&&<>
+      <button type="button" className="cp01-divider cp01-divider-vertical"
+       role="separator" aria-orientation="vertical" aria-label="Atur lebar monitor FLOOR dan INPUT BODY"
+       aria-valuemin={30} aria-valuemax={75} aria-valuenow={Math.round(composeLayout.layout.floor)}
+       aria-valuetext={Math.round(composeLayout.layout.floor)+' persen untuk FLOOR'}
+       title="Geser untuk mengubah lebar FLOOR · tombol kiri/kanan untuk keyboard"
+       onPointerDown={composeLayout.begin('vertical')} onPointerMove={composeLayout.move('vertical')}
+       onPointerUp={composeLayout.stop} onPointerCancel={composeLayout.stop}
+       onKeyDown={composeLayout.keyboard('vertical')}/>
+      <button type="button" className="cp01-divider cp01-divider-horizontal"
+       role="separator" aria-orientation="horizontal" aria-label="Atur tinggi monitor INPUT dan BODY"
+       aria-valuemin={25} aria-valuemax={75} aria-valuenow={Math.round(composeLayout.layout.input)}
+       aria-valuetext={Math.round(composeLayout.layout.input)+' persen untuk INPUT'}
+       title="Geser untuk mengubah tinggi INPUT · tombol atas/bawah untuk keyboard"
+       onPointerDown={composeLayout.begin('horizontal')} onPointerMove={composeLayout.move('horizontal')}
+       onPointerUp={composeLayout.stop} onPointerCancel={composeLayout.stop}
+       onKeyDown={composeLayout.keyboard('horizontal')}/>
+     </>}
     </div>
     {viewError&&<p className="fp-stage-error" role="alert">{viewError}</p>}
     {view==='archive'&&<div className="fp-stage-archive-view">
