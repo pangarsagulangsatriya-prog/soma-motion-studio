@@ -670,14 +670,18 @@ export function FootprintsStageWorkspace({
    if(current?.kind==='video'){
     const atMs=(current.video?.currentTime??current.timeMs/1000)*1000;
     const frame={...current,timeMs:atMs};
-    if(!touchDemo)feedVideoFloorInteractions(interactionEngineRef.current,frame);
-    if(source!==current.video||current.video?.seeking||
-       (lastVideoAt>=0&&atMs<lastVideoAt-50)){
+    const sourceChanged=source!==current.video;
+    const movedBackwards=lastVideoAt>=0&&atMs<lastVideoAt-50;
+    // Drop pre-seek events before sampling a new frame. Seeking frames are not
+    // allowed to create contacts; a changed playback epoch must start clean.
+    if(sourceChanged||movedBackwards){
      buffer.reset();flowTracker.reset();maskTracker.reset();bodyBridge.reset();lastFloorAt=-Infinity;
      if(!touchDemo)interactionEngineRef.current.reset('video');
     }
     source=current.video;
     lastVideoAt=atMs;
+    if(!touchDemo&&!current.video?.seeking)
+     feedVideoFloorInteractions(interactionEngineRef.current,frame);
     if(!current.video?.seeking&&current.snapshot){
      buffer.ingest(current.snapshot);
      maskTracker.ingest({atMs:current.snapshot.atMs,
