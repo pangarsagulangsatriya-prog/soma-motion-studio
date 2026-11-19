@@ -36,7 +36,7 @@ test('VC02: uncertain tracking never stamps or swaps actor identities',()=>{
  assert.equal(applyFootprintEvent(state,event),state);
  assert.equal(applyFootprintEvent(state,{...event,confidence:1,trackingState:'lost'}),state);
  state=applyFootprintEvent(state,{...event,confidence:1,trackingState:'tracked'});
- state=applyFootprintEvent(state,{...event,id:'e2',performerId:'B',foot:'right'});
+ state=applyFootprintEvent(state,{...event,id:'e2',performerId:'B',foot:'right',confidence:1,trackingState:'tracked'});
  assert.equal(state.imprints.length,2);
  assert.deepEqual(state.imprints.map(x=>x.performerId),['A','B']);
 });
