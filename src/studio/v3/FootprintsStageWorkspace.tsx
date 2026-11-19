@@ -1143,6 +1143,7 @@ export function FootprintsStageWorkspace({
       </button>}
      </div>}
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
+     footprint={footprint} updateFootprint={updateFootprint}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
      composePreviewCanvas={composeFloorOverlay}
