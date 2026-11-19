@@ -1,4 +1,5 @@
-import {Camera,CameraOff,Circle,Image,MonitorOff,Pause,Play,SlidersHorizontal} from 'lucide-react';
+import {Camera,CameraOff,Circle,Image,MonitorOff,SlidersHorizontal} from 'lucide-react';
+import {useEffect,useState} from 'react';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import type {LegacyOutputStatus} from './unifiedStageStatus.ts';
 import type {DualSurfaceState} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
@@ -22,9 +23,9 @@ export function UnifiedStageStatusStrip({units,legacy}:{
   </div>
  </div>;
 }
-export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRecording,
- canRecordVideo,held,bodySelected,canPreview,legacy,dual,experiment,onCamera,onRecordVideo,onCapture,
- onHold,onLivePreview,onBlackout,onOutputSettings}:{
+export function FootprintsStageTransport({cameraOn,cameraBusy,videoRecording,
+ canRecordVideo,bodySelected,legacy,dual,experiment,onCamera,onRecordVideo,onCapture,
+ onBlackout,onOutputSettings}:{
  cameraOn:boolean;cameraBusy:boolean;frameFresh:boolean;videoRecording:boolean;
  canRecordVideo:boolean;held:boolean;bodySelected:boolean;canPreview:boolean;
  experiment?:'video'|'simulator'|null;
@@ -33,14 +34,24 @@ export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRe
  onHold:()=>void;onLivePreview:()=>void;onBlackout:()=>void;onOutputSettings:()=>void;
 }){
  const output=softwareOutputIndicator(legacy,dual);
+ const [recordSeconds,setRecordSeconds]=useState(0);
+ useEffect(()=>{
+  if(!videoRecording){setRecordSeconds(0);return;}
+  const started=Date.now();
+  const interval=window.setInterval(()=>
+   setRecordSeconds(Math.floor((Date.now()-started)/1000)),1000);
+  return()=>window.clearInterval(interval);
+ },[videoRecording]);
+ const time=(Math.floor(recordSeconds/60).toString().padStart(2,'0')+':'+
+  (recordSeconds%60).toString().padStart(2,'0'));
  return <div className="fp-unified-transport fp-compact-transport"
-  data-has-input={cameraOn} data-output-state={output.state}
+  data-has-input={cameraOn} data-recording={videoRecording}
+  data-output-state={output.state}
   role="toolbar" aria-label="Kontrol Footprints dan keamanan projector">
   <div className="fp-transport-local" role="group" aria-label="Capture dan preview lokal">
    {cameraOn?<>
     <div className="fp-transport-group fp-transport-capture">
-     <span className="fp-transport-caption">CAPTURE</span>
-     <button type="button" onClick={onCamera} disabled={cameraBusy}
+         <button type="button" onClick={onCamera} disabled={cameraBusy}
       title={cameraOn&&bodySelected?'Hentikan kamera; konfirmasi saat merekam':'Gunakan mode Body'}>
       {cameraOn&&bodySelected?<CameraOff size={16}/>:<Camera size={16}/>}
       <span>{cameraBusy?'Menghubungkan…':cameraOn&&bodySelected?'Stop kamera':'Pakai Body'}</span>
@@ -50,24 +61,16 @@ export function FootprintsStageTransport({cameraOn,cameraBusy,frameFresh,videoRe
       aria-pressed={videoRecording} title="Rekam video Footprints memakai engine Studio yang ada">
       <Circle size={15} fill={videoRecording?'currentColor':'none'}/>
       <span>{videoRecording?'Stop REC':'Rekam'}</span>
+      {videoRecording&&<output className="trk-transport-timer"
+       aria-label="Durasi rekaman" aria-live="off">{time}</output>}
      </button>
-     <button type="button" onClick={onCapture} title="Buka Capture Hub">
-      <Image size={16}/><span>Capture</span>
-     </button>
-    </div>
-    <div className="fp-transport-group fp-transport-preview" role="group" aria-label="Preview lokal BODY/FLOOR">
-     <span className="fp-transport-caption">PREVIEW LOKAL</span>
-     <button type="button" disabled={!canPreview||!held}
-      aria-pressed={!held&&canPreview&&cameraOn&&frameFresh} onClick={onLivePreview}
-      title="Lanjutkan raster preview BODY/FLOOR; tidak menyalakan output fisik">
-      <Play size={15}/><span>Live</span>
-     </button>
-     <button type="button" disabled={!canPreview||!cameraOn||!frameFresh||held}
-      aria-pressed={held} onClick={onHold}
-      title="Tahan raster preview BODY/FLOOR, tracking dan event tetap berjalan">
-      <Pause size={15}/><span>Hold</span>
+     <button type="button" onClick={onCapture} title="Buka hasil, pola, dan ekspor di Capture Hub"
+      aria-label="Buka hasil rekaman dan pola">
+      <Image size={16}/><span>Hasil</span>
      </button>
     </div>
+    {/* Live/Hold operate BODY/FLOOR raster, so they belong to Compose.
+        Track shows only controls that act on its INPUT camera/session. */}
    </>:<span className="fp-transport-idle">{experiment?
     experiment==='video'?'MP4 · preview software':'Simulasi 3D · preview software':
     'Pilih sumber gerak'}</span>}
