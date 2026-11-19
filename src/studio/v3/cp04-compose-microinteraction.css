@@ -122,3 +122,16 @@
   .cp04-command-bar button,.cp04-inspector-tabs button,.s64-layer,
   .cp01-divider::before){transition:none!important;animation:none!important}
 }
+
+.fp-stage-workspace[data-workspace="compose"] .cp04-scene-select{
+ display:flex;flex-direction:column;gap:6px;
+ margin:0 0 10px;color:#c7d8c7;font-size:11px;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-scene-select select{
+ min-height:37px;width:100%;
+ border:1px solid #536f56;border-radius:7px;
+ padding:6px 9px;background:#13221a;color:#e5f0dd;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-root:focus-visible{
+ outline:2px solid #cde7ac;outline-offset:3px;
+}
