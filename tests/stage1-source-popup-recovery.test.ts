@@ -9,24 +9,23 @@ test('Stage 1 source picker belongs to Track and remains keyboard accessible',()
  const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
  assert.ok(!nav.includes('<details className="soma-uxr1-source"'));
  assert.match(nav,/title="Ubah sumber di workspace Track"/);
- assert.match(stage,/<details className="soma-ux01-source-switch"/);
+ assert.match(stage,/<details className="soma-ux01-source-switch soma-track-source-select"/);
  assert.match(stage,/<summary aria-label="Ganti sumber gerak"/);
  assert.match(stage,/onClick=\{e=>\{void chooseSource\(option\.id\)/);
  assert.match(css,/\.soma-ux01-source-switch/);
 });
 
-test('Stage 1 no-source: four direct source actions replace empty black previews',()=>{
+test('Stage 1 no-source: the left source/status panel and right camera stay visible',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
  assert.match(stage,/SOURCE_CHOICES\.map\(option=><button/);
  assert.match(stage,/void chooseSource\(option.id\)/);
- assert.match(stage,/aria-label="Pilih sumber Stage 1"/);
+ assert.match(stage,/aria-label="Pilih sumber dan lihat status tracking"/);
  assert.match(stage,/data-stage-source=\{sourceStatus\.selection\?\?'none'\}/);
- assert.match(css,/data-workspace=track\] \[data-stage-source=none\]|data-workspace=track\]\[data-stage-source=none\]/);
- assert.match(css,/\.fp-stage-layout\{display:none!important\}/);
- assert.match(css,/data-workspace=compose\] \.fp-stage-layout/);
- assert.match(css,/data-workspace=map\] \.fp-stage-layout/);
- assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(stage,/className="soma-track-source-status"/);
+ assert.match(stage,/className="fp-stage-video"/);
+ assert.match(css,/WYSIWYG Track: source\/status at left/);
+ assert.match(css,/grid-template-columns:minmax\(236px,292px\) minmax\(0,1fr\)!important/);
  assert.match(stage,/sourceStatus\.selection!==null&&!experimentalKind&&<QuickStageSetup/);
 });
 
