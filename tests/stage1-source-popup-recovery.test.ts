@@ -11,7 +11,8 @@ test('Stage 1 source picker belongs to Track and remains keyboard accessible',()
  assert.match(nav,/title="Ubah sumber di workspace Track"/);
  assert.match(stage,/<details className="soma-ux01-source-switch soma-track-source-select"/);
  assert.match(stage,/<summary aria-label="Ganti sumber gerak"/);
- assert.match(stage,/onClick=\{e=>\{void chooseSource\(option\.id\)/);
+ assert.match(stage,/onClick=\{async event=>\{/);
+ assert.match(stage,/if\(await chooseSource\(option\.id\)\)/);
  assert.match(css,/\.soma-ux01-source-switch/);
 });
 
@@ -19,7 +20,7 @@ test('Stage 1 no-source: the left source/status panel and right camera stay visi
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
  assert.match(stage,/SOURCE_CHOICES\.map\(option=><button/);
- assert.match(stage,/void chooseSource\(option.id\)/);
+ assert.match(stage,/await chooseSource\(option.id\)/);
  assert.match(stage,/aria-label="Pilih sumber dan lihat status tracking"/);
  assert.match(stage,/data-stage-source=\{sourceStatus\.selection\?\?'none'\}/);
  assert.match(stage,/className="soma-track-source-status"/);
