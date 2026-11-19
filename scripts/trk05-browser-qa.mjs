@@ -318,7 +318,9 @@ const run=async()=>{
        'Mobile inspector exceeds viewport width');
       await screenshot(page,v.id,'inspector-below-camera');
       await inspector.getByRole('button',{name:'Tutup pengaturan'}).click();
-      await settings.focus();
+      await page.waitForFunction(()=>
+       document.activeElement?.classList.contains('soma-ia-advanced-button'),
+       undefined,{timeout:2500});
       assert.equal(await settings.getAttribute('aria-expanded'),'false');
       // A real MediaRecorder cycle on the narrowest tested viewport.
       const downloaded=page.waitForEvent('download',{timeout:14000});
@@ -427,8 +429,9 @@ const run=async()=>{
   await screenshot(page,'desktop-e2e','inspector-docked');
   await inspector.getByRole('button',{name:'Tutup pengaturan'}).click();
   assert.equal(await settings.getAttribute('aria-expanded'),'false');
-  assert.ok(await settings.evaluate(el=>el===document.activeElement),
-   'Closing the inspector should restore focus to Settings');
+  await page.waitForFunction(()=>
+   document.activeElement?.classList.contains('soma-ia-advanced-button'),
+   undefined,{timeout:2500});
  });
  await check('TRK-07 Track toolbar has one output for each action',async()=>{
   const root=stage(page),toolbar=root.locator('.fp-unified-transport');
