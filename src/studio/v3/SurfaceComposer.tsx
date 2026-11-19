@@ -332,6 +332,21 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
      seenMotionEvents.current=new Set([...seenMotionEvents.current].filter(id=>recent.has(id)));
     }
     const now=performance.now();
+    // CP-03: the unified F0 event bus also drives existing preview-only
+    // Contact/Slide/Pivot recipes for MP4 and synthetic rehearsal sources.
+    // This never enters the physical FloorSession or projector route.
+    if(event.source==='video'||event.source==='simulator'||event.source==='touch'){
+     const legacyRecipe=event.kind==='contact'&&event.verified?'contact-reveal':
+      event.kind==='slide'?'slide-hold':
+      event.kind==='pivot'||event.kind==='release'?'pivot-decay':null;
+     if(legacyRecipe){
+      for(const item of compositionRef.current.FLOOR){
+       if(item.recipe===legacyRecipe)
+        effectClock.current.set(item.id,{started:now,kind:'simulation:'+event.kind});
+      }
+      setEventInfo(event.kind+' · '+event.actorId+' · preview only');
+     }
+    }
     for(const surface of surfaces)for(const item of compositionRef.current[surface]){
      if(item.recipe!=='motion-v2')continue;
      const cue=resolveMotionRecipeCue(event,normalizeMotionRecipeRule(item.motionRecipe),surface,now,identitySafeRef.current);
