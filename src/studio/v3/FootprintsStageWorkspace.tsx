@@ -1131,7 +1131,7 @@ export function FootprintsStageWorkspace({
 
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>{experimentalKind?
-       experimentalKind==='video'?'INPUT · VIDEO':'INPUT · PUPPET 3D':'INPUT · KAMERA'}</span>
+       experimentalKind==='video'?'INPUT · VIDEO + POSE A/B':'INPUT · PUPPET 3D + POSE A/B':'INPUT · KAMERA + SKELETON'}</span>
        {experimentalKind!=='simulator'&&<button type="button" className="fp-full-skeleton-switch"
         aria-pressed={skeletonVisible}
         aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
@@ -1195,8 +1195,10 @@ export function FootprintsStageWorkspace({
        frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
        <span>{experimentalKind?'OUTPUT FISIK TERKUNCI':performerCount+' performer'}</span></div>
      </div>
+     {/* BODY/FLOOR canvases remain mounted for shared scene engines.
+          Track displays the source video with skeleton; Compose owns art preview. */}
      <div className="fp-stage-side-previews" data-preview-mode={previewMode}
-      aria-label="Preview BODY dan FLOOR dari engine Footprints">
+      aria-label="Buffer BODY dan FLOOR untuk Compose dan Map" aria-hidden={!composerOpen&&!mappingOpen}>
       <div className="fp-stage-preview-toolbar">
        <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> PREVIEW</span>
         <small>{experimentalKind?experimentFrameLabel(experimentalKind):previewLabel(previewMode)+' · Preview software'}</small></div>
