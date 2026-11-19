@@ -31,13 +31,33 @@ type Mask='silhouette'|'polygon'|'none';
 type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][];recipe:string;motionRecipe?:MotionRecipeRule};
 type Media={id:string;name:string;kind:'image'|'video';url:string;mime:string};
 type Composition=Record<Surface,Layer[]>;
-type Snapshot={version:1;composition:Composition;selected:Surface};
+type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
 const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
 const key='soma-s64-composer-v1';
 const presetKey='soma-s64-presets-v1';
 const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
-const valid=(v:unknown):v is Snapshot=>{if(!v||typeof v!=='object')return false;const x=v as Snapshot;return x.version===1&&surfaces.includes(x.selected)&&surfaces.every(s=>Array.isArray(x.composition?.[s])&&x.composition[s].length<=24&&x.composition[s].every(l=>l&&typeof l.id==='string'&&typeof l.name==='string'&&typeof l.mediaId==='string'&&typeof l.opacity==='number'&&typeof l.scale==='number'&&Array.isArray(l.points)));};
+const validFootprint=(v:unknown):v is FootprintConfig=>{
+ if(!v||typeof v!=='object')return false;
+ const x=v as Partial<FootprintConfig>;
+ return (['Tapak','Campuran','Garis','Titik'] as unknown[]).includes(x.style)
+  &&typeof x.size==='number'&&Number.isFinite(x.size)&&x.size>=12&&x.size<=90
+  &&typeof x.life==='number'&&Number.isFinite(x.life)&&x.life>=1&&x.life<=60
+  &&typeof x.delay==='number'&&Number.isFinite(x.delay)&&x.delay>=0&&x.delay<=2
+  &&typeof x.showLive==='boolean'&&typeof x.showTrail==='boolean'
+  &&typeof x.hold==='boolean'&&typeof x.gaitAnalysis==='boolean'
+  &&typeof x.palette==='number'&&Number.isInteger(x.palette)&&x.palette>=0&&x.palette<100
+  &&!!x.colors&&(['background','left','right'] as const).every(k=>/^#[0-9a-f]{6}$/i.test(x.colors?.[k]??''));
+};
+const valid=(v:unknown):v is Snapshot=>{
+ if(!v||typeof v!=='object')return false;const x=v as Snapshot;
+ return x.version===1&&surfaces.includes(x.selected)
+  &&(x.footprint===undefined||validFootprint(x.footprint))
+  &&surfaces.every(s=>Array.isArray(x.composition?.[s])&&x.composition[s].length<=24
+   &&x.composition[s].every(l=>l&&typeof l.id==='string'&&typeof l.name==='string'
+   &&typeof l.mediaId==='string'&&typeof l.opacity==='number'&&typeof l.scale==='number'
+   &&Array.isArray(l.points)));
+};
 type Props={
  footprint?:FootprintConfig;
  updateFootprint?:(patch:Partial<FootprintConfig>)=>void;
@@ -483,9 +503,9 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   setTestEvent(kind);setEventInfo('SIMULASI '+kind+' (tidak dikirim ke tracking)');
  };
  const points=(e:PointerEvent<HTMLCanvasElement>)=>{if(!editMask||!layer)return;const rect=e.currentTarget.getBoundingClientRect();const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));const pts=layer.points.slice();let index=pts.findIndex(p=>Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height)<24);if(index<0){if(pts.length>=16)return;pts.push([x,y]);}else pts[index]=[x,y];patch({points:pts,mask:'polygon'});};
- const savePreset=()=>{const name=presetName.trim().slice(0,60);if(!name)return;const next=[{name,snapshot:{version:1 as const,selected,composition:structuredClone(composition)}},...presets.filter(p=>p.name!==name)].slice(0,30);setPresets(next);localStorage.setItem(presetKey,JSON.stringify(next));setHint('Preset tersimpan di perangkat ini.');};
- const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
- const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);setHint('Konfigurasi dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
+ const savePreset=()=>{const name=presetName.trim().slice(0,60);if(!name)return;const next=[{name,snapshot:{version:1 as const,selected,composition:structuredClone(composition),...(footprint?{footprint:structuredClone(footprint)}:{})}},...presets.filter(p=>p.name!==name)].slice(0,30);setPresets(next);localStorage.setItem(presetKey,JSON.stringify(next));setHint('Preset tersimpan di perangkat ini.');};
+ const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition,...(footprint?{footprint}: {})},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+ const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);if(x.footprint)updateFootprint?.(x.footprint);setHint('Komposisi dan parameter footprint dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
  useEffect(()=>()=>{onArchiveHydraChangeRef.current?.(false);},[]);
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
@@ -609,7 +629,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    Verified only</label>
   <small>Kontak kaki wajib terverifikasi. Slide dan Pivot belum didukung klasifikasi terverifikasi. Mode eksperimen hanya muncul di preview software.</small>
  </section>}</>}
- {inspectorTab==='scene'&&<details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details>}
+ {inspectorTab==='scene'&&<details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);if(p.snapshot.footprint)updateFootprint?.(structuredClone(p.snapshot.footprint));setHint('Preset dimuat: '+p.name);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details>}
  {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
   </div>
   <div className="s64-runtime" aria-hidden="true">
