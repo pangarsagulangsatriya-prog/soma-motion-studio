@@ -164,3 +164,10 @@
  .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] :is(
   .uxr3-scene-card,.cp02-editor button){transition:none!important;animation:none!important}
 }
+
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .cp03-pending-contact{
+ color:#dcc397;font-size:10px;white-space:nowrap;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-floor .fp-stage-surface-foot{
+ flex-wrap:wrap;gap:4px 10px;
+}
