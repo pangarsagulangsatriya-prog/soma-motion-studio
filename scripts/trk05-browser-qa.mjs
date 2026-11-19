@@ -102,6 +102,20 @@ const layoutCheck=async(page,v)=>{
  await rail.waitFor({state:'visible'});
  await monitor.waitFor({state:'visible'});
  const [a,b,c]=await Promise.all([bounds(rail),bounds(monitor),bounds(media)]);
+ const railSizing=await rail.evaluate(el=>{
+  const css=getComputedStyle(el);
+  const usable=el.clientWidth-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight);
+  const picker=el.querySelector('.soma-track-source-select');
+  const status=el.querySelector('.soma-track-source-status');
+  return {direction:css.flexDirection,usable,
+   pickerWidth:picker?.getBoundingClientRect().width??0,
+   statusWidth:status?.getBoundingClientRect().width??0};
+ });
+ assert.equal(railSizing.direction,'column','Track source controls must stack vertically');
+ assert.ok(railSizing.pickerWidth>=railSizing.usable*.82,
+  'Source picker compressed: '+JSON.stringify(railSizing));
+ assert.ok(railSizing.statusWidth>=railSizing.usable*.82,
+  'Source status compressed: '+JSON.stringify(railSizing));
  const horizontal=await page.evaluate(()=>({
   root:document.documentElement.scrollWidth,viewport:window.innerWidth
  }));
@@ -307,9 +321,18 @@ const run=async()=>{
   await compose.waitFor({state:'visible'});
   const screens=compose.locator('.fp-stage-side-previews');
   assert.equal(await screens.getAttribute('hidden'),null);
-  assert.ok(await compose.locator('.fp-preview-floor').count());
-  assert.ok(await compose.locator('.fp-preview-body').count());
-  assert.ok(await compose.locator('.fp-stage-video').count());
+  const floor=compose.locator('.fp-preview-floor');
+  const body=compose.locator('.fp-preview-body');
+  const input=compose.locator('.fp-stage-overview > .fp-stage-video');
+  const [a,b,c]=await Promise.all([bounds(floor),bounds(body),bounds(input)]);
+  for(const [label,r] of [['FLOOR',a],['BODY',b],['INPUT',c]]){
+   assert.ok(r.width>=180,label+' preview too narrow: '+r.width);
+   assert.ok(r.x>=0&&r.x+r.width<=1444,label+' preview outside viewport');
+  }
+  assert.ok(a.x+a.width<=b.x+5&&b.x+b.width<=c.x+5,
+   'Compose FLOOR, BODY, INPUT do not occupy three ordered columns');
+  assert.ok(Math.abs(a.y-b.y)<18&&Math.abs(b.y-c.y)<18,
+   'Compose previews do not align on the same row');
   await screenshot(page,'desktop-e2e','compose-three-previews');
  });
  await check('Map and Track navigation recovers',async()=>{
