@@ -822,7 +822,7 @@ export function FootprintsStageWorkspace({
  const closePhonePanel=()=>{
   setPhonePanelOpen(false);
   requestAnimationFrame(()=>document.querySelector<HTMLElement>(
-   '.soma-uxr1-source > summary')?.focus({preventScroll:true}));
+   '.soma-ux01-source-switch > summary')?.focus({preventScroll:true}));
  };
  const closeInspector=()=>{setCalibrationOpen(false);setInspectorOpen(false);restoreFlowFocus();};
  useEffect(()=>{
@@ -1048,7 +1048,7 @@ export function FootprintsStageWorkspace({
    </div>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
-    onSelect={setOperatorCue} onExit={onExitOperator} onBlackout={operatorBlackout}
+    onExit={onExitOperator} onBlackout={operatorBlackout}
     held={footprint.hold||performBlackout} onHold={()=>updateFootprint({hold:true})}
     onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});}}
     videoRecording={videoRecording} canRecordVideo={canRecordVideo}
