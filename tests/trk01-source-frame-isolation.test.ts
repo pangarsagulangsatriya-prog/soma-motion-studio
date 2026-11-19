@@ -57,10 +57,12 @@ test('live camera only paints the active ready webcam/phone session',()=>{
  assert.match(stage,/const videoAvailable=!!\(cameraSourceReady&&v/);
 });
 
-test('unready camera and MP4 overlays completely conceal previous source pixels',()=>{
+test('unready camera clears old pixels; MP4 still has its full-frame placeholder',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const css=read('../src/studio/v3/track-compact.css');
- assert.match(stage,/sourceStatus\.phase!=='ready'/);
+ assert.match(stage,/\[cameraCanvas\.current,bodyCanvas\.current,floorCanvas\.current\]/);
+ assert.match(stage,/\[sourceStatus\.selection,experimentClip\]/);
+ assert.match(stage,/\[sourceStatus\.selection,sourceStatus\.phase\]/);
  assert.match(stage,/experimentalKind==='video'&&!canPaintVideoFrame\(selectedExperimentFrame\)/);
  assert.match(css,/background:#020403!important;gap:0!important/);
 });
