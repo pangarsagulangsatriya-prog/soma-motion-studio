@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {QrCode,LoaderCircle,RefreshCw,Copy,Check,AlertCircle} from 'lucide-react';
-import {collectPhoneIce,ICE_SERVERS} from './PhoneSignal.ts';
+import {collectPhoneIce,ICE_SERVERS,phoneCameraUrl} from './PhoneSignal.ts';
 import {phonePairRequest,pairedPhoneUrl,PHONE_PAIR_POLL_MS,
  type PairRoom} from './PhonePairProtocol.ts';
 import {PhonePairQr} from './PhonePairQr.tsx';
@@ -13,10 +13,14 @@ const wait=(signal:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  const cancel=()=>{clearTimeout(timer);reject(Error('Pairing dibatalkan.'));};
  signal.addEventListener('abort',cancel,{once:true});
 });
-export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
+export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;
  onDisconnect:()=>void;
+ onUseManual?:()=>void;
 }){
+ // GitHub Pages cannot run /api/phone-pair. Show a real scan-able link to
+ // the hosted phone sender, and explicitly continue via manual SDP exchange.
+ const staticPages=window.location.hostname.endsWith('github.io');
  const [room,setRoom]=useState<PairRoom|null>(null);
  const [secondsLeft,setSecondsLeft]=useState(0);
  useEffect(()=>{
@@ -163,6 +167,20 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
    setCopied(true);setStatus('Tautan disalin.');
   }catch{setCopied(false);setStatus('Gagal menyalin tautan.');}
  };
+ if(staticPages){
+  const cameraUrl=phoneCameraUrl(window.location.origin,window.location.pathname);
+  return <div className="soma-auto-pair soma-track-static-qr" data-phase="static"
+   aria-label="QR membuka halaman kamera HP untuk pairing manual">
+   <div className="soma-auto-pair-code" aria-label="QR pembuka kamera HP">
+    <div className="soma-track-qr-frame"><PhonePairQr value={cameraUrl}/></div>
+   </div>
+   <p className="soma-track-static-qr-hint">
+    Scan di HP, lalu sambungkan lewat kode Manual.
+   </p>
+   {onUseManual&&<button type="button" className="soma-setup-primary soma-track-create-qr"
+    onClick={onUseManual}>Lanjut Manual</button>}
+  </div>;
+ }
  return <div className="soma-auto-pair" data-phase={phase}
   aria-label="QR pairing kamera HP">
   {!room&&phase!=='connected'&&<button type="button"
