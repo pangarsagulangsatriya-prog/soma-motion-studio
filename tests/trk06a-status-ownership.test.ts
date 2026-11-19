@@ -88,7 +88,7 @@ test('phone pairing and phone Body recovery do not stack actions',()=>{
  assert.equal(pairing.webcamAction,null);
  const connected=state({selection:'phone',phase:'ready',cameraOn:true,
   sourceMode:'switch-body',phonePanelOpen:false});
- assert.equal(connected.showBodyAction,true);
+ assert.equal(connected.showBodyAction,false,'HP must not be silently replaced by webcam');
  assert.equal(connected.sourceStatusVisible,false);
 });
 
