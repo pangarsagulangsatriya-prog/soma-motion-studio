@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import type {ChangeEvent,PointerEvent,RefObject} from 'react';
+import type {ChangeEvent,PointerEvent,RefObject,KeyboardEvent} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
@@ -140,9 +140,10 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   setEditMask(false);setResetArmed(false);setInspectorTab('scene');
   setHint('Komposisi direset. Gunakan Undo untuk mengembalikan layer sebelumnya.');
  };
- const onComposerKeys=(event:React.KeyboardEvent<HTMLDivElement>)=>{
+ const onComposerKeys=(event:KeyboardEvent<HTMLDivElement>)=>{
   const target=event.target as HTMLElement;
   const editing=!!target.closest('input,textarea,select,[contenteditable="true"]');
+  const buttonFocused=!!target.closest('button,summary');
   if(event.key==='Escape'&&resetArmed){setResetArmed(false);event.stopPropagation();return;}
   if(editing||event.altKey)return;
   if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='z'){
@@ -150,17 +151,17 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    if(event.shiftKey)performRedo();else performUndo();
   }else if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='y'){
    event.preventDefault();performRedo();
-  }else if((event.key==='Delete'||event.key==='Backspace')&&layers.length>1){
+  }else if((event.key==='Delete'||event.key==='Backspace')&&!buttonFocused&&layers.length>1){
    event.preventDefault();
    setComposition(state=>({...state,[selected]:state[selected].filter((_,i)=>i!==selectedLayer)}));
    setSelectedLayer(i=>Math.max(0,i-1));
   }
  };
- const onInspectorPointerDown=(event:React.PointerEvent<HTMLElement>)=>{
+ const onInspectorPointerDown=(event:PointerEvent<HTMLElement>)=>{
   if((event.target as HTMLElement).closest('input[type="range"]'))history.beginGroup();
  };
  const onInspectorPointerEnd=()=>history.endGroup();
- const onInspectorKeyDown=(event:React.KeyboardEvent<HTMLElement>)=>{
+ const onInspectorKeyDown=(event:KeyboardEvent<HTMLElement>)=>{
   if((event.target as HTMLElement).closest('input[type="range"]')&&
    ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))
    history.beginGroup();
@@ -530,7 +531,15 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
    <span>{media.find(m=>m.id===layer?.mediaId)?.name??'Belum ada media'}</span>
   </div>}
- {inspectorTab==='scene'&&<details className="soma-ia-hydra"><summary>Hydra · {hydraSettings?.enabled?hydraStatus??'ON':'OFF'}</summary>
+ {inspectorTab==='scene'&&<label className="cp04-scene-select">Scene aktif
+  <select value={sceneId} onChange={e=>{
+   onSceneChange?.(e.target.value as 'footprints'|FloorSceneId);
+   setSelected('FLOOR');setSelectedLayer(0);
+  }} aria-label="Scene aktif pada FLOOR">
+   {COMPOSE_SCENES.map(scene=><option value={scene.id} key={scene.id}>{scene.name}</option>)}
+  </select>
+ </label>}
+ {inspectorTab==='scene'&&<details className="soma-ia-hydra" defaultOpen><summary>Hydra · {hydraSettings?.enabled?hydraStatus??'ON':'OFF'}</summary>
   <label><input type="checkbox" checked={hydraSettings?.enabled??false}
    onChange={e=>onHydraSettingsChange?.({enabled:e.target.checked})}/> Aktif</label>
   <label>Style<select value={hydraSettings?.style??'off'}
@@ -541,7 +550,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    <input type="range" min="0" max=".65" step=".05" value={hydraSettings?.feedback??0}
     onChange={e=>onHydraSettingsChange?.({feedback:Number(e.target.value)})}/></label>
  </details>
- {inspectorTab==='object'&&<details className="uxr3-advanced"><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
+ {inspectorTab==='object'&&<details className="uxr3-advanced" defaultOpen><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
  {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
   <strong>EVENT → MEDIA TREATMENT</strong>
   <label>Input event<select value={normalizeMotionRecipeRule(layer.motionRecipe).trigger}
