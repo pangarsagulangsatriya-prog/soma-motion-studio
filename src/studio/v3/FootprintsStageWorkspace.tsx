@@ -87,6 +87,7 @@ import './trk06a-status-ownership.css';
 import './trk06c-micro-feedback.css';
 import './trk07-functional-layout.css';
 import './trk08-mp4-compact.css';
+import './trk09-ux-polish.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
