@@ -55,7 +55,7 @@ test('MP4 and 3D controls are mounted once within the left source rail',()=>{
 });
 
 test('webcam recovery is contextual, not a second source picker',()=>{
- assert.match(stage,/selection==='webcam'&&!cameraOn&&sourceStatus\.phase!=='connecting'/);
+ assert.match(stage,/ownership\.webcamAction&&<button/);
  assert.match(stage,/onClick=\{onStartBody\}/);
  assert.match(stage,/Aktifkan webcam/);
  assert.doesNotMatch(stage,/<FootprintsSourceSwitcher/);
