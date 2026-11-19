@@ -84,6 +84,7 @@ import './trk03-source-flow.css';
 import './trk04-feedback.css';
 import './trk06-control-polish.css';
 import './trk06a-status-ownership.css';
+import './trk06c-micro-feedback.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
