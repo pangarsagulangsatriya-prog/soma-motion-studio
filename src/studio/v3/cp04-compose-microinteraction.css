@@ -1,0 +1,124 @@
+/* CP-04 — contextual control hierarchy and restrained stage feedback.
+   Scope: Compose only; no changes to projector authorization. */
+.fp-stage-workspace[data-workspace="compose"] .s64-heading{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ flex-wrap:wrap;gap:9px!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-command-bar{
+ display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-save-status{
+ color:#a9bca9;font-size:10px;min-width:86px;text-align:right;
+ font-variant-numeric:tabular-nums;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-command-bar button{
+ min-height:32px!important;padding:5px 9px!important;font-size:11px!important;
+ border-radius:6px!important;
+ transition:background-color .14s ease,border-color .14s ease,transform .12s ease;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-command-bar button:disabled{
+ opacity:.38!important;cursor:not-allowed;transform:none;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-command-bar button:active:not(:disabled){
+ transform:scale(.97);
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-command-bar .cp04-reset-confirm{
+ color:#ffe6d9;border-color:#ad7868!important;background:#54352c!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-inspector-tabs{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ border:1px solid #425e48;background:#14221a;
+ border-radius:7px;padding:3px;gap:3px;margin:0 0 9px;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-inspector-tabs button{
+ min-width:0;min-height:33px!important;padding:5px 6px!important;
+ font-size:11px!important;border-radius:5px!important;
+ border:1px solid transparent!important;background:transparent!important;
+ color:#a6bba9!important;
+ transition:background-color .15s ease,color .15s ease,border-color .15s ease;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-inspector-tabs button[aria-pressed=true]{
+ border-color:#8fad82!important;background:#2e4936!important;color:#ecf5e9!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-inspector-tabs button:hover{
+ color:#edf5e9!important;background:#273d30!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-current-layer{
+ display:flex;flex-direction:column;gap:4px;min-width:0;
+ padding:9px 10px;margin:0 0 9px;
+ background:#18271e;border:1px solid #35513d;border-radius:7px;
+ font-size:11px;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-current-layer strong{
+ font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-current-layer span{
+ font-size:10px;color:#a6b9a9;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp02-inspector>label{
+ display:flex;flex-direction:column;gap:5px;margin:0 0 9px;font-size:11px;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp02-inspector>label select{
+ min-height:36px;width:100%;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp02-inspector .uxr3-advanced{
+ display:block!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp02-inspector .uxr3-advanced>summary{
+ margin:0 0 9px;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp02-inspector .uxr3-advanced:not([open])>summary{
+ margin-bottom:0;
+}
+.fp-stage-workspace[data-workspace="compose"] .cp04-hint{
+ font-size:11px;line-height:1.4;color:#cde3bc;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-layer{
+ position:relative;cursor:grab;
+ transition:opacity .15s ease,background-color .15s ease,border-color .15s ease;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-layer:active{
+ cursor:grabbing;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-layer[data-dragging=true]{
+ opacity:.45;border:1px dashed #bddda9;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-layer[data-drop-target=true]{
+ outline:2px solid #c1e4a4;outline-offset:2px;
+ background:#304a38!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-layer.active{
+ border-color:#a6ce98!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .s64-layer :is(button,select):focus-visible,
+.fp-stage-workspace[data-workspace="compose"] .cp04-command-bar button:focus-visible,
+.fp-stage-workspace[data-workspace="compose"] .cp04-inspector-tabs button:focus-visible{
+ outline:2px solid #cee9aa!important;outline-offset:2px!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .fp-stage-overview[data-dragging=vertical]{
+ cursor:col-resize;
+}
+.fp-stage-workspace[data-workspace="compose"] .fp-stage-overview[data-dragging=horizontal]{
+ cursor:row-resize;
+}
+.fp-stage-workspace[data-workspace="compose"] .fp-stage-overview[data-dragging=vertical] .cp01-divider-vertical::before,
+.fp-stage-workspace[data-workspace="compose"] .fp-stage-overview[data-dragging=horizontal] .cp01-divider-horizontal::before{
+ background:#d0eba5!important;box-shadow:0 0 0 4px #d0eba51e;
+ transform:scale(1.35);
+}
+.fp-stage-workspace[data-workspace="compose"] .fp-stage-overview[data-dragging=vertical] .fp-preview-floor,
+.fp-stage-workspace[data-workspace="compose"] .fp-stage-overview[data-dragging=horizontal] :is(.fp-stage-video,.fp-preview-body){
+ border-color:#88ae7c!important;
+}
+@media(max-width:760px){
+ .fp-stage-workspace[data-workspace="compose"] .cp04-command-bar{width:100%;}
+ .fp-stage-workspace[data-workspace="compose"] .cp04-save-status{
+  text-align:left;margin-right:auto;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace[data-workspace="compose"] :is(
+  .cp04-command-bar button,.cp04-inspector-tabs button,.s64-layer,
+  .cp01-divider::before){transition:none!important;animation:none!important}
+}
