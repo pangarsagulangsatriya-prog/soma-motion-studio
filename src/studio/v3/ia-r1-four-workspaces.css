@@ -364,7 +364,7 @@
 /* WYSIWYG Track: source/status at left, one INPUT video at right. */
 .soma-ia-four-workspaces[data-workspace=track][data-stage-source=none] .fp-stage-layout,
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout{display:grid!important;grid-template-columns:minmax(0,1fr)!important;position:relative}
-.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){display:grid!important;grid-template-columns:minmax(236px,292px) minmax(0,1fr)!important;grid-template-rows:auto auto minmax(0,1fr)!important;align-items:start!important;gap:12px 16px}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){display:grid!important;grid-template-columns:minmax(260px,292px) minmax(0,1fr)!important;grid-template-rows:auto auto minmax(0,1fr)!important;align-items:start!important;gap:12px 18px}
 .soma-ia-four-workspaces .soma-track-source-panel[hidden]{display:none!important}
 .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{display:flex;flex-direction:column;gap:12px;grid-column:1!important;grid-row:1!important;align-self:start;min-width:0;padding:18px;border:1px solid #385540;border-radius:11px;background:#17251c;position:relative;z-index:20}
 .soma-ia-four-workspaces .soma-track-source-heading{display:flex;flex-direction:column;gap:5px}
@@ -378,7 +378,7 @@
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{position:relative;min-height:0!important;max-height:none!important;height:auto!important;flex:0 0 auto!important;aspect-ratio:16/9;background:#000}
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content>canvas{width:100%!important;height:100%!important;display:block}
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){position:absolute!important;top:0!important;right:0!important;left:auto!important;width:min(380px,calc(100% - 12px))!important;max-height:78dvh!important;height:auto!important;min-height:0!important;z-index:95!important;overflow:auto;box-shadow:0 18px 50px #000b!important}
-@media(max-width:700px){.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){grid-template-columns:minmax(0,1fr)!important}.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}}
+@media(max-width:700px){.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){grid-template-columns:minmax(0,1fr)!important}.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}}
 
 /* Sidebar source dropdown and immediate tracking health. */
 .soma-ia-four-workspaces .soma-track-source-select{width:100%;min-width:0;z-index:5}
@@ -425,4 +425,77 @@
  .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-experiment-dock{grid-column:1!important;grid-row:3!important}
  .soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{grid-column:1!important;grid-row:4!important}
  .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{padding:14px}
+}
+
+/* UX Track camera-first polish: override older source/preparing grid weights.
+   Source stays 260-292px; remaining width belongs to the actual input canvas. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{
+ grid-column:2!important;grid-row:1/span 4!important;min-width:0;width:100%!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{
+ aspect-ratio:16/9;min-height:0!important;max-height:none!important;overflow:hidden;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-bottom-status{display:none!important}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{
+ transition:border-color .16s ease,background-color .16s ease;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>summary{
+ position:relative;padding-right:38px!important;
+ transition:border-color .16s ease,background-color .16s ease,box-shadow .16s ease;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>summary::after{
+ content:"";position:absolute;right:17px;top:calc(50% - 5px);
+ width:8px;height:8px;border-right:2px solid #d3e8c3;border-bottom:2px solid #d3e8c3;
+ transform:rotate(45deg);transition:transform .16s ease;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select[open]>summary::after{
+ transform:translateY(4px) rotate(225deg);
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>summary:hover{
+ border-color:#bfd9a5!important;background:#35543c!important;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select[open]>summary{
+ border-color:#b4d09f!important;box-shadow:0 0 0 2px #b4d09f22;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>.soma-ux01-source-options button{
+ transition:background-color .14s ease,border-color .14s ease;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>.soma-ux01-source-options button[aria-pressed=true]{
+ background:#365641;color:#eef8e7;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>.soma-ux01-source-options button:hover:not(:disabled){
+ background:#375b40;
+}
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-utilities button:not(:disabled):hover,
+.soma-ia-four-workspaces[data-workspace=track] .soma-track-side-action:not(:disabled):hover{
+ background:#34583d;border-color:#a9d18e;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video{
+ transition:border-color .16s ease,box-shadow .16s ease;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video:focus-within{
+ border-color:#b6d99a;box-shadow:0 0 0 2px #b6d99a25;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch{
+ transition:border-color .16s ease,background-color .16s ease;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch:focus-visible,
+.soma-ia-four-workspaces[data-workspace=track] .fp-preview-focus-action:focus-visible{
+ outline:2px solid #e5f4b9;outline-offset:2px;
+}
+@media(max-width:700px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{
+  grid-column:1!important;grid-row:4!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel,
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>summary,
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>summary::after,
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-select>.soma-ux01-source-options button,
+ .soma-ia-four-workspaces[data-workspace=track] .soma-track-source-utilities button,
+ .soma-ia-four-workspaces[data-workspace=track] .fp-stage-video,
+ .soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch{
+  transition:none!important;
+ }
 }
