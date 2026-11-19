@@ -85,6 +85,7 @@ import './trk04-feedback.css';
 import './trk06-control-polish.css';
 import './trk06a-status-ownership.css';
 import './trk06c-micro-feedback.css';
+import './trk07-functional-layout.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -1277,7 +1278,6 @@ export function FootprintsStageWorkspace({
       <div className="fp-stage-video-content"
        role={inputFocusEnabled?'button':undefined}
        tabIndex={inputFocusEnabled?0:undefined}
-       title={inputFocusEnabled?'Perbesar preview':undefined}
        aria-label={inputFocusEnabled?'Perbesar preview INPUT':undefined}
        onClick={event=>{if(inputFocusEnabled)selectPreviewFocus('input',event.currentTarget);}}
        onKeyDown={event=>{
