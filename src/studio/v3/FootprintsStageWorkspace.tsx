@@ -29,6 +29,7 @@ import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts'
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {trackStatus} from './trackViewModel.ts';
+import {deriveTrackFeedback} from './trackFeedbackModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
@@ -992,7 +993,8 @@ export function FootprintsStageWorkspace({
  });
  // Only interrupt the Stage for an actionable setup problem.
  const showSetupHint=sourceStatus.selection!==null&&!experimentalKind&&
-  !(sourceStatus.selection==='phone'&&!phoneActive)&&(
+  !(sourceStatus.selection==='phone'&&!phoneActive)&&
+  !['pose','identity','performers'].includes(setupHint.id)&&(
    setupHint.severity==='warning'||setupHint.severity==='busy'
   );
  const handleAssistantAction=(action:InlineSetupAction)=>{
@@ -1034,6 +1036,14 @@ export function FootprintsStageWorkspace({
   videoVisible:selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
    selectedExperimentFrame.snapshot.visibleCount:null,
   cameraOn,frameFresh,visibleCount:identityStatus.visible.length,performerCount
+ });
+ const feedback=deriveTrackFeedback({
+  selection:sourceStatus.selection,phase:sourceStatus.phase,
+  cameraOn,frameFresh,performerCount,liveFrame:frameRef.current,
+  liveIdentity:identityStatus,
+  videoSnapshot:selectedExperimentFrame?.kind==='video'?
+   selectedExperimentFrame.snapshot:null,
+  videoReady:canPaintVideoFrame(selectedExperimentFrame)
  });
  const inputFocusEnabled=!calibrationOpen&&(sourceStatus.selection!==null||composerOpen);
  return <section className={'fp-stage-workspace fp-persistent-layout soma-ia-four-workspaces'+(operatorMode?' fp-operator-mode':'')}
@@ -1277,10 +1287,34 @@ export function FootprintsStageWorkspace({
         <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
        </div>}
       </div>
-      <div className="fp-stage-surface-foot"><span>{experimentalKind?selectedExperimentFrame?
-       selectedExperimentFrame.kind==='video'?'Video 2D':'Puppet virtual':'Menyiapkan sumber':
-       frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
-       <span>{experimentalKind?'OUTPUT FISIK TERKUNCI':performerCount+' performer'}</span></div>
+      <div className="fp-stage-surface-foot">
+       {!composerOpen&&!operatorMode?
+        <div className="soma-track-feedback" data-state={feedback.state}
+         title="Kaki terlihat dihitung dari landmark pergelangan, tumit dan ujung kaki pada frame aktif; bukan kontak lantai."
+         aria-label={feedback.label}>
+         <span className="soma-track-feedback-indicator" aria-hidden="true"/>
+         <strong>{feedback.label}</strong>
+         {feedback.hint&&<span className="soma-track-feedback-hint">{feedback.hint}</span>}
+         {feedback.actors.length>0&&<div className="soma-track-actor-list"
+          role="group" aria-label="Status aktor dan landmark kaki">
+          {feedback.actors.map(actor=><span key={actor.id}
+           className="soma-track-actor-chip" data-state={actor.state}
+           title={actor.state==='unstable'?'Identitas belum stabil':
+            actor.state==='missing'?'Aktor belum terdeteksi':
+            actor.feet===2?'Kedua kaki terdeteksi dari landmark 2D':
+            'Sebagian landmark telapak tidak terlihat'}>
+           <b>{actor.id}</b>
+           {actor.state==='unstable'?'?':actor.state==='missing'?'—':actor.feet+'/2'}
+          </span>)}
+         </div>}
+        </div>:
+        <>
+         <span>{experimentalKind?selectedExperimentFrame?
+          selectedExperimentFrame.kind==='video'?'Video 2D':'Puppet virtual':'Menyiapkan sumber':
+          frameFresh?'Pose kamera baru':'Menunggu pose valid'}</span>
+         <span>{experimentalKind?'OUTPUT FISIK TERKUNCI':performerCount+' performer'}</span>
+        </>}
+      </div>
      </div>
      {/* BODY/FLOOR canvases remain mounted for shared scene engines.
           Track displays the source video with skeleton; Compose owns art preview. */}
