@@ -26,7 +26,7 @@ test('Track hides secondary previews but keeps engine BODY/FLOOR raster canvases
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  assert.match(stage,/<canvas ref=\{bodyCanvas\}/);
  assert.match(stage,/<canvas ref=\{floorCanvas\}/);
- assert.match(stage,/aria-hidden=\{!composerOpen&&!mappingOpen\}/);
+ assert.match(stage,/aria-hidden=\{!composerOpen\|\|mappingOpen\}/);
  assert.match(stage,/motionEvents=\{\(\)=>interactionEngineRef\.current\.canonicalRecent\}/);
 });
 
