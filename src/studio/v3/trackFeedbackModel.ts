@@ -96,10 +96,8 @@ export function deriveTrackFeedback(input:{
   return resultFor([forPose('A',pose)]);
  }
  const identity=liveIdentity;
- const sameFrame=identity?.observedFrameTime===liveFrame.time;
- const ambiguous=!!identity?.ambiguous;
  // In dual mode a stale or incomplete association must never label pixels A/B.
- if(ambiguous||!sameFrame)
+ if(!identity||identity.ambiguous||identity.observedFrameTime!==liveFrame.time)
   return resultFor(actorIds.map(id=>({id,state:'unstable',feet:0})),true);
  const actors=actorIds.map(id=>{
   const index=identity.poseIndices[id];
