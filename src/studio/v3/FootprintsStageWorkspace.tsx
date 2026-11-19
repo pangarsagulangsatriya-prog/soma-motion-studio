@@ -28,6 +28,7 @@ import {PersistentBodyMaskEngine} from '../../stage/persistentBodyMaskEngine.ts'
 import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
+import {trackStatus} from './trackViewModel.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
@@ -950,10 +951,10 @@ export function FootprintsStageWorkspace({
   }:undefined
  });
  // Only interrupt the Stage for an actionable setup problem.
- const showSetupHint=sourceStatus.selection!==null&&!experimentalKind&&(
-  setupHint.severity==='warning'||setupHint.severity==='busy'||
-  (sourceStatus.selection===null&&setupHint.id==='source')
- );
+ const showSetupHint=sourceStatus.selection!==null&&!experimentalKind&&
+  !(sourceStatus.selection==='phone'&&!phoneActive)&&(
+   setupHint.severity==='warning'||setupHint.severity==='busy'
+  );
  const handleAssistantAction=(action:InlineSetupAction)=>{
   switch(action){
    case 'experiment':{
@@ -987,6 +988,14 @@ export function FootprintsStageWorkspace({
    case 'projector':onOpenProjection();break;
   }
  };
+ const trackSummary=trackStatus({
+  selection:sourceStatus.selection,phase:sourceStatus.phase,message:sourceStatus.message,
+  videoLoaded:!!experimentClip,
+  videoVisible:selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
+   selectedExperimentFrame.snapshot.visibleCount:null,
+  cameraOn,frameFresh,visibleCount:identityStatus.visible.length,performerCount
+ });
+ const inputFocusEnabled=!calibrationOpen&&(sourceStatus.selection!==null||composerOpen);
  return <section className={'fp-stage-workspace fp-persistent-layout soma-ia-four-workspaces'+(operatorMode?' fp-operator-mode':'')}
   data-workspace={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
   data-stage-source={sourceStatus.selection??'none'}
@@ -999,9 +1008,7 @@ export function FootprintsStageWorkspace({
   <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
    onNavigate={onNavigateStageWorkspace}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<header className="soma-ia-track-head">
-   <div className="soma-ia-track-title"><h1>Track</h1>
-    <span>Input source · Motion / Pose A/B</span>
-   </div>
+   <div className="soma-ia-track-title"><h1>Track</h1></div>
   </header>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
@@ -1074,47 +1081,45 @@ export function FootprintsStageWorkspace({
     <div className="fp-stage-overview" hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
-      <div className="soma-track-source-heading">
-       <span>INPUT SOURCE</span>
-       <strong>Pilih sumber gerak</strong>
-      </div>
-      <details className="soma-ux01-source-switch soma-track-source-select">
-       <summary aria-label="Ganti sumber gerak" title="Pilih satu sumber untuk Track dan Compose">
-        <span>Pilih sumber</span>
-        <strong>{SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Belum dipilih'}</strong>
+      <div className="soma-track-source-heading"><strong>Sumber</strong></div>
+      <details className="soma-ux01-source-switch soma-track-source-select"
+       onKeyDown={event=>{if(event.key==='Escape'){
+        event.preventDefault();event.stopPropagation();
+        event.currentTarget.open=false;
+        event.currentTarget.querySelector<HTMLElement>('summary')?.focus({preventScroll:true});
+       }}}
+       onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))
+        event.currentTarget.open=false;}}>
+       <summary aria-label="Ganti sumber gerak" title="Ganti sumber input">
+        <strong>{SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Pilih sumber'}</strong>
        </summary>
        <div className="soma-ux01-source-options" role="group" aria-label="Sumber gerak Track">
         {SOURCE_CHOICES.map(option=><button type="button" key={option.id}
+         title={option.description}
          disabled={sourceStatus.phase==='connecting'||sourceStatus.selection===option.id}
          aria-pressed={sourceStatus.selection===option.id}
-         onClick={e=>{void chooseSource(option.id);e.currentTarget.closest('details')?.removeAttribute('open');}}>
-         <strong>{option.label}</strong><small>{option.description}</small>
+         onClick={async event=>{
+          const menu=event.currentTarget.closest('details');
+          if(await chooseSource(option.id)){
+           menu?.removeAttribute('open');
+           menu?.querySelector<HTMLElement>('summary')?.focus({preventScroll:true});
+          }
+         }}>
+         {option.label}
         </button>)}
        </div>
       </details>
       <section className="soma-track-source-status" data-phase={sourceStatus.phase}
-       aria-label="Status sumber" role="status" aria-live="polite">
+       data-kind={trackSummary.kind} aria-label="Status sumber" role="status" aria-live="polite">
        <div className="soma-track-status-title">
         <span className="soma-track-state-indicator" aria-hidden="true"/>
-        <strong>{sourceStatus.phase==='ready'?'Terhubung':
-         sourceStatus.phase==='pairing'?'Menunggu kamera HP':
-         sourceStatus.phase==='connecting'?'Menghubungkan sumber':
-         sourceStatus.phase==='error'?'Sumber bermasalah':
-         sourceStatus.phase==='experiment'?'Sumber percobaan':
-         sourceStatus.selection===null?'Belum ada sumber':'Belum terhubung'}</strong>
+        <strong>{trackSummary.label}</strong>
        </div>
-       <p>{sourceStatus.message}</p>
-       <small>{experimentalKind==='video'?
-        (selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
-         selectedExperimentFrame.snapshot.visibleCount+' aktor terbaca · video 2D':'Menunggu pose video'):
-        experimentalKind==='simulator'?'Puppet 3D · gerak sintetis':
-        frameFresh&&cameraOn?
-         identityStatus.visible.length+' / '+performerCount+' aktor terdeteksi':
-         'Skeleton dan pose A/B tampil setelah input aktif'}</small>
+       {trackSummary.detail&&<p>{trackSummary.detail}</p>}
       </section>
       {sourceStatus.selection==='phone'&&<button type="button" className="soma-track-side-action"
        onClick={()=>{setPhonePanelOpen(true);setCalibrationOpen(false);setInspectorOpen(true);}}>
-       {phoneActive?'Lihat koneksi kamera HP':'Buka pairing kamera HP'}
+       {phoneActive?'Koneksi HP':'Pairing HP'}
       </button>}
       <div className="soma-track-source-utilities">
        {sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
@@ -1133,7 +1138,7 @@ export function FootprintsStageWorkspace({
        <button type="button" className="soma-ia-advanced-button" aria-expanded={inspectorOpen}
         onClick={()=>{if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
          else {setFlowStep('process');setInspectorOpen(v=>!v);}}}>
-        Advanced
+        Pengaturan
        </button>
       </div>
      </aside>
