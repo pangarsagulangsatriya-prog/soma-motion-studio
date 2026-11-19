@@ -166,3 +166,45 @@
   transition:none!important;animation:none!important;transform:none!important;
  }
 }
+
+/* The full-width MP4 scrubber keeps a 22px hit area, while its visible
+   progression stays legible against the dark source rail. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]{
+ appearance:none!important;-webkit-appearance:none!important;
+ background:transparent!important;border:0!important;outline-offset:4px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]::-webkit-slider-runnable-track{
+ display:block;height:6px;border-radius:999px;border:0;
+ background:linear-gradient(90deg,#cfe7ac 0%,#cfe7ac var(--trk-progress,0%),#35533f var(--trk-progress,0%),#35533f 100%);
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]::-webkit-slider-thumb{
+ appearance:none;-webkit-appearance:none;
+ width:15px;height:15px;margin-top:-4.5px;
+ border-radius:50%;border:2px solid #17291d;
+ background:#d0eab1;box-shadow:0 0 0 2px #a9c69135;
+ transition:transform .14s ease,box-shadow .14s ease;
+ cursor:ew-resize;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]:hover::-webkit-slider-thumb{
+ transform:scale(1.12);box-shadow:0 0 0 4px #b9d69b3b;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]::-moz-range-track{
+ height:6px;border:0;border-radius:999px;
+ background:linear-gradient(90deg,#cfe7ac 0%,#cfe7ac var(--trk-progress,0%),#35533f var(--trk-progress,0%),#35533f 100%);
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]::-moz-range-thumb{
+ width:15px;height:15px;border-radius:50%;border:2px solid #17291d;
+ background:#d0eab1;cursor:ew-resize;
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+  .soma-track-source-panel .fp-experiment-controls>input[type=range]::-webkit-slider-thumb{
+  transition:none!important;transform:none!important;
+ }
+}
