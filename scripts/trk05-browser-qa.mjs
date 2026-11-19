@@ -301,7 +301,7 @@ const run=async()=>{
       assert.ok(transportBox.y>=setupBox.y+setupBox.height-4,
        'Recording toolbar overlaps expanded Quick Start');
       await screenshot(page,v.id,'setup-in-rail');
-      const settings=root.getByRole('button',{name:'Pengaturan'});
+      const settings=root.getByRole('button',{name:'Pengaturan',exact:true});
       await settings.click();
       const inspector=root.locator('.fp-stage-inspector');
       await inspector.waitFor({state:'visible'});
@@ -403,7 +403,7 @@ const run=async()=>{
   await setup.locator('summary').first().click();
  });
  await check('TRK-07 inspector docks beside camera, never overlays video',async()=>{
-  const root=stage(page),settings=root.getByRole('button',{name:'Pengaturan'});
+  const root=stage(page),settings=root.getByRole('button',{name:'Pengaturan',exact:true});
   await settings.click();
   const inspector=root.locator('.fp-stage-inspector');
   await inspector.waitFor({state:'visible'});
