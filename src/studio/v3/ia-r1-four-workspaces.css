@@ -341,3 +341,22 @@
 }
 /* Track keeps only the source monitor; no BODY/FLOOR display alongside it. */
 .soma-ia-four-workspaces[data-workspace=track] .fp-stage-side-previews{display:none!important}
+
+/* Fail closed: Track must show INPUT alone, even when older stage CSS sets display:grid.
+   Keep hidden canvases mounted; only Compose exposes the BODY and FLOOR monitors. */
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview > .fp-stage-side-previews,
+.soma-ia-four-workspaces .fp-stage-overview > .fp-stage-side-previews[hidden]{
+ display:none!important;
+ visibility:hidden!important;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview > .fp-stage-video{
+ display:flex!important;
+ flex-direction:column;
+ grid-column:1/-1!important;
+ width:100%!important;
+ max-width:none!important;
+}
+.soma-ia-four-workspaces[data-workspace=compose] .fp-stage-overview > .fp-stage-side-previews:not([hidden]){
+ display:contents!important;
+ visibility:visible!important;
+}
