@@ -92,6 +92,7 @@ import './trk09-ux-polish.css';
 import './cp01-compose-shell.css';
 import './cp02-cp03-composition.css';
 import './cp04-compose-microinteraction.css';
+import './mapping-studio-v4.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
