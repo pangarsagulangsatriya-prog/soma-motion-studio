@@ -1237,9 +1237,13 @@ export function FootprintsStageWorkspace({
      tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
      onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
      projectionPreflight={projectionPreflight} onPrepareProjection={prepareProjection}
-     onOpenProjector={openProjectorQA} onBlackout={onBlackout}/>}
+     onOpenProjector={openProjectorQA} onBlackout={onBlackout}
+     inspectorOpen={inspectorOpen} onExpand={()=>{
+      setInspectorOpen(false);setCalibrationOpen(false);
+     }}/>}
        <button type="button" className="soma-ia-advanced-button" aria-expanded={inspectorOpen}
-        onClick={()=>{setPhonePanelOpen(false);
+        onClick={event=>{setPhonePanelOpen(false);
+         setupTrigger.current=event.currentTarget;
          if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
          else {setFlowStep('process');setInspectorOpen(v=>!v);}}}>
         Pengaturan
