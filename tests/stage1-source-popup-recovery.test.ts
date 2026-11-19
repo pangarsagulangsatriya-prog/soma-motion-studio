@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
-test('Stage 1 SOURCE: header popup is not clipped and closed menu is hidden',()=>{
- const css=read('../src/studio/v3/ux-r1-unified-shell.css');
+test('Stage 1 source picker belongs to Track and remains keyboard accessible',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
- assert.match(css,/\.soma-primary-header \.soma-uxr1-health\{overflow:visible\}/);
- assert.match(css,/\.soma-uxr1-source:not\(\[open\]\)>\.soma-uxr1-source-menu\{display:none\}/);
- assert.match(css,/\.soma-uxr1-source\[open\]>/);
- assert.match(css,/source-menu\{top:calc\(100% \+ 20px\)\}/);
- assert.match(nav,/<summary title="Satu sumber untuk Track, Compose, Map, Perform">SOURCE:/);
- assert.match(nav,/onSelectSource\(option.id\)/);
- assert.match(nav,/closest\('details'\)\?\.removeAttribute\('open'\)/);
+ const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ assert.ok(!nav.includes('<details className="soma-uxr1-source"'));
+ assert.match(nav,/title="Ubah sumber di workspace Track"/);
+ assert.match(stage,/<details className="soma-ux01-source-switch"/);
+ assert.match(stage,/<summary aria-label="Ganti sumber gerak"/);
+ assert.match(stage,/onClick=\{e=>\{void chooseSource\(option\.id\)/);
+ assert.match(css,/\.soma-ux01-source-switch/);
 });
 
 test('Stage 1 no-source: four direct source actions replace empty black previews',()=>{
