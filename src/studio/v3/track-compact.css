@@ -70,7 +70,7 @@
  aspect-ratio:16/9!important;background:#020403!important;
 }
 .fp-stage-workspace.soma-ia-four-workspaces[data-workspace=track] .soma-track-input-placeholder{
- background:rgba(0,0,0,.58)!important;gap:0!important;
+ background:#020403!important;gap:0!important;
 }
 .fp-stage-workspace.soma-ia-four-workspaces[data-workspace=track] .soma-track-input-placeholder strong{
  font-size:14px;font-weight:560;color:#dbe7d8;
