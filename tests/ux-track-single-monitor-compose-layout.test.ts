@@ -60,6 +60,26 @@ test('Track follows WYSIWYG source/status rail and one camera input preview',()=
  assert.match(stage,/className="fp-stage-video"/);
  assert.match(stage,/className="soma-track-input-placeholder"/);
  assert.match(css,/WYSIWYG Track: source\/status at left/);
- assert.match(css,/grid-template-columns:minmax\(236px,292px\) minmax\(0,1fr\)!important/);
+ assert.match(css,/grid-template-columns:minmax\(260px,292px\) minmax\(0,1fr\)!important/);
  assert.match(css,/data-workspace=track\] \.fp-stage-overview>\.fp-stage-video/);
+});
+
+test('Track camera sizing wins against persistent legacy source grid rule',()=>{
+ const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ const legacy=read('../src/studio/v3/persistent-stage-workspace.css');
+ assert.match(legacy,/grid-template-columns:minmax\(0,1fr\) minmax\(198px,\.34fr\)!important/);
+ const next='.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden])';
+ assert.ok(css.includes(next+'{display:grid!important;grid-template-columns:minmax(260px,292px) minmax(0,1fr)!important'));
+ assert.match(css,/grid-column:2!important;grid-row:1\/span 4!important/);
+ assert.match(css,/data-workspace=track\] \.fp-stage-bottom-status\{display:none!important\}/);
+});
+test('Track microinteractions announce state, support focus and reduced motion',()=>{
+ const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ assert.match(stage,/className="soma-track-source-status" data-phase=\{sourceStatus.phase\}/);
+ assert.match(stage,/role="status" aria-live="polite"/);
+ assert.match(stage,/aria-pressed=\{skeletonVisible\}/);
+ assert.match(css,/soma-track-source-select\[open\]>summary::after/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(css,/animation:soma-track-connecting 1\.6s ease-in-out infinite/);
 });
