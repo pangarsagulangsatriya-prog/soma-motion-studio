@@ -80,6 +80,7 @@ import './track-compact.css';
 import './trk02-layout.css';
 import './trk03-source-flow.css';
 import './trk04-feedback.css';
+import './trk06-control-polish.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
