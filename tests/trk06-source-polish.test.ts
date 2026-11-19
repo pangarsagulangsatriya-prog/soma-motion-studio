@@ -10,7 +10,7 @@ const css=read('../src/studio/v3/trk06-control-polish.css');
 
 test('one pairing CTA, no duplicate waiting copy inside camera',()=>{
  assert.match(stage,/sourceStatus.selection==='phone'&&!phonePanelOpen&&<button/);
- assert.match(stage,/hidden=\{sourceStatus.selection==='phone'&&phonePanelOpen\}/);
+ assert.match(stage,/hidden=\{\(sourceStatus.selection==='phone'&&phonePanelOpen\)\|\|/);
  assert.match(stage,/hidden=\{!composerOpen&&!operatorMode&&\s*\(feedback.state==='idle'\|\|feedback.state==='waiting'\)\}/);
  assert.match(stage,/!composerOpen&&!calibrationOpen&&!experimentalKind&&!sourceStatus.selection&&/);
  assert.doesNotMatch(stage,/sourceStatus.selection==='phone'\?'Menunggu HP'/);
@@ -26,6 +26,10 @@ test('QR-first UI has real scannable SVG and clear creation/retry action',()=>{
  assert.match(auto,/className="soma-track-qr-frame"/);
  assert.match(auto,/className="soma-track-qr-actions"/);
  assert.match(auto,/className="soma-track-regenerate"/);
+ assert.match(auto,/if\(staticPages\)\{/);
+ assert.match(auto,/phoneCameraUrl\(window.location.origin,window.location.pathname\)/);
+ assert.match(auto,/onUseManual&&<button/);
+ assert.match(read('../src/stage/PhoneCameraReceiver.tsx'),/onUseManual=\{\(\)=>setMode\('manual'\)\}/);
  assert.match(auto,/phase==='error'&&window.location.hostname.endsWith\('github.io'\)/);
  assert.match(css,/\.soma-track-qr-frame/);
  assert.match(css,/width:min\(100%,208px\)!important/);
