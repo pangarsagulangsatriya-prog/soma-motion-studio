@@ -287,3 +287,41 @@
 }
 
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .msv4-root.s64-embedded .msv4-browser-meta{font-size:9px;color:#8c949e;letter-spacing:.07em;margin:-3px 0 7px}
+
+/* VC-03 / VC-06: contextual effect and real landmark mask inspectors. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls,
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor{
+ display:flex;flex-direction:column;gap:12px;
+ border-bottom:1px solid #343b44;padding:9px 0 18px;margin-bottom:10px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls .msv4-parameter,
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor .msv4-parameter{
+ display:flex;flex-direction:column;gap:7px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls .msv4-parameter>span,
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor .msv4-parameter>span{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+ color:#b2bbc4;font-size:11px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls output,
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor output{
+ color:#e9f0ee;font-variant-numeric:tabular-nums;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls input[type="range"],
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor input[type="range"]{
+ width:100%;accent-color:#94d3ca;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls .msv4-inline-check,
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor .msv4-inline-check{
+ display:flex;flex-direction:row;align-items:center;gap:8px;font-size:11px!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-hydra-controls .msv4-select,
+.fp-stage-workspace[data-workspace="compose"] .msv4-leg-editor .msv4-select{
+ display:flex;flex-direction:column;gap:6px;font-size:11px!important;
+}
+.stage-dual-grid-qa{border:1px solid #44515b;border-radius:8px;padding:10px;margin:10px 0}
+.stage-dual-grid-qa summary{cursor:pointer;font-weight:600;font-size:12px}
+.stage-dual-grid-qa p,.stage-dual-grid-qa small{font-size:11px;color:#aab4bb}
+.stage-dual-grid-points{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:10px 0}
+.stage-dual-grid-points span{display:block;border:1px solid #45515a;background:#182125;
+ padding:9px 5px;font:11px ui-monospace,SFMono-Regular,monospace;text-align:center;color:#cadbd7}
