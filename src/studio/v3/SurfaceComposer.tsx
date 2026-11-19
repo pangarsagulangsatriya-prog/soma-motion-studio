@@ -20,7 +20,6 @@ import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRul
  resolveMotionRecipeCue,motionRecipeEnvelope,type MotionRecipeRule,type MotionRecipeCue} from '../../footprints/scenes/motionRecipeModel.ts';
 import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
-import './mapping-studio-v4.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
 import {FootprintDemo,LegDemo,seedMappingStamps,nextMappingStamp,type DemoStamp} from './MappingStudioDemo.tsx';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
