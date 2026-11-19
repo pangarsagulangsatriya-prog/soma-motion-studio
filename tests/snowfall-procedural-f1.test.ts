@@ -156,5 +156,6 @@ test('F1 clean GPU Snowfall never renders diagnostic labels into physical floor'
  assert.match(renderer,/gl\.drawArrays/);
  assert.match(renderer,/this\.mode=this\.context&&this\.fallback\?'2d'/);
  assert.doesNotMatch(renderer,/interactionCanvas/);
- assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);\n assert.match(composer,/if\(experiment&&physical\)return/);
+ assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+ assert.match(composer,/if\(experiment&&physical\)return/);
 });
