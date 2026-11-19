@@ -44,4 +44,13 @@ export async function collectPhoneIce(pc:RTCPeerConnection,timeoutMs=12000):Prom
   check();
  });
 }
-export const phoneCameraUrl=(origin:string)=>new URL(PHONE_CAMERA_PATH,origin).toString();
+/** The manual camera page must stay under a static-host base path (e.g.
+ * GitHub Pages /soma-motion-studio/). Vercel continues using root '/'.
+ */
+export const phoneCameraUrl=(origin:string,basePath='/')=>{
+ const base=new URL(basePath,origin);
+ const url=new URL(base.toString());
+ url.searchParams.set('phoneCamera','1');
+ url.hash='';
+ return url.toString();
+};
