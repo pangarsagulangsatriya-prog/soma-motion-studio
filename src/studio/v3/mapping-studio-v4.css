@@ -325,3 +325,23 @@
 .stage-dual-grid-points{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:10px 0}
 .stage-dual-grid-points span{display:block;border:1px solid #45515a;background:#182125;
  padding:9px 5px;font:11px ui-monospace,SFMono-Regular,monospace;text-align:center;color:#cadbd7}
+
+/* CP-06 · shared Track + Composer media cards. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-media-list .cp06-asset{
+ display:flex;align-items:stretch;gap:4px;min-width:0;position:relative;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-media-list .cp06-asset>button:first-child{
+ display:flex;gap:8px;align-items:center;flex:1;min-width:0;text-align:left;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-media-list .cp06-asset>button:first-child>span:last-child{
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-media-list .cp06-asset>button:first-child>span:first-child{
+ font-size:9px;letter-spacing:.05em;flex-shrink:0;color:#94d3ca;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-media-list .cp06-asset .cp06-remove{
+ width:30px;min-width:30px;flex-shrink:0;font-size:16px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .soma-ia-media small[role="status"]{
+ display:block;color:#bcded5;line-height:1.5;margin:6px 0;
+}
