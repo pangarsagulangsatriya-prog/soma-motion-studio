@@ -1,0 +1,153 @@
+/* CP-01: one persistent 3-monitor shell for Compose. The same canvases remain
+   mounted across resizing, preset switches and source changes. No overlays. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-main{
+ display:flex!important;flex-direction:column!important;min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-main>.fp-stage-overview{
+ order:-2;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-main>.soma-ia-compose-state{
+ order:-3;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview:not([hidden]){
+ display:grid!important;
+ grid-template-columns:minmax(0,var(--cp01-floor,60%)) 10px minmax(0,1fr)!important;
+ grid-template-rows:42px minmax(0,var(--cp01-input,50%)) 10px minmax(0,1fr)!important;
+ width:100%!important;
+ height:clamp(450px,69dvh,760px)!important;
+ min-height:0!important;
+ align-items:stretch!important;
+ gap:0!important;
+ overflow:visible;
+ margin:0 0 12px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview>.soma-track-source-panel,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview>.fp-inline-assistant{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-side-previews:not([hidden]){
+ display:contents!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-preview-toolbar{
+ grid-area:1/1/2/4!important;
+ display:flex!important;
+ position:static!important;
+ min-height:0!important;
+ padding:5px 10px!important;
+ border:1px solid #3d5844;
+ background:#17241b;
+ border-radius:8px;
+ justify-content:space-between;
+ gap:9px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-preview-toolbar .fp-stage-preview-modes,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-preview-toolbar .fp-preview-restore{
+ display:none!important;
+}
+.cp01-preset-tools{display:flex;align-items:center;gap:5px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.cp01-preset-tools button{
+ background:transparent;border:1px solid #385441;border-radius:6px;
+ padding:6px 9px;min-height:30px;min-width:0;white-space:nowrap;color:#aabfaf;
+ font-size:11px;cursor:pointer;
+ transition:background-color .15s,border-color .15s,color .15s;
+}
+.cp01-preset-tools button[aria-pressed=true]{background:#324c37;border-color:#9cc58f;color:#f0f7ea}
+.cp01-preset-tools button:hover{border-color:#b2d3a0;color:#edf7e9}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview>.fp-stage-video{
+ grid-area:2/3/3/4!important;
+ align-self:stretch!important;
+ width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+ margin:0!important;border-radius:8px!important;overflow:hidden!important;
+ display:flex!important;flex-direction:column;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview .fp-preview-body{
+ grid-area:4/3/5/4!important;
+ height:100%!important;width:100%!important;min-width:0!important;min-height:0!important;
+ display:flex!important;flex-direction:column!important;border-radius:8px!important;overflow:hidden!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview .fp-preview-floor{
+ grid-area:2/1/5/2!important;
+ height:100%!important;width:100%!important;min-width:0!important;min-height:0!important;
+ display:flex!important;flex-direction:column!important;border-radius:8px!important;overflow:hidden!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-side-previews .fp-stage-canvas-area,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-video-content{
+ flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-video-content>canvas,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-side-previews canvas{
+ width:100%!important;height:100%!important;max-height:100%!important;
+ aspect-ratio:auto!important;object-fit:contain!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-video .fp-stage-surface-foot,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-side-previews .fp-stage-surface-foot{
+ flex:0 0 auto!important;min-height:24px!important;padding:4px 9px!important;
+ overflow:hidden!important;white-space:nowrap;font-size:10px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview :is(.fp-preview-focus-action,.fp-stage-focus-surface){
+ cursor:default;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-preview-focus-action{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-floor-scene-controls{
+ max-height:62px;overflow:auto;scrollbar-width:thin;
+}
+.cp01-divider{
+ border:0!important;background:transparent!important;padding:0!important;margin:0!important;
+ display:flex;align-items:center;justify-content:center;position:relative;z-index:4;
+ touch-action:none;user-select:none;
+}
+.cp01-divider::before{
+ content:"";background:#47624a;border-radius:100px;
+ transition:background .14s ease,transform .14s ease;
+}
+.cp01-divider:hover::before,.cp01-divider:focus-visible::before{background:#d0eba5}
+.cp01-divider:focus-visible{outline:2px solid #d0eba5;outline-offset:1px}
+.cp01-divider-vertical{grid-area:2/2/5/3!important;cursor:col-resize!important}
+.cp01-divider-vertical::before{width:3px;height:50px}
+.cp01-divider-horizontal{grid-area:3/3/4/4!important;cursor:row-resize!important}
+.cp01-divider-horizontal::before{height:3px;width:50px}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-root.s64-embedded{
+ order:0;margin-top:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-stage{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded[data-mask-edit="true"] .s64-stage{
+ display:block!important;min-height:220px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .uxr3-compose-preview-bar strong{
+ font-size:11px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-layout{
+ grid-template-columns:minmax(155px,220px) minmax(0,1fr) minmax(185px,240px);
+ align-items:start;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .uxr3-scene-library{
+ max-height:320px;
+}
+@media(max-width:900px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview:not([hidden]){
+  height:clamp(490px,70dvh,700px)!important;
+  grid-template-columns:minmax(0,var(--cp01-floor,60%)) 8px minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-layout{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .s64-embedded .s64-center{
+  grid-column:1/-1;grid-row:2;
+ }
+}
+@media(max-width:600px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-overview:not([hidden]){
+  height:580px!important;
+  grid-template-columns:minmax(0,var(--cp01-floor,60%)) 8px minmax(0,1fr)!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-preview-toolbar .fp-stage-preview-heading small{display:none}
+ .cp01-preset-tools button{padding:6px;font-size:10px}
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="compose"] .fp-stage-surface-head small{display:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .cp01-preset-tools button,.cp01-divider::before{transition:none!important;animation:none!important}
+}
