@@ -137,7 +137,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const seek=(seconds:number)=>{
   const el=video.current;if(!el||!videoReady)return;
   el.pause();setPlaying(false);
-  videoEngine.current?.reset('Timeline dipindah. Event segmen sebelumnya disimpan di arsip analisis.');
+  // The frame at the old time must not survive a timeline change.
+  lastSnapshot.current=null;previousSnapshot.current=null;setSnapshot(null);
   el.currentTime=seconds;setPosition(seconds);
  };
  const commitScrub=()=>{
@@ -177,11 +178,14 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <video ref={video} src={url??undefined} playsInline muted loop preload="metadata"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
     onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);setVideoReady(true);}}
-    onSeeking={()=>videoEngine.current?.reset('Timeline diubah: identitas dan peristiwa diulang.')}
+    onSeeking={()=>{
+     lastSnapshot.current=null;previousSnapshot.current=null;setSnapshot(null);
+     videoEngine.current?.reset('Timeline diubah: identitas dan peristiwa diulang.');
+    }}
     onSeeked={e=>{
      const el=e.currentTarget;
      setPosition(el.currentTime);
-     previousSnapshot.current=null;lastSnapshot.current=null;
+     previousSnapshot.current=null;lastSnapshot.current=null;setSnapshot(null);
      videoEngine.current?.process(el,el.currentTime,18,true);
     }}
     onTimeUpdate={e=>setPosition(e.currentTarget.currentTime)}
