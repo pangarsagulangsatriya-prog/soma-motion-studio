@@ -30,6 +30,7 @@ import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {trackStatus} from './trackViewModel.ts';
 import {deriveTrackFeedback,liveSkeletonPresentation} from './trackFeedbackModel.ts';
+import {trackStatusOwnership} from './trackStatusOwnership.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
 import {FootprintsFlowInspector} from './FootprintsFlowInspector.tsx';
 import type {FootprintsStep} from './footprintsFlow.ts';
@@ -1049,6 +1050,11 @@ export function FootprintsStageWorkspace({
    selectedExperimentFrame.snapshot:null,
   videoReady:canPaintVideoFrame(selectedExperimentFrame)
  });
+ const ownership=trackStatusOwnership({
+  selection:sourceStatus.selection,phase:sourceStatus.phase,
+  cameraOn,cameraBusy,cameraError,phonePanelOpen,experimentalKind,
+  sourceMode,feedbackState:feedback.state,composerOpen,operatorMode
+ });
  const inputFocusEnabled=!calibrationOpen&&(sourceStatus.selection!==null||composerOpen);
  return <section className={'fp-stage-workspace fp-persistent-layout soma-ia-four-workspaces'+(operatorMode?' fp-operator-mode':'')}
   data-workspace={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
@@ -1164,20 +1170,29 @@ export function FootprintsStageWorkspace({
        </div>
       </details>
       <section className="soma-track-source-status" data-phase={sourceStatus.phase}
-       hidden={(sourceStatus.selection==='phone'&&phonePanelOpen)||
-        (!!experimentalKind&&trackSummary.kind!=='error')||
-        (sourceStatus.phase==='ready'&&
-         ['ready','framing','uncertain'].includes(feedback.state))}
-       data-kind={trackSummary.kind} aria-label="Status sumber" role="status" aria-live="polite">
+       hidden={!ownership.sourceStatusVisible}
+       aria-hidden={!ownership.sourceStatusVisible}
+       data-kind={ownership.sourceStatusError?'error':trackSummary.kind}
+       aria-label="Masalah sumber kamera" role="status" aria-live="polite">
        <div className="soma-track-status-title">
         <span className="soma-track-state-indicator" aria-hidden="true"/>
-        <strong>{trackSummary.label}</strong>
+        <strong>{ownership.sourceStatusError&&sourceStatus.selection==='webcam'?
+         'Periksa kamera':trackSummary.label}</strong>
        </div>
-       {trackSummary.detail&&trackSummary.kind==='error'&&<p>{trackSummary.detail}</p>}
+       {ownership.sourceStatusError&&
+        <p title={cameraError||trackSummary.detail}>
+         {cameraError||trackSummary.detail}</p>}
       </section>
-      {sourceStatus.selection==='webcam'&&!cameraOn&&sourceStatus.phase!=='connecting'&&
-       <button type="button" className="soma-track-side-action" onClick={onStartBody}
-        disabled={cameraBusy}>Aktifkan webcam</button>}
+      {ownership.webcamAction&&<button type="button" className="soma-track-side-action"
+       onClick={onStartBody} disabled={ownership.webcamAction==='connecting'||cameraBusy}
+       aria-busy={ownership.webcamAction==='connecting'}>
+       {ownership.webcamAction==='connecting'&&
+        <span className="trk06a-button-spinner" aria-hidden="true"/>}
+       {ownership.webcamAction==='retry'?'Coba lagi':
+        ownership.webcamAction==='connecting'?'Menghubungkan…':'Aktifkan webcam'}
+      </button>}
+      {ownership.showBodyAction&&<button type="button" className="soma-track-side-action"
+       onClick={onStartBody}>Aktifkan Body</button>}}
       {sourceStatus.selection==='phone'&&!phonePanelOpen&&<button type="button" className="soma-track-side-action"
        aria-expanded={phonePanelOpen} aria-controls="soma-track-phone-pairing"
        onClick={()=>{setPhonePanelOpen(v=>!v);setCalibrationOpen(false);setInspectorOpen(false);}}>
@@ -1219,7 +1234,8 @@ export function FootprintsStageWorkspace({
        </button>
       </div>
      </aside>
-     {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
+     {showSetupHint&&ownership.showInlineAssistant&&
+      <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
 
      <div className="fp-stage-video">
       <div className="fp-stage-surface-head"><span>{composerOpen?
@@ -1282,22 +1298,29 @@ export function FootprintsStageWorkspace({
         </svg>
         <div className="fp-stage-calibration-hint">TRACKING · Pilih sudut {calibrationOverlay.editing+1}/4 pada gambar kamera</div>
        </div>}
-       {!experimentalKind&&sourceMode==='switch-body'&&!operatorMode&&<div className="fp-stage-empty fp-source-correction" role="status">
+       {!experimentalKind&&sourceMode==='switch-body'&&!operatorMode&&composerOpen&&
+        <div className="fp-stage-empty fp-source-correction" role="status">
         <Camera size={24} aria-hidden="true"/>
         <strong>Kamera sudah terhubung</strong>
         <p>Aktifkan pelacakan Body untuk membaca gerakan kaki.</p>
         <button type="button" onClick={onStartBody}>
          <Camera size={15} aria-hidden="true"/> Gunakan mode Body</button>
        </div>}
-       {!experimentalKind&&sourceMode==='warming'&&!operatorMode&&<div className="fp-stage-empty fp-source-warming" role="status">
-        <span className="fp-source-spinner" aria-hidden="true"/>
-        <strong>Menyiapkan preview kamera</strong>
-        <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
-       </div>}
+       {!experimentalKind&&sourceMode==='warming'&&!operatorMode&&
+        (composerOpen?
+         <div className="fp-stage-empty fp-source-warming" role="status">
+          <span className="fp-source-spinner" aria-hidden="true"/>
+          <strong>Menyiapkan preview kamera</strong>
+          <p>Menunggu frame pertama dari perangkat. Periksa sambungan dan izin kamera.</p>
+         </div>:
+         ownership.showPreviewWarming&&
+         <div className="trk06a-preview-warming" role="status">
+          <span className="fp-source-spinner" aria-hidden="true"/>
+          <span>Menyiapkan gambar</span>
+         </div>)}
       </div>
       <div className="fp-stage-surface-foot"
-       hidden={!composerOpen&&!operatorMode&&
-        (feedback.state==='idle'||feedback.state==='waiting')}>
+       hidden={!composerOpen&&!operatorMode&&!ownership.showTrackingFeedback}>
        {!composerOpen&&!operatorMode?
         <div className="soma-track-feedback" data-state={feedback.state}
          title="Kaki terlihat dihitung dari landmark pergelangan, tumit dan ujung kaki pada frame aktif; bukan kontak lantai."
