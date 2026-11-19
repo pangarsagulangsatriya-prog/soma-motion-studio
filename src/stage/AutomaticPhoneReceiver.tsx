@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {QrCode,LoaderCircle,RefreshCw,Copy,Check,AlertCircle} from 'lucide-react';
 import {collectPhoneIce,ICE_SERVERS} from './PhoneSignal.ts';
 import {phonePairRequest,pairedPhoneUrl,PHONE_PAIR_POLL_MS,
  type PairRoom} from './PhonePairProtocol.ts';
@@ -155,32 +156,52 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect}:{
  };
  const url=room?pairedPhoneUrl(window.location.origin,{
   room:room.room,ticket:room.ticket}):'';
+ const [copied,setCopied]=useState(false);
  const copy=async()=>{
-  try{await navigator.clipboard.writeText(url);setStatus('Tautan kamera HP disalin.');}
-  catch{setStatus('Salin tautan secara manual bila clipboard tidak tersedia.');}
+  try{
+   await navigator.clipboard.writeText(url);
+   setCopied(true);setStatus('Tautan disalin.');
+  }catch{setCopied(false);setStatus('Gagal menyalin tautan.');}
  };
- return <div className="soma-auto-pair" aria-label="QR pairing kamera HP">
-  <p>Scan QR di HP, lalu izinkan kamera.</p>
-  {!room&&phase!=='connected'&&<button className="soma-setup-primary" type="button"
-   onClick={()=>void start()} disabled={phase==='creating'}>
-   {phase==='creating'?'Membuat QR…':'Buat QR'}</button>}
-  {room&&<div className="soma-auto-pair-code">
-   <PhonePairQr value={url}/>
-   <div><strong>Scan QR dengan HP</strong>
-    <span className="soma-pair-expiry" role="status">
-     QR tersisa {Math.floor(secondsLeft/60)}:{String(secondsLeft%60).padStart(2,'0')}
+ return <div className="soma-auto-pair" data-phase={phase}
+  aria-label="QR pairing kamera HP">
+  {!room&&phase!=='connected'&&<button type="button"
+   className="soma-setup-primary soma-track-create-qr"
+   onClick={()=>void start()} disabled={phase==='creating'}
+   aria-label={phase==='creating'?'Menyiapkan kode QR':'Tampilkan QR kamera HP'}>
+   {phase==='creating'?<LoaderCircle size={17} className="soma-track-spinning" aria-hidden="true"/>:
+    phase==='error'?<RefreshCw size={17} aria-hidden="true"/>:
+    <QrCode size={20} aria-hidden="true"/>}
+   <span>{phase==='creating'?'Menyiapkan QR…':phase==='error'?'Coba lagi':'Tampilkan QR'}</span>
+  </button>}
+  {room&&<div className="soma-auto-pair-code" aria-label="Kode QR kamera HP aktif">
+   <div className="soma-track-qr-frame">
+    <PhonePairQr value={url}/>
+   </div>
+   <div className="soma-track-qr-actions">
+    <span className="soma-pair-expiry" role="timer" aria-label="Sisa masa berlaku QR">
+     {Math.floor(secondsLeft/60)}:{String(secondsLeft%60).padStart(2,'0')}
     </span>
-    <p>Buka tautan, lalu aktifkan kamera.</p>
-    <a href={url} rel="noreferrer" target="_blank">Buka halaman kamera HP</a>
-    <button type="button" onClick={()=>void copy()}>Salin tautan HP</button>
-    <button type="button" onClick={()=>terminate()}>Batalkan QR</button>
-    <small>QR berlaku 3 menit.</small>
+    <button type="button" onClick={()=>void copy()} className="soma-track-copy-link">
+     {copied?<Check size={15} aria-hidden="true"/>:
+      <Copy size={15} aria-hidden="true"/>}
+     {copied?'Disalin':'Salin tautan'}
+    </button>
+    <button type="button" className="soma-track-regenerate" onClick={()=>void start()}
+     aria-label="Buat ulang kode QR"><RefreshCw size={15} aria-hidden="true"/></button>
    </div>
   </div>}
-  {phase==='connected'&&<button type="button" className="soma-setup-secondary"
-   onClick={()=>terminate()}>Putuskan kamera HP</button>}
-  <div className="soma-setup-status" role="status" aria-live="polite">{status}</div>
-  {phase==='error'&&<p className="soma-setup-hint">
-   QR tidak tersedia. Coba opsi Manual.</p>}
+  {phase==='connected'&&<div className="soma-track-pair-connected" role="status">
+   <Check size={15} aria-hidden="true"/> HP tersambung
+   <button type="button" className="soma-setup-secondary"
+    onClick={()=>terminate()}>Putuskan</button>
+  </div>}
+  {(phase==='creating'||phase==='negotiating'||phase==='error')&&
+   <div className="soma-setup-status" data-phase={phase} role="status" aria-live="polite">
+    {phase==='error'&&<AlertCircle size={16} aria-hidden="true"/>}
+    <span>{phase==='error'&&window.location.hostname.endsWith('github.io')?
+     'QR otomatis membutuhkan backend pairing. Gunakan SOMA di server Vercel, atau pilih Manual.':
+     status}</span>
+   </div>}
  </div>;
 }
