@@ -25,6 +25,21 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build -- --mode githubpages
+      # Browser dependencies are pinned and deliberately ephemeral: npm ci stays reproducible.
+      - name: Install TRK-05 browser QA dependencies
+        run: npm install --no-save --package-lock=false playwright@1.56.1 pixelmatch@6.0.0 pngjs@7.0.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: TRK-05 — visual regression and source E2E
+        run: node scripts/trk05-browser-qa.mjs
+      - name: Upload TRK-05 screenshots and QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trk05-browser-qa-${{ github.sha }}
+          path: artifacts/trk05/
+          if-no-files-found: warn
+          retention-days: 30
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
