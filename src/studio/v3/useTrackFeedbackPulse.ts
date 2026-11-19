@@ -12,17 +12,19 @@ type Input={
  cameraOn:boolean;bodySelected:boolean;frameFresh:boolean;
  performerCount:1|2;frameRef:RefObject<MotionFrame>;
  router:MultiPoseGaitRouter;
- videoSnapshot:ReplayAnalysisSnapshot|null;videoReady:boolean;
+ videoSnapshot:ReplayAnalysisSnapshot|null;videoReady:boolean;videoClip:File|null;
  active:boolean;
 };
 // Track feedback lives on a low-frequency presentation loop. The video and
 // projector rendering loops are independent; UI feedback cannot approve output.
 export function useTrackFeedbackPulse(input:Input):TrackFeedback{
  const {selection,phase,cameraOn,bodySelected,frameFresh,performerCount,
-  frameRef,router,videoSnapshot,videoReady,active}=input;
+  frameRef,router,videoSnapshot,videoReady,videoClip,active}=input;
  const key=[selection??'none',phase,performerCount,
-  // MP4 replay snapshots change after uploads/seeks; never retain stale ready.
-  selection==='video'?String(videoSnapshot?.atMs??'none'):'live'].join('|');
+  // Preserve identity while playing; reset when a different file or readiness epoch arrives.
+  selection==='video'?
+   [videoClip?.name??'none',videoClip?.size??0,videoClip?.lastModified??0,
+    videoReady?'decoded':'unready'].join(':'):'live'].join('|');
  const sample=()=>{
   const now=performance.now();
   const frame=frameRef.current;
