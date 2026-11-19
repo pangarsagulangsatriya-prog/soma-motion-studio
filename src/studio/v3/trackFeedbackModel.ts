@@ -50,6 +50,11 @@ const resultFor=(actors:TrackActorFeedback[],ambiguous=false):TrackFeedback=>{
   return {state:'waiting',label:'Mencari tubuh',hint:'Masuk ke bingkai kamera',
    actors,visibleFeet:0,expectedFeet};
  }
+ const detected=actors.filter(a=>a.state!=='missing').length;
+ if(detected<actors.length){
+  return {state:'framing',label:`Aktor ${detected}/${actors.length}`,
+   hint:'Pastikan semua aktor masuk bingkai',actors,visibleFeet,expectedFeet};
+ }
  if(visibleFeet<expectedFeet){
   return {state:'framing',label:`Kaki terlihat ${visibleFeet}/${expectedFeet}`,
    hint:'Pastikan kedua telapak masuk bingkai',actors,visibleFeet,expectedFeet};
@@ -96,12 +101,47 @@ export function deriveTrackFeedback(input:{
   return resultFor([forPose('A',pose)]);
  }
  const identity=liveIdentity;
- // In dual mode a stale or incomplete association must never label pixels A/B.
- if(!identity||identity.ambiguous||identity.observedFrameTime!==liveFrame.time)
-  return resultFor(actorIds.map((id):TrackActorFeedback=>({id,state:'unstable',feet:0})),true);
+ // No A/B claim until the router associates IDs with this exact frame.
+ if(identity?.ambiguous)return resultFor(
+  actorIds.map((id):TrackActorFeedback=>({id,state:'unstable',feet:0})),true
+ );
+ if(identity&&identity.visible.length>0&&identity.visible.length<performerCount){
+  const actors=actorIds.map(id=>identity.visible.includes(id)?
+   ({id,state:'unstable',feet:0} as TrackActorFeedback):missing(id));
+  return {state:'framing',label:`Aktor ${identity.visible.length}/${performerCount}`,
+   hint:'Pastikan kedua aktor masuk bingkai',actors,
+   visibleFeet:0,expectedFeet:performerCount*2};
+ }
+ if(!identity||identity.observedFrameTime!==liveFrame.time){
+  const rawCount=Math.min(liveFrame.poses?.length??0,performerCount);
+  return {state:'uncertain',
+   label:rawCount?`${rawCount} tubuh · ID menunggu`:'Identitas belum stabil',
+   hint:'A/B belum terverifikasi',
+   actors:actorIds.map((id):TrackActorFeedback=>({id,state:'unstable',feet:0})),
+   visibleFeet:0,expectedFeet:performerCount*2};
+ }
  const actors=actorIds.map(id=>{
   const index=identity.poseIndices[id];
   return index===null?missing(id):forPose(id,liveFrame.poses?.[index]);
  });
  return resultFor(actors);
 }
+
+/** Raw skeletons remain visible for troubleshooting, but their A/B colors
+ * are assigned only when a current-frame identity mapping is verified.
+ */
+export function liveSkeletonPresentation(
+ frame:MotionFrame,identity:MultiPoseStatus,performerCount:1|2
+):{poses:Landmark[][];colors:string[]}{
+ const poses=frame.poses?.length?frame.poses:(frame.pose?.length?[frame.pose]:[]);
+ if(performerCount===1)return {
+  poses:poses.slice(0,1),colors:['#d4edb3']
+ };
+ const a=identity.poseIndices.A,b=identity.poseIndices.B;
+ if(!identity.ambiguous&&identity.observedFrameTime===frame.time&&
+  a!==null&&b!==null&&a!==b&&poses[a]&&poses[b]){
+  return {poses:[poses[a],poses[b]],colors:['#d4edb3','#88d6e2']};
+ }
+ return {poses:poses.slice(0,2),colors:['#aab8ad','#aab8ad']};
+}
+
