@@ -163,7 +163,7 @@ test('Track footer reads actual diagnostics, preserves Compose and physical safe
  assert.match(stage,/className="soma-track-actor-chip" data-state=\{actor.state\}/);
  assert.match(stage,/experimentalKind&&<span className="soma-track-feedback-safety"/);
  assert.match(stage,/aria-pressed=\{skeletonVisible\}/);
- assert.match(stage,/liveSkeletonPresentation\(f,identities,performerCount\)/);
+ assert.match(stage,/liveSkeletonPresentation\(f,identities,performerCount,identityConfirmed\)/);
  assert.match(stage,/data-actor=\{actor.id\}/);
  assert.match(css,/data-workspace=track/);
  assert.match(css,/prefers-reduced-motion:reduce/);
