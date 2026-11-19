@@ -138,6 +138,9 @@ test('skeleton stays keyed to A/B when raw pose order switches',()=>{
  const uncertain=liveSkeletonPresentation(liveFrame([b,a]),
   identity({ambiguous:true}),2);
  assert.deepEqual(uncertain.colors,['#aab8ad','#aab8ad']);
+ const pending=liveSkeletonPresentation(liveFrame([a,b]),identity(),2,false);
+ assert.deepEqual(pending.colors,['#aab8ad','#aab8ad'],
+  'Unconfirmed A/B must be neutral while the state latch settles');
 });
 
 test('simulator explicitly reports synthetic motion without measured feet',()=>{
@@ -153,8 +156,8 @@ test('simulator explicitly reports synthetic motion without measured feet',()=>{
 test('Track footer reads actual diagnostics, preserves Compose and physical safety',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const css=read('../src/studio/v3/trk04-feedback.css');
- assert.match(stage,/const feedback=deriveTrackFeedback\(/);
- assert.match(stage,/liveIdentity:identityStatus/);
+ assert.match(stage,/const feedback=useTrackFeedbackPulse\(/);
+ assert.match(stage,/frameRef,router/);
  assert.match(stage,/videoReady:canPaintVideoFrame\(selectedExperimentFrame\)/);
  assert.match(stage,/!composerOpen&&!operatorMode\?/);
  assert.match(stage,/className="soma-track-actor-chip" data-state=\{actor.state\}/);
