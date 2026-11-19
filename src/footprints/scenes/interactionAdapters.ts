@@ -75,8 +75,11 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  }
  if(!tracker.isConfirmed||!cameraMatched||
   performerCount===2&&!idsValid)return;
+ const visibleActors=performerCount===1?new Set(['performer-1']):
+  new Set(identity.visible.filter(id=>identity.poseIndices[id]!==null));
  for(const e of tracker.session?.events??[]){
   if(e.kind!=='contact'||e.source!=='camera'||e.confidence<.55||
+   !visibleActors.has(e.performerId as 'A'|'B')||
    e.timestampMs>frame.time+70)continue;
   const uv=floorToUV(tracker.floor!,e.positionM);
   engine.contact({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
@@ -102,8 +105,10 @@ export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
     p=>({x:p.x,y:p.y,basis:'image-2d'}));
  }
  if(s.ambiguous)return;
+ const visibleActors=new Set(s.people.slice(0,2).map(person=>person.id));
  for(const e of s.events){
-  if(e.kind!=='contact'||e.confidence<.55||e.atMs>at+70||
+  if(e.kind!=='contact'||e.confidence<.55||
+   !visibleActors.has(e.performer)||e.atMs>at+70||
    e.atMs<s.atMs-1500)continue;
   engine.contact({source:'video',eventId:e.id,actorId:e.performer,
    foot:e.foot,x:clamp(e.x),y:clamp(e.y),atMs:e.atMs,
