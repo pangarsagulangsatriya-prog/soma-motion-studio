@@ -1,0 +1,168 @@
+/* TRK-08 · MP4 Track: restore single-column source sizing and WYSIWYG video.
+   The previous horizontal transport's flex-basis (138px + 320px) became
+   vertical height inside the 272px source rail and pushed status over video.
+   Scope stays strictly on Track's MP4 selection; Compose is untouched. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel>.fp-experiment-dock{
+ display:block!important;
+ position:relative!important;
+ flex:0 0 auto!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ min-height:0!important;height:auto!important;
+ overflow:visible!important;
+ grid-row:auto!important;grid-column:auto!important;
+ padding:0!important;margin:0!important;
+ background:transparent!important;border:0!important;box-shadow:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+ grid-template-rows:auto auto auto auto!important;
+ align-items:stretch!important;
+ justify-content:stretch!important;
+ width:100%!important;max-width:100%!important;
+ gap:8px!important;
+ flex:0 0 auto!important;
+ min-width:0!important;min-height:0!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-upload{
+ grid-column:1!important;grid-row:1!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:100%!important;height:40px!important;min-height:40px!important;
+ margin:0!important;padding:8px!important;
+ border:1px solid #4b7055!important;border-radius:7px!important;
+ background:#223b2b!important;
+ font-size:11px!important;font-weight:650!important;
+ white-space:nowrap!important;cursor:pointer;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>button{
+ grid-column:2!important;grid-row:1!important;
+ width:100%!important;min-height:40px!important;height:40px!important;
+ margin:0!important;padding:8px!important;
+ border-radius:7px!important;font-size:11px!important;
+ font-weight:650!important;transition:background .16s ease,border-color .16s ease,transform .12s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>button[aria-pressed=true]{
+ color:#dff1d8;background:#31543c!important;border-color:#8eb97c!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel :is(.fp-experiment-upload,.fp-experiment-controls>button):hover{
+ background:#345540!important;border-color:#a1c48d!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>button:active:not(:disabled){transform:scale(.985)}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]{
+ grid-column:1/-1!important;grid-row:2!important;
+ display:block;width:100%!important;max-width:100%!important;
+ min-width:0!important;margin:2px 0 0!important;
+ padding:3px 0!important;height:22px!important;min-height:22px!important;
+ flex:0 0 auto!important;accent-color:#c7e3a7;
+ cursor:pointer;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>input[type=range]:disabled{opacity:.4;cursor:not-allowed}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls>output.fp-stable-timecode{
+ grid-column:1/-1!important;grid-row:3!important;
+ display:block!important;align-self:start!important;justify-self:end!important;
+ width:auto!important;min-width:0!important;max-width:100%!important;
+ margin:0!important;padding:0!important;
+ font:600 11px ui-monospace,monospace!important;
+ font-variant-numeric:tabular-nums;color:#b7c9b6!important;
+ letter-spacing:.02em;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-meta{
+ grid-column:1/-1!important;grid-row:4!important;
+ display:block;align-self:start!important;justify-self:start!important;
+ flex:0 0 auto!important;width:100%!important;
+ max-width:100%!important;min-height:0!important;height:auto!important;
+ margin:0!important;padding:2px 0!important;white-space:normal!important;
+ font-size:11px!important;color:#b5c5b2;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-meta[data-state=ready]{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-duet-engine-status{
+ grid-column:1/-1!important;grid-row:5!important;
+ display:block!important;
+ flex:none!important;flex-basis:auto!important;flex-grow:0!important;flex-shrink:0!important;
+ align-self:stretch!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ height:auto!important;min-height:0!important;max-height:none!important;
+ margin:0!important;padding:0!important;gap:0!important;
+ border:0!important;border-radius:0!important;
+ background:transparent!important;
+ overflow:visible!important;
+ position:relative!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-duet-engine-status>:is(b,.fp-tracking-summary,.fp-video-actor-status){
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details{
+ display:block!important;position:relative!important;
+ flex:none!important;width:100%!important;
+ min-width:0!important;max-width:100%!important;z-index:1!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details>summary{
+ display:flex;justify-content:space-between!important;
+ min-height:32px!important;padding:5px 9px!important;
+ border-color:#35513e!important;border-radius:7px!important;
+ background:#13221a!important;color:#a7bba7!important;
+ font-size:11px!important;
+ transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details>summary:hover,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details[open]>summary{
+ background:#243d2c!important;color:#e2f0da!important;border-color:#688a67!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details-panel{
+ position:static!important;inset:auto!important;top:auto!important;right:auto!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ max-height:230px!important;overflow:auto!important;
+ margin:6px 0 0!important;padding:10px!important;
+ border-color:#3c5b42!important;border-radius:7px!important;
+ box-shadow:none!important;background:#14241a!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details:not([open]) .fp-tracking-details-panel{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-tracking-details-panel :is(dl,div,p){
+ min-width:0!important;max-width:100%!important;overflow-wrap:anywhere;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .soma-track-source-panel .fp-experiment-controls :is(button,input[type=range],.fp-experiment-upload,summary):focus-visible{
+ outline:2px solid #d9efb7!important;outline-offset:2px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+ .fp-stage-video>.fp-stage-surface-foot{
+ flex-wrap:wrap!important;gap:6px 12px!important;
+ min-width:0!important;max-width:100%!important;
+}
+@media(max-width:850px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+  .soma-track-source-panel .fp-experiment-controls{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-stage-source=video]
+  .soma-track-source-panel :is(.fp-experiment-upload,.fp-experiment-controls>button,.fp-tracking-details>summary){
+  transition:none!important;animation:none!important;transform:none!important;
+ }
+}
