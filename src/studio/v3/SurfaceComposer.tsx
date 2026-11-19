@@ -30,6 +30,7 @@ import {composeExperimentStatus,type ComposeExperimentSource} from './composeExp
 import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {sharedAssetChoices,SHARED_TRACK_MP4_ID,type SharedAsset} from './sharedAssetModel.ts';
+import {normalizedCanvasPoint,pickTopmostObject,nudgeLayer} from './composerObjectSelection.ts';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
@@ -161,6 +162,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const activeMotionSession=useRef<string|null>(null);
  const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
+ const previewLayerAlpha=useRef(new Map<string,number>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
  const floorOutput=useRef<HTMLCanvasElement>(null);
  const stageRoute=useRef<StageRouteInput|null>(null);
@@ -227,6 +229,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    if(event.shiftKey)performRedo();else performUndo();
   }else if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='y'){
    event.preventDefault();performRedo();
+  }else if(inspectorTab==='object'&&previewArrangement==='surface'&&!buttonFocused&&
+   ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)&&layer){
+   const next=nudgeLayer(layer,event.key,event.shiftKey);
+   if(next){event.preventDefault();patch(next);}
   }else if((event.key==='Delete'||event.key==='Backspace')&&!buttonFocused&&layers.length>1){
    event.preventDefault();
    setComposition(state=>({...state,[selected]:state[selected].filter((_,i)=>i!==selectedLayer)}));
@@ -411,6 +417,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      if(layer.recipe==='pivot-decay')envelope=Math.max(0,1-age/2200);
     }
    }
+   if(!physical&&!overlayOnly&&s===selectedRef.current)
+    previewLayerAlpha.current.set(key,Math.min(1,Math.max(0,envelope)));
    ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100*envelope));
    ctx.globalCompositeOperation=layer.blend;
    const motionCue=layer.recipe==='motion-v2'?motionClocks.current.get(layer.id):undefined;
@@ -570,7 +578,39 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind:'simulation:'+kind});
   setTestEvent(kind);setEventInfo('SIMULASI '+kind+' (tidak dikirim ke tracking)');
  };
- const points=(e:PointerEvent<HTMLCanvasElement>)=>{if(!editMask||!layer)return;const rect=e.currentTarget.getBoundingClientRect();const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));const pts=layer.points.slice();let index=pts.findIndex(p=>Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height)<24);if(index<0){if(pts.length>=16)return;pts.push([x,y]);}else pts[index]=[x,y];patch({points:pts,mask:'polygon'});};
+ const points=(e:PointerEvent<HTMLCanvasElement>)=>{
+  const rect=e.currentTarget.getBoundingClientRect();
+  if(editMask&&layer){
+   const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+   const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
+   const pts=layer.points.slice();
+   const index=pts.findIndex(p=>Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height)<24);
+   if(index<0){if(pts.length>=16)return;pts.push([x,y]);}else pts[index]=[x,y];
+   patch({points:pts,mask:'polygon'});return;
+  }
+  if(previewArrangement!=='surface'){
+   setHint('Pilih tampilan FLOOR atau BODY untuk memilih objek langsung.');return;
+  }
+  const coordinate=normalizedCanvasPoint(e.clientX,e.clientY,rect,e.currentTarget);
+  if(!coordinate)return;
+  const picked=pickTopmostObject(layers,id=>{
+   const key=selected+':'+id,source=surfaceBuffers.current.get(key);
+   if(!source)return 0;
+   const envelope=previewLayerAlpha.current.get(key)??0;
+   if(envelope<=0)return 0;
+   try{
+    const g=source.getContext('2d',{willReadFrequently:true});
+    if(!g)return 0;
+    const x=Math.min(source.width-1,Math.floor(coordinate.x*source.width/e.currentTarget.width));
+    const y=Math.min(source.height-1,Math.floor(coordinate.y*source.height/e.currentTarget.height));
+    return g.getImageData(x,y,1,1).data[3]*envelope;
+   }catch{return 0;}
+  });
+  if(picked){
+   setSelectedLayer(picked.layerIndex);setInspectorTab('object');
+   setHint('Objek dipilih: '+layers[picked.layerIndex].name);
+  }else setHint('Tidak ada objek terdeteksi pada titik ini.');
+ };
  const savePreset=()=>{const name=presetName.trim().slice(0,60);if(!name)return;const next=[{name,snapshot:{version:1 as const,selected,composition:structuredClone(composition),...(footprint?{footprint:structuredClone(footprint)}:{})}},...presets.filter(p=>p.name!==name)].slice(0,30);setPresets(next);localStorage.setItem(presetKey,JSON.stringify(next));setHint('Preset tersimpan di perangkat ini.');};
  const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition,...(footprint?{footprint}: {})},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
  const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);if(x.footprint)updateFootprint?.(x.footprint);setHint('Komposisi dan parameter footprint dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
@@ -645,7 +685,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
+  <div className="cp07-stage-selected" aria-hidden="true">
+   <span>SELECTED · {layer.name}</span>
+  </div>}
+  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
@@ -653,7 +697,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    setComposition(state=>{const order=[...state[selected]];const [moving]=order.splice(dragLayer,1);order.splice(i,0,moving);return {...state,[selected]:order};});
    setSelectedLayer(i);setSaveStatus('Urutan layer diubah');
   }setDragLayer(null);setDropLayer(null);}}
-  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('layer');}}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button>
+  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('object');}} aria-pressed={i===selectedLayer}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button>
   <div className="cp05-source-actions" role="group" aria-label="Tambahkan sumber komposisi">
    {([{id:COMPOSE_STAGE_INPUT,label:'+ MP4 / INPUT'},
      {id:COMPOSE_STAGE_FLOOR,label:'+ Footprints'},
@@ -671,6 +715,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   <h3>INSPECTOR <small>{selected}</small></h3>
+  {layer&&<div className="cp07-selection-bar" role="status">
+   <strong>{layer.name}</strong><small>Objek {selectedLayer+1} / {layers.length} · {selected}</small>
+  </div>}
   {selected!=='FLOOR'&&<LegPreviewInspector value={legTuning}
    onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>}
   {selected==='FLOOR'&&footprint&&updateFootprint&&<MappingStudioFootprintControls value={footprint} onChange={updateFootprint}/>}
@@ -695,7 +742,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
  </details>}
- {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Layer source<select aria-label="Pilih sumber layer"
+ {inspectorTab==='object'&&<details className="uxr3-advanced" open>
+  <summary>Object · transform &amp; mask</summary>
+  <label>Object name<input type="text" maxLength={90} value={layer?.name??''}
+   onChange={e=>patch({name:e.target.value})}/></label>
+  <label>Blend<select value={layer?.blend??'source-over'}
+   onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}>
+   <option value="source-over">Normal</option><option value="screen">Screen</option>
+   <option value="multiply">Multiply</option><option value="lighter">Add</option>
+  </select></label>
+  <button type="button" onClick={()=>patch({x:0,y:0,scale:100,rotation:0})}>Reset transform</button>
+  <p className="cp07-object-help">Klik objek pada Stage Monitor atau pilih dari Layers. Gunakan tombol panah untuk menggeser 1%, Shift + panah untuk 5%.</p><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Layer source<select aria-label="Pilih sumber layer"
   value={layer?.mediaId??''} onChange={e=>patch({mediaId:e.target.value,
    name:COMPOSE_SOURCE_CHOICES.find(x=>x.id===e.target.value)?.label??
     media.find(x=>x.id===e.target.value)?.name??layer?.name??'Layer'})}>
