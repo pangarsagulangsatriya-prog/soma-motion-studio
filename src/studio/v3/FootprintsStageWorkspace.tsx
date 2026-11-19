@@ -90,6 +90,7 @@ import './trk07-functional-layout.css';
 import './trk08-mp4-compact.css';
 import './trk09-ux-polish.css';
 import './cp01-compose-shell.css';
+import './cp02-cp03-composition.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -131,6 +132,8 @@ export function FootprintsStageWorkspace({
 }:Props){
  const composeLayout=useComposeMonitorLayout();
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
+ const composeFloorOverlay=useRef<HTMLCanvasElement>(null);
+ const [showComposeEvents,setShowComposeEvents]=useState(true);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const snowfallCanvas=useRef<HTMLCanvasElement>(null);
@@ -1141,6 +1144,7 @@ export function FootprintsStageWorkspace({
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
+     composePreviewCanvas={composeFloorOverlay}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
      hydraSettings={hydraSettings} onHydraSettingsChange={updateHydra} hydraStatus={hydraStatus}
      previewResumeRevision={previewResumeRevision} previewBlackout={softwareBlackout}
@@ -1388,6 +1392,9 @@ export function FootprintsStageWorkspace({
           title={'Gunakan layout '+label} onClick={()=>composeLayout.preset(id as ComposeLayoutPreset)}>{label}</button>)}
         <button type="button" title="Kembalikan ukuran monitor ke default"
          onClick={()=>composeLayout.preset('balanced')}>Reset layout</button>
+        <button type="button" aria-pressed={showComposeEvents}
+         title="Tampilkan atau sembunyikan jejak event terverifikasi di atas scene FLOOR"
+         onClick={()=>setShowComposeEvents(v=>!v)}>Event {showComposeEvents?'ON':'OFF'}</button>
        </div>}
        <div className="fp-stage-preview-modes" role="group" aria-label="Pilih tampilan preview">
         {STAGE_PREVIEW_MODES.map(item=><button type="button" key={item.id}
@@ -1435,11 +1442,12 @@ export function FootprintsStageWorkspace({
  <span>{experimentalKind?'Preview eksperimen':'Mask · preview'}</span></div>
       </div>
       <div className="fp-stage-surface fp-preview-floor" data-floor-scene={floorScene} data-hydra-visible={hydraSettings.enabled&&hydraStatus==="ready"}
-       data-procedural={floorScene!=='footprints'&&floorScene!=='snowfall'}>
+       data-procedural={floorScene!=='footprints'&&floorScene!=='snowfall'}
+       data-compose-events={composerOpen&&!mappingOpen&&showComposeEvents}>
        <div className="fp-stage-surface-head"><span>{floorScene==='footprints'?'FLOOR · PATH PREVIEW':
         'FLOOR · '+FLOOR_SCENES.find(item=>item.id===floorScene)?.name.toUpperCase()}</span>
         <small className="fp-floor-bus-status" title="Satu bus presence, movement dan contact untuk seluruh input">
-         BUS · {floorInteractionStats.actors} sumber gerak · {floorInteractionStats.contacts} kontak
+         BUS · {floorInteractionStats.actors} aktor · {floorInteractionStats.contacts} kontak valid
         </small>
         <button type="button" className="fp-floor-touch-toggle" aria-pressed={touchDemo}
          title="Simulasikan kaki dengan klik/touch; preview software saja"
@@ -1570,6 +1578,8 @@ export function FootprintsStageWorkspace({
          aria-label="Hydra generatif FLOOR · software preview"/>
         <canvas ref={interactionCanvas} className="fp-floor-interaction-layer"
          width={1280} height={720} aria-hidden="true"/>
+        <canvas ref={composeFloorOverlay} className="cp03-composition-overlay"
+         width={1280} height={720} aria-label="Layer media komposisi pada preview FLOOR; output software"/>
         {touchDemo&&<span className="fp-floor-touch-hint" aria-hidden="true">
          Sentuh lantai · interaksi sintetis · SOFTWARE ONLY</span>}
         {floorScene==='footprints'&&!experimentalKind&&!floorStatus.confirmed&&!footprint.hold&&<span className="fp-stage-canvas-empty">
