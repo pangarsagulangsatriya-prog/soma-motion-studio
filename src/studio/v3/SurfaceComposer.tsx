@@ -24,6 +24,7 @@ import {useCompositionHistory} from './useCompositionHistory.ts';
 import {FootprintDemo,LegDemo} from './MappingStudioDemo.tsx';
 import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
+import {HydraEffectInspector} from './HydraEffectInspector.tsx';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -592,16 +593,9 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    {COMPOSE_SCENES.map(scene=><option value={scene.id} key={scene.id}>{scene.name}</option>)}
   </select>
  </label>}
- {inspectorTab==='scene'&&<details className="soma-ia-hydra" open><summary>Hydra · {hydraSettings?.enabled?hydraStatus??'ON':'OFF'}</summary>
-  <label><input type="checkbox" checked={hydraSettings?.enabled??false}
-   onChange={e=>onHydraSettingsChange?.({enabled:e.target.checked})}/> Aktif</label>
-  <label>Style<select value={hydraSettings?.style??'off'}
-   onChange={e=>onHydraSettingsChange?.({style:e.target.value as HydraFootprintSettings['style']})}>
-   {HYDRA_FOOTPRINT_STYLES.map(style=><option value={style.id} key={style.id}>{style.label}</option>)}
-  </select></label>
-  <label>Feedback · {Math.round((hydraSettings?.feedback??0)*100)}%
-   <input type="range" min="0" max=".65" step=".05" value={hydraSettings?.feedback??0}
-    onChange={e=>onHydraSettingsChange?.({feedback:Number(e.target.value)})}/></label>
+ {inspectorTab==='scene'&&<details className="soma-ia-hydra" open>
+  <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
+  <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
  </details>}
  {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
  {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
