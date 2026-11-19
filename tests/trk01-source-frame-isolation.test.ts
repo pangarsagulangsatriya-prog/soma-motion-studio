@@ -75,3 +75,19 @@ test('source switch keeps blackout, tracking reset and distinct source session',
  assert.equal(activeExperimentKind('webcam'),null);
  assert.equal(activeExperimentKind('video'),'video');
 });
+
+test('phone disconnect clears all live raster and event sources while keeping selection',()=>{
+ const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ assert.match(stage,/sourceStatus\.phase==='ready'\)return/);
+ assert.match(stage,/\[sourceStatus\.selection,sourceStatus\.phase\]/);
+ assert.match(stage,/\[interactionSource,experimentClip,sourceStatus\.phase\]/);
+ const phone=read('../src/App.tsx');
+ assert.match(phone,/function stopPhoneCamera\(\)/);
+ assert.match(phone,/multiPoseRouter\.reset\(\);setLiveFloorApproval\(null\);stopCamera\(\)/);
+});
+
+test('seeking MP4 drops previous pose before new frame arrives',()=>{
+ const src=read('../src/studio/v3/FootprintsExperimentalSource.tsx');
+ assert.match(src,/onSeeking=\{\(\)=>\{[\s\S]*?setSnapshot\(null\);[\s\S]*?videoEngine\.current\?\.reset/);
+ assert.match(src,/onSeeked=\{e=>\{[\s\S]*?previousSnapshot\.current=null;lastSnapshot\.current=null;setSnapshot\(null\)/);
+});
