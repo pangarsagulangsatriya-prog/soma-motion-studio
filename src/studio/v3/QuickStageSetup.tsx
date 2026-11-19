@@ -21,6 +21,7 @@ type Props={
  onConnectCamera:()=>Promise<boolean>;onSelectCamera:(deviceId:string)=>Promise<void>;
  onOpenCalibration:()=>void;onOpenProjector:()=>void;onBlackout:()=>void;
  projectionPreflight:SafeProjectionPreflight;onPrepareProjection:()=>void;
+ inspectorOpen?:boolean;onExpand?:()=>void;
 };
 const readProfiles=()=>{try{return loadQuickStageProfiles(localStorage);}catch{return [];}};
 const makeId=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?
@@ -30,8 +31,10 @@ export function QuickStageSetup({
  outputConnected,performerCount,visibleCount,identityAmbiguous,identityMatchedFrame,
  devices,deviceId,videoRef,tracker,router,
  onConnectCamera,onSelectCamera,onOpenCalibration,onOpenProjector,onBlackout,
- projectionPreflight,onPrepareProjection
+ projectionPreflight,onPrepareProjection,inspectorOpen=false,onExpand
 }:Props){
+ const [expanded,setExpanded]=useState(false);
+ useEffect(()=>{if(inspectorOpen)setExpanded(false);},[inspectorOpen]);
  const [profiles,setProfiles]=useState<QuickStageProfile[]>(readProfiles);
  const [profileId,setProfileId]=useState<string>(()=>readProfiles()[0]?.id??'');
  const [profileName,setProfileName]=useState('Panggung Utama');
@@ -117,13 +120,18 @@ export function QuickStageSetup({
    setFeedback('Profil lokal dihapus. Kalibrasi aktif tidak berubah.');
   }catch{setFeedback('Penyimpanan browser tidak dapat diperbarui.');}
  };
- return <details className="fp-quick-setup" aria-label="Quick Start dan profil panggung">
+ return <details className="fp-quick-setup" aria-label="Quick Start dan profil panggung"
+  open={expanded} onToggle={event=>{
+   const opened=event.currentTarget.open;
+   setExpanded(opened);
+   if(opened)onExpand?.();
+  }}>
   <summary title="Quick Start · cek kesiapan dan profil panggung">
    <CheckCircle2 size={14} aria-hidden="true"/>
    <span>Stage Setup</span><small>{ready}/4</small><ChevronDown size={14}/>
   </summary>
   <div className="fp-quick-setup-panel">
-   <header><strong>QUICK START</strong><span>Target sesi ulang ≤2 menit</span></header>
+   <header><strong>Persiapan panggung</strong><span>{ready}/4 siap</span></header>
    <div className="fp-quick-setup-readiness" role="list" aria-label="Diagnosis persiapan panggung">
     {diagnostics.map(d=><div role="listitem" key={d.id}
      data-ready={d.state} title={d.detail}>
@@ -143,11 +151,16 @@ export function QuickStageSetup({
       value={d.deviceId}>{d.label||`Kamera ${i+1}`}</option>)}
     </select>
    </label>
-   <button className="fp-quick-setup-primary" type="button"
+   {!cameraOn&&<button className="fp-quick-setup-primary" type="button"
     onClick={()=>void start()} disabled={cameraBusy||busy}>
-    <Camera size={15}/>{cameraOn?'Periksa kamera':'Hubungkan kamera'}
+    <Camera size={15}/>Hubungkan kamera
+   </button>}
+   <button type="button" className="fp-quick-setup-primary"
+    onClick={onOpenCalibration} disabled={!cameraOn||cameraBusy}>
+    <SlidersHorizontal size={15}/>Periksa lantai
    </button>
-   <div className="fp-quick-setup-divider"/>
+   <details className="fp-quick-profile-details">
+    <summary>Profil panggung <ChevronDown size={14}/></summary>
    <label className="fp-quick-setup-field">Profil tersimpan
     <select value={profileId} onChange={e=>{
      setProfileId(e.target.value);setFeedback('');
@@ -180,6 +193,7 @@ export function QuickStageSetup({
     <button type="button" onClick={save}><HardDrive size={14}/> Simpan profil</button>
     {selected&&<button type="button" onClick={remove}>Hapus</button>}
    </div>
+   </details>
    <div className="fp-quick-projection" role="group" aria-label="Persiapan proyeksi aman">
     <div className="fp-quick-projection-status">
      <strong>PROJECTION · {projectionPreflight.progress}/4</strong>
