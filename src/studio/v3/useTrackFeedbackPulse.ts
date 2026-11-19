@@ -49,7 +49,9 @@ export function useTrackFeedbackPulse(input:Input):TrackFeedback{
   });
  useEffect(()=>{
   keyRef.current=key;
-  pulseRef.current=null;
+  // Replayed MP4 snapshots can arrive on every analyzed frame; keep the
+  // readiness accumulator as long as the source/clip epoch is unchanged.
+  if(pulseRef.current?.key!==key)pulseRef.current=null;
   const tick=()=>{
    const raw=sample();
    const live=selection==='webcam'||selection==='phone';
