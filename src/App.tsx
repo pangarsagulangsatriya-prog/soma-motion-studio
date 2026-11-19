@@ -150,7 +150,11 @@ export default function App(){
   setSourceSwitchError('');
   activeCameraMode.current='laptop';
   if(sr.current.input==='mouse')update({input:'hands',mappings:defaultMappings(sr.current.mode,'hands'),visual:{...sr.current.visual,mappings:defaultVisualMappings('hands')}});mouse.current.down=false;setSource('camera');sourceRef.current='camera';setCameraBusy(true);setCameraOn(true);setCameraError('');
-  await tracker.start(video.current!,()=>sr.current,processFrame,message=>{
+  await tracker.start(video.current!,()=>sr.current,
+   frame=>{
+    if(op===cameraOperation.current&&requestedFootprintsChoice.current==='webcam')
+     processFrame(frame);
+   },message=>{
    if(op!==cameraOperation.current)return;
    setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);
   },message=>{
@@ -181,7 +185,11 @@ export default function App(){
   setFootprintsChoice('phone');setSourceSwitchError('');
   setSource('camera');sourceRef.current='camera';setCameraBusy(true);
   setCameraOn(true);setCameraError('');
-  await tracker.start(video.current!,()=>sr.current,processFrame,
+  await tracker.start(video.current!,()=>sr.current,
+   frame=>{
+    if(op===cameraOperation.current&&requestedFootprintsChoice.current==='phone')
+     processFrame(frame);
+   },
    message=>{if(op!==cameraOperation.current)return;
     setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
    message=>{if(op!==cameraOperation.current)return;
