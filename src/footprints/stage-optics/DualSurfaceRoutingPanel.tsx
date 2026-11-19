@@ -23,6 +23,7 @@ import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfa
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext} from './DualSurfaceCalibration.ts';
 import './dual-surface-routing.css';
 import {MapFourCornerEditor} from '../../studio/v3/MapFourCornerEditor.tsx';
+import {diagnosticNinePointGrid} from './floorNinePointGrid.ts';
 
 const ids=['body','floor'] as const;
 type Requested='blackout'|'test'|'live';
@@ -519,6 +520,20 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
    <MapFourCornerEditor key={selected} sourceQuad={activePlan.sourceQuad}
     projectorQuad={activePlan.projectorQuad}
     onCommit={(group,quad)=>editPlan(selected,p=>({...p,[group]:quad}))}/>
+   {selected==='floor'&&<details className="stage-dual-grid-qa">
+    <summary>VC-05 · 3 × 3 Mapping Grid / sembilan titik</summary>
+    {(()=>{const grid=diagnosticNinePointGrid(activePlan.sourceQuad,activePlan.projectorQuad);
+     return <div>
+      <p role="status">Model homografi: {grid.valid?'konsisten':'perlu diperbaiki'} · {grid.samples.length} titik.</p>
+      <div className="stage-dual-grid-points" aria-label="Grid kalibrasi model">
+       {grid.samples.map(s=><span key={s.id} title={'Projector U '+s.projector.x.toFixed(3)+' V '+s.projector.y.toFixed(3)}>
+        {s.id} · {s.projector.x.toFixed(2)}, {s.projector.y.toFixed(2)}
+       </span>)}
+      </div>
+      <small>{grid.reason} Data ini tidak menghitung selisih optik dalam sentimeter.</small>
+     </div>;
+    })()}
+   </details>}
    <details>
     <summary>Advanced · angka presisi empat titik</summary>
     <p>Urutan: kiri atas, kanan atas, kanan bawah, kiri bawah. Angka 0–1 terikat pada bidang output yang dipilih. Atur ulang dan ukur fisik setiap kali perangkat dipindahkan.</p>
