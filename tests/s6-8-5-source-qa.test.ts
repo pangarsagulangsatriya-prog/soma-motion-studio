@@ -45,7 +45,8 @@ test('S6.8.5 switching transaction stays locked while busy, and accepts recovery
  assert.equal(canStartSourceSwitch({busy:false,from:'phone',to:'phone'}),false);
  assert.equal(state('phone',{cameraOn:false,switchError:'Koneksi HP putus'}).phase,'error');
  assert.match(state('phone',{switchError:'Koneksi HP putus'}).message,/HP putus/);
- assert.equal(state('phone',{cameraOn:true,cameraBusy:true,phoneActive:true}).phase,'connecting');
+ assert.equal(state('phone',{cameraOn:true,cameraBusy:true,phoneActive:true}).phase,'ready');
+ assert.equal(state('phone',{cameraOn:true,switchBusy:true,phoneActive:true}).phase,'connecting');
  assert.equal(state('webcam',{cameraError:'Izin kamera ditolak'}).phase,'error');
  assert.equal(state('webcam',{cameraOn:true}).phase,'ready');
 });
