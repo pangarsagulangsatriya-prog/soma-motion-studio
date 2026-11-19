@@ -12,6 +12,7 @@ import {VideoMotionLab} from '../../stage/VideoMotionLab.tsx';
 import {RehearsalComparisonLab} from '../../stage/RehearsalComparisonLab.tsx';
 import type {ReplayReport} from '../../stage/rehearsalComparisonModel.ts';
 import {SurfaceComposer} from './SurfaceComposer.tsx';
+import {useSharedAssetRegistry} from './useSharedAssetRegistry.ts';
 import {useComposeMonitorLayout,type ComposeLayoutPreset} from './useComposeMonitorLayout.ts';
 import {StageModuleNav,type StageModuleWorkspace} from './StageModuleNav.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
@@ -245,6 +246,7 @@ export function FootprintsStageWorkspace({
  },[experimentalKind,experimentClip]);
  const selectedExperimentFrame=currentExperimentFrameForClip(experimentalKind,experimentFrame,experimentClip);
  experimentFrameRef.current=selectedExperimentFrame;
+ const sharedAssetRegistry=useSharedAssetRegistry(experimentalKind==='video'?experimentClip:null);
  // Clear old source pixels before the next browser paint, including BODY/FLOOR
  // buffers consumed by Compose. Source changes may not reuse the prior epoch.
  useLayoutEffect(()=>{
@@ -1144,6 +1146,8 @@ export function FootprintsStageWorkspace({
      </div>}
     {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded sceneId={floorScene} mapMode={mappingOpen} onSceneChange={selectFloorScene}
      footprint={footprint} updateFootprint={updateFootprint}
+     sharedAssets={sharedAssetRegistry.assets} onImportAssets={sharedAssetRegistry.addFiles}
+     onRemoveAsset={sharedAssetRegistry.removeAsset} assetNotice={sharedAssetRegistry.notice}
      experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFloorCanvas={floorCanvas}
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
