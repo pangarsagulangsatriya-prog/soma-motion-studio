@@ -6,7 +6,7 @@
  */
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {mkdirSync,existsSync,writeFileSync,readFileSync} from 'node:fs';
+import {mkdirSync,existsSync,writeFileSync,readFileSync,appendFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {chromium} from 'playwright';
@@ -232,7 +232,7 @@ const run=async()=>{
    const root=document.querySelector('[data-workspace="track"]');
    return root?.getAttribute('data-stage-source')==='webcam'&&
     root.querySelector('.soma-track-source-status')?.getAttribute('data-phase')==='ready';
-  },{timeout:15000});
+  },undefined,{timeout:15000});
   assert.equal(await stage(page).locator('canvas[aria-label*="kamera SOMA"]').count(),1);
   await screenshot(page,'desktop-e2e','webcam');
  });
@@ -252,7 +252,7 @@ const run=async()=>{
   await page.waitForFunction(()=>{
    const el=document.querySelector('video[aria-label="Pemutar MP4 untuk Footprints"]');
    return !!el&&el.readyState>=2&&el.duration>0;
-  },{timeout:20000});
+  },undefined,{timeout:20000});
   const play=root.getByRole('button',{name:'Putar video'});
   await play.click();
   const time=await video.evaluate(el=>el.currentTime);
@@ -331,7 +331,7 @@ const save=()=>{
  writeFileSync(join(output,'report.md'),md);
  console.log(md);
  if(process.env.GITHUB_STEP_SUMMARY){
-  try{const {appendFileSync}=require('node:fs');appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);}
+  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);}
   catch{}
  }
  if(failing)process.exitCode=1;
