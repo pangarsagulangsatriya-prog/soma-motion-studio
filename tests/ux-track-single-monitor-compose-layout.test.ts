@@ -6,7 +6,7 @@ const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 test('Track selects source from one canonical picker, keeping four supported sources',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const sources=read('../src/studio/v3/sourceSwitchModel.ts');
- assert.match(stage,/<details className="soma-ux01-source-switch"/);
+ assert.match(stage,/<details className="soma-ux01-source-switch soma-track-source-select"/);
  assert.match(stage,/SOURCE_CHOICES\.map\(option=><button/);
  for(const id of ['webcam','phone','video','simulator'])assert.ok(sources.includes(id),id);
 });
@@ -50,4 +50,16 @@ test('Compose exposes original three monitors only when editor is active',()=>{
  for(const cls of ['fp-preview-floor','fp-preview-body','fp-stage-video']){
   assert.match(css,new RegExp('data-workspace=compose\\] \\.'+cls));
  }
+});
+
+test('Track follows WYSIWYG source/status rail and one camera input preview',()=>{
+ const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ assert.match(stage,/className="soma-track-source-panel"/);
+ assert.match(stage,/className="soma-track-source-status"/);
+ assert.match(stage,/className="fp-stage-video"/);
+ assert.match(stage,/className="soma-track-input-placeholder"/);
+ assert.match(css,/WYSIWYG Track: source\/status at left/);
+ assert.match(css,/grid-template-columns:minmax\(236px,292px\) minmax\(0,1fr\)!important/);
+ assert.match(css,/data-workspace=track\] \.fp-stage-overview>\.fp-stage-video/);
 });
