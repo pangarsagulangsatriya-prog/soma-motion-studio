@@ -1,0 +1,203 @@
+/* TRK-02 — Track owns its desktop/tablet/mobile geometry.
+   Scope is deliberately limited to Track: Compose's FLOOR/BODY/INPUT trio,
+   Map calibration and Perform operator canvas keep their own layout.
+   The camera canvas remains mounted and is never cropped or remounted. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]{
+ --trk-sidebar:272px;
+ --trk-gap:20px;
+ --trk-camera-limit:960px;
+ max-width:1360px;
+ width:100%;
+ min-width:0;
+ box-sizing:border-box;
+ margin-inline:auto;
+ overflow-x:clip;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+ position:relative;
+ min-width:0;
+ width:100%;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-main{
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+ width:100%;
+}
+/* One source rail and one camera monitor. The unused BODY/FLOOR raster canvases
+   remain mounted for Compose, but their visual tiles stay hidden here. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){
+ display:grid!important;
+ grid-template-columns:minmax(0,var(--trk-sidebar)) minmax(0,1fr)!important;
+ grid-template-rows:repeat(4,min-content)!important;
+ column-gap:var(--trk-gap)!important;
+ row-gap:12px!important;
+ align-items:start!important;
+ justify-content:start;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview[hidden]{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-side-previews{
+ display:none!important;
+ visibility:hidden!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.soma-track-source-panel{
+ display:flex;
+ grid-column:1!important;
+ grid-row:1!important;
+ width:100%;
+ max-width:var(--trk-sidebar);
+ min-width:0;
+ align-self:start;
+ box-sizing:border-box;
+ position:relative;
+ z-index:20;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel[hidden]{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-experiment-dock{
+ grid-column:1!important;
+ grid-row:2!important;
+ align-self:start;
+ width:100%;
+ min-width:0;
+ max-width:var(--trk-sidebar);
+ box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-inline-assistant{
+ grid-column:1!important;
+ grid-row:3!important;
+ align-self:start;
+ width:100%;
+ min-width:0;
+ max-width:var(--trk-sidebar);
+ box-sizing:border-box;
+}
+/* The live camera is a bounded 16:9 monitor, never the height of the page. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{
+ display:flex!important;
+ flex-direction:column!important;
+ grid-column:2!important;
+ grid-row:1/span 4!important;
+ justify-self:start;
+ align-self:start!important;
+ width:100%!important;
+ max-width:var(--trk-camera-limit)!important;
+ min-width:0!important;
+ min-height:0!important;
+ height:auto!important;
+ overflow:hidden;
+ box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{
+ display:block!important;
+ position:relative;
+ flex:0 0 auto!important;
+ width:100%!important;
+ min-width:0!important;
+ min-height:0!important;
+ max-height:none!important;
+ height:auto!important;
+ aspect-ratio:16/9!important;
+ overflow:hidden!important;
+ background:#020403;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content>canvas{
+ display:block!important;
+ width:100%!important;
+ height:100%!important;
+ min-height:0!important;
+ max-height:none!important;
+ aspect-ratio:16/9!important;
+ object-fit:contain!important;
+}
+/* The inspector is optional and must not permanently steal camera width. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){
+ position:absolute!important;
+ inset:0 0 auto auto!important;
+ z-index:95!important;
+ width:min(380px,100%)!important;
+ max-width:100%!important;
+ height:auto!important;
+ min-height:0!important;
+ max-height:min(75dvh,690px)!important;
+ overflow:auto!important;
+ box-shadow:0 18px 48px #000a!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-bottom-status{
+ display:none!important;
+}
+/* A laptop's short viewport should never generate an enormous camera.
+   Width constraints preserve the video aspect ratio even in a short window. */
+@media(max-height:850px) and (min-width:851px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]{
+  --trk-camera-limit:760px;
+ }
+}
+@media(max-height:700px) and (min-width:851px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]{
+  --trk-camera-limit:620px;
+ }
+}
+@media(max-width:1100px) and (min-width:851px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]{
+  --trk-sidebar:248px;
+  --trk-gap:16px;
+ }
+}
+/* Tablet and portrait: source controls first, one 16:9 preview immediately
+   afterwards; upload/diagnostics remain reachable without overlap. */
+@media(max-width:850px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]{
+  --trk-sidebar:100%;
+  --trk-gap:12px;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:repeat(4,min-content)!important;
+  gap:12px!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.soma-track-source-panel{
+  grid-column:1!important;grid-row:1!important;max-width:none!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-stage-video{
+  grid-column:1!important;grid-row:2!important;
+  width:100%!important;max-width:none!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-experiment-dock{
+  grid-column:1!important;grid-row:3!important;max-width:none!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview>.fp-inline-assistant{
+  grid-column:1!important;grid-row:4!important;max-width:none!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-layout>.fp-stage-inspector:not([data-panel-hidden=true]){
+  position:relative!important;inset:auto!important;
+  grid-column:1!important;
+  width:100%!important;max-height:none!important;
+  box-shadow:none!important;
+ }
+}
+@media(max-width:430px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview:not([hidden]){
+  row-gap:10px!important;
+ }
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{
+  min-height:0!important;
+ }
+}
+/* Enlarging INPUT is an explicit user action; this bypasses the normal cap. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-focus-preview=input]{
+ --trk-camera-limit:1360px;
+}
+@media(max-width:850px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track][data-focus-preview=input]{
+  --trk-camera-limit:100%;
+ }
+}
