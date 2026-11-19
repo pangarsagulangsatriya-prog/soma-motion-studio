@@ -217,3 +217,49 @@
 .soma-ia-four-workspaces .soma-ux01-source-options button:disabled{opacity:.5;cursor:default}
 .soma-v3 .soma-primary-header .soma-uxr1-health>span:first-child{font-weight:650;color:#e6f0dc}
 @media(max-width:430px){.soma-v3 .soma-primary-header .soma-uxr1-health{display:none!important}.soma-ia-four-workspaces .soma-ux01-source-options{left:auto;right:0}}
+
+
+/* UX-TRACK-ONE-MONITOR — one input canvas per source.
+ * Camera, phone, MP4 and 3D render into the existing input canvas.
+ * The original BODY/FLOOR canvases stay mounted for Compose/Map engines,
+ * but do not appear as competing previews in the Track workspace.
+ */
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-overview{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+ gap:12px;
+ width:100%;
+ min-width:0;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-side-previews{
+ display:none!important;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video{
+ grid-column:1/-1;
+ width:100%;
+ min-width:0;
+ max-width:none;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content{
+ width:100%;
+ min-width:0;
+ aspect-ratio:16/9;
+ overflow:hidden;
+ background:#000;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-video-content>canvas{
+ display:block;
+ width:100%;
+ height:100%;
+ object-fit:contain;
+}
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-preview-toolbar,
+.soma-ia-four-workspaces[data-workspace=track] .fp-stage-preview-modes{
+ display:none!important;
+}
+/* Compose preserves the screenshot's three-column library / stage / inspector. */
+@media(min-width:1024px){
+ .soma-ia-four-workspaces[data-workspace=compose] .s64-embedded .s64-layout{
+  grid-template-columns:minmax(176px,220px) minmax(0,1fr) minmax(186px,238px);
+ }
+}
