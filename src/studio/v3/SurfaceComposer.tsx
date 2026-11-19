@@ -67,6 +67,7 @@ type Props={
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
  experimentSource?:ComposeExperimentSource;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentFloorCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentReady?:boolean;
  visualFloorCanvas?:RefObject<HTMLCanvasElement|null>;previewFloorEnabled?:boolean;
  /** Software-only composited FLOOR overlay in the shared three-monitor shell. */
@@ -85,7 +86,8 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,router,floorTracker,projection,floorCanvas,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentReady=false,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,router,floorTracker,projection,floorCanvas,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+ const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
  useEffect(()=>{if(experimentSource)setPreviewArrangement('input');else setPreviewArrangement('surface');},[experimentSource]);
@@ -331,10 +333,10 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
   const offlineRaster=composeExperimentRaster({
-   source:experimentSource,view:'surface',selected:s,physical
+   source:experimentSourceRef.current,view:'surface',selected:s,physical
   });
   if(offlineRaster!=='none'){
-   const source=offlineRaster==='floor'?floorCanvas.current:bodyCanvas.current;
+   const source=offlineRaster==='floor'?(experimentFloorCanvas?.current??floorCanvas.current):bodyCanvas.current;
    if(source&&source.width>0&&source.height>0)ctx.drawImage(source,0,0,w,h);
    return;
   }
