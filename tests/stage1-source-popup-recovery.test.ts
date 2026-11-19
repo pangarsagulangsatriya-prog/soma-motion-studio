@@ -18,15 +18,15 @@ test('Stage 1 source picker belongs to Track and remains keyboard accessible',()
 
 test('Stage 1 no-source: the left source/status panel and right camera stay visible',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
- const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
+ const css=read('../src/studio/v3/trk02-layout.css');
  assert.match(stage,/SOURCE_CHOICES\.map\(option=><button/);
  assert.match(stage,/await chooseSource\(option.id\)/);
  assert.match(stage,/aria-label="Pilih sumber dan lihat status tracking"/);
  assert.match(stage,/data-stage-source=\{sourceStatus\.selection\?\?'none'\}/);
  assert.match(stage,/className="soma-track-source-status"/);
  assert.match(stage,/className="fp-stage-video"/);
- assert.match(css,/WYSIWYG Track: source\/status at left/);
- assert.match(css,/grid-template-columns:minmax\(260px,292px\) minmax\(0,1fr\)!important/);
+ assert.match(css,/TRK-02 — Track owns its desktop\/tablet\/mobile geometry/);
+ assert.match(css,/grid-template-columns:minmax\(0,var\(--trk-sidebar\)\) minmax\(0,1fr\)!important/);
  assert.match(stage,/sourceStatus\.selection!==null&&!experimentalKind&&<QuickStageSetup/);
 });
 
