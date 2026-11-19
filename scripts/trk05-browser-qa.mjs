@@ -301,19 +301,46 @@ const run=async()=>{
   assert.equal(await root.locator('.fp-experiment-dock').count(),1);
   assert.equal(await root.locator('.soma-track-input-placeholder').count(),0);
  });
- await check('Phone pairing inline and no second camera preview',async()=>{
+ await check('Phone QR-first pairing, accessible scan image and no duplicated waiting',async()=>{
+  // Simulated signaling confirms QR visuals; it does NOT claim live HP connectivity.
+  await page.route('**/api/phone-pair',async route=>{
+   const req=route.request();
+   const action=req.postDataJSON()?.action;
+   const reply=action==='create'?{ok:true,room:'qaRoom1234567890',
+    ticket:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    desktopToken:'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    expiresAt:Date.now()+180000}:action==='poll'?{ok:true,state:'waiting'}:{ok:true};
+   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(reply)});
+  });
   await choose(page,'Kamera HP');
   const root=stage(page);
   const pairing=root.locator('#soma-track-phone-pairing');
   await pairing.waitFor({state:'visible',timeout:13000});
   assert.equal(await root.locator('.fp-stage-video').count(),1);
   assert.equal(await root.locator('canvas[aria-label*="kamera SOMA"]').count(),1);
+  assert.equal(await root.locator('.soma-track-source-status').isVisible(),false);
+  assert.equal(await root.locator('.fp-stage-video>.fp-stage-surface-foot').isVisible(),false);
+  assert.equal(await root.getByRole('button',{name:'Tutup pairing',exact:true}).count(),0);
+  const create=root.getByRole('button',{name:'Tampilkan QR kamera HP'});
+  const trigger=await bounds(create);
+  assert.ok(trigger.height>=44&&trigger.width>=180,'QR CTA is visually hidden or too small');
   await screenshot(page,'desktop-e2e','phone-pairing');
+  await create.click();
+  const qr=root.getByRole('img',{name:'QR untuk menghubungkan kamera HP ke laptop'});
+  await qr.waitFor({state:'visible',timeout:13000});
+  const rect=await bounds(qr);
+  assert.ok(rect.width>=160&&rect.height>=160,'QR too small to scan');
+  const white=await root.locator('.soma-track-qr-frame').evaluate(el=>getComputedStyle(el).backgroundColor);
+  assert.equal(white,'rgb(255, 255, 255)');
+  assert.ok(await root.getByRole('button',{name:'Salin tautan'}).isVisible());
+  await screenshot(page,'desktop-e2e','phone-qr-visible');
   await root.getByRole('button',{name:'Tutup pairing kamera HP'}).click();
   assert.ok(await pairing.isHidden());
   await root.getByRole('button',{name:/Hubungkan HP|Lihat koneksi HP/}).click();
   assert.ok(await pairing.isVisible());
   assert.equal(await root.locator('#soma-track-phone-pairing').count(),1);
+  assert.equal(await root.getByRole('img',{name:'QR untuk menghubungkan kamera HP ke laptop'}).count(),1,
+   'Closing the panel must retain the active QR receiver');
  });
  await check('Compose keeps its three previews after changing source',async()=>{
   await page.getByRole('button',{name:'Compose workspace'}).click();
