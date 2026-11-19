@@ -21,7 +21,8 @@ import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRul
 import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
-import {FootprintDemo,LegDemo,seedMappingStamps,nextMappingStamp,type DemoStamp} from './MappingStudioDemo.tsx';
+import {FootprintDemo,LegDemo} from './MappingStudioDemo.tsx';
+import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 
@@ -94,8 +95,32 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
  useEffect(()=>{if(previewBlackout)setBlackout(true);},[previewBlackout]);
  useEffect(()=>{if(previewResumeRevision>0&&!previewBlackout){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision,previewBlackout]);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
- const [demoStamps,setDemoStamps]=useState<DemoStamp[]>(seedMappingStamps);
- const rehearsalStep=(foot:'left'|'right')=>{setDemoStamps(prev=>[...prev.slice(-17),nextMappingStamp(prev,foot)]);triggerTest('contact');};
+ const [demoFootprints,setDemoFootprints]=useState<FootprintState>(emptyFootprintState);
+ const [demoNowMs,setDemoNowMs]=useState(()=>performance.now());
+ const [demoFoot,setDemoFoot]=useState<FootSide>('left');
+ const rehearsalEvent=(kind:FootEventKind,foot:FootSide=demoFoot)=>{
+  const atMs=performance.now();
+  setDemoFootprints(previous=>{
+   const active=previous.active[('A:'+foot) as 'A:left'|'A:right'];
+   let next=previous;
+   // The operator's Step button advances a distinct contact: release the previous stamp.
+   if(kind==='contact'&&active){
+    next=applyFootprintEvent(next,makeDemoFootEvent(next,'release',foot,atMs-.01));
+   }
+   return applyFootprintEvent(next,makeDemoFootEvent(next,kind,foot,atMs));
+  });
+  setDemoFoot(foot);
+  triggerTest(kind==='slide'?'move':kind==='pivot'?'release':'contact');
+ };
+ useEffect(()=>{
+  if(cameraOn||blackout||previewBlackout||!previewLive)return;
+  const timer=window.setInterval(()=>{
+   const now=performance.now();
+   setDemoNowMs(now);
+   setDemoFootprints(previous=>pruneFootprints(previous,now,{holdMs:0,decayMs:(footprint?.life??8)*1000}));
+  },120);
+  return()=>window.clearInterval(timer);
+ },[cameraOn,blackout,previewBlackout,previewLive,footprint?.life]);
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
  const motionClocks=useRef(new Map<string,MotionRecipeCue>());
  const seenMotionEvents=useRef(new Set<string>());
@@ -515,7 +540,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>STAGE MONITOR <small>· Layer target / Workspace 01</small></strong><div role="group" aria-label="Pilih bidang preview">
      {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab("layer");setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo stamps={demoStamps} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalStep('left')}>Step L</button><button type="button" onClick={()=>rehearsalStep('right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>triggerTest('move')}>Test Slide</button><button onClick={()=>triggerTest('release')}>Test Pivot</button><button type="button" onClick={()=>{setDemoStamps(seedMappingStamps);setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
