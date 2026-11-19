@@ -101,7 +101,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
  const rehearsalEvent=(kind:FootEventKind,foot:FootSide=demoFoot)=>{
   const atMs=performance.now();
   setDemoFootprints(previous=>{
-   const active=previous.active['A:'+foot];
+   const active=previous.active[('A:'+foot) as 'A:left'|'A:right'];
    let next=previous;
    // The operator's Step button advances a distinct contact: release the previous stamp.
    if(kind==='contact'&&active){
