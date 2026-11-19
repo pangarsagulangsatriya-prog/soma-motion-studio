@@ -26,7 +26,8 @@ import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprint
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import {HydraEffectInspector} from './HydraEffectInspector.tsx';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
-import {composeExperimentRaster,composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
+import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
+import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -328,42 +329,29 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    return !!item&&(item instanceof HTMLImageElement?item.complete&&item.naturalWidth>0:item.readyState>=2);
   });
  };
- const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true,physical=false)=>{
+ const render=(ctx:CanvasRenderingContext2D,s:Surface,w:number,h:number,clear=true,physical=false,overlayOnly=false)=>{
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
-  const offlineRaster=composeExperimentRaster({
-   source:experimentSourceRef.current,view:'surface',selected:s,physical
-  });
-  if(offlineRaster!=='none'){
-   const source=offlineRaster==='floor'?(experimentFloorCanvas?.current??floorCanvas.current):bodyCanvas.current;
-   if(source&&source.width>0&&source.height>0)ctx.drawImage(source,0,0,w,h);
-   return;
-  }
-  const body=s!=='FLOOR';
+  const body=s!=='FLOOR',experiment=!!experimentSourceRef.current;
   const selectedMask=physical?maskCache.current:previewMaskCache.current;
   const currentMask=s==='BODY A'?selectedMask.A:s==='BODY B'?selectedMask.B:null;
-  if(!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
+  // Physical outputs NEVER inherit the special MP4/3D preview bypass.
+  if(experiment&&physical)return;
+  if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
-  // In Compose, a tracked lower-body mask is itself useful visual material.
-  // Never insert this unverified preview texture into the physical BODY raster.
-  if(body&&!physical&&!readyMedia(s)&&currentMask){
-   ctx.save();ctx.globalAlpha=.9;ctx.drawImage(currentMask,0,0,w,h);ctx.restore();return;
-  }
-  // Reuse the clean Footprints FLOOR raster when no imported media is
-  // selected. Presence/touch diagnostics are in another software-only canvas.
-  // Hardware projection remains under the existing five-point QA gate.
-  if(s==='FLOOR'&&!readyMedia('FLOOR')){
-   const source=floorCanvas.current;
-   const softwareSource=!physical&&previewFloorEnabled?visualFloorCanvas?.current??source:source;
-   if(softwareSource&&softwareSource.width>=16&&softwareSource.height>=16)ctx.drawImage(softwareSource,0,0,w,h);
-   return;
-  }
   const now=performance.now();
-  for(const layer of compositionRef.current[s]||[]){
-   if(!layer.visible)continue;
-   const el=mediaEls.current.get(layer.mediaId);
-   if(!el||(el instanceof HTMLImageElement?!(el.complete&&el.naturalWidth):el.readyState<2))continue;
+  for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
+   if(overlayOnly&&kind!=='media')continue;
+   const el=kind==='media'?mediaEls.current.get(layer.mediaId):
+    kind==='floor'?(experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
+    kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
+    kind==='hydra'?(!physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
+    kind==='body'?bodyCanvas.current:null;
+   if(!el)continue;
+   if(el instanceof HTMLImageElement&&(!el.complete||!el.naturalWidth))continue;
+   if(el instanceof HTMLVideoElement&&(el.readyState<2||!el.videoWidth))continue;
+   if(el instanceof HTMLCanvasElement&&(!el.width||!el.height))continue;
    const key=s+':'+layer.id;
    let off=surfaceBuffers.current.get(key);
    if(!off){off=document.createElement('canvas');surfaceBuffers.current.set(key,off);}
@@ -440,7 +428,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
      ctx.clearRect(0,0,previewOverlay.width,previewOverlay.height);
      if(readyMedia('FLOOR')&&!blackoutRef.current&&previewLiveRef.current)
-      render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false);
+      render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false,true);
     }
    }
    const archiveReady=archiveHydra&&!blackoutRef.current&&previewLiveRef.current&&readyMedia('FLOOR')&&!!archiveHydraCanvas;
@@ -630,7 +618,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
@@ -638,7 +626,19 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    setComposition(state=>{const order=[...state[selected]];const [moving]=order.splice(dragLayer,1);order.splice(i,0,moving);return {...state,[selected]:order};});
    setSelectedLayer(i);setSaveStatus('Urutan layer diubah');
   }setDragLayer(null);setDropLayer(null);}}
-  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('layer');}}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
+  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('layer');}}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button>
+  <div className="cp05-source-actions" role="group" aria-label="Tambahkan sumber komposisi">
+   {([{id:COMPOSE_STAGE_INPUT,label:'+ MP4 / INPUT'},
+     {id:COMPOSE_STAGE_FLOOR,label:'+ Footprints'},
+     {id:COMPOSE_STAGE_HYDRA,label:'+ Hydra'}] as const).map(source=>
+    <button key={source.id} type="button" onClick={()=>{
+     const added=makeLayer(source.id,COMPOSE_SOURCE_CHOICES.find(x=>x.id===source.id)?.label??'Source');
+     if(source.id===COMPOSE_STAGE_HYDRA){added.blend='screen';added.opacity=65;}
+     const at=source.id===COMPOSE_STAGE_INPUT?0:layers.length;
+     setComposition(c=>{const next=[...c[selected]];next.splice(at,0,added);return {...c,[selected]:next};});
+     setSelectedLayer(at);setInspectorTab('layer');
+    }}>{source.label}</button>)}
+  </div><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
    <aside className="s64-column cp02-inspector"
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
@@ -654,7 +654,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   </div>
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
-   <span>{media.find(m=>m.id===layer?.mediaId)?.name??'Belum ada media'}</span>
+   <span>{COMPOSE_SOURCE_CHOICES.find(o=>o.id===layer?.mediaId)?.label??media.find(m=>m.id===layer?.mediaId)?.name??(composerSourceKind(layer??{mediaId:'',name:''},selected)==='floor'?'Footprints / FLOOR':'Belum ada media')}</span>
   </div>}
  {inspectorTab==='scene'&&<label className="cp04-scene-select">Scene aktif
   <select value={sceneId} onChange={e=>{
@@ -668,7 +668,18 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
  </details>}
- {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
+ {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Layer source<select aria-label="Pilih sumber layer"
+  value={layer?.mediaId??''} onChange={e=>patch({mediaId:e.target.value,
+   name:COMPOSE_SOURCE_CHOICES.find(x=>x.id===e.target.value)?.label??
+    media.find(x=>x.id===e.target.value)?.name??layer?.name??'Layer'})}>
+   <option value="">No source / empty</option>
+   {COMPOSE_SOURCE_CHOICES.map(source=><option key={source.id} value={source.id}>{source.label}</option>)}
+   {media.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+  </select></label>
+  <label>Opacity · {layer?.opacity??100}%
+   <input type="range" min="0" max="100" value={layer?.opacity??100}
+    onChange={e=>patch({opacity:Number(e.target.value)})}/></label>
+  <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
  {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
   <strong>EVENT → MEDIA TREATMENT</strong>
   <label>Input event<select value={normalizeMotionRecipeRule(layer.motionRecipe).trigger}

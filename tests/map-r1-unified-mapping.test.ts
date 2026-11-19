@@ -66,7 +66,7 @@ test('MAP-R1: Stage Map uses existing BODY/FLOOR compositor and routing; no extr
  assert.match(composer,/if\(mapMode\)return <section className="map-r1-workspace"/);
  assert.match(composer,/<DualSurfaceRoutingPanel frameRef=\{stageRoute\} bodyCanvas=\{bodyOutput\}/);
  assert.match(composer,/floorCanvas=\{floorOutput\} legacyProjection=\{projection\} experimentLocked=\{experimentLocked\}/);
- assert.match(composer,/const source=floorCanvas\.current;/);
+ assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
  assert.ok(!source('../src/studio/v3/MapFourCornerEditor.tsx').includes('getUserMedia('));
  assert.equal(FLOOR_SCENE_IDS.length,13);
 });
