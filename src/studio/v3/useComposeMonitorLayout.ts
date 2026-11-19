@@ -25,11 +25,12 @@ export function useComposeMonitorLayout(){
  });
  const overview=useRef<HTMLDivElement>(null);
  const drag=useRef<'vertical'|'horizontal'|null>(null);
+ const [dragging,setDragging]=useState<'vertical'|'horizontal'|null>(null);
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(layout));}catch{/* Private storage can be disabled. */}},[layout]);
  const preset=(value:ComposeLayoutPreset)=>setLayout({...COMPOSE_LAYOUT_PRESETS[value]});
  const begin=(axis:'vertical'|'horizontal')=>(event:PointerEvent<HTMLButtonElement>)=>{
   if(event.button!==0)return;
-  drag.current=axis;
+  drag.current=axis;setDragging(axis);
   event.currentTarget.setPointerCapture(event.pointerId);
   event.preventDefault();
  };
@@ -53,7 +54,7 @@ export function useComposeMonitorLayout(){
   }
  };
  const stop=(event:PointerEvent<HTMLButtonElement>)=>{
-  drag.current=null;
+  drag.current=null;setDragging(null);
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
  };
  const keyboard=(axis:'vertical'|'horizontal')=>(event:KeyboardEvent<HTMLButtonElement>)=>{
@@ -69,6 +70,6 @@ export function useComposeMonitorLayout(){
   const key=axis==='vertical'?'floor':'input';
   setLayout(prev=>({...prev,[key]:clamp(prev[key]+delta,axis==='vertical'?30:25,75),preset:'custom'}));
  };
- return {layout,overview,preset,begin,move,stop,keyboard,
+ return {layout,dragging,overview,preset,begin,move,stop,keyboard,
   style:{'--cp01-floor':layout.floor+'%','--cp01-input':layout.input+'%'} as CSSProperties};
 }

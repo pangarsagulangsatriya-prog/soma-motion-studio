@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import type {ChangeEvent,PointerEvent,RefObject} from 'react';
+import type {ChangeEvent,PointerEvent,RefObject,KeyboardEvent} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
@@ -20,6 +20,7 @@ import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRul
  resolveMotionRecipeCue,motionRecipeEnvelope,type MotionRecipeRule,type MotionRecipeCue} from '../../footprints/scenes/motionRecipeModel.ts';
 import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
+import {useCompositionHistory} from './useCompositionHistory.ts';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
@@ -57,7 +58,14 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
- const [composition,setComposition]=useState<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
+ const history=useCompositionHistory<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
+ const composition=history.value,setComposition=history.set;
+ const [inspectorTab,setInspectorTab]=useState<'scene'|'layer'|'object'>('scene');
+ const [dragLayer,setDragLayer]=useState<number|null>(null);
+ const [dropLayer,setDropLayer]=useState<number|null>(null);
+ const [resetArmed,setResetArmed]=useState(false);
+ const [saveStatus,setSaveStatus]=useState('Tersimpan lokal');
+ const [loadingMedia,setLoadingMedia]=useState(0);
  const [media,setMedia]=useState<Media[]>([]);
  const [archiveHydra,setArchiveHydra]=useState(false);
  const archiveReadyRef=useRef(false);
@@ -118,9 +126,66 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  selectedRef.current=selected;compositionRef.current=composition;
  const layers=composition[selected],layer=layers[selectedLayer]||layers[0];
  const patch=(p:Partial<Layer>)=>setComposition(c=>({...c,[selected]:c[selected].map((l,i)=>i===selectedLayer?{...l,...p}:l)}));
- useEffect(()=>{try{localStorage.setItem(key,JSON.stringify({version:1,selected,composition}));}catch{}},[composition,selected]);
+ useEffect(()=>{
+  try{
+   localStorage.setItem(key,JSON.stringify({version:1,selected,composition}));
+   setSaveStatus('Tersimpan lokal');
+  }catch{setSaveStatus('Penyimpanan gagal');}
+ },[composition,selected]);
+ const performUndo=()=>{if(history.undo()){setResetArmed(false);setSaveStatus('Perubahan dibatalkan');}};
+ const performRedo=()=>{if(history.redo()){setResetArmed(false);setSaveStatus('Perubahan dikembalikan');}};
+ const resetComposition=()=>{
+  if(!resetArmed){setResetArmed(true);return;}
+  setComposition(initial());setSelected('FLOOR');setSelectedLayer(0);
+  setEditMask(false);setResetArmed(false);setInspectorTab('scene');
+  setHint('Komposisi direset. Gunakan Undo untuk mengembalikan layer sebelumnya.');
+ };
+ const onComposerKeys=(event:KeyboardEvent<HTMLDivElement>)=>{
+  const target=event.target as HTMLElement;
+  const editing=!!target.closest('input,textarea,select,[contenteditable="true"]');
+  const buttonFocused=!!target.closest('button,summary');
+  if(event.key==='Escape'&&resetArmed){setResetArmed(false);event.stopPropagation();return;}
+  if(editing||event.altKey)return;
+  if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='z'){
+   event.preventDefault();
+   if(event.shiftKey)performRedo();else performUndo();
+  }else if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='y'){
+   event.preventDefault();performRedo();
+  }else if((event.key==='Delete'||event.key==='Backspace')&&!buttonFocused&&layers.length>1){
+   event.preventDefault();
+   setComposition(state=>({...state,[selected]:state[selected].filter((_,i)=>i!==selectedLayer)}));
+   setSelectedLayer(i=>Math.max(0,i-1));
+  }
+ };
+ const onInspectorPointerDown=(event:PointerEvent<HTMLElement>)=>{
+  if((event.target as HTMLElement).closest('input[type="range"]'))history.beginGroup();
+ };
+ const onInspectorPointerEnd=()=>history.endGroup();
+ const onInspectorKeyDown=(event:KeyboardEvent<HTMLElement>)=>{
+  if((event.target as HTMLElement).closest('input[type="range"]')&&
+   ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))
+   history.beginGroup();
+ };
+ const onInspectorKeyUp=()=>history.endGroup();
  useEffect(()=>{return()=>{for(const item of mediaEls.current.values())if(item instanceof HTMLVideoElement)item.pause();};},[]);
- useEffect(()=>{for(const m of media){if(mediaEls.current.has(m.id))continue;if(m.kind==='image'){const img=new Image();img.src=m.url;mediaEls.current.set(m.id,img);}else{const video=document.createElement('video');video.src=m.url;video.loop=true;video.muted=true;video.playsInline=true;void video.play().catch(()=>{});mediaEls.current.set(m.id,video);}}},[media]);
+ useEffect(()=>{
+  for(const m of media){
+   if(mediaEls.current.has(m.id))continue;
+   setLoadingMedia(n=>n+1);
+   const done=()=>setLoadingMedia(n=>Math.max(0,n-1));
+   if(m.kind==='image'){
+    const img=new Image();
+    img.onload=done;img.onerror=()=>{done();setHint('Gagal membaca '+m.name);};
+    mediaEls.current.set(m.id,img);img.src=m.url;
+   }else{
+    const video=document.createElement('video');
+    video.onloadeddata=done;video.onerror=()=>{done();setHint('Gagal membaca '+m.name);};
+    video.src=m.url;video.loop=true;video.muted=true;video.playsInline=true;
+    mediaEls.current.set(m.id,video);
+    void video.play().catch(()=>{});
+   }
+  }
+ },[media]);
  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/'));setMedia(old=>[...old,...files.map(f=>({id:crypto.randomUUID(),name:f.name.slice(0,90),kind:f.type.startsWith('video/')?'video' as const:'image' as const,url:URL.createObjectURL(f),mime:f.type}))].slice(0,48));e.target.value='';};
  const maskImage=(data:Uint8Array,width:number,height:number,canvas:HTMLCanvasElement)=>{
   if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
@@ -400,8 +465,22 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
  </section>;
- return <div className={'s64-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask} role="region" aria-label="Compose Workspace — media dan layer">
-  <div className="s64-heading"><div><h2>Composition</h2><small>Scene · Layers · Media · Inspector</small></div></div>
+ return <div className={'s64-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
+  role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
+  <div className="s64-heading"><div><h2>Composition</h2><small>Scene · Layers · Media · Inspector</small></div>
+   <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">
+    <span className="cp04-save-status" role="status">{loadingMedia>0?'Memuat '+loadingMedia+' media…':saveStatus}</span>
+    <button type="button" disabled={!history.canUndo} onClick={performUndo}
+     title="Undo · Ctrl/Cmd+Z" aria-label="Batalkan perubahan">Undo</button>
+    <button type="button" disabled={!history.canRedo} onClick={performRedo}
+     title="Redo · Ctrl/Cmd+Shift+Z" aria-label="Ulangi perubahan">Redo</button>
+    <button type="button" className={resetArmed?'cp04-reset-confirm':'cp04-reset'}
+     onClick={resetComposition} aria-label={resetArmed?'Konfirmasi reset komposisi':'Reset komposisi'}
+     title={resetArmed?'Klik lagi untuk mereset komposisi':'Hanya reset layer dan parameter; tidak mengubah kamera atau proyektor'}>
+     {resetArmed?'Konfirmasi reset':'Reset'}
+    </button>
+    {resetArmed&&<button type="button" onClick={()=>setResetArmed(false)}>Batal</button>}
+   </div></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
    onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
    <span>Layer trigger · {eventInfo}</span>
@@ -411,27 +490,56 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
     <button type="button" onClick={()=>setBlackout(true)}>Padam preview</button>
    </details></div>
   <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'siap':'preview saja'}</div>
-  <div className="s64-layout">
+  <div className="s64-layout" data-inspector-tab={inspectorTab}>
    <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
      {COMPOSE_SCENES.map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
-       onClick={()=>{onSceneChange?.(scene.id);setSelected('FLOOR');setSelectedLayer(0);setPreviewArrangement('surface');}} title={"Pilih scene "+scene.name}>
+       onClick={()=>{onSceneChange?.(scene.id);setSelected('FLOOR');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');setResetArmed(false);}} title={"Pilih scene "+scene.name}>
        <img className="visr3-scene-thumb"
         src={'data:image/svg+xml,'+encodeURIComponent(catalogThumbnailSvg(catalogRecipe(scene.id)))}
         alt="" aria-hidden="true"/>
        <span className="visr3-scene-copy"><strong>{scene.name}</strong>
         <small>{catalogRecipe(scene.id).subtitle}</small></span>
       </button>)}
-     </div><details className="soma-ia-media"><summary>Media</summary><label className="visr4-archive-row">
+     </div><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><label className="visr4-archive-row">
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
  Process FLOOR archive media with Hydra (software preview)</label>
- <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>patch({mediaId:m.id,name:m.name})}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media lokal · pilih ulang setelah reload</small></details></aside>
+ <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');}}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media lokal · pilih ulang setelah reload</small></details></aside>
    <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>Layer target</strong><div role="group" aria-label="Pilih bidang preview">
-     {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setPreviewArrangement("surface");}}>{surface}</button>)}
+     {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab("layer");setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>setEditMask(!editMask)}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>triggerTest('move')}>Test Slide</button><button onClick={()=>triggerTest('release')}>Test Pivot</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" defaultOpen><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}><button onClick={()=>setSelectedLayer(i)}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
-   <aside className="s64-column cp02-inspector"><h3>Inspector</h3>
- <details className="soma-ia-hydra"><summary>Hydra · {hydraSettings?.enabled?hydraStatus??'ON':'OFF'}</summary>
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>triggerTest('move')}>Test Slide</button><button onClick={()=>triggerTest('release')}>Test Pivot</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+  draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
+  onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
+  onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
+  onDrop={event=>{event.preventDefault();if(dragLayer!==null&&dragLayer!==i){
+   setComposition(state=>{const order=[...state[selected]];const [moving]=order.splice(dragLayer,1);order.splice(i,0,moving);return {...state,[selected]:order};});
+   setSelectedLayer(i);setSaveStatus('Urutan layer diubah');
+  }setDragLayer(null);setDropLayer(null);}}
+  onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('layer');}}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
+   <aside className="s64-column cp02-inspector"
+  onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
+  onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
+  onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
+  <h3>Inspector · {inspectorTab==='scene'?'Scene':inspectorTab==='layer'?'Layer':'Objek'}</h3>
+  <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
+   {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
+    aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
+    {tab==='scene'?'Scene':tab==='layer'?'Layer':'Objek'}</button>)}
+  </div>
+  {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
+   <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
+   <span>{media.find(m=>m.id===layer?.mediaId)?.name??'Belum ada media'}</span>
+  </div>}
+ {inspectorTab==='scene'&&<label className="cp04-scene-select">Scene aktif
+  <select value={sceneId} onChange={e=>{
+   onSceneChange?.(e.target.value as 'footprints'|FloorSceneId);
+   setSelected('FLOOR');setSelectedLayer(0);
+  }} aria-label="Scene aktif pada FLOOR">
+   {COMPOSE_SCENES.map(scene=><option value={scene.id} key={scene.id}>{scene.name}</option>)}
+  </select>
+ </label>}
+ {inspectorTab==='scene'&&<details className="soma-ia-hydra" open><summary>Hydra · {hydraSettings?.enabled?hydraStatus??'ON':'OFF'}</summary>
   <label><input type="checkbox" checked={hydraSettings?.enabled??false}
    onChange={e=>onHydraSettingsChange?.({enabled:e.target.checked})}/> Aktif</label>
   <label>Style<select value={hydraSettings?.style??'off'}
@@ -441,8 +549,8 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   <label>Feedback · {Math.round((hydraSettings?.feedback??0)*100)}%
    <input type="range" min="0" max=".65" step=".05" value={hydraSettings?.feedback??0}
     onChange={e=>onHydraSettingsChange?.({feedback:Number(e.target.value)})}/></label>
- </details>
- <details className="uxr3-advanced"><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
+ </details>}
+ {inspectorTab==='object'&&<details className="uxr3-advanced" open><summary>Advanced · transform &amp; mask</summary><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
  {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
   <strong>EVENT → MEDIA TREATMENT</strong>
   <label>Input event<select value={normalizeMotionRecipeRule(layer.motionRecipe).trigger}
@@ -467,8 +575,9 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),verifiedOnly:e.target.checked}})}/>
    Verified only</label>
   <small>Kontak kaki wajib terverifikasi. Slide dan Pivot belum didukung klasifikasi terverifikasi. Mode eksperimen hanya muncul di preview software.</small>
- </section>}
- <details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details></aside>
+ </section>}</>}
+ {inspectorTab==='scene'&&<details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details>}
+ {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
   </div>
   <div className="s64-runtime" aria-hidden="true">
    <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="BODY compositor raster"/>

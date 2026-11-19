@@ -37,7 +37,11 @@ test('Compose keeps three columns: Scene Library / Stage Preview / Inspector',()
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
  assert.match(composer,/<h3>Scene Library<\/h3>/);
- assert.match(composer,/STAGE PREVIEW|Stage Preview/);
+ assert.match(composer,/Layer target/);
+ assert.match(composer,/cp02-editor/);
+ assert.match(composer,/cp02-inspector/);
+ const dock=read('../src/studio/v3/cp02-cp03-composition.css');
+ assert.ok(dock.includes('grid-template-columns:minmax(190px,.95fr)'));
  assert.match(composer,/INSPECTOR|Inspector/);
  assert.match(css,/data-workspace=compose\] \.s64-embedded \.s64-layout\{grid-template-columns:minmax\(176px,220px\) minmax\(0,1fr\) minmax\(186px,238px\)/);
 });

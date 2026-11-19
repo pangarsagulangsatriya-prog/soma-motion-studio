@@ -91,6 +91,7 @@ import './trk08-mp4-compact.css';
 import './trk09-ux-polish.css';
 import './cp01-compose-shell.css';
 import './cp02-cp03-composition.css';
+import './cp04-compose-microinteraction.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -1160,7 +1161,7 @@ export function FootprintsStageWorkspace({
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
      onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/>}
-    <div className="fp-stage-overview" ref={composeLayout.overview} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
+    <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
       <div className="soma-track-source-heading"><strong>Sumber</strong></div>
