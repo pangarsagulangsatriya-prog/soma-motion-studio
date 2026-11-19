@@ -79,6 +79,7 @@ import './ia-r1-four-workspaces.css';
 import './track-compact.css';
 import './trk02-layout.css';
 import './trk03-source-flow.css';
+import './trk04-feedback.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -1295,6 +1296,8 @@ export function FootprintsStageWorkspace({
          <span className="soma-track-feedback-indicator" aria-hidden="true"/>
          <strong>{feedback.label}</strong>
          {feedback.hint&&<span className="soma-track-feedback-hint">{feedback.hint}</span>}
+         {experimentalKind&&<span className="soma-track-feedback-safety"
+          title="MP4 dan simulasi hanya menggerakkan pratinjau software">Output terkunci</span>}
          {feedback.actors.length>0&&<div className="soma-track-actor-list"
           role="group" aria-label="Status aktor dan landmark kaki">
           {feedback.actors.map(actor=><span key={actor.id}
