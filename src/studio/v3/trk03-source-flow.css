@@ -1,0 +1,134 @@
+/* TRK-03 — Source actions share the same rail; preview always stays visible.
+   Does not change Compose/Map/Perform. No second media or WebRTC instance. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel{
+ align-self:start;
+ gap:12px;
+ overflow:visible;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing[hidden]{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing{
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+ max-width:100%;
+ padding:12px;
+ border:1px solid #425d47;
+ border-radius:8px;
+ background:#15231a;
+ box-sizing:border-box;
+ gap:10px;
+ overflow-wrap:anywhere;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-heading{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ min-height:32px;
+ gap:10px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-heading strong{
+ font-size:12px;
+ color:#dcebd7;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-heading button{
+ display:grid;place-items:center;
+ flex:0 0 32px;width:32px;height:32px;
+ padding:0;
+ border:1px solid #415b45;border-radius:6px;
+ background:#253b2b;color:#e1efda;
+ cursor:pointer;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-heading button:hover{
+ background:#38513b;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing :is(.soma-setup-phone-choices,.soma-setup-phone,.soma-setup-phone-auto,.soma-setup-pair-tabs){
+ min-width:0;max-width:100%;box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing :is(button,input,textarea,select){
+ max-width:100%;box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing :is(img,svg,canvas){
+ max-width:100%;height:auto;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing a{
+ overflow-wrap:anywhere;
+}
+/* The experiment player/puppet is now the sole source-specific control dock
+   nested inside the left panel, not a second stage-wide toolbar. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel>.fp-experiment-dock{
+ display:flex!important;
+ flex-direction:column;
+ gap:10px;
+ grid-column:auto!important;grid-row:auto!important;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+ margin:0;
+ padding:0!important;
+ border:none!important;
+ border-radius:0;
+ box-shadow:none!important;
+ background:transparent!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel .fp-experiment-controls{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ gap:8px;
+ width:100%;
+ min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel .fp-experiment-controls :is(button,.fp-experiment-upload){
+ width:100%;
+ max-width:100%;
+ min-height:40px;
+ box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel .fp-experiment-controls input[type=range]{
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ box-sizing:border-box;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel .fp-experiment-controls output{
+ align-self:flex-end;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel .fp-experiment-meta{
+ align-self:flex-start;max-width:100%;
+ overflow-wrap:anywhere;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-panel .fp-tracking-details-panel{
+ max-width:100%;min-width:0;overflow-wrap:anywhere;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-source-utilities{
+ margin-top:0;
+}
+/* Source changes no longer summon a popover over the camera.
+   The inspector is reserved for explicitly opened Advanced settings. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-side-action[aria-expanded=true]{
+ border-color:#b7d99c;
+ background:#36563d;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-side-action:focus-visible,
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-heading button:focus-visible{
+ outline:2px solid #e5f4b9;
+ outline-offset:2px;
+}
+@media(min-width:851px) and (max-height:800px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing{
+  max-height:42dvh;overflow-y:auto;overscroll-behavior:contain;
+ }
+}
+@media(max-width:850px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-pairing{
+  max-height:min(65dvh,600px);overflow-y:auto;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-phone-heading button,
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track] .soma-track-side-action{
+  transition:none!important;
+ }
+}
