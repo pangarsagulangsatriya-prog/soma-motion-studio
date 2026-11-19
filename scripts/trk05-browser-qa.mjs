@@ -261,14 +261,23 @@ const run=async()=>{
  await check('Webcam fake-device activation',async()=>{
   await choose(page,'Webcam laptop');
   await page.waitForTimeout(650);
+  // One status owner in Track: no second recovery card over the monitor.
+  assert.equal(await stage(page).locator('.fp-inline-assistant').count(),0);
+  assert.equal(await stage(page).locator('.fp-source-correction').count(),0);
   const button=stage(page).getByRole('button',{name:'Aktifkan webcam'});
-  if(await button.isVisible())await button.click();
+  if(await button.isVisible()){
+   assert.equal(await stage(page).locator('.soma-track-source-status').isVisible(),false);
+   assert.equal(await button.count(),1);
+   await button.click();
+  }
   await page.waitForFunction(()=>{
    const root=document.querySelector('[data-workspace="track"]');
    return root?.getAttribute('data-stage-source')==='webcam'&&
     root.querySelector('.soma-track-source-status')?.getAttribute('data-phase')==='ready';
   },undefined,{timeout:15000});
   assert.equal(await stage(page).locator('canvas[aria-label*="kamera SOMA"]').count(),1);
+  assert.equal(await stage(page).locator('.fp-inline-assistant').count(),0);
+  assert.equal(await stage(page).locator('.fp-source-correction').count(),0);
   await screenshot(page,'desktop-e2e','webcam');
  });
  await check('Webcam → MP4 isolation and video upload/seek',async()=>{
