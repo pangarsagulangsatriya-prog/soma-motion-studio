@@ -21,6 +21,7 @@ import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRul
 import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
+import {FootprintDemo,LegDemo,seedMappingStamps,nextMappingStamp,type DemoStamp} from './MappingStudioDemo.tsx';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
@@ -89,6 +90,8 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
  useEffect(()=>{if(previewBlackout)setBlackout(true);},[previewBlackout]);
  useEffect(()=>{if(previewResumeRevision>0&&!previewBlackout){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision,previewBlackout]);
  const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
+ const [demoStamps,setDemoStamps]=useState<DemoStamp[]>(seedMappingStamps);
+ const rehearsalStep=(foot:'left'|'right')=>{setDemoStamps(prev=>[...prev.slice(-17),nextMappingStamp(prev,foot)]);triggerTest('contact');};
  const effectClock=useRef(new Map<string,{started:number;kind:string}>());
  const motionClocks=useRef(new Map<string,MotionRecipeCue>());
  const seenMotionEvents=useRef(new Set<string>());
@@ -465,9 +468,9 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
  </section>;
- return <div className={'s64-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
+ return <div className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
-  <div className="s64-heading"><div><h2>Composition</h2><small>Scene · Layers · Media · Inspector</small></div>
+  <div className="s64-heading"><div><small>COMPOSE / MAPPING STUDIO</small><h2>{selected==='FLOOR'?'Footprint Studio':'Leg Surface Studio'}</h2><small>{selected==='FLOOR'?'Shape · timing · material · stage placement':'Dynamic lower-body mapping · A/B'}</small></div>
    <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">
     <span className="cp04-save-status" role="status">{loadingMedia>0?'Memuat '+loadingMedia+' media…':saveStatus}</span>
     <button type="button" disabled={!history.canUndo} onClick={performUndo}
@@ -491,7 +494,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
    </details></div>
   <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'siap':'preview saja'}</div>
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
-   <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
+   <aside className="s64-column cp02-library"><h3>BROWSER <span>SCENES / MEDIA / LAYERS</span></h3><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
      {COMPOSE_SCENES.map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
        onClick={()=>{onSceneChange?.(scene.id);setSelected('FLOOR');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');setResetArmed(false);}} title={"Pilih scene "+scene.name}>
        <img className="visr3-scene-thumb"
@@ -505,10 +508,10 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
  Process FLOOR archive media with Hydra (software preview)</label>
  <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><button key={m.id} onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');}}>{m.kind==='image'?<img src={m.url} alt=""/>:<span>VIDEO</span>}<span>{m.name}</span></button>)}</div><small>Media lokal · pilih ulang setelah reload</small></details></aside>
-   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>Layer target</strong><div role="group" aria-label="Pilih bidang preview">
+   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>STAGE MONITOR <small>· Workspace 01</small></strong><div role="group" aria-label="Pilih bidang preview">
      {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab("layer");setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>triggerTest('move')}>Test Slide</button><button onClick={()=>triggerTest('release')}>Test Pivot</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo stamps={demoStamps} sceneName={sceneId}/ >}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalStep('left')}>Step L</button><button type="button" onClick={()=>rehearsalStep('right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>triggerTest('move')}>Test Slide</button><button onClick={()=>triggerTest('release')}>Test Pivot</button><button type="button" onClick={()=>{setDemoStamps(seedMappingStamps);setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
@@ -521,7 +524,7 @@ export function SurfaceComposer({frameRef,videoRef,router,floorTracker,projectio
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
-  <h3>Inspector · {inspectorTab==='scene'?'Scene':inspectorTab==='layer'?'Layer':'Objek'}</h3>
+  <h3>INSPECTOR <small>{selected}</small></h3>
   <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
    {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
