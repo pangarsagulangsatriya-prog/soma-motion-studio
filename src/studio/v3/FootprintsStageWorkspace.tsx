@@ -77,6 +77,7 @@ import './vis-r1-hydra.css';
 import './ia-r1-four-workspaces.css';
 import './track-compact.css';
 import './trk02-layout.css';
+import './trk03-source-flow.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
