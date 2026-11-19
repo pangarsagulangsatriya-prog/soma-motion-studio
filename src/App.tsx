@@ -45,6 +45,8 @@ import {StudioControls,type ControlTab} from './StudioControls';
 import {MappingEditor} from './MappingEditor';
 import {useArchive} from './archive/useArchive';
 import {ArchiveWorkspace} from './archive/ArchiveWorkspace';
+// Final Compose stylesheet: load after nested legacy CP01–CP04 styles.
+import './studio/v3/mapping-studio-v4.css';
 
 type Preset={id:string;name:string;settings:Settings};
 const KEY='soma-presets-v1';
