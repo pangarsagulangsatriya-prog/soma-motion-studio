@@ -189,11 +189,13 @@
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
  .soma-track-qr-actions{
  display:flex!important;
- align-items:center;
- justify-content:space-between;
- gap:6px;
+ flex-direction:row!important;
+ flex-wrap:nowrap!important;
+ align-items:center!important;
+ justify-content:space-between!important;
+ gap:5px!important;
  width:100%;
- min-width:0;
+ min-width:0!important;
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
  .soma-track-qr-actions>.soma-pair-expiry{
