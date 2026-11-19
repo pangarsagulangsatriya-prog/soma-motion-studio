@@ -1120,7 +1120,7 @@ export function FootprintsStageWorkspace({
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
      onClose={()=>{archiveHydraReady.current=false;onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/>}
-    <div className="fp-stage-overview" hidden={view!=='stage'||composerOpen}>
+    <div className="fp-stage-overview" hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      {showSetupHint&&<InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
      {experimentalKind&&<FootprintsExperimentalSource
       key={experimentalKind} kind={experimentalKind}
@@ -1198,7 +1198,7 @@ export function FootprintsStageWorkspace({
      {/* BODY/FLOOR canvases remain mounted for shared scene engines.
           Track displays the source video with skeleton; Compose owns art preview. */}
      <div className="fp-stage-side-previews" data-preview-mode={previewMode}
-      aria-label="Buffer BODY dan FLOOR untuk Compose dan Map" aria-hidden={!composerOpen&&!mappingOpen}>
+      aria-label="Preview BODY dan FLOOR untuk Compose" aria-hidden={!composerOpen||mappingOpen}>
       <div className="fp-stage-preview-toolbar">
        <div className="fp-stage-preview-heading"><span><MonitorPlay size={15} aria-hidden="true"/> PREVIEW</span>
         <small>{experimentalKind?experimentFrameLabel(experimentalKind):previewLabel(previewMode)+' · Preview software'}</small></div>
