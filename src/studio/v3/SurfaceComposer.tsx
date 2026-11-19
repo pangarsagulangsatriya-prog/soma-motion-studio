@@ -345,7 +345,7 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    if(overlayOnly&&kind!=='media')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
     kind==='floor'?(experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
-    kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null):
+    kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
     kind==='hydra'?(!physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
     kind==='body'?bodyCanvas.current:null;
    if(!el)continue;
