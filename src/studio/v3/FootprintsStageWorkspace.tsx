@@ -1151,8 +1151,10 @@ export function FootprintsStageWorkspace({
       onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
 
      <div className="fp-stage-video">
-      <div className="fp-stage-surface-head"><span>{experimentalKind?
-       experimentalKind==='video'?'INPUT · VIDEO + POSE A/B':'INPUT · PUPPET 3D + POSE A/B':'INPUT · KAMERA + SKELETON'}</span>
+      <div className="fp-stage-surface-head"><span>{composerOpen?
+        (experimentalKind==='video'?'INPUT · VIDEO + POSE A/B':experimentalKind==='simulator'?
+         'INPUT · PUPPET 3D + POSE A/B':'INPUT · KAMERA + SKELETON'):
+        (experimentalKind==='video'?'Video MP4':experimentalKind==='simulator'?'Simulasi 3D':'Kamera')}</span>
        {experimentalKind!=='simulator'&&<button type="button" className="fp-full-skeleton-switch"
         aria-pressed={skeletonVisible}
         aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
@@ -1168,13 +1170,13 @@ export function FootprintsStageWorkspace({
         {focusPreview==='input'?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
        </button>}</div>
       <div className="fp-stage-video-content"
-       role={!calibrationOpen?'button':undefined}
-       tabIndex={!calibrationOpen?0:undefined}
-       title={!calibrationOpen?'Klik untuk memperbesar INPUT':undefined}
-       aria-label={!calibrationOpen?'Fokus preview INPUT':undefined}
-       onClick={event=>{if(!calibrationOpen)selectPreviewFocus('input',event.currentTarget);}}
+       role={inputFocusEnabled?'button':undefined}
+       tabIndex={inputFocusEnabled?0:undefined}
+       title={inputFocusEnabled?'Perbesar preview':undefined}
+       aria-label={inputFocusEnabled?'Perbesar preview INPUT':undefined}
+       onClick={event=>{if(inputFocusEnabled)selectPreviewFocus('input',event.currentTarget);}}
        onKeyDown={event=>{
-        if(!calibrationOpen&&(event.key==='Enter'||event.key===' ')){
+        if(inputFocusEnabled&&(event.key==='Enter'||event.key===' ')){
          event.preventDefault();selectPreviewFocus('input',event.currentTarget);
         }
        }}>
@@ -1185,16 +1187,13 @@ export function FootprintsStageWorkspace({
          calibrationOpen&&calibrationOverlay?'Klik empat sudut kalibrasi lantai pada kamera besar':'Pratinjau video kamera SOMA Body'}/>
        {!composerOpen&&!calibrationOpen&&!cameraOn&&!experimentalKind&&
         <div className="soma-track-input-placeholder" role="status">
-         <strong>{sourceStatus.selection==='phone'?'Menunggu gambar kamera HP':
-          sourceStatus.selection==='webcam'?'Webcam belum aktif':'Input kamera'}</strong>
-         <span>{sourceStatus.selection==='phone'?'Hubungkan HP dari panel di sebelah kiri.':
-          sourceStatus.selection==='webcam'?'Periksa akses kamera dan izin browser.':
-          'Pilih sumber di panel sebelah kiri untuk memulai.'}</span>
+         <strong>{sourceStatus.selection==='phone'?'Menunggu HP':
+          sourceStatus.selection==='webcam'?'Kamera belum aktif':'Pilih sumber'}</strong>
+         {sourceStatus.selection==='webcam'&&<span>Izinkan akses kamera</span>}
         </div>}
        {!composerOpen&&experimentalKind==='video'&&!experimentClip&&
         <div className="soma-track-input-placeholder" role="status">
-         <strong>Belum ada video</strong>
-         <span>Pilih MP4 atau WebM dari panel kiri.</span>
+         <strong>Pilih video MP4</strong>
         </div>}
 
        {calibrationOpen&&calibrationOverlay&&<div className="fp-stage-calibration-overlay" aria-hidden="true">
