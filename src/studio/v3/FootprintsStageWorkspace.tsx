@@ -1593,7 +1593,13 @@ export function FootprintsStageWorkspace({
  experimentalKind?'0 kontak':floorStatus.contacts+' kontak'}</span>
         <span>{selectedExperimentFrame?selectedExperimentFrame.kind==='simulator'?
  selectedExperimentFrame.session.events.length:selectedExperimentFrame.snapshot?.events.length??0:
- experimentalKind?0:floorStatus.events} event</span></div>
+ experimentalKind?0:floorStatus.events} event</span>
+        {composerOpen&&experimentalKind==='video'&&
+         (selectedExperimentFrame?.kind==='video'?selectedExperimentFrame.snapshot?.events.filter(e=>e.kind==='contact').length??0:0)>0&&
+         floorInteractionStats.contacts===0&&<span className="cp03-pending-contact" role="status"
+          title="Kontak MP4 mentah memerlukan aktor stabil, confidence cukup, dan waktu frame sesuai sebelum dipakai scene.">
+          Menunggu kontak valid
+         </span>}</div>
       </div>
      </div>
      {composerOpen&&!mappingOpen&&<>
