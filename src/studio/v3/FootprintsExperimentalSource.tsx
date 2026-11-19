@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useRef,useState,type ChangeEvent} from 'react';
+import {useCallback,useEffect,useRef,useState,type ChangeEvent,type CSSProperties} from 'react';
 import {FlaskConical,Footprints,Pause,Play,RotateCcw,UploadCloud} from 'lucide-react';
 import {VideoPoseGaitEngine,type ReplayAnalysisSnapshot}
  from '../../stage/VideoPoseGaitEngine.ts';
@@ -199,6 +199,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    <input type="range" min={0} max={duration||1} step={.02}
     value={scrubPosition??position} aria-label="Geser waktu video"
     aria-valuetext={timecode(scrubPosition??position)+' dari '+timecode(duration)}
+    style={{'--trk-progress':(duration>0?
+     Math.min(100,Math.max(0,(scrubPosition??position)/duration*100)):0)+'%'} as CSSProperties}
     disabled={!videoReady} onChange={e=>setScrubPosition(+e.target.value)}
     onPointerUp={commitScrub} onPointerCancel={commitScrub}
     onKeyUp={commitScrub} onBlur={commitScrub}/>
