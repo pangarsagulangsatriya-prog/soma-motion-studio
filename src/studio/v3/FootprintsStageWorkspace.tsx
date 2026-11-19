@@ -207,8 +207,10 @@ export function FootprintsStageWorkspace({
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
  useEffect(()=>{
-  if(sourceStatus.selection==='phone'&&!phoneActive)setPhonePanelOpen(true);
-  else if(sourceStatus.selection!=='phone')setPhonePanelOpen(false);
+  // Connected HP switches directly to the live preview. Receiver stays mounted
+  // while the sidebar pairing section is hidden, so the WebRTC track survives.
+  if(sourceStatus.selection==='phone')setPhonePanelOpen(!phoneActive);
+  else setPhonePanelOpen(false);
  },[sourceStatus.selection,phoneActive]);
  const experimentalKind=activeExperimentKind(sourceStatus.selection);
  const [experimentClip,setExperimentClip]=useState<File|null>(null);
