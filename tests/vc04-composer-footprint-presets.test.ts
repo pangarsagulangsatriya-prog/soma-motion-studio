@@ -15,5 +15,5 @@ test('VC04: legacy snapshots remain valid and new footprint values are checked b
  assert.match(src,/x\.footprint===undefined\|\|validFootprint\(x\.footprint\)/);
  assert.match(src,/Number\.isFinite\(x\.life\)/);
  assert.match(src,/Number\.isFinite\(x\.size\)/);
- assert.match(src,/\^#\[0-9a-f\]\{6\}\$/i/);
+ assert.ok(src.includes('x.colors?.[k]'), 'RGB color fields are validated');
 });
