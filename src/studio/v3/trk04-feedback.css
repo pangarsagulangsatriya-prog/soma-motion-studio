@@ -179,3 +179,15 @@
   animation:none!important;
  }
 }
+
+/* B matches the cyan ID color used by the confirmed MediaPipe skeleton. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-actor-chip[data-actor=B][data-state=visible]{
+ border-color:#639fa4;
+ background:#20393a;
+ color:#b7e5e7;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-actor-chip[data-actor=B][data-state=visible] b{
+ color:#bcebf0;
+}
