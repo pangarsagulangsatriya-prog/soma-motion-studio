@@ -1,11 +1,11 @@
 import {ArrowLeft,ArrowRight,Circle,MonitorOff,Pause,Play,Settings2} from 'lucide-react';
-import {OPERATOR_CUES,operatorCueAt} from './OperatorStageModel.ts';
+import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_SCENES,PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import './ops-r1-perform.css';
 
 type Props={
- index:number;onPrevious:()=>void;onNext:()=>void;onSelect:(index:number)=>void;
+ index:number;onPrevious:()=>void;onNext:()=>void;
  onExit:()=>void;onBlackout:()=>void;
  held:boolean;onHold:()=>void;onResume:()=>void;
  videoRecording:boolean;canRecordVideo:boolean;onRecordVideo:()=>void;
@@ -16,7 +16,7 @@ type Props={
  scene:PerformSceneId;previewStatus:string;hardwareStatus:string;sourceLabel:string;unreadyReason:string;
  onRecovery:()=>void;canResume:boolean;
 };
-export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
+export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  onBlackout,held,onHold,onResume,videoRecording,canRecordVideo,onRecordVideo,
  units,contacts,performerCount,cueGrid,activeSlot,onApplySlot,onUpdateSlot,
  onSaveCue,onResetCues,cueMessage,scene,previewStatus,hardwareStatus,sourceLabel,
@@ -28,7 +28,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
   <div className="fp-operator-heading">
    <div>
     <span>FOOTPRINTS / PERFORM · LOCAL MONITOR</span>
-    <h2>{cue.name} <small>{cue.description}</small></h2>
+    <h2>Perform <small>Monitor: {cue.name} · {cue.description}</small></h2>
     <p>Perubahan cue hanya mengatur tampilan monitor. Output proyektor tetap mengikuti persetujuan QA terpisah.</p>
    </div>
    <button type="button" onClick={onExit}><Settings2 size={16}/> Kembali Build</button>
@@ -43,10 +43,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
    <span>{unreadyReason}</span><button type="button" onClick={onRecovery}>Periksa sumber / Map QA</button>
   </div>}
   <section className="ops-r1-cue-grid" aria-label="Cue presets · delapan slot">
-   <header><strong>PERFORM CUE GRID</strong><span>GO menerapkan scene dan tata letak preview; proyektor tetap mengikuti QA Map.</span></header>
+   <header><strong>PERFORM CUE GRID</strong><span>Pilih cue untuk mengganti scene dan layout monitor. QA output di Map tetap berlaku terpisah.</span></header>
    <div className="ops-r1-cue-slots">
     {cueGrid.slots.map((slot,i)=><button type="button" key={slot.id}
-     className="ops-r1-slot" aria-pressed={activeSlot===i}
+     className="ops-r1-slot" aria-pressed={activeSlot===i} aria-label={'Jalankan '+slot.label+', '+slot.scene+', layout '+slot.view}
      onClick={()=>onApplySlot(i)}
      title={'GO '+slot.label+' · '+slot.scene+' · '+slot.view}>
      <small>{String(i+1).padStart(2,'0')}</small><b>{slot.label}</b>
@@ -78,11 +78,6 @@ export function OperatorStageConsole({index,onPrevious,onNext,onSelect,onExit,
    {warning.length>0?<strong>{warning[0]}{warning.length>1?' · +'+(warning.length-1)+' peringatan':''}</strong>
     :<strong>Tracking utama siap menurut telemetry software</strong>}
   </div>
-  <nav className="fp-operator-cues" aria-label="Pilihan layout monitor operator">
-   {OPERATOR_CUES.map((q,i)=><button key={q.id} type="button"
-    aria-pressed={i===index} title={q.description} onClick={()=>onSelect(i)}>
-     {q.name}</button>)}
-  </nav>
   <div className="fp-operator-dock" role="toolbar" aria-label="Operator performance controls">
    <div className="fp-operator-dock-group">
     <button type="button" onClick={onPrevious} disabled={activeSlot===0}>
