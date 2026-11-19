@@ -75,6 +75,7 @@ import './ux-r1-stage.css';
 import './floor-interaction.css';
 import './vis-r1-hydra.css';
 import './ia-r1-four-workspaces.css';
+import './track-compact.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
