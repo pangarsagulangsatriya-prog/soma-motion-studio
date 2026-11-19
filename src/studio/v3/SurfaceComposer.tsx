@@ -26,6 +26,7 @@ import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprint
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import {HydraEffectInspector} from './HydraEffectInspector.tsx';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
+import {composeExperimentRaster,composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
@@ -64,6 +65,10 @@ type Props={
  footprint?:FootprintConfig;
  updateFootprint?:(patch:Partial<FootprintConfig>)=>void;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
+ experimentSource?:ComposeExperimentSource;
+ experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentFloorCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentReady?:boolean;
  visualFloorCanvas?:RefObject<HTMLCanvasElement|null>;previewFloorEnabled?:boolean;
  /** Software-only composited FLOOR overlay in the shared three-monitor shell. */
  composePreviewCanvas?:RefObject<HTMLCanvasElement|null>;
@@ -81,9 +86,11 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+ const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const [selected,setSelected]=useState<Surface>('FLOOR');
- const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'>('surface');
+ const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
+ useEffect(()=>{if(experimentSource)setPreviewArrangement('input');else setPreviewArrangement('surface');},[experimentSource]);
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
  const history=useCompositionHistory<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
@@ -325,6 +332,14 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
+  const offlineRaster=composeExperimentRaster({
+   source:experimentSourceRef.current,view:'surface',selected:s,physical
+  });
+  if(offlineRaster!=='none'){
+   const source=offlineRaster==='floor'?(experimentFloorCanvas?.current??floorCanvas.current):bodyCanvas.current;
+   if(source&&source.width>0&&source.height>0)ctx.drawImage(source,0,0,w,h);
+   return;
+  }
   const body=s!=='FLOOR';
   const selectedMask=physical?maskCache.current:previewMaskCache.current;
   const currentMask=s==='BODY A'?selectedMask.A:s==='BODY B'?selectedMask.B:null;
@@ -438,7 +453,12 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    if(archiveReadyRef.current!==archiveReady){archiveReadyRef.current=archiveReady;onArchiveHydraChangeRef.current?.(archiveReady);}
    const preview=canvas.current;
    if(preview){const ctx=preview.getContext('2d');if(ctx){
-    if(previewArrangementRef.current==='split'){
+    if(previewArrangementRef.current==='input'&&experimentSource){
+     ctx.setTransform(1,0,0,1,0,0);
+     ctx.fillStyle='#000';ctx.fillRect(0,0,preview.width,preview.height);
+     const input=experimentInputCanvas?.current;
+     if(input&&input.width&&input.height)ctx.drawImage(input,0,0,preview.width,preview.height);
+    }else if(previewArrangementRef.current==='split'){
      if(!splitScratch.current)splitScratch.current={body:document.createElement('canvas'),floor:document.createElement('canvas')};
      const pair=splitScratch.current;
      for(const c of [pair.body,pair.floor]){if(c.width!==640)c.width=640;if(c.height!==540)c.height=540;}
@@ -586,6 +606,10 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
     <button type="button" onClick={()=>setBlackout(true)}>Padam preview</button>
    </details></div>
   <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'siap':'preview saja'}</div>
+  {experimentSource&&<p className="msv4-experiment-source-status" role="status">
+   {composeExperimentStatus(experimentSource,experimentReady,selected)}
+   {experimentReady?' · Pilih FLOOR atau BODY untuk hasil olahan.':' · Frame sumber belum siap.'}
+  </p>}
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
    <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="msv4-browser-meta">BROWSER / SCENES · MEDIA · LAYERS</div><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
      {COMPOSE_SCENES.map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
@@ -604,7 +628,9 @@ export function SurfaceComposer({footprint,updateFootprint,frameRef,videoRef,rou
    <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>STAGE MONITOR <small>· Layer target / Workspace 01</small></strong><div role="group" aria-label="Pilih bidang preview">
      {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab("layer");setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{selected} · {cameraOn?'Camera connected':'Camera offline'} · {selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+     {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
+       onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length}</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
