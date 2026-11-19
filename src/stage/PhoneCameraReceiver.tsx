@@ -123,7 +123,8 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
     Manual</button>
   </div>
   {mode==='qr'?
-   <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}/>:
+   <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
+    onUseManual={()=>setMode('manual')}/>:
    <ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>}
  </div>;
 }
