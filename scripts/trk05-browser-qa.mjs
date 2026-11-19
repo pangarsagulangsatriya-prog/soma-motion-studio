@@ -109,13 +109,17 @@ const layoutCheck=async(page,v)=>{
   const status=el.querySelector('.soma-track-source-status');
   return {direction:css.flexDirection,usable,
    pickerWidth:picker?.getBoundingClientRect().width??0,
+   statusVisible:!!status&&!status.hidden&&getComputedStyle(status).display!=='none',
    statusWidth:status?.getBoundingClientRect().width??0};
  });
  assert.equal(railSizing.direction,'column','Track source controls must stack vertically');
  assert.ok(railSizing.pickerWidth>=railSizing.usable*.82,
   'Source picker compressed: '+JSON.stringify(railSizing));
- assert.ok(railSizing.statusWidth>=railSizing.usable*.82,
-  'Source status compressed: '+JSON.stringify(railSizing));
+ // Hidden status is intentional for media docks and active pairing.
+ // A zero-width element must never be mistaken for a compressed visible rail.
+ if(railSizing.statusVisible)
+  assert.ok(railSizing.statusWidth>=railSizing.usable*.82,
+   'Visible source status compressed: '+JSON.stringify(railSizing));
  const horizontal=await page.evaluate(()=>({
   root:document.documentElement.scrollWidth,viewport:window.innerWidth
  }));
