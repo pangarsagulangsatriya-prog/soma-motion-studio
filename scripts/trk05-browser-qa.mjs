@@ -228,7 +228,7 @@ const run=async()=>{
     assert.equal(await stage(page).getAttribute('data-stage-source'),'video');
     assert.equal(await stage(page).locator('.soma-track-input-placeholder').isVisible(),true);
     assert.ok(await stage(page).getByText('Pilih video MP4').count());
-    const disabledPlay=stage(page).getByRole('button',{name:'Putar',exact:true});
+    const disabledPlay=stage(page).getByRole('button',{name:'Putar video',exact:true});
     assert.equal(await disabledPlay.isDisabled(),true,'Cannot play missing MP4');
     const backdrop=await stage(page).locator('.soma-track-input-placeholder').evaluate(
      el=>getComputedStyle(el).backgroundColor);
@@ -287,6 +287,21 @@ const run=async()=>{
      const m=await bounds(monitor);
      assert.ok(m.width>=220,'Camera monitor collapsed while active');
      await screenshot(page,v.id,'webcam-active-controls');
+     if(v.id==='mobile-390x844'){
+      // A real MediaRecorder cycle on the narrowest tested viewport.
+      const downloaded=page.waitForEvent('download',{timeout:14000});
+      await record.click();
+      const recStop=bar.getByRole('button',{name:'Stop REC'});
+      await recStop.waitFor({state:'visible',timeout:11000});
+      assert.equal(await recStop.getAttribute('aria-pressed'),'true');
+      await screenshot(page,v.id,'mobile-recording');
+      await page.waitForTimeout(750);
+      await recStop.click();
+      const file=await downloaded;
+      assert.match(file.suggestedFilename(),/^SOMA_FOOTPRINTS_TAKE\.(webm|mp4)$/);
+      await record.waitFor({state:'visible',timeout:10000});
+      assert.equal(await record.getAttribute('aria-pressed'),'false');
+     }
      await stop.click();
      await root.getByRole('button',{name:'Aktifkan webcam'}).waitFor({state:'visible',timeout:15000});
      assert.equal(await root.locator('.fp-inline-assistant').count(),0);
