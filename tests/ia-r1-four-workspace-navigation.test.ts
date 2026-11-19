@@ -12,7 +12,7 @@ test('IA-R1: one global Stage 1 module owns four local workspaces',()=>{
  assert.match(global,/aria-label="Stage 1"/);
  for(const name of ['Track','Compose','Map','Perform'])
   assert.match(local,new RegExp("id:'"+name.toLowerCase()+"'"));
- assert.match(local,/aria-label="Navigasi Stage 1"/);
+ assert.match(local,/aria-label="Stage 1 — workspace"/);
  assert.match(local,/onNavigate\(item.id\)/);
  assert.match(nav,/stageModuleActive&&<div className="soma-uxr1-health"/);
  assert.match(nav,/aria-label="Tools · SOMA Labs"/);
@@ -39,7 +39,8 @@ test('IA-R1: no second Footprints source picker or stage tabs underneath the glo
  assert.ok(!stage.includes('<FootprintsSourceSwitcher'));
  assert.ok(!stage.includes('uxr3-compose-switcher'));
  assert.ok(!stage.includes('fp-flow-local-tabs'));
- assert.match(nav,/<details className="soma-uxr1-source"/);
+ assert.ok(!nav.includes('<details className="soma-uxr1-source"'));
+ assert.match(stage,/<details className="soma-ux01-source-switch"/);
  assert.match(stage,/sourceStatus.selection!==null&&!experimentalKind&&<QuickStageSetup/);
  assert.match(stage,/experimentalKind&&<FootprintsExperimentalSource/);
  assert.match(stage,/data-workspace=\{operatorMode\?'perform':composerOpen\?/);
