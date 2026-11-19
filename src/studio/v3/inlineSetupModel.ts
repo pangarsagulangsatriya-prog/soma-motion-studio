@@ -48,8 +48,7 @@ export function inlineSetupHint(input:{
   return hint('source','Pilih sumber gerak','Hubungkan webcam atau kamera HP. Semua pengaturan visual Footprints tetap tersedia.','source','Pilih sumber','idle');
  if(cameraError&&source.selection==='webcam')
   return hint('error','Periksa sambungan kamera',source.message||cameraError,
-   source.selection==='phone'?'phone':'webcam',
-   source.selection==='phone'?'Buka pairing HP':'Coba webcam lagi','warning');
+   'webcam','Coba webcam lagi','warning');
  if(cameraBusy)
   return hint('connecting','Menghubungkan kamera','Periksa permintaan izin dari browser atau sambungan perangkat.','source','Lihat sumber','busy');
  if(source.selection==='phone'&&source.phase==='pairing')
