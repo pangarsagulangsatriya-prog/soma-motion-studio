@@ -228,6 +228,8 @@ const run=async()=>{
     assert.equal(await stage(page).getAttribute('data-stage-source'),'video');
     assert.equal(await stage(page).locator('.soma-track-input-placeholder').isVisible(),true);
     assert.ok(await stage(page).getByText('Pilih video MP4').count());
+    const disabledPlay=stage(page).getByRole('button',{name:'Putar',exact:true});
+    assert.equal(await disabledPlay.isDisabled(),true,'Cannot play missing MP4');
     const backdrop=await stage(page).locator('.soma-track-input-placeholder').evaluate(
      el=>getComputedStyle(el).backgroundColor);
     assert.equal(backdrop,'rgb(2, 4, 3)','Empty MP4 must cover old pixels');
@@ -246,6 +248,54 @@ const run=async()=>{
     await layoutCheck(page,v);
     await screenshot(page,v.id,'simulator');
    });
+   if(v.id==='desktop-1440x900'||v.id==='mobile-390x844'){
+    await check(v.id+' live webcam, button geometry, disabled state and stop recovery',async()=>{
+     await choose(page,'Webcam laptop');
+     const root=stage(page);
+     await page.waitForFunction(()=>{
+      const r=document.querySelector('[data-workspace="track"]');
+      return r?.getAttribute('data-stage-source')==='webcam'&&
+       r.querySelector('.soma-track-source-status')?.getAttribute('data-phase')==='ready';
+     },undefined,{timeout:22000});
+     const bar=root.locator('.fp-unified-transport');
+     await bar.waitFor({state:'visible',timeout:16000});
+     const stop=bar.getByRole('button',{name:'Stop kamera'});
+     const record=bar.getByRole('button',{name:'Rekam',exact:true});
+     const monitor=root.locator('.fp-stage-overview > .fp-stage-video');
+     for(const [label,control] of [['Stop kamera',stop],['Rekam',record]]){
+      const box=await bounds(control);
+      assert.ok(box.height>=34,label+' touch target too small: '+box.height);
+      assert.ok(box.x>=0&&box.x+box.width<=v.width+4,
+       label+' button outside viewport');
+     }
+     assert.equal(await record.isDisabled(),false,'Recording must be available for live Body');
+     const state=await root.getAttribute('data-tracking-state');
+     assert.ok(['idle','waiting','framing','uncertain','ready'].includes(state),
+      'Invalid tracking state '+state);
+     const skeleton=root.getByRole('button',{name:/kerangka tubuh/});
+     if(await skeleton.isVisible()){
+      const initial=await skeleton.getAttribute('aria-pressed');
+      await skeleton.click();
+      assert.notEqual(await skeleton.getAttribute('aria-pressed'),initial);
+      assert.equal(await root.getAttribute('data-skeleton-visible'),
+       initial==='true'?'false':'true');
+      await skeleton.click();
+     }
+     const barBounds=await bounds(bar);
+     assert.ok(barBounds.x>=0&&barBounds.x+barBounds.width<=v.width+4,
+      'Camera toolbar overflows viewport');
+     const m=await bounds(monitor);
+     assert.ok(m.width>=220,'Camera monitor collapsed while active');
+     await screenshot(page,v.id,'webcam-active-controls');
+     await stop.click();
+     await root.getByRole('button',{name:'Aktifkan webcam'}).waitFor({state:'visible',timeout:15000});
+     assert.equal(await root.locator('.fp-inline-assistant').count(),0);
+     assert.notEqual(await root.getAttribute('data-tracking-state'),'ready',
+      'Stopped camera must invalidate ready feedback');
+     assert.equal(await bar.isVisible(),false,'Local camera toolbar remains on after stop');
+     await screenshot(page,v.id,'webcam-stopped');
+    });
+   }
   }
   await context.close();
  }
@@ -279,6 +329,56 @@ const run=async()=>{
   assert.equal(await stage(page).locator('.fp-inline-assistant').count(),0);
   assert.equal(await stage(page).locator('.fp-source-correction').count(),0);
   await screenshot(page,'desktop-e2e','webcam');
+ });
+ await check('TRK-06D recording starts, stops and creates a video file',async()=>{
+  const root=stage(page);
+  const bar=root.locator('.fp-unified-transport');
+  const record=bar.getByRole('button',{name:'Rekam',exact:true});
+  await record.waitFor({state:'visible',timeout:12000});
+  assert.equal(await record.isDisabled(),false,'Rekam disabled while live Body is ready');
+  const download=page.waitForEvent('download',{timeout:12000});
+  await record.click();
+  const stop=bar.getByRole('button',{name:'Stop REC'});
+  await stop.waitFor({state:'visible',timeout:10000});
+  assert.equal(await stop.getAttribute('aria-pressed'),'true');
+  await screenshot(page,'desktop-e2e','recording-active');
+  await page.waitForTimeout(900);
+  await stop.click();
+  const file=await download;
+  assert.match(file.suggestedFilename(),/^SOMA_FOOTPRINTS_TAKE\.(webm|mp4)$/);
+  await record.waitFor({state:'visible',timeout:10000});
+  assert.equal(await record.getAttribute('aria-pressed'),'false');
+  await screenshot(page,'desktop-e2e','recording-stopped');
+ });
+ await check('TRK-06D disconnected live video revokes tracking and offers retry',async()=>{
+  const root=stage(page);
+  const observed=await page.evaluate(()=>{
+   const videos=Array.from(document.querySelectorAll('video'));
+   const el=videos.find(video=>video.srcObject instanceof MediaStream&&
+    video.srcObject.getVideoTracks().length>0);
+   if(!el)throw Error('No active camera stream available for disconnect test');
+   const track=el.srcObject.getVideoTracks()[0];
+   track.dispatchEvent(new Event('ended'));
+   return track.label||'fake-device';
+  });
+  assert.ok(observed);
+  const retry=root.getByRole('button',{name:'Coba lagi',exact:true});
+  await retry.waitFor({state:'visible',timeout:12000});
+  assert.equal(await root.locator('.soma-track-source-status').isVisible(),true);
+  assert.equal(await root.locator('.fp-inline-assistant').count(),0);
+  await page.waitForFunction(()=>{
+   const r=document.querySelector('[data-workspace="track"]');
+   return r?.getAttribute('data-tracking-state')!=='ready';
+  },undefined,{timeout:2500});
+  assert.equal(await root.locator('.fp-unified-transport').isVisible(),false);
+  await screenshot(page,'desktop-e2e','camera-disconnected-retry');
+  await retry.click();
+  await page.waitForFunction(()=>{
+   const r=document.querySelector('[data-workspace="track"]');
+   return r?.querySelector('.soma-track-source-status')?.getAttribute('data-phase')==='ready';
+  },undefined,{timeout:22000});
+  assert.equal(await root.locator('.soma-track-source-status').isVisible(),false);
+  await screenshot(page,'desktop-e2e','camera-recovered');
  });
  await check('Webcam → MP4 isolation and video upload/seek',async()=>{
   await choose(page,'Video MP4');
