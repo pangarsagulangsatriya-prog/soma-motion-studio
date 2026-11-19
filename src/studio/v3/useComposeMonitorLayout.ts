@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState,type CSSProperties,type KeyboardEvent,type PointerEvent} from 'react';
 
 export type ComposeLayoutPreset='balanced'|'floor'|'input'|'body';
-export type ComposeLayout={floor:number;input:number;preset:ComposeLayoutPreset};
+export type ComposeLayoutSelection=ComposeLayoutPreset|'custom';
+export type ComposeLayout={floor:number;input:number;preset:ComposeLayoutSelection};
 const KEY='soma-compose-monitor-layout-v1';
 export const COMPOSE_LAYOUT_PRESETS:Record<ComposeLayoutPreset,ComposeLayout>={
  balanced:{floor:60,input:50,preset:'balanced'},
@@ -13,9 +14,9 @@ const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,valu
 export const normalizeComposeLayout=(raw:unknown):ComposeLayout=>{
  if(!raw||typeof raw!=='object')return {...COMPOSE_LAYOUT_PRESETS.balanced};
  const source=raw as Partial<ComposeLayout>;
- if(!Number.isFinite(source.floor)||!Number.isFinite(source.input))return {...COMPOSE_LAYOUT_PRESETS.balanced};
+ if(typeof source.floor!=='number'||typeof source.input!=='number'||!Number.isFinite(source.floor)||!Number.isFinite(source.input))return {...COMPOSE_LAYOUT_PRESETS.balanced};
  return {floor:clamp(source.floor!,30,75),input:clamp(source.input!,25,75),
-  preset:source.preset==='floor'||source.preset==='input'||source.preset==='body' ?source.preset:'balanced'};
+  preset:source.preset==='floor'||source.preset==='input'||source.preset==='body'||source.preset==='custom' ?source.preset:'balanced'};
 };
 export function useComposeMonitorLayout(){
  const [layout,setLayout]=useState<ComposeLayout>(()=>{
@@ -39,7 +40,7 @@ export function useComposeMonitorLayout(){
   const bounds=root.getBoundingClientRect();
   if(axis==='vertical'){
    const percent=(event.clientX-bounds.left)/bounds.width*100;
-   setLayout(prev=>({...prev,floor:clamp(percent,30,75),preset:'balanced'}));
+   setLayout(prev=>({...prev,floor:clamp(percent,30,75),preset:'custom'}));
   }else{
    const input=root.querySelector<HTMLElement>('.fp-stage-video');
    const body=root.querySelector<HTMLElement>('.fp-preview-body');
@@ -48,7 +49,7 @@ export function useComposeMonitorLayout(){
    const total=second.bottom-first.top;
    if(total<=0)return;
    const percent=(event.clientY-first.top)/total*100;
-   setLayout(prev=>({...prev,input:clamp(percent,25,75),preset:'balanced'}));
+   setLayout(prev=>({...prev,input:clamp(percent,25,75),preset:'custom'}));
   }
  };
  const stop=(event:PointerEvent<HTMLButtonElement>)=>{
@@ -59,14 +60,14 @@ export function useComposeMonitorLayout(){
   const step=event.shiftKey?10:3;
   const delta=event.key==='ArrowLeft'||event.key==='ArrowUp'?-step:
    event.key==='ArrowRight'||event.key==='ArrowDown'?step:0;
-  if(event.key==='Home'){event.preventDefault();setLayout(prev=>({...prev,[axis==='vertical'?'floor':'input']:axis==='vertical'?30:25,preset:'balanced'}));return;}
-  if(event.key==='End'){event.preventDefault();setLayout(prev=>({...prev,[axis==='vertical'?'floor':'input']:75,preset:'balanced'}));return;}
+  if(event.key==='Home'){event.preventDefault();setLayout(prev=>({...prev,[axis==='vertical'?'floor':'input']:axis==='vertical'?30:25,preset:'custom'}));return;}
+  if(event.key==='End'){event.preventDefault();setLayout(prev=>({...prev,[axis==='vertical'?'floor':'input']:75,preset:'custom'}));return;}
   if(!delta)return;
   if(axis==='vertical'&&event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
   if(axis==='horizontal'&&event.key!=='ArrowUp'&&event.key!=='ArrowDown')return;
   event.preventDefault();
   const key=axis==='vertical'?'floor':'input';
-  setLayout(prev=>({...prev,[key]:clamp(prev[key]+delta,axis==='vertical'?30:25,75),preset:'balanced'}));
+  setLayout(prev=>({...prev,[key]:clamp(prev[key]+delta,axis==='vertical'?30:25,75),preset:'custom'}));
  };
  return {layout,overview,preset,begin,move,stop,keyboard,
   style:{'--cp01-floor':layout.floor+'%','--cp01-input':layout.input+'%'} as CSSProperties};
