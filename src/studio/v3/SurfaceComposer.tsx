@@ -12,8 +12,11 @@ import './SurfaceComposer.css';
 import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
 import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
 import {canRenderComposeSurface} from './composePreviewGate.ts';
-import {catalogRecipe,catalogThumbnailSvg} from '../../footprints/scenes/artisticCatalog.ts';
-import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings} from '../../footprints/scenes/hydraFootprintModel.ts';
+import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
+import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
+import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
+import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
+import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings,type HydraFootprintStyle} from '../../footprints/scenes/hydraFootprintModel.ts';
 import './vis-r3-gallery.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRule,
@@ -162,6 +165,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const activeMotionSession=useRef<string|null>(null);
  const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
+ const sceneCanvases=useRef(new Map<string,HTMLCanvasElement>());
+ const sceneRuntimes=useRef(new Map<string,ComposedSceneRuntime>());
  const previewLayerAlpha=useRef(new Map<string,number>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
  const floorOutput=useRef<HTMLCanvasElement>(null);
@@ -344,7 +349,32 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   previewMaskCache.current={at:frame.time,A:previewMaskScratch.current.A,
    B:pb?previewMaskScratch.current.B:null,safe:true};
  };
- const readyMedia=(s:Surface)=>{
+ const sceneCanvas=(layerId:string,mediaId:string,w:number,h:number,atMs:number):HTMLCanvasElement|null=>{
+  const scene=sceneIdFromSource(mediaId);if(!scene)return null;
+  let canvas=sceneCanvases.current.get(layerId);
+  if(!canvas){canvas=document.createElement('canvas');sceneCanvases.current.set(layerId,canvas);}
+  if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
+  let runtime=sceneRuntimes.current.get(layerId);
+  if(!runtime||runtime.scene!==scene){
+   runtime=new ComposedSceneRuntime(scene);
+   const old=motionEventsRef.current?.()??[];
+   runtime.skipExisting(old,motionSessionRef.current?.()??'unknown');
+   sceneRuntimes.current.set(layerId,runtime);
+  }
+  runtime.ingest(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown',atMs,true);
+  runtime.paint(canvas,atMs);
+  return canvas;
+ };
+ useEffect(()=>{
+  const active=new Set(surfaces.flatMap(surface=>composition[surface].map(layer=>layer.id)));
+  for(const id of sceneRuntimes.current.keys())if(!active.has(id)){
+   sceneRuntimes.current.delete(id);sceneCanvases.current.delete(id);
+  }
+ },[composition]);
+ useEffect(()=>()=>{
+  sceneCanvases.current.clear();sceneRuntimes.current.clear();
+ },[]);
+  const readyMedia=(s:Surface)=>{
   return compositionRef.current[s].some(l=>{
    if(!l.visible||!l.mediaId)return false;
    const item=mediaEls.current.get(l.mediaId);
@@ -369,7 +399,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     kind==='floor'?(experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
     kind==='hydra'?(!physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
-    kind==='body'?bodyCanvas.current:null;
+    kind==='body'?bodyCanvas.current:
+    kind==='scene'&&!physical?sceneCanvas(layer.id,layer.mediaId,w,h,now):null;
    if(!el)continue;
    if(el instanceof HTMLImageElement&&(!el.complete||!el.naturalWidth))continue;
    if(el instanceof HTMLVideoElement&&(el.readyState<2||!el.videoWidth))continue;
@@ -572,7 +603,44 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    id=window.setTimeout(tick,85);
   };tick();return()=>clearTimeout(id);
  },[previewLive,blackout]);
- const triggerTest=(kind:'contact'|'move'|'release')=>{
+ const actOnScene=(id:CatalogSceneId,action:SceneAction)=>{
+  if(action==='apply'){
+   onSceneChange?.(id);setSelected('FLOOR');setSelectedLayer(0);
+   setInspectorTab('scene');setPreviewArrangement('surface');
+   setHint('Scene FLOOR aktif: '+catalogRecipe(id).title);return;
+  }
+  const selectedCount=composition.FLOOR.length;
+  if(action==='add'&&selectedCount>=24){setHint('Maksimum 24 layer per permukaan.');return;}
+  const info=sceneLayerDescriptor(id);
+  const position=sceneActionPosition(action,selectedCount,selected==='FLOOR'?selectedLayer:0);
+  const fresh=makeLayer(info.mediaId,info.name);
+  fresh.opacity=info.opacity;fresh.blend=info.blend;
+  setComposition(current=>{
+   const floor=[...current.FLOOR];
+   if(action==='replace'){
+    const original=floor[position];
+    floor[position]={...original,mediaId:info.mediaId,name:info.name,
+     opacity:info.opacity,blend:info.blend,recipe:'none'};
+   }else floor.splice(position,0,fresh);
+   return {...current,FLOOR:floor};
+  });
+  setSelected('FLOOR');setSelectedLayer(position);
+  setPreviewArrangement('surface');setInspectorTab('object');
+  setHint((action==='add'?'Layer ditambah: ':'Layer diganti: ')+info.name);
+ };
+ const actOnEffect=(style:HydraFootprintStyle,action:'apply'|'add')=>{
+  onHydraSettingsChange?.({enabled:true,style});
+  if(action==='add'){
+   if(composition.FLOOR.length>=24){setHint('Maksimum 24 layer per permukaan.');return;}
+   const fresh=makeLayer(COMPOSE_STAGE_HYDRA,'Hydra · '+style);
+   fresh.blend='screen';fresh.opacity=65;
+   setComposition(current=>({...current,FLOOR:[...current.FLOOR,fresh]}));
+   setSelected('FLOOR');setSelectedLayer(composition.FLOOR.length);
+   setInspectorTab('layer');setPreviewArrangement('surface');
+  }else{setInspectorTab('scene');setSelected('FLOOR');}
+  setHint('Hydra '+style+' · memakai satu engine bersama.');
+ };
+  const triggerTest=(kind:'contact'|'move'|'release')=>{
   const recipe=kind==='contact'?'contact-reveal':kind==='move'?'slide-hold':'pivot-decay';
   for(const surface of surfaces)for(const item of compositionRef.current[surface])
    if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind:'simulation:'+kind});
@@ -655,16 +723,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    {experimentReady?' · Pilih FLOOR atau BODY untuk hasil olahan.':' · Frame sumber belum siap.'}
   </p>}
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
-   <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="msv4-browser-meta">BROWSER / SCENES · MEDIA · LAYERS</div><div className="uxr3-scene-library" role="group" aria-label="Scene FLOOR">
-     {COMPOSE_SCENES.map(scene=><button type="button" key={scene.id} className="uxr3-scene-card" aria-pressed={sceneId===scene.id}
-       onClick={()=>{onSceneChange?.(scene.id);setSelected('FLOOR');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');setResetArmed(false);}} title={"Pilih scene "+scene.name}>
-       <img className="visr3-scene-thumb"
-        src={'data:image/svg+xml,'+encodeURIComponent(catalogThumbnailSvg(catalogRecipe(scene.id)))}
-        alt="" aria-hidden="true"/>
-       <span className="visr3-scene-copy"><strong>{scene.name}</strong>
-        <small>{catalogRecipe(scene.id).subtitle}</small></span>
-      </button>)}
-     </div><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><label className="visr4-archive-row">
+   <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="msv4-browser-meta">BROWSER / SCENES · MEDIA · LAYERS</div><SceneEffectBrowser activeScene={sceneId as CatalogSceneId} onSceneAction={actOnScene}
+     onEffectAction={actOnEffect} hydraEnabled={!!hydraSettings?.enabled}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><label className="visr4-archive-row">
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
  Process FLOOR archive media with Hydra (software preview)</label>
@@ -759,6 +819,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <option value="">No source / empty</option>
    {COMPOSE_SOURCE_CHOICES.filter(source=>source.id!==SHARED_TRACK_MP4_ID||!media.some(m=>m.id===SHARED_TRACK_MP4_ID)).map(source=>
     <option key={source.id} value={source.id}>{source.label}</option>)}
+   {ARTISTIC_CATALOG.map(recipe=><option key={recipe.id} value={sceneSourceId(recipe.id)}>{recipe.title} / Scene</option>)}
    {sharedAssetChoices(media).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
   </select></label>
   <label>Opacity · {layer?.opacity??100}%
