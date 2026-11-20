@@ -138,7 +138,16 @@ try{
  await page.evaluate(()=>window.__gpu02QA.runScenario('one',10990));
  await page.locator('#gpu02-stage').screenshot({path:directory+'/flow-late-chromium.png'});
  report.screenshots.push(directory+'/flow-early-chromium.png',directory+'/flow-late-chromium.png');
+ // Review motion as a *sequence* instead of asserting artistic quality
+ // from only two PNGs. Each frame comes from real Chromium/WebGL pixels.
+ for(let i=0;i<12;i++){
+  await page.evaluate(time=>window.__gpu02QA.runScenario('one',time),10390+i*90);
+  const file=directory+'/motion-'+String(i).padStart(2,'0')+'.png';
+  await page.locator('#gpu02-stage').screenshot({path:file});
+  report.screenshots.push(file);
+ }
  report.checks.push('Moving internal pigment across 600ms with stable footprint alpha silhouette');
+ report.checks.push('Twelve actual Chromium frames retained for motion/art review');
  const accelerated=await page.evaluate(()=>window.__gpu02QA.acceleratedSweep());
  report.accelerated=accelerated;
  assert.equal(accelerated.sampledMinutes,10);
