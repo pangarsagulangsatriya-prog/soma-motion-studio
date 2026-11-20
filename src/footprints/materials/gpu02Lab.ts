@@ -5,10 +5,13 @@ import {LiquidImprintGpuEngine} from './LiquidImprintGpuEngine.ts';
 import {PixiLiquidImprintCompositor} from './PixiLiquidImprintCompositor.ts';
 import type {FloorInteractionEvent} from '../scenes/FloorInteractionEngine.ts';
 
-export type LiquidLabScenario='one'|'two'|'six'|'slide'|'pivot'|'release'|'idle'|'crossing';
+export type LiquidLabScenario='one'|'two'|'six'|'slide'|'pivot'|'release'|'idle'|'crossing'|
+ 'mat-contact'|'mat-slide'|'mat-pivot'|'mat-release';
 const scenarios:LiquidLabScenario[]=[
- 'one','two','six','slide','pivot','release','idle','crossing'
+ 'one','two','six','slide','pivot','release','idle','crossing',
+ 'mat-contact','mat-slide','mat-pivot','mat-release'
 ];
+const isMaterialQA=(name:LiquidLabScenario)=>name.startsWith('mat-');
 const canvas=document.querySelector<HTMLCanvasElement>('#gpu02-stage');
 const status=document.querySelector<HTMLElement>('#status');
 if(!canvas||!status)throw Error('GPU02 lab element missing');
@@ -40,6 +43,12 @@ function move(kind:'slide'|'pivot'|'release',footprint:FloorInteractionEvent,
 function makeEvents(name:LiquidLabScenario):FloorInteractionEvent[]{
  const a=contact(1,'A','left',.47,.50,10000);
  const b=contact(2,'B','right',.57,.50,10030);
+ // MAT-03 isolates exactly one real mask. All four cases have the same
+ // actor/foot/sole position/time; only motion evidence differs.
+ if(name==='mat-contact')return [a];
+ if(name==='mat-slide')return [a,move('slide',a,10050,.52,.51)];
+ if(name==='mat-pivot')return [a,move('pivot',a,10050,.47,.50,2.28)];
+ if(name==='mat-release')return [a,move('release',a,10050,.47,.50)];
  if(name==='one')return [a];
  if(name==='two')return [a,b];
  if(name==='slide')return [a,move('slide',a,10320,.51,.505)];
@@ -70,8 +79,11 @@ function runScenario(scenario:LiquidLabScenario,timeMs=10450){
  if(!scenarios.includes(scenario))throw Error('Unknown GPU02 QA scenario');
  active=scenario;clock=timeMs;lastEvents=makeEvents(scenario);
  updateControls();
- const stats=engine.render(lastEvents,clock,{flow:.76,lifeMs:9000});
- label.textContent=active.toUpperCase()+' · '+stats.activeImprints+
+ const stats=engine.render(lastEvents,clock,{
+  flow:.76,lifeMs:9000,materialOnlyQA:isMaterialQA(active)
+ });
+ label.textContent=active.toUpperCase()+
+  (isMaterialQA(active)?' · siluet tetap':'')+' · '+stats.activeImprints+
   ' tapak · '+stats.contexts+' '+stats.renderer+' · texture '+stats.allocatedTextures+
   ' · arah belum terbaca '+stats.orientationUncertain;
  return stats;
@@ -150,7 +162,9 @@ if(!new URLSearchParams(location.search).has('qa')){
   if(now-previous<1000/30)return;
   const dt=Math.min(100,now-previous);previous=now;
   clock+=dt;
-  engine.render(lastEvents,clock,{flow:.76});
+  engine.render(lastEvents,clock,{
+   flow:.76,materialOnlyQA:isMaterialQA(active)
+  });
  };
  anim=requestAnimationFrame(animate);
 }
