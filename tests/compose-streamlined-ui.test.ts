@@ -43,6 +43,7 @@ test('Compose skeleton black/input toggle stays adjacent to monitor modes',()=>{
 });
 
 test('Compose centers the Stage Monitor title above the five view tabs',()=>{
+ const ui=composer();
  const style=css();
  assert.match(style,/\.cp02-editor>\.cp-compose-monitor-heading/);
  assert.match(ui,/<div className="cp-compose-monitor-heading cpux-monitor-title"/);
