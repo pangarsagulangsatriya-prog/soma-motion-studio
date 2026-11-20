@@ -19,6 +19,7 @@ export class PersistentHydraFootprintRuntime {
  private style:HydraFootprintStyle|null=null;
  private graphSignature='';
  private lastAt=0;
+ private lastFrameMs=0;
  private seen=new Set<string>();
  private generation=-1;
  private motion:HydraMotionUniforms={...HYDRA_MOTION_IDLE};
@@ -39,7 +40,7 @@ export class PersistentHydraFootprintRuntime {
  get isDestroyed(){return this.destroyed;}
  resetFeedback(){
   if(!this.engine||this.status!=='ready')return;
-  try{this.gpuMaterial?.reset();this.materialSeen.clear();this.engine.synth.hush?.();this.style=null;this.graphSignature='';this.configure(this.settings);}
+  try{this.lastFrameMs=0;this.gpuMaterial?.reset();this.materialSeen.clear();this.engine.synth.hush?.();this.style=null;this.graphSignature='';this.configure(this.settings);}
   catch(error){this.fail(error instanceof Error?error.message:'Hydra reset failed');}
  }
  get output(){return this.status==='ready'?this.outputCanvas:null;}
@@ -106,7 +107,12 @@ export class PersistentHydraFootprintRuntime {
   const feedback=()=>Math.min(.65,this.settings.feedback*(.25+.75*this.motion.energy));
   const mix=()=>clamp01(this.settings.mix);
   let graph;
-  if(style==='grain'){
+  // FV-02/03 materials already apply local grain, UV displacement and
+  // bounded feedback. Feeding Hydra global noise/feedback over them obscures
+  // all contours and can accumulate dark flicker over the entire stage.
+  if(materialMode(this.settings)!==null){
+   graph=source();
+  }else if(style==='grain'){
    graph=source().modulate(h.noise(3,.1),amount).blend(h.noise(20,.12),()=>mix()*.12);
   }else if(style==='echo'){
    graph=source().blend(h.src(h.o0).scale(1.008).rotate(.002),feedback);
@@ -127,12 +133,17 @@ export class PersistentHydraFootprintRuntime {
   if(this.destroyed||this.status!=='ready'||!this.engine||!this.sourceContext||!source)return;
   if(!Number.isFinite(nowMs))return;
   if(generation!==this.generation){
-   this.generation=generation;this.seen.clear();this.materialSeen.clear();this.art.reset(generation);this.gpuMaterial?.reset();
+   this.generation=generation;this.lastFrameMs=0;this.seen.clear();this.materialSeen.clear();this.art.reset(generation);this.gpuMaterial?.reset();
    this.motion={...HYDRA_MOTION_IDLE};
    try{this.engine.synth.hush?.();}catch{}
    // A new source must not inherit previous frame feedback.
    this.style=null;this.graphSignature='';this.configure(this.settings);
   }
+  // Hydra and the WebGL material pass are both expensive. Keep this software
+  // effect bounded to 30 FPS while tracking and the source video continue at
+  // their native cadence. The canonical event history is polled next frame.
+  if(this.lastFrameMs&&nowMs-this.lastFrameMs<1000/30)return;
+  this.lastFrameMs=nowMs;
   try{
    const recipe=this.settings.artwork==='off'&&this.settings.catalogVisual?
     catalogRecipe(this.settings.catalogScene):null;

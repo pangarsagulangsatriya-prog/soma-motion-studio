@@ -39,8 +39,8 @@ test('FV01: flagship card uses production artistic texture painter and only 3 pr
  const browser=read('../src/studio/v3/SceneEffectBrowser.tsx');
  const preview=read('../src/studio/v3/FlagshipLivePreview.tsx');
  assert.match(preview,/const artistic=new ArtisticFootprintRuntime\(\)/);
- assert.match(preview,/artistic\.paint\(source,now/);
- assert.match(preview,/material\?\.paint\(source,events,0,now/);
+ assert.match(preview,/artistic\.paint\(sample,now/);
+ assert.match(preview,/stageRef\.current\?\.current/);
  assert.match(browser,/flagships\.map\(p=><article/);
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(composer,/onFlagshipApply=\{actOnFlagship\}/);

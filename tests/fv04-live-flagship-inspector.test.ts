@@ -23,17 +23,17 @@ test('FV04: profile choice survives adjustment and bounds edits in existing shad
  assert.deepEqual(flagshipControlPatch('feedback',-4),{feedback:0});
  assert.deepEqual(flagshipControlPatch('mix',NaN),{mix:0});
 });
-test('FV04: thumbnails animate on a bounded frame loop with the real GPU material pipeline',()=>{
+test('FV04: thumbnail animation stays lightweight and Stage owns the only GPU material pass',()=>{
  const preview=read('../src/studio/v3/FlagshipLivePreview.tsx');
- assert.match(preview,/new FootprintGpuMaterialRuntime\(document\.createElement\('canvas'\)\)/);
- assert.match(preview,/THUMBNAIL_FPS=12/);
+ assert.doesNotMatch(preview,/new FootprintGpuMaterialRuntime/);
+ assert.match(preview,/THUMBNAIL_FPS=6/);
  assert.match(preview,/document\.visibilityState==='hidden'/);
  assert.match(preview,/new IntersectionObserver\(/);
- assert.match(preview,/material\?\.paint\(source,events,0,now,/);
+ assert.match(preview,/artistic\.paint\(sample,now/);
  assert.match(preview,/stageRef\.current\?\.current/);
- assert.match(preview,/context\.drawImage\(live,0,0,canvas\.width,canvas\.height\)/);
- assert.match(preview,/cancelAnimationFrame\(frame\)/);
- assert.match(preview,/material\?\.dispose\(\)/);
+ assert.match(preview,/ctx\.drawImage\(live,0,0,canvas\.width,canvas\.height\)/);
+ assert.match(preview,/cancelAnimationFrame\(raf\)/);
+ assert.match(preview,/observer\?\.disconnect\(\)/);
  assert.ok(!preview.includes('getUserMedia('));
 });
 test('FV04: Inspector controls edit real Hydra settings and reset the selected flagship',()=>{
