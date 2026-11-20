@@ -40,6 +40,8 @@ import {
  type ComposeMonitorView,type LowerBodyComposerState,type LowerBodySimAction,type SavedLowerBodyPreset
 } from './composeLowerBodyModel.ts';
 import {renderLowerBodyStageMonitor} from './composeLowerBodyRenderer.ts';
+import {paintComposeSkeletonMonitor,type ComposeSkeletonBackdrop} from './composeSkeletonMonitor.ts';
+import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 
 type Surface='FLOOR'|'BODY A'|'BODY B';
@@ -82,6 +84,7 @@ type Props={
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
  experimentSource?:ComposeExperimentSource;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  experimentFloorCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentReady?:boolean;
  /** Software-only composited FLOOR overlay in the shared three-monitor shell. */
@@ -98,7 +101,7 @@ type Props={
  onOpenCameraCalibration?:()=>void;
  onEnterPerform?:()=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenCameraCalibration,onEnterPerform}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenCameraCalibration,onEnterPerform}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const workspaceHiddenRef=useRef(workspaceHidden);workspaceHiddenRef.current=workspaceHidden;
@@ -116,6 +119,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
  useEffect(()=>{setPreviewArrangement('surface');},[experimentSource]);
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
+ // A black SKELETON monitor never activates the physical blackout/output.
+ const [skeletonBackdrop,setSkeletonBackdrop]=useState<ComposeSkeletonBackdrop>('black');
+ const skeletonBackdropRef=useRef(skeletonBackdrop);skeletonBackdropRef.current=skeletonBackdrop;
+ const [skeletonInputId,setSkeletonInputId]=useState('track');
+ const skeletonInputIdRef=useRef(skeletonInputId);skeletonInputIdRef.current=skeletonInputId;
+ useEffect(()=>{setSkeletonBackdrop('black');setSkeletonInputId('track');},[experimentSource]);
  const selectMonitorView=(view:ComposeMonitorView)=>{
   setMonitorView(view);
   if(view==='FLOOR'){
@@ -590,6 +599,32 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      ctx.fillStyle='#000';ctx.fillRect(0,0,preview.width,preview.height);
      const input=experimentInputCanvas?.current;
      if(input&&input.width&&input.height)ctx.drawImage(input,0,0,preview.width,preview.height);
+    }else if(activeView==='SKELETON'){
+     // This is a measured diagnostic. The old simulated orthographic renderer
+     // must never show invented skeletons under this tab.
+     const importedId=skeletonInputIdRef.current;
+     const external=importedId==='track'?null:mediaEls.current.get(importedId)??null;
+     const experiment=experimentFrameRef?.current??null;
+     const source:HTMLVideoElement|HTMLImageElement|HTMLCanvasElement|null=
+      external??(importedId!=='track'?null:
+       experimentSourceRef.current==='video'
+        ?(experiment?.kind==='video'&&experiment.ready&&!experiment.video?.seeking
+          ?experiment.video:null)
+       :experimentSourceRef.current==='simulator'
+        ?experimentInputCanvas?.current??null
+       :cameraOnRef.current&&bodySelectedRef.current
+        ?videoRefLive.current.current:null);
+     paintComposeSkeletonMonitor(ctx,preview.width,preview.height,{
+      backdrop:skeletonBackdropRef.current,
+      input:!blackoutRef.current&&previewLiveRef.current?source:null,
+      inputFromTrack:importedId==='track',
+      experimentFrame:experimentSourceRef.current?experiment:null,
+      liveFrame:frameRefLive.current.current,
+      identity:routerRef.current.status,
+      performers:performerRef.current,
+      cameraActive:cameraOnRef.current&&bodySelectedRef.current,
+      nowMs:now
+     });
     }else if(activeView!=='FLOOR'){
      const livePoseA=cameraOnRef.current&&bodySelectedRef.current?extractLiveLowerBodyPose(frameRefLive.current.current?.pose,'A'):null;
      const simPerformers:1|2=activeView==='SPLIT'||activeView==='LEG B'||performerRef.current===2?2:2;
@@ -746,7 +781,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-heading">
    <div className="cpux-heading-label">
     <h2>Compose</h2>
-    <span>{monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='FOOT'?'Foot · Sole Contact':monitorView==='SKELETON'?'Skeleton Only · Orthographic':'Lower-Body · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
+    <span>{monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='FOOT'?'Foot · Sole Contact':monitorView==='SKELETON'?'Skeleton 33 Titik':'Lower-Body · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
    </div>
    <div className="s64-safety">
     <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
@@ -803,13 +838,33 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       onClick={()=>selectMonitorView(tab.id)}>{tab.label}</button>)}
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>CAM · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
+     </div></div>
+    {monitorView==='SKELETON'&&<div className="cp-compose-skeleton-controls" aria-label="Tampilan skeleton">
+     <span className="cp-compose-skeleton-label">Skeleton · 33 titik</span>
+     <div role="group" aria-label="Latar skeleton" className="cp-compose-skeleton-modes">
+      <button type="button" aria-pressed={skeletonBackdrop==='black'}
+       onClick={()=>setSkeletonBackdrop('black')} title="Skeleton pada latar hitam">Hitam</button>
+      <button type="button" aria-pressed={skeletonBackdrop==='input'}
+       onClick={()=>setSkeletonBackdrop('input')} title="Tampilkan video atau gambar input bersama skeleton">Input</button>
+     </div>
+     {skeletonBackdrop==='input'&&media.some(m=>m.origin==='import')&&
+      <select className="cp-compose-skeleton-input" aria-label="Sumber gambar untuk Skeleton"
+       title="Hanya sumber Track yang memiliki data deteksi pose"
+       value={skeletonInputId} onChange={event=>setSkeletonInputId(event.target.value)}>
+       <option value="track">Input Track</option>
+       {media.filter(m=>m.origin==='import').map(m=>
+        <option key={m.id} value={m.id}>{m.name}</option>)}
+      </select>}
+     {skeletonBackdrop==='input'&&skeletonInputId!=='track'&&
+      <small className="cp-compose-skeleton-info">Media impor · belum dilacak</small>}
+    </div>}
+    <div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
   {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div>
-   {monitorView!=='FLOOR'&&<div className="lb-event-test-bar" role="group" aria-label="Simulasi gerak lower body">
+   {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<div className="lb-event-test-bar" role="group" aria-label="Simulasi gerak lower body">
     <span className="lb-event-test-label">EVENT TEST</span>
     {LOWER_BODY_SIM_ACTIONS.map(act=><button key={act.id} type="button"
      aria-pressed={act.id!=='reset'&&simAction===act.id}
@@ -820,7 +875,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <div className="s64-bar">
     {monitorView==='FLOOR'&&liquidMode==='track'&&timelineCapture.events.length===0&&
      <span role="status">Belum ada jejak dari Track</span>}
-    {monitorView!=='FLOOR'&&<span>{cameraOn&&bodySelected?bodyStatus:'Simulasi aktif · uji mask paha, warna, tekstur, atau crossing'}</span>}
+    {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<span>{cameraOn&&bodySelected?bodyStatus:'Simulasi aktif · uji mask paha, warna, tekstur, atau crossing'}</span>}
     {inspectorTab==='object'&&
      <button type="button" onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>
       {editMask?'Selesai edit mask':'Edit mask'}</button>}

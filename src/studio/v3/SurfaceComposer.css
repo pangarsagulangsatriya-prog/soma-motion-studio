@@ -25,3 +25,44 @@
  font-size:13px;flex-wrap:wrap}
 .mat03-compose-controls label input[type="range"]{width:100%;accent-color:#a1d4b2}
 .mat03-compose-controls small{line-height:1.5;color:#b9c9c0}
+
+/* COMPOSE-SKEL-01 — recorded/observed skeleton, black by default. */
+.s64-root .cp-compose-skeleton-controls{
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:3px 0 10px;min-width:0;
+}
+.s64-root .cp-compose-skeleton-label{
+ color:#aec2b1;font-size:11px;font-weight:660;white-space:nowrap;margin-right:auto;
+}
+.s64-root .cp-compose-skeleton-modes{
+ display:inline-flex;align-items:center;gap:3px;padding:3px;
+ background:#121c16;border:1px solid #48604d;border-radius:8px;
+}
+.s64-root .cp-compose-skeleton-modes button{
+ min-width:62px;min-height:30px;padding:5px 10px;border:0;border-radius:6px;
+ color:#b6cbb8;background:transparent;font-size:11px;font-weight:640;
+ transition:background-color .16s ease,color .16s ease,transform .16s ease;
+}
+.s64-root .cp-compose-skeleton-modes button[aria-pressed=true]{
+ color:#e4f3d5;background:#375842;
+}
+.s64-root .cp-compose-skeleton-modes button:hover:not([aria-pressed=true]){
+ color:#e4f3d5;background:#263d2e;
+}
+.s64-root .cp-compose-skeleton-modes button:active{transform:scale(.97)}
+.s64-root .cp-compose-skeleton-input{
+ width:min(200px,100%);max-width:100%;height:36px;min-width:0;
+ padding:5px 8px;border:1px solid #4b6653;border-radius:7px;
+ color:#dfefda;background:#101912;font-size:11px;text-overflow:ellipsis;
+}
+.s64-root .cp-compose-skeleton-info{font-size:10px;color:#9eb2a4;line-height:1.35}
+.s64-root .cp-compose-skeleton-controls :is(button,select):focus-visible{
+ outline:2px solid #d5f0ae;outline-offset:2px;
+}
+@media(max-width:640px){
+ .s64-root .cp-compose-skeleton-label{width:100%}
+ .s64-root .cp-compose-skeleton-modes{flex:0 0 auto}
+ .s64-root .cp-compose-skeleton-input{flex:1 1 150px}
+}
+@media(prefers-reduced-motion:reduce){
+ .s64-root .cp-compose-skeleton-controls button{transition:none;transform:none!important}
+}
