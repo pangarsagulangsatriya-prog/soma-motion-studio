@@ -201,6 +201,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const lastVerifiedContactRef=useRef<{id:string;seenAtMs:number}>({id:'',seenAtMs:0});
  const [visualWaitingForContact,setVisualWaitingForContact]=useState(false);
  const waitingForContactRef=useRef(false);
+ const [visualMaterialEmpty,setVisualMaterialEmpty]=useState(false);
+ const materialEmptyRef=useRef(false);
+ const materialProbe=useRef<{canvas:HTMLCanvasElement;ctx:CanvasRenderingContext2D;lastMs:number;visible:boolean}|null>(null);
  const [timelineCapture,setTimelineCapture]=useState<TimelineCapture>(()=>emptyTimelineCapture());
  const timelineCaptureRef=useRef(timelineCapture);timelineCaptureRef.current=timelineCapture;
  const [timelineMode,setTimelineMode]=useState<TimelineMode>('live');
@@ -453,6 +456,38 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   const visualIsWaiting=!!activeFlagshipForSettings(hydraSettings)&&
    s==='FLOOR'&&experimentSourceRef.current==='video'&&experimentReadyRef.current&&
    (!lastVerifiedContactRef.current.seenAtMs||now-lastVerifiedContactRef.current.seenAtMs>20000);
+  // Sample the actual 2D material once per 400ms. Hydra can report READY
+  // while its composited canvas contains only black pixels.
+  let visualIsEmpty=false;
+  if(!physical&&s==='FLOOR'&&!!activeFlagshipForSettings(hydraSettings)&&
+    experimentSourceRef.current==='video'&&experimentReadyRef.current){
+   const source=visualFloorCanvas?.current;
+   if(!source)visualIsEmpty=true;
+   else{
+    if(!materialProbe.current){
+     const probe=document.createElement('canvas');probe.width=32;probe.height=18;
+     const ctx=probe.getContext('2d',{willReadFrequently:true});
+     if(ctx)materialProbe.current={canvas:probe,ctx,lastMs:-Infinity,visible:false};
+    }
+    const probe=materialProbe.current;
+    if(probe&&now-probe.lastMs>400){
+     probe.lastMs=now;
+     try{
+      probe.ctx.clearRect(0,0,32,18);
+      probe.ctx.drawImage(source,0,0,32,18);
+      const image=probe.ctx.getImageData(0,0,32,18).data;
+      let lit=0;
+      for(let i=0;i<image.length;i+=4)
+       if(Math.max(image[i],image[i+1],image[i+2])>25)lit++;
+      probe.visible=lit>=2;
+     }catch{probe.visible=false;}
+    }
+    visualIsEmpty=!!probe&&!probe.visible;
+   }
+  }
+  if(!physical&&s==='FLOOR'&&visualIsEmpty!==materialEmptyRef.current){
+   materialEmptyRef.current=visualIsEmpty;setVisualMaterialEmpty(visualIsEmpty);
+  }
   if(!physical&&s==='FLOOR'&&visualIsWaiting!==waitingForContactRef.current){
    waitingForContactRef.current=visualIsWaiting;
    setVisualWaitingForContact(visualIsWaiting);
@@ -462,8 +497,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
     kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
-    kind==='hydra'?(!physical&&visualIsWaiting?
-      experimentInputCanvas?.current??null:
+    kind==='hydra'?(!physical&&(visualIsWaiting||visualIsEmpty)?
+      ((videoRef.current?.readyState??0)>=2&&videoRef.current?.videoWidth?
+       videoRef.current:experimentInputCanvas?.current??null):
       !physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
     kind==='body'?bodyCanvas.current:
     kind==='scene'&&!physical?sceneCanvas(layer.id,layer.mediaId,w,h,now):null;
@@ -886,9 +922,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{visualWaitingForContact&&selected==='FLOOR'&&previewArrangement==='surface'&&
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{(visualWaitingForContact||visualMaterialEmpty)&&selected==='FLOOR'&&previewArrangement==='surface'&&
   <div className="fv-fallback-status" role="status">
-   MP4 aktif · Menunggu Contact terverifikasi · Input ditampilkan sementara
+   {visualMaterialEmpty?'Render efek kosong · MP4 ditampilkan sementara':
+    'MP4 aktif · Menunggu Contact terverifikasi · Input ditampilkan sementara'}
   </div>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
