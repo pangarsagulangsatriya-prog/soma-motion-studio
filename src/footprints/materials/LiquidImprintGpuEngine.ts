@@ -92,6 +92,14 @@ void main(){
  vec3 pigment=mix(dark,middle,.58+.36*basin);
  pigment+=uTint*(.46*band*surge);
  pigment+=vec3(.20,.24,.25)*pow(band,2.)*surge;
+ // A slender moving meniscus crosses heel → arch → forefoot. Keep it
+ // inside the alpha mask; avoid circular echoes outside the footprint.
+ float meniscusY=.91-seconds*(.31+.12*uFlow)
+  +.038*sin(liquid.x*13.+uSeed*7.+seconds*2.1);
+ float meniscus=exp(-pow((vUV.y-meniscusY)*17.,2.));
+ float wake=exp(-pow((vUV.y-(meniscusY+.16))*11.,2.));
+ pigment+=uTint*(.61*meniscus+.13*wake)*(.68+.32*surge);
+ pigment+=vec3(.17,.20,.21)*meniscus;
  pigment*=drier;
  outColor=vec4(clamp(pigment,0.,1.),coverage*uOpacity);
 }`;
