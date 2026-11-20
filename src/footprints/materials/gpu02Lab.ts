@@ -105,6 +105,23 @@ function runAcceleratedSweep(){
  return {sampledMinutes:10,frames,syntheticContacts:created,peakTextures:peak,
   finalTextures:cleared.allocatedTextures,contexts:cleared.contexts};
 }
+/** Dense simultaneous stress: real GPU frame, 40 contacts, 32 allowed
+ * footprints and explicit cleanup. Reports measured render time only as
+ * diagnostic; CI SwiftShader numbers are not representative of stage laptops.
+ */
+function runDenseStress(){
+ const events:FloorInteractionEvent[]=Array.from({length:40},(_,i)=>
+  contact(30000+i,i%2?'B':'A',i%2?'right':'left',
+   .12+(i%10)*.082,.18+Math.floor(i/10)*.19,10000+i*2));
+ const started=performance.now();
+ const full=engine.render(events,10450,{flow:.76,limit:32,lifeMs:9000});
+ const renderMs=performance.now()-started;
+ const cleared=engine.render([],10451,{flow:.76,limit:32});
+ return {attempted:events.length,shown:full.activeImprints,
+  maxTextures:full.maxTextures,allocated:full.allocatedTextures,
+  contexts:full.contexts,renderMs,
+  afterClear:cleared.allocatedTextures};
+}
 declare global{
  interface Window{
   __gpu02QA?:{
@@ -112,6 +129,7 @@ declare global{
    stats:()=>ReturnType<typeof engine.render>;
    events:()=>readonly FloorInteractionEvent[];
    acceleratedSweep:()=>ReturnType<typeof runAcceleratedSweep>;
+   denseStress:()=>ReturnType<typeof runDenseStress>;
    destroy:()=>void;
   };
  }
@@ -121,6 +139,7 @@ window.__gpu02QA={
  stats:()=>engine.stats,
  events:()=>lastEvents,
  acceleratedSweep:runAcceleratedSweep,
+ denseStress:runDenseStress,
  destroy:()=>{cancelAnimationFrame(anim);engine.destroy();}
 };
 runScenario(active);
