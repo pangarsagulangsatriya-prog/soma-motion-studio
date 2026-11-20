@@ -32,7 +32,9 @@ export function liquidMaterialResponse(imprint:LiquidImprint):LiquidMaterialResp
  const releasedAt=imprint.releasedAtMs;
  const released=typeof releasedAt==='number'&&Number.isFinite(releasedAt)&&releasedAt>=0;
  const timeAfterRelease=released?Math.max(0,age-(releasedAt!-imprint.createdMs)):0;
- const releaseProgress=released?clamp(timeAfterRelease/1450,0,1):0;
+ // A release visibly thins the ink on its first frame, then continues
+ // draining for 1.4s while the original sole-shaped residue fades.
+ const releaseProgress=released?.25+.75*clamp(timeAfterRelease/1400,0,1):0;
  const baseOpacity=clamp(safe(imprint.opacity),0,1);
  const opacity=baseOpacity*(released?(1-.68*releaseProgress):1);
  if(released)return {
