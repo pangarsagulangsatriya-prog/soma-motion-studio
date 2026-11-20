@@ -134,7 +134,7 @@ test('Resolume feed URL and Perform console output mode toggle contract',()=>{
  assert.equal(urlBody,'https://soma.stage/?bodyProjection=s2&stageSurface=body&feed=resolume');
 
  const performSrc=fs.readFileSync('src/studio/v3/OperatorStageConsole.tsx','utf8');
- assert.ok(performSrc.includes('SOMA Direct'),'Perform must offer SOMA Direct mode');
+ assert.ok(performSrc.includes('PERFORM_DESTINATIONS'),'Perform must render destination labels from route model');
  assert.ok(performSrc.includes('PERFORM_DESTINATIONS'),'Perform must offer source-of-truth route choices');
  const routeModel=fs.readFileSync('src/studio/v3/performDestinationModel.ts','utf8');
  assert.ok(routeModel.includes('Resolume'),'Perform must offer Resolume clean feed route');

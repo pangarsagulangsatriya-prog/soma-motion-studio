@@ -280,7 +280,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      {warning.length>0&&<div className="fp-operator-health" role="status" aria-live="polite">
       <strong>{warning[0]}{warning.length>1?' · +'+(warning.length-1)+' catatan':''}</strong>
      </div>}
-     <small>{cueMessage||'Cue hanya menyimpan layout monitor. Izin cahaya proyektor tetap di Map.'}</small>
+     <small>{cueMessage||'Cue monitor tidak mengubah izin proyektor; Map tetap berlaku.'}</small>
+     <small className="ops-r1-keyboard-help">Pintasan: <kbd className="ops-r1-kbd">Space</kbd> berikutnya ·
+      <kbd className="ops-r1-kbd">←</kbd> sebelumnya ·
+      <kbd className="ops-r1-kbd">B / Esc</kbd> Blackout</small>
     </details>
    </section>
 
