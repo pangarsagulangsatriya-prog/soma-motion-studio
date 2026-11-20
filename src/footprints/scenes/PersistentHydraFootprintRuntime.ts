@@ -137,6 +137,8 @@ export class PersistentHydraFootprintRuntime {
     if(this.lastArtwork==='off')this.art.reset(generation);
     else this.art.skipExisting(events,generation);
     this.lastArtwork=sceneKey;this.resetFeedback();
+    // New visual should respond to future motion, not restamp buffered events.
+    for(const e of events)this.materialSeen.add(e.eventId);
    }
    this.sourceContext.fillStyle='#000';
    this.sourceContext.fillRect(0,0,640,360);
