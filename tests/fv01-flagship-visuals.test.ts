@@ -37,8 +37,10 @@ test('FV01: all 14 legacy scene IDs remain registered for saved compositions',()
 });
 test('FV01: flagship card uses production artistic texture painter and only 3 primary cards',()=>{
  const browser=read('../src/studio/v3/SceneEffectBrowser.tsx');
- assert.match(browser,/const renderer=new ArtisticFootprintRuntime\(\)/);
- assert.match(browser,/renderer\.paint\(canvas,1180/);
+ const preview=read('../src/studio/v3/FlagshipLivePreview.tsx');
+ assert.match(preview,/const artistic=new ArtisticFootprintRuntime\(\)/);
+ assert.match(preview,/artistic\.paint\(source,now/);
+ assert.match(preview,/material\?\.paint\(source,events,0,now/);
  assert.match(browser,/flagships\.map\(p=><article/);
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(composer,/onFlagshipApply=\{actOnFlagship\}/);
