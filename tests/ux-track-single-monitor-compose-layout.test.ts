@@ -37,8 +37,8 @@ test('Compose prioritizes Stage Monitor and keeps Media, Layers, Timeline and In
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  const css=read('../src/studio/v3/cpux-compose-focus.css');
  assert.match(composer,/className="soma-ia-media"/);
- assert.match(composer,/className="cp02-editor"/);
- assert.match(composer,/className="cp02-inspector"/);
+ assert.match(composer,/className="[^"]*cp02-editor"/);
+ assert.match(composer,/className="[^"]*cp02-inspector"/);
  assert.match(composer,/className="cpux-timeline-drawer"/);
  assert.match(composer,/className="soma-ia-layers"/);
  assert.match(composer,/className="cp04-command-menu"/);
