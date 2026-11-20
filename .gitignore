@@ -10,3 +10,7 @@ public/wasm/
 .env
 .env.*
 !.env.example
+
+# Python receiver test bytecode
+__pycache__/
+*.pyc

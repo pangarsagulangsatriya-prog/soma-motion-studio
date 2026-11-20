@@ -1,3 +1,4 @@
+import {TouchDesignerBridge,type BridgeContext} from '../../footprints/touchdesigner/TouchDesignerBridge.ts';
 import {useCallback,useEffect,useLayoutEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
@@ -131,6 +132,18 @@ export function FootprintsStageWorkspace({
  const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
  const interactionCanvas=useRef<HTMLCanvasElement>(null);
  const interactionEngineRef=useRef(new FloorInteractionEngine());
+ const [tdBridge]=useState(()=>new TouchDesignerBridge());
+ const tdContext=useRef<BridgeContext>({ready:false,calibrationKey:'',floor:null,cue:{index:0,label:''}});
+ useEffect(()=>{
+  tdBridge.attach(interactionEngineRef.current);
+  const timer=window.setInterval(()=>tdBridge.tick(tdContext.current),50);
+  const hide=()=>{if(document.hidden)tdBridge.stop('blackout');};
+  const leave=()=>tdBridge.disconnect();
+  document.addEventListener('visibilitychange',hide);window.addEventListener('pagehide',leave);
+  return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',hide);window.removeEventListener('pagehide',leave);tdBridge.dispose();};
+ },[tdBridge]);
+ useEffect(()=>{if(!operatorMode)tdBridge.stop();},[operatorMode,tdBridge]);
+ useEffect(()=>{if(softwareBlackout||footprint.hold)tdBridge.stop('blackout');},[softwareBlackout,footprint.hold,tdBridge]);
  const touchPointers=useRef(new Set<number>());
  const [touchDemo,setTouchDemo]=useState(false);
  const [floorInteractionStats,setFloorInteractionStats]=useState({actors:0,contacts:0,events:0});
@@ -339,7 +352,7 @@ export function FootprintsStageWorkspace({
  const previousCue=()=>applyPerformSlot(Math.max(0,activePerformSlot-1));
  const cueNavigationRef=useRef({next:nextCue,previous:previousCue});
  cueNavigationRef.current={next:nextCue,previous:previousCue};
- const operatorBlackout=()=>{onBlackout();setPerformBlackout(true);updateFootprint({hold:true});};
+ const operatorBlackout=()=>{tdBridge.stop('blackout');onBlackout();setPerformBlackout(true);updateFootprint({hold:true});};
  const onBlackoutRef=useRef(operatorBlackout);
  onBlackoutRef.current=operatorBlackout;
  useEffect(()=>{
@@ -835,6 +848,16 @@ export function FootprintsStageWorkspace({
   sourceMode,feedbackState:feedback.state,composerOpen,operatorMode
  });
  const inputFocusEnabled=!calibrationOpen&&(sourceStatus.selection!==null||composerOpen);
+ const tdFrame=experimentFrameRef.current;
+ const tdLive=(sourceStatus.selection==='webcam'||sourceStatus.selection==='phone')&&cameraOn&&frameFresh&&
+  sourceStatus.phase==='ready'&&!!videoRef.current&&videoRef.current.videoWidth>=videoRef.current.videoHeight;
+ tdContext.current={
+  ready:operatorMode&&(tdLive||tdFrame?.kind==='simulator'||
+   tdFrame?.kind==='video'&&tdFrame.ready&&!tdFrame.video?.seeking&&!tdFrame.video?.paused&&!!tdFrame.snapshot),
+  calibrationKey:JSON.stringify(tracker.calibrationData),
+  floor:tdFrame?.kind==='simulator'?tdFrame.session.floor:tdLive&&floorStatus.confirmed&&cameraMatched?tracker.floor:null,
+  cue:{index:activePerformSlot,label:performGrid.slots[activePerformSlot]?.label??''}
+ };
  return <section className={'fp-stage-workspace fp-persistent-layout soma-ia-four-workspaces'+(operatorMode?' fp-operator-mode':'')}
   data-workspace={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
   data-stage-source={sourceStatus.selection??'none'}
@@ -860,7 +883,7 @@ export function FootprintsStageWorkspace({
    </div>
   </header>}
   {operatorMode?
-   <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
+   <OperatorStageConsole tdBridge={tdBridge} index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onExit={onExitOperator} onBlackout={operatorBlackout}
     held={footprint.hold||performBlackout} onHold={()=>updateFootprint({hold:true})}
     onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});}}

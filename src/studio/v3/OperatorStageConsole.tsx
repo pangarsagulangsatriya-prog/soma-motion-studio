@@ -1,4 +1,6 @@
 import {useState,useSyncExternalStore} from 'react';
+import {TouchDesignerPanel} from './TouchDesignerPanel.tsx';
+import type {TouchDesignerBridge} from '../../footprints/touchdesigner/TouchDesignerBridge.ts';
 import {
  ArrowLeft,ArrowRight,Circle,Copy,ExternalLink,MonitorOff,Pause,Play,
  Settings2,ShieldAlert,Tv,X
@@ -16,6 +18,7 @@ import type {StageSurface} from '../../footprints/stage-optics/DualSurfaceCalibr
 import './ops-r1-perform.css';
 
 type Props={
+ tdBridge:TouchDesignerBridge;
  index:number;onPrevious:()=>void;onNext:()=>void;
  onExit:()=>void;onBlackout:()=>void;
  held:boolean;onHold:()=>void;onResume:()=>void;
@@ -32,7 +35,7 @@ type Props={
  onGoTrack?:()=>void;onGoMap?:()=>void;
 };
 
-export function OperatorStageConsole({index,onPrevious,onNext,onExit,
+export function OperatorStageConsole({tdBridge,index,onPrevious,onNext,onExit,
  onBlackout,held,onHold,onResume,videoRecording,canRecordVideo,onRecordVideo,
  units,contacts,performerCount,cueGrid,activeSlot,onApplySlot,onUpdateSlot,
  onSaveCue,onResetCues,cueMessage,previewStatus,sourceLabel,
@@ -40,7 +43,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  sourceKind=null,cameraOk=false,identityOk=false,floorOk=false,
  floorQaOk=false,bodyQaOk=false,onGoTrack,onGoMap}:Props){
  const dualSession=useSyncExternalStore(subscribeDualSurface,getDualSurfaceState,getDualSurfaceState);
- const [outputRouteMode,setOutputRouteMode]=useState<PerformOutputRouteMode>('soma');
+ const [outputRouteMode,setOutputRouteMode]=useState<PerformOutputRouteMode|'touchdesigner'>('soma');
  const [outputNotice,setOutputNotice]=useState('');
  const [popupBlocked,setPopupBlocked]=useState(false);
 
@@ -68,15 +71,16 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  const visibleIndices=[windowStart,windowStart+1,windowStart+2,windowStart+3].filter(i=>i<cueGrid.slots.length);
 
  const isResolume=outputRouteMode==='resolume';
+ const isTouchDesigner=outputRouteMode==='touchdesigner';
 
  const handleBlackoutAll=()=>{
   blackoutAllDualSurfaces('BLACKOUT dari Perform. Periksa cahaya proyektor secara fisik.');
   onBlackout();
-  setOutputNotice('Blackout diperintahkan ke seluruh output (SOMA & Resolume feed).');
+  setOutputNotice('Blackout diperintahkan ke seluruh output (SOMA, Resolume & TouchDesigner).');
  };
 
  const handleOpenSurface=(surface:StageSurface)=>{
-  const res=openDualSurfaceOutputWindow(surface,outputRouteMode);
+  const res=openDualSurfaceOutputWindow(surface,isResolume?'resolume':'soma');
   setPopupBlocked(res.popupBlocked);
   setOutputNotice(res.message);
  };
@@ -152,14 +156,17 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-output-top">
      <strong>Output Proyektor</strong>
      <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
-      <button type="button" aria-pressed={!isResolume} onClick={()=>{setOutputRouteMode('soma');setOutputNotice('');}}>
+      <button type="button" aria-pressed={outputRouteMode==='soma'} onClick={()=>{tdBridge.stop();setOutputRouteMode('soma');setOutputNotice('');}}>
        SOMA Direct
       </button>
-      <button type="button" aria-pressed={isResolume} onClick={()=>{setOutputRouteMode('resolume');setOutputNotice('');}}>
+      <button type="button" aria-pressed={isResolume} onClick={()=>{tdBridge.stop();setOutputRouteMode('resolume');setOutputNotice('');}}>
        Feed Resolume
       </button>
+      <button type="button" aria-pressed={isTouchDesigner} onClick={()=>{setOutputRouteMode('touchdesigner');setOutputNotice('');}}>TouchDesigner</button>
      </div>
     </div>
+    <div hidden={!isTouchDesigner}><TouchDesignerPanel bridge={tdBridge}/></div>
+    {!isTouchDesigner&&<>
     <button type="button"
      className="ops-r1-primary-cta"
      data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
@@ -215,6 +222,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      <span><ShieldAlert size={13}/> {unreadyReason}</span>
      <button type="button" onClick={onRecovery}>Map QA</button>
     </div>}
+    </>}
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}

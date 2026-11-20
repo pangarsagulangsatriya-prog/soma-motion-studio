@@ -29,6 +29,12 @@ function ingestPose(engine:FloorInteractionEngine,pose:readonly PosePoint[],
  const uv=coordinates(point);
  engine.observe({source,actorId,x:uv.x,y:uv.y,
   confidence:point.confidence,atMs,basis:uv.basis});
+ for(const [foot,index] of [['left',27],['right',28]] as const){
+  const ankle=pose[index];if(!validPoint(ankle))continue;
+  const confidence=ankle.visibility??1;
+  const anchor=coordinates({...ankle,confidence});
+  engine.observeFoot({source,actorId,foot,...anchor,confidence,atMs});
+ }
 }
 export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  source:'camera'|'phone';frame:MotionFrame;
@@ -138,6 +144,11 @@ export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
   const uv=floorToUV(floor,{xM:x,yM:y});
   engine.observe({source:'simulator',actorId:performer.id,
    x:uv.x,y:uv.y,confidence:1,atMs:frame.timeMs,basis:'simulated'});
+  for(const foot of ['left','right'] as const){
+   const anchor=floorToUV(floor,performer[foot].positionM);
+   engine.observeFoot({source:'simulator',actorId:performer.id,foot,
+    ...anchor,confidence:1,atMs:frame.timeMs,basis:'simulated'});
+  }
  }
  for(const e of frame.session.events){
   if(e.timestampMs>frame.timeMs)continue;

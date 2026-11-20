@@ -313,3 +313,17 @@
  .fp-operator-mode .ops-r1-recovery{flex-direction:column;align-items:stretch}
  .fp-operator-mode .ops-r1-kbd{display:none}
 }
+
+/* TouchDesigner shares the existing Perform output card. */
+.soma-td-panel{display:grid;gap:8px;min-width:0}
+.soma-td-status{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#a9c9b0}
+.soma-td-panel label{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:8px;font-size:11px;color:#b5c6b8}
+.soma-td-panel input{min-width:0;width:100%;box-sizing:border-box;background:#101a14;border:1px solid #38503e;border-radius:5px;padding:7px;color:#e8f1e5;font:11px ui-monospace,monospace}
+.soma-td-actions{display:flex;gap:6px;flex-wrap:wrap}
+.soma-td-panel button{padding:7px 9px;border:1px solid #527459;border-radius:5px;background:#23382a;color:#e8f1e5;font-size:11px;cursor:pointer}
+.soma-td-panel button:disabled{opacity:.45;cursor:default}
+.soma-td-panel details{font-size:11px;color:#a6b9aa;line-height:1.5}
+.soma-td-panel summary{cursor:pointer}
+.soma-td-panel a{color:#cbe9a7}
+.soma-td-panel input:focus-visible,.soma-td-panel button:focus-visible{outline:2px solid #cbe9a7;outline-offset:2px}
+.ops-r1-route-toggle{flex-wrap:wrap}

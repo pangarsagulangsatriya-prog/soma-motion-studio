@@ -17,6 +17,7 @@ export type FloorInteractionEvent={
 };
 export type FloorObservation=Pick<FloorInteractionEvent,
  'source'|'actorId'|'x'|'y'|'confidence'|'atMs'|'basis'>;
+export type FloorFootObservation=FloorObservation&{foot:'left'|'right';headingRad?:number};
 export type FloorContactInput=FloorObservation&{
  eventId:string;foot:'left'|'right';verified:boolean;kind?:'contact'|'touch';
  headingRad?:number;
@@ -37,6 +38,19 @@ const valid=(o:FloorObservation)=>unit(o.x)&&unit(o.y)&&unit(o.confidence)&&
 const emptyCounts=():Record<FloorInteractionKind,number>=>({presence:0,movement:0,contact:0,touch:0,slide:0,pivot:0,release:0});
 type Last={x:number;y:number;atMs:number};
 export class FloorInteractionEngine{
+ private listeners=new Set<(event:FootMotionEventV2|null)=>void>();
+ private footPositions=new Map<string,FloorFootObservation>();
+ subscribe(listener:(event:FootMotionEventV2|null)=>void){
+  this.listeners.add(listener);return()=>{this.listeners.delete(listener);};
+ }
+ /** Observed ankle/foot anchors only; never fabricate a contact from a pose. */
+ observeFoot(o:FloorFootObservation){
+  if(!this.accepts(o)||!['left','right'].includes(o.foot))return;
+  const key=o.actorId+':'+o.foot,previous=this.footPositions.get(key);
+  if(previous&&o.atMs<=previous.atMs)return;
+  this.footPositions.set(key,{...o});
+ }
+ get feet():readonly FloorFootObservation[]{return [...this.footPositions.values()];}
  private source:FloorInteractionSource|null=null;
  private events:FloorInteractionEvent[]=[];
  private actorPositions=new Map<string,Last>();
@@ -62,11 +76,14 @@ export class FloorInteractionEngine{
   this.seenContacts.clear();this.seenOrder=[];
   this.seenPhases.clear();this.seenPhaseOrder=[];
   this.serial=0;
+  this.footPositions.clear();
+  for(const listener of this.listeners)listener(null);
  }
  private push(part:Omit<FloorInteractionEvent,'id'>){
   const event={...part,id:'interaction-'+(++this.serial)} as FloorInteractionEvent;
   this.events.push(event);
   if(this.events.length>480)this.events.splice(0,this.events.length-480);
+  for(const listener of this.listeners)listener(toFootMotionEvent(event,this.sessionId,this.epoch));
   return event;
  }
  private accepts(o:FloorObservation):boolean{
@@ -140,6 +157,9 @@ export class FloorInteractionEngine{
  keepActors(source:FloorInteractionSource,ids:readonly string[]){
   if(this.source!==source)return;
   const allowed=new Set(ids.map(id=>source+':'+id));
+  for(const [key,foot] of this.footPositions){
+   if(!ids.includes(foot.actorId))this.footPositions.delete(key);
+  }
   for(const key of this.actorPositions.keys()){
    if(key.startsWith(source+':')&&!allowed.has(key)){
     this.actorPositions.delete(key);this.lastPresenceEmit.delete(key);
