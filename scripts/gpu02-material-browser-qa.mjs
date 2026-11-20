@@ -35,11 +35,18 @@ try{
  await page.addInitScript(()=>{
   const original=HTMLCanvasElement.prototype.getContext;
   const live=new Set();
-  window.__gpu02ContextProbe={stageContexts:0,allContexts:0};
+  window.__gpu02ContextProbe={stageContexts:0,allContexts:0,canvases:[]};
   HTMLCanvasElement.prototype.getContext=function(kind,...args){
    const result=original.call(this,kind,...args);
    if(result&&/^(webgl|webgl2|experimental-webgl)$/.test(String(kind))){
-    live.add(result);
+    if(!live.has(result)){
+     live.add(result);
+     window.__gpu02ContextProbe.canvases.push({
+      id:this.id||'(detached)',
+      attached:this.isConnected,
+      width:this.width,height:this.height,kind:String(kind)
+     });
+    }
     window.__gpu02ContextProbe.allContexts=live.size;
     if(this.id==='gpu02-stage'){
      window.__gpu02ContextProbe.stageContexts=1;
@@ -180,6 +187,16 @@ try{
  assert.ok(accelerated.peakTextures<=32);
  assert.equal(accelerated.finalTextures,0,'GPU textures failed to expire on long timeline');
  report.checks.push('Accelerated 10-minute simulated event timeline keeps texture budget and expires all masks');
+ const dense=await page.evaluate(()=>window.__gpu02QA.denseStress());
+ report.dense=dense;
+ assert.equal(dense.attempted,40);
+ assert.equal(dense.shown,32,'Dense scene must cap at 32 authentic sole stamps');
+ assert.equal(dense.allocated,32,'Dense scene must cap mask allocations');
+ assert.equal(dense.maxTextures,32);
+ assert.equal(dense.contexts,1);
+ assert.equal(dense.afterClear,0,'GPU textures leaked after dense scene cleanup');
+ assert.ok(Number.isFinite(dense.renderMs)&&dense.renderMs>=0);
+ report.checks.push('Forty synthetic contacts are capped to 32 live GPU masks, then all released');
  assert.equal(report.errors.length,0,'Chromium errors: '+report.errors.join('; '));
  console.log(pixi?'ENGINE02_PIXI_PIXEL_QA_PASS':'GPU02_PIXEL_QA_PASS',JSON.stringify(report));
 }catch(e){
