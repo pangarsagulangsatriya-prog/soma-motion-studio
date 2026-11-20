@@ -292,8 +292,14 @@ export function FootprintsStageWorkspace({
    engine.expire(time);
    if(hydraSettingsRef.current.enabled&&hydraRuntime.current.status==='ready'&&!previewHoldRef.current){
     if(archiveHydraReady.current&&archiveHydraCanvas.current){
-     hydraRuntime.current.configure({...hydraSettingsRef.current,artwork:'off',catalogVisual:false});
-     hydraRuntime.current.tick(archiveHydraCanvas.current,engine.canonicalRecent,engine.generation,now);
+     const isRift=hydraSettingsRef.current.style==='flow'&&
+      hydraSettingsRef.current.artwork==='negative-memory'&&!hydraSettingsRef.current.catalogVisual;
+     // Keep RIFT's selected material profile; legacy archive processing still
+     // supports its historical plain-Hydra source mode.
+     hydraRuntime.current.configure(isRift?hydraSettingsRef.current:
+      {...hydraSettingsRef.current,artwork:'off',catalogVisual:false});
+     hydraRuntime.current.tick(archiveHydraCanvas.current,engine.canonicalRecent,
+      engine.generation,now,isRift);
     }else{
      hydraRuntime.current.configure(hydraSettingsRef.current);
      hydraRuntime.current.tick(cleanFloorOutput.current,engine.canonicalRecent,engine.generation,now);
