@@ -45,16 +45,6 @@ import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/liv
 import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/MultiPoseGaitRouter.ts';
 import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
-import {SnowfallScene} from '../../footprints/scenes/SnowfallScene.ts';
-import {PersistentHydraFootprintRuntime} from '../../footprints/scenes/PersistentHydraFootprintRuntime.ts';
-import {ARTISTIC_FOOTPRINT_STYLES} from '../../footprints/scenes/ArtisticFootprintRuntime.ts';
-import {HYDRA_FOOTPRINT_STYLES,normalizeHydraFootprintSettings,type HydraFootprintSettings,type HydraFootprintStatus} from '../../footprints/scenes/hydraFootprintModel.ts';
-import {SnowfallRenderer} from '../../footprints/scenes/SnowfallRenderer.ts';
-import {ProceduralSceneRuntime,type ProceduralParams} from '../../footprints/scenes/ProceduralSceneRuntime.ts';
-import {FLOOR_SCENES,FLOOR_SCENE_PRESETS,loadFloorPresets,saveFloorPreset,
- isFloorSceneId,type FloorSceneId,type FloorScenePreset} from '../../footprints/scenes/sceneRegistry.ts';
-import {FloorAudioReactive,type FloorAudioSource} from '../../footprints/scenes/FloorAudioReactive.ts';
-import {FloorSceneAdvancedControls,type FloorAdvancedParams} from './FloorSceneAdvancedControls.tsx';
 import {floorPointerCoordinates} from '../../footprints/scenes/floorPointerCoordinates.ts';
 import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
  feedTouchFloorInteraction,paintFloorInteractionOverlay} from '../../footprints/scenes/interactionAdapters.ts';
@@ -78,7 +68,6 @@ import './s6-8-7-simplified-stage.css';
 import './s6-8-8-1-full-skeleton.css';
 import './ux-r1-stage.css';
 import './floor-interaction.css';
-import './vis-r1-hydra.css';
 import './ia-r1-four-workspaces.css';
 import './track-compact.css';
 import './trk02-layout.css';
@@ -138,90 +127,14 @@ export function FootprintsStageWorkspace({
  const [showComposeEvents,setShowComposeEvents]=useState(true);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
- const snowfallCanvas=useRef<HTMLCanvasElement>(null);
- const proceduralCanvas=useRef<HTMLCanvasElement>(null);
- const hydraFloorCanvas=useRef<HTMLCanvasElement>(null);
- const hydraStablePreviewCanvas=useRef<HTMLCanvasElement|null>(null);
- const archiveHydraCanvas=useRef<HTMLCanvasElement|null>(null);
- const archiveHydraReady=useRef(false);
- const hydraRuntime=useRef<PersistentHydraFootprintRuntime>(new PersistentHydraFootprintRuntime());
- const [hydraSettings,setHydraSettings]=useState<HydraFootprintSettings>(()=>{
-  try{return normalizeHydraFootprintSettings(JSON.parse(localStorage.getItem('soma-floor-hydra-v1')??'null'));}
-  catch{return normalizeHydraFootprintSettings(null);}
- });
- const [hydraStatus,setHydraStatus]=useState<HydraFootprintStatus>('off');
- const [hydraReason,setHydraReason]=useState('');
- const updateHydra=(patch:Partial<HydraFootprintSettings>)=>setHydraSettings(v=>normalizeHydraFootprintSettings({...v,...patch}));
  const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
  const interactionCanvas=useRef<HTMLCanvasElement>(null);
  const interactionEngineRef=useRef(new FloorInteractionEngine());
  const touchPointers=useRef(new Set<number>());
  const [touchDemo,setTouchDemo]=useState(false);
  const [floorInteractionStats,setFloorInteractionStats]=useState({actors:0,contacts:0,events:0});
- const [snowfallScene]=useState(()=>new SnowfallScene());
- const [floorScene,setFloorScene]=useState<'footprints'|FloorSceneId>(()=>{
-  try{
-   const saved=localStorage.getItem('soma-floor-scene-v1');
-   return isFloorSceneId(saved)?saved:'footprints';
-  }catch{return 'footprints';}
- });
- useEffect(()=>{setHydraSettings(prev=>prev.catalogScene===floorScene?prev:normalizeHydraFootprintSettings({...prev,catalogScene:floorScene}));},[floorScene]);
- const [snowfallCount,setSnowfallCount]=useState(0);
- const [snowfallPaused,setSnowfallPaused]=useState(false);
- const [snowfallRate,setSnowfallRate]=useState(.55);
- const [snowfallRecovery,setSnowfallRecovery]=useState(75);
- const [snowfallRendererMode,setSnowfallRendererMode]=useState<'webgl2'|'2d'|'unavailable'>('unavailable');
- const [proceduralRuntime]=useState(()=>new ProceduralSceneRuntime());
- const [sceneIntensity,setSceneIntensity]=useState(.6);
- const [sceneRadius,setSceneRadius]=useState(.5);
- const [scenePersistence,setScenePersistence]=useState(.65);
- const [sceneQuality,setSceneQuality]=useState<'low'|'medium'|'high'>('medium');
- const [sceneAudioMix,setSceneAudioMix]=useState(.35);
- const [sceneCount,setSceneCount]=useState(0);
- const [userPresets,setUserPresets]=useState<FloorScenePreset[]>(()=>{
-  try{return loadFloorPresets(localStorage);}catch{return [];}
- });
- const [sceneAudioSource,setSceneAudioSource]=useState<FloorAudioSource>('off');
- const [sceneAudioError,setSceneAudioError]=useState('');
- const [sceneAudioLevel,setSceneAudioLevel]=useState(0);
- const audioMeter=useRef(new FloorAudioReactive());
- const proceduralConfig=useRef<ProceduralParams>({
-  intensity:sceneIntensity,radius:sceneRadius,persistence:scenePersistence,
-  quality:sceneQuality,audioMix:sceneAudioMix,audioLevel:0,paused:snowfallPaused
- });
- proceduralConfig.current={intensity:sceneIntensity,radius:sceneRadius,
-  persistence:scenePersistence,quality:sceneQuality,audioMix:sceneAudioMix,
-  audioLevel:sceneAudioLevel,paused:snowfallPaused};
- const sceneAudioSourceRef=useRef(sceneAudioSource);
- sceneAudioSourceRef.current=sceneAudioSource;
- const analyserRef=useRef(audioAnalyser??null);
- analyserRef.current=audioAnalyser??null;
- const audioLevelLive=useRef(0);
- const audioRequest=useRef(0);
- const hydraSettingsRef=useRef(hydraSettings);hydraSettingsRef.current=hydraSettings;
- useEffect(()=>{
-  try{localStorage.setItem('soma-floor-hydra-v1',JSON.stringify(hydraSettings));}catch{}
-  const runtime=hydraRuntime.current;
-  runtime.configure(hydraSettings);
-  if(hydraSettings.enabled&&hydraFloorCanvas.current){
-   void runtime.initialize(hydraFloorCanvas.current,hydraSettings).then(()=>{
-    setHydraStatus(runtime.status);setHydraReason(runtime.reason);
-   });
-  }else if(!hydraSettings.enabled)setHydraStatus('off');
- },[hydraSettings]);
- useEffect(()=>()=>{
-  hydraRuntime.current.dispose();
-  // React StrictMode replays effects in development: the next setup needs a fresh shell.
-  hydraRuntime.current=new PersistentHydraFootprintRuntime();
- },[]);
- useEffect(()=>{hydraRuntime.current.resetFeedback();},[floorScene]);
-
- // Changing Jeda/intensity/refill must never recreate the WebGL context,
- // otherwise a stage slider interaction can flash the projection.
- const snowfallConfig=useRef({paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery});
- snowfallConfig.current={paused:snowfallPaused,rate:snowfallRate,recovery:snowfallRecovery};
- cleanFloorOutput.current=floorScene==='footprints'?floorCanvas.current:
-  floorScene==='snowfall'?snowfallCanvas.current:proceduralCanvas.current;
+ const floorScene='footprints' as const;
+ cleanFloorOutput.current=floorCanvas.current;
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
