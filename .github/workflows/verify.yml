@@ -22,6 +22,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Verify isolated MAT-03 GitHub Pages build
+        if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
+        run: |
+          npx vite build --mode githubpages-mat03
+          test -s dist/gpu02-lab.html
+          test -d dist/assets
+          grep -q '/soma-motion-studio/assets/' dist/gpu02-lab.html
+          test ! -f dist/index.html
       - name: Install Chromium for GPU-02 review
         if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
         run: |
