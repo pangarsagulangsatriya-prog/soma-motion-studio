@@ -44,10 +44,10 @@ test('Compose prioritizes Stage Monitor and keeps Media, Layers, Timeline and In
  assert.match(composer,/className="cp04-command-menu"/);
  assert.match(composer,/className="s64-stage"/);
  assert.doesNotMatch(composer,/SceneEffectBrowser|FlagshipInspector|HydraEffectInspector/);
- assert.match(css,/grid-template-columns:minmax\\(0,1fr\\) minmax\\(270px,300px\\)!important/);
- assert.match(css,/\.fp-stage-overview:not\\(\\[hidden\\]\\)\\{/);
+ assert.ok(css.includes('grid-template-columns:minmax(0,1fr) minmax(270px,300px)!important'));
+ assert.ok(css.includes('.fp-stage-overview:not([hidden]){'));
  assert.match(css,/display:none!important/);
- assert.match(css,/@media\\(max-width:960px\\)/);
+ assert.ok(css.includes('@media(max-width:960px)'));
 });
 
 test('Compose exposes original three monitors only when editor is active',()=>{
