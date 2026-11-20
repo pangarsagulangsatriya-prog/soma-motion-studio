@@ -1,0 +1,38 @@
+name: FV Material Pixel QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/footprints/scenes/**'
+      - 'src/studio/v3/**'
+      - 'scripts/fv-material-pixel-browser-qa.mjs'
+      - '.github/workflows/fv-material-pixel-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-pixel-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build -- --mode githubpages
+      - name: Install browser visual QA runner
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Install Chromium
+        run: npx playwright install chromium
+      - name: Render TRACE / ECHO / RIFT and reject all-black pixels
+        run: node scripts/fv-material-pixel-browser-qa.mjs
+      - name: Upload rendered pixels and diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fv-material-pixel-qa-${{ github.sha }}
+          path: artifacts/fv-material
+          if-no-files-found: warn
+          retention-days: 30
