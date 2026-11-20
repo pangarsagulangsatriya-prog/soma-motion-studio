@@ -119,6 +119,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [riftSourceId,setRiftSourceId]=useState('@stage:input');
  const riftSourceRef=useRef(riftSourceId);riftSourceRef.current=riftSourceId;
  const archiveReadyRef=useRef(false);
+ const [riftReady,setRiftReady]=useState(false);
  const onArchiveHydraChangeRef=useRef(onArchiveHydraChange);
  onArchiveHydraChangeRef.current=onArchiveHydraChange;
  const [selectedLayer,setSelectedLayer]=useState(0);
@@ -558,6 +559,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    }
    if(archiveReadyRef.current!==archiveReady){
     archiveReadyRef.current=archiveReady;
+    setRiftReady(archiveReady);
     onArchiveHydraChangeRef.current?.(archiveReady);
    }
    const preview=canvas.current;
@@ -835,10 +837,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      onEffectAction={actOnEffect} onFlagshipApply={actOnFlagship}
      activeFlagship={hydraSettings?.enabled&&hydraSettings.catalogVisual===false?
       FLAGSHIP_RECIPES.find(p=>p.graph===hydraSettings.style&&p.artwork===hydraSettings.artwork)?.id??null:null}
-     hydraEnabled={!!hydraSettings?.enabled}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><label className="visr4-archive-row">
+     hydraEnabled={!!hydraSettings?.enabled}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
+ <label className="visr4-archive-row">
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
- Process FLOOR archive media with Hydra (software preview)</label>
+ Process FLOOR archive media with Hydra (software preview)</label>}
  <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
  <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
   onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');setPreviewArrangement('surface');}}>
@@ -939,7 +942,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       if(!e.currentTarget.checked)onArchiveHydraChangeRef.current?.(false);
      }}/> Enable RIFT archive displacement
     </label>
-    <small role="status">{archiveReadyRef.current?
+    <small role="status">{riftReady?
      'Arsip aktif · Contact, Slide, Pivot mengubah UV secara lokal':
      'Pilih MP4 Track atau gambar/video dari Media. Jalankan video dan aktifkan RIFT.'}</small>
    </div>}
