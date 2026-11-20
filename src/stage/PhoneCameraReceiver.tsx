@@ -150,17 +150,17 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
  const helpPanel=useRef<HTMLElement>(null);
  const staticPages=window.location.hostname.endsWith('github.io');
  const guide=mode==='usb'?[
-  'Sambungkan kamera USB, HDMI capture, atau aktifkan webcam virtual.',
-  'Pilih nama kamera lalu klik Sambungkan.',
-  'Periksa gambar 16:9 dan ulangi Map bila sumber berubah.'
+  'iPhone: aktifkan Continuity Camera dan percayai Mac. Android: pilih USB → Webcam di HP, jika tersedia.',
+  'Pilih kamera HP yang muncul di Mac lalu klik Sambungkan.',
+  'Kamera HP yang belum dikenali macOS tidak bisa dibuka lewat browser.'
  ]:mode==='qr'?(staticPages?[
-  'Pindai QR memakai kamera HP untuk membuka halaman pengirim.',
-  'Izinkan kamera pada HP.',
-  'Kembali ke laptop, pilih Kode untuk menyambungkan video.'
+  'Scan QR untuk membuka kamera HP dan izinkan akses video.',
+  'GitHub Pages masih membutuhkan pertukaran kode WebRTC.',
+  'Tekan Lanjut ke Kode, lalu tukar kode laptop dan HP.'
  ]:[
-  'Klik Tampilkan QR, lalu pindai dengan HP.',
-  'Izinkan akses kamera HP.',
-  'Cek gambar sebelum melanjutkan Map.'
+  'Tampilkan QR dan pindai menggunakan HP.',
+  'Izinkan kamera HP, lalu cek gambar SOMA.',
+  'Jika server pairing tidak aktif, gunakan kode manual.'
  ]):[
   'Salin tautan halaman kamera ke HP dan buka di browser HP.',
   'Buat kode laptop, lalu salin ke halaman HP.',
@@ -183,16 +183,12 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
   <div className="soma-camera-method-row">
    <div className="soma-setup-pair-tabs" role="group" aria-label="Metode sambungan kamera">
     <button type="button" aria-pressed={mode==='usb'}
-     onClick={()=>{setMode('usb');setHelpOpen(false);}} aria-label="Kamera USB, HDMI, atau virtual" title="Kamera perangkat">
-     <Cable size={15} aria-hidden="true"/><span>USB</span>
+     onClick={()=>{setMode('usb');setHelpOpen(false);}} aria-label="Kamera HP lewat kabel" title="Kamera HP yang dikenali Mac">
+     <Cable size={15} aria-hidden="true"/><span>Kabel</span>
     </button>
-    <button type="button" aria-pressed={mode==='qr'}
-     onClick={()=>{setMode('qr');setHelpOpen(false);}} aria-label="HP melalui kode QR" title="Kamera HP lewat QR">
-     <QrCode size={15} aria-hidden="true"/><span>QR</span>
-    </button>
-    <button type="button" aria-pressed={mode==='manual'}
-     onClick={()=>{setMode('manual');setHelpOpen(false);}} aria-label="Pairing kode manual" title="Koneksi kode manual">
-     <KeyRound size={15} aria-hidden="true"/><span>Kode</span>
+    <button type="button" aria-pressed={mode==='qr'||mode==='manual'}
+     onClick={()=>{setMode('qr');setHelpOpen(false);}} aria-label="Kamera HP nirkabel" title="WebRTC lewat QR">
+     <QrCode size={15} aria-hidden="true"/><span>Nirkabel</span>
     </button>
    </div>
    <button type="button" ref={helpButton} className="soma-camera-help-button"
@@ -203,16 +199,21 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
   </div>
   {helpOpen&&<section ref={helpPanel} id={helpId} className="soma-camera-help-pop"
    role="dialog" aria-label="Panduan sambungan kamera" aria-modal={false}>
-   <header><strong>{mode==='usb'?'Kamera perangkat':mode==='qr'?'Kamera HP lewat QR':'Sambungkan dengan kode'}</strong>
+   <header><strong>{mode==='usb'?'HP lewat kabel':mode==='qr'?'HP nirkabel':'Sambungkan dengan kode'}</strong>
     <button type="button" onClick={()=>{setHelpOpen(false);helpButton.current?.focus();}}
      aria-label="Tutup petunjuk"><X size={16} aria-hidden="true"/></button>
    </header>
    <ol>{guide.map((step,index)=><li key={index}>{step}</li>)}</ol>
    {mode==='qr'&&staticPages&&<p>GitHub Pages membutuhkan pertukaran kode manual setelah QR dibuka.</p>}
   </section>}
-  {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>:mode==='qr'?
-   <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
-    onUseManual={()=>setMode('manual')}/>:
-   <ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>}
+  {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect} intent="phone"/>:mode==='qr'?
+   <><AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
+    onUseManual={()=>setMode('manual')}/>
+    {!staticPages&&<button type="button" className="soma-phone-manual-fallback" onClick={()=>setMode('manual')}>
+     <KeyRound size={14} aria-hidden="true"/> Kode manual
+    </button>}</>:
+   <><button type="button" className="soma-phone-manual-back" onClick={()=>setMode('qr')}>
+     Kembali ke QR
+    </button><ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/></>}
  </div>;
 }

@@ -6,13 +6,13 @@ export type FootprintsInputStatus={
  message:string;
 };
 export const SOURCE_CHOICES=[
- {id:'webcam',label:'Webcam laptop',description:'Live · kamera komputer',kind:'live'},
- {id:'phone',label:'Hubungkan kamera',description:'USB · HDMI · OBS · HP / QR',kind:'live'},
+ {id:'webcam',label:'Kamera lain',description:'Webcam · HDMI · OBS · NDI',kind:'live'},
+ {id:'phone',label:'Kamera HP',description:'iPhone / Android · kabel atau nirkabel',kind:'live'},
  {id:'video',label:'Video MP4',description:'Input lokal · Pose/Gait 2D',kind:'experiment'},
  {id:'simulator',label:'Simulasi 3D',description:'Input sintetis · floor virtual',kind:'experiment'}
 ] as const;
 export const SOURCE_LABELS:Record<FootprintsInputChoice,string>={
- webcam:'Webcam laptop',phone:'Hubungkan kamera',video:'Video MP4',simulator:'Simulasi 3D'
+ webcam:'Kamera lain',phone:'Kamera HP',video:'Video MP4',simulator:'Simulasi 3D'
 };
 export function deriveFootprintsInputStatus(input:{
  selection:FootprintsInputChoice|null;cameraOn:boolean;cameraBusy:boolean;
@@ -27,7 +27,7 @@ export function deriveFootprintsInputStatus(input:{
  if(selection==='phone'){
   return {selection,phase:phoneActive&&cameraOn?'ready':'pairing',
    message:phoneActive&&cameraOn?'Input kamera horizontal 16:9. Periksa pembacaan kaki.':
-   'Pilih kamera USB/HDMI/virtual atau sambungkan HP lewat QR.'};
+   'Sambungkan HP lewat kabel sebagai webcam Mac atau pilih nirkabel.'};
  }
  if(selection==='webcam'){
   return {selection,phase:cameraOn?'ready':'idle',message:cameraOn?'Webcam tersambung.':'Webcam belum aktif.'};

@@ -175,7 +175,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
     <div className="soma-track-qr-frame"><PhonePairQr value={cameraUrl}/></div>
    </div>
    <p className="soma-track-static-qr-hint">
-    Pindai QR di HP.
+    Scan QR untuk membuka kamera HP. Di GitHub Pages, sambungkan videonya melalui Kode.
    </p>
    {onUseManual&&<button type="button" className="soma-setup-primary soma-track-create-qr"
     onClick={onUseManual}>Lanjut ke Kode</button>}

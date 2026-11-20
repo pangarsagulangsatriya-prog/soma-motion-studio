@@ -1,14 +1,17 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Check,ChevronDown,HelpCircle,LoaderCircle,RefreshCw,Video,VideoOff} from 'lucide-react';
 import {cameraDeviceLabel,cameraErrorMessage,normalizeCameraDevices,openUniversalCamera} from '../engine/universalCamera.ts';
+import {preferredCameraDevice,prioritizedCameraDevices,looksLikePhoneWebcam,cameraPathHelp,type CameraIntent} from '../engine/cameraRouteModel.ts';
 
 type CameraPhase='searching'|'idle'|'connecting'|'connected'|'error';
 const LAST_CAMERA_KEY='soma-universal-camera-last-v1';
+const LAST_CAMERA_LABEL_KEY='soma-universal-camera-label-v1';
 
 /** Compact universal device picker. CameraTracker stays in App; this component
  * only owns capture, permissions, and release of the raw MediaStream. */
-export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
+export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+ intent?:CameraIntent;
 }){
  const [devices,setDevices]=useState<MediaDeviceInfo[]>([]);
  const [deviceId,setDeviceId]=useState('');
@@ -36,7 +39,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
    setPhase('error');setMessage('Browser belum mendukung daftar kamera.');return;
   }
   try{
-   const list=normalizeCameraDevices(await navigator.mediaDevices.enumerateDevices());
+   const list=prioritizedCameraDevices(normalizeCameraDevices(await navigator.mediaDevices.enumerateDevices()),intent);
    if(!mounted.current)return;
    setDevices(list);
    if(active.current&&selectedDevice.current&&!list.some(d=>d.deviceId===selectedDevice.current)){
@@ -45,20 +48,20 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
    }
    setDeviceId(previous=>{
     if(list.some(d=>d.deviceId===previous))return previous;
-    let saved='';
-    try{saved=localStorage.getItem(LAST_CAMERA_KEY)||'';}catch{}
-    if(list.some(d=>d.deviceId===saved))return saved;
-    // A single device is selected for convenience, never opened automatically.
-    return list.length===1?list[0].deviceId:'';
+    let saved='',savedLabel='';
+    try{saved=localStorage.getItem(LAST_CAMERA_KEY)||'';
+     savedLabel=localStorage.getItem(LAST_CAMERA_LABEL_KEY)||'';}catch{}
+    // On a Mac with one built-in FaceTime camera, never silently pick it as HP.
+    return preferredCameraDevice(list,intent,saved,savedLabel);
    });
    if(!active.current){
     setPhase('idle');
-    setMessage(list.length?'Pilih perangkat, lalu sambungkan.':'Kamera belum ditemukan.');
+    setMessage(list.length?'Pilih kamera, lalu sambungkan.':intent==='phone'?'HP belum muncul sebagai webcam Mac.':'Kamera belum ditemukan.');
    }
   }catch(error){
    if(mounted.current&&!active.current){setPhase('error');setMessage(cameraErrorMessage(error));}
   }
- },[stop]);
+ },[stop,intent]);
  useEffect(()=>{
   mounted.current=true;
   void refresh();
@@ -103,7 +106,9 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
    const dimensions=settings.width&&settings.height?`${settings.width}×${settings.height}`:'Video aktif';
    const fps=settings.frameRate?` · ${Math.round(settings.frameRate)} fps`:'';
    setVideoInfo(dimensions+fps);
-   try{localStorage.setItem(LAST_CAMERA_KEY,deviceId);}catch{}
+   try{localStorage.setItem(LAST_CAMERA_KEY,deviceId);
+    const label=devices.find(d=>d.deviceId===deviceId)?.label;
+    if(label)localStorage.setItem(LAST_CAMERA_LABEL_KEY,label);}catch{}
    if(mounted.current){setPhase('connected');setMessage('Tersambung');}
   }catch(error){
    if(version!==generation.current)return;
@@ -117,10 +122,11 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
  const busy=phase==='connecting'||phase==='searching';
  const connected=phase==='connected';
  const needsPermission=devices.length===0||devices.some(device=>!device.label);
+ const phoneDetected=devices.some(device=>looksLikePhoneWebcam(device.label));
  const showFeedback=phase==='error'||phase==='searching'||phase==='connecting'||connected||devices.length===0;
  return <section className="soma-usb-phone soma-camera-quick-connect" aria-label="Pilih kamera" data-phase={phase}>
   <div className="soma-usb-head">
-   <label htmlFor="soma-usb-phone-device">Kamera <span className="soma-usb-count">{devices.length} tersedia</span></label>
+   <label htmlFor="soma-usb-phone-device">{intent==='phone'?'Kamera HP':'Kamera'} <span className="soma-usb-count">{devices.length} terdeteksi di Mac</span></label>
    <button type="button" className="soma-usb-refresh" onClick={()=>void refresh()}
     title="Muat ulang daftar kamera" aria-label="Muat ulang daftar kamera" disabled={busy}>
     <RefreshCw size={15} aria-hidden="true"/>
@@ -130,7 +136,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
    <select id="soma-usb-phone-device" value={deviceId} disabled={busy}
     title={devices.find(device=>device.deviceId===deviceId)?.label||'Pilih kamera'}
     onChange={e=>{if(active.current)stop(true);setDeviceId(e.target.value);setPhase('idle');setMessage('Pilih perangkat, lalu sambungkan.');}}>
-    <option value="">{devices.length?'Pilih kamera…':'Belum ada kamera'}</option>
+    <option value="">{devices.length?'Pilih perangkat…':'Belum ada kamera'}</option>
     {devices.map((device,i)=><option key={device.deviceId} value={device.deviceId}>{cameraDeviceLabel(device,i)}</option>)}
    </select>
    <ChevronDown size={16} aria-hidden="true" className="soma-usb-chevron"/>
@@ -157,12 +163,14 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
    <span className="soma-usb-status-dot" aria-hidden="true"/>
    <span>{message}</span>
   </p>}
+  {intent==='phone'&&!phoneDetected&&!connected&&<p className="soma-phone-no-auto" role="status">
+   HP belum teridentifikasi. Pilih kamera HP secara manual bila sudah muncul di Mac.
+  </p>}
   <details className="soma-usb-help">
    <summary><HelpCircle size={14} aria-hidden="true"/> Kamera tidak muncul?</summary>
    <div className="soma-usb-help-body">
-    <p><b>USB / HP:</b> gunakan kabel data, aktifkan mode webcam.</p>
-    <p><b>HDMI:</b> hubungkan melalui capture card USB.</p>
-    <p><b>OBS / IP / NDI:</b> aktifkan OBS Virtual Camera atau NDI Webcam Input terlebih dulu.</p>
+    <p>{cameraPathHelp(intent)}</p>
+    <p><b>HDMI / OBS / NDI:</b> pilih Kamera lain di sumber SOMA, lalu aktifkan kamera/capture virtual.</p>
    </div>
   </details>
  </section>;
