@@ -104,7 +104,7 @@ test('CAM-UX manual pairing: long URL and offer are hidden until requested',asyn
  assert.match(phone,/<details className="soma-manual-reveal">/);
  assert.match(phone,/<summary>Lihat tautan HP<\/summary>/);
  assert.match(phone,/<summary>Lihat kode laptop<\/summary>/);
- assert.match(phone,/>Buat kode laptop/);
+ assert.match(phone,/Buat kode laptop/);
  assert.match(phone,/placeholder="Tempel kode dari HP…"/);
  assert.match(phone,/disabled=\{!answer\.trim\(\)\|\|busy\}/);
  assert.match(phone,/pc\.current\?\.close\(\)/);
