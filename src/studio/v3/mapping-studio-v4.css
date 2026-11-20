@@ -602,3 +602,12 @@
 .fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-advanced>summary{
  cursor:pointer;color:#9eb4b4;font-size:11px;
 }
+
+/* Black preview recovery: distinguish a decoded MP4 fallback from live GPU FX. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv-fallback-status{
+ position:absolute;z-index:6;bottom:14px;left:14px;right:14px;
+ width:fit-content;max-width:calc(100% - 28px);pointer-events:none;
+ padding:7px 10px;border:1px solid #698b86;border-radius:5px;
+ background:#101a1de8;color:#d4e8e4;
+ font:11px/1.4 Inter,system-ui,sans-serif;
+}

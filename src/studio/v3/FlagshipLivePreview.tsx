@@ -39,7 +39,11 @@ export function FlagshipLivePreview({recipe,active,settings,stageCanvas,stageSta
   const sample=document.createElement('canvas');sample.width=240;sample.height=135;
   const artistic=new ArtisticFootprintRuntime();
   const events=syntheticSceneEvents();
-  artistic.ingest(events,0,200);
+  // ArtisticFootprintRuntime measures expiry against the timestamp passed to
+  // paint(). The fixed CP-08 sample times (100-860 ms) expired immediately on
+  // real browser clocks, leaving all flagship thumbnail canvases black.
+  const thumbnailEpoch=performance.now();
+  artistic.ingest(events,0,thumbnailEpoch);
   let raf=0,last=-Infinity,visible=true,disposed=false;
   const observer=typeof IntersectionObserver==='undefined'?null:new IntersectionObserver(entries=>{
    visible=entries[0]?.isIntersecting??false;
@@ -57,10 +61,19 @@ export function FlagshipLivePreview({recipe,active,settings,stageCanvas,stageSta
    }
    // Distinguish thumbnails from the final GPU image explicitly.
    if(recipe.id==='rift')sampleArchive(sample,now/1000);
-   else artistic.paint(sample,now,{style:recipe.artwork==='off'?'trace':recipe.artwork,
-    view:'both',treatment:'artistic',
-    intensity:Math.max(.2,settingsRef.current?.mix??recipe.mix),
-    persistence:recipe.id==='echo'?.92:.75});
+   else {
+    // Refresh the preview sequence before it expires during a long session;
+    // these are DEMO marks, never injected into Track or the projection bus.
+    if(now-thumbnailEpoch>18000){
+     artistic.ingest(events.map((event,i)=>({...event,
+      eventId:event.eventId+':'+Math.floor((now-thumbnailEpoch)/18000),
+      atMs:now+i*.001})),0,now);
+    }
+    artistic.paint(sample,now,{style:recipe.artwork==='off'?'trace':recipe.artwork,
+     view:'both',treatment:'artistic',
+     intensity:Math.max(.2,settingsRef.current?.mix??recipe.mix),
+     persistence:recipe.id==='echo'?.92:.75});
+   }
    ctx.clearRect(0,0,canvas.width,canvas.height);
    ctx.drawImage(sample,0,0,canvas.width,canvas.height);
    canvas.dataset.previewSource='sample';

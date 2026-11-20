@@ -99,6 +99,6 @@ test('VIS-R3: Compose uses software preview; hardware keeps QA-approved cleanFlo
  assert.match(composer,/SceneEffectBrowser/);
  const browser=textFile('../src/studio/v3/SceneEffectBrowser.tsx');
  assert.match(browser,/paintSceneSample\(ref\.current,id\)/);
- assert.match(core,/this\.art\.skipExisting\(events,generation\)/);
+ assert.match(core,/this\.art\.ingest\(recent,generation,nowMs\)/);
  assert.ok(!core.includes('getUserMedia('));
 });

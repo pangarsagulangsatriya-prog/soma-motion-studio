@@ -198,6 +198,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  
  const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const motionEventsRef=useRef(motionEvents);motionEventsRef.current=motionEvents;
+ const lastVerifiedContactRef=useRef<{id:string;seenAtMs:number}>({id:'',seenAtMs:0});
+ const [visualWaitingForContact,setVisualWaitingForContact]=useState(false);
+ const waitingForContactRef=useRef(false);
  const [timelineCapture,setTimelineCapture]=useState<TimelineCapture>(()=>emptyTimelineCapture());
  const timelineCaptureRef=useRef(timelineCapture);timelineCaptureRef.current=timelineCapture;
  const [timelineMode,setTimelineMode]=useState<TimelineMode>('live');
@@ -440,12 +443,28 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
   const now=performance.now();
+  // Track may decode MP4 successfully without ever confirming a foot contact.
+  // The live-only preview must show that input instead of an opaque black
+  // material canvas. Keep physical mapping and saved layer source unchanged.
+  const canonical=motionEventsRef.current?.()??[];
+  const lastVerified=[...canonical].reverse().find(event=>event.kind==='contact'&&event.verified);
+  if(lastVerified&&lastVerified.eventId!==lastVerifiedContactRef.current.id)
+   lastVerifiedContactRef.current={id:lastVerified.eventId,seenAtMs:now};
+  const visualIsWaiting=!!activeFlagshipForSettings(hydraSettings)&&
+   s==='FLOOR'&&experimentSourceRef.current==='video'&&experimentReadyRef.current&&
+   (!lastVerifiedContactRef.current.seenAtMs||now-lastVerifiedContactRef.current.seenAtMs>20000);
+  if(!physical&&s==='FLOOR'&&visualIsWaiting!==waitingForContactRef.current){
+   waitingForContactRef.current=visualIsWaiting;
+   setVisualWaitingForContact(visualIsWaiting);
+  }
   for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
    if(overlayOnly&&kind!=='media')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
     kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
-    kind==='hydra'?(!physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
+    kind==='hydra'?(!physical&&visualIsWaiting?
+      experimentInputCanvas?.current??null:
+      !physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
     kind==='body'?bodyCanvas.current:
     kind==='scene'&&!physical?sceneCanvas(layer.id,layer.mediaId,w,h,now):null;
    if(!el)continue;
@@ -845,7 +864,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      onEffectAction={actOnEffect} onFlagshipApply={actOnFlagship}
      activeFlagship={activeFlagshipForSettings(hydraSettings)}
      hydraEnabled={!!hydraSettings?.enabled} hydraSettings={hydraSettings}
-     stageCanvas={visualFloorCanvas} stageStatus={hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
+     stageCanvas={visualFloorCanvas} stageStatus={visualWaitingForContact?'waiting-contact':hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
  <label className="visr4-archive-row">
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
@@ -867,7 +886,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{visualWaitingForContact&&selected==='FLOOR'&&previewArrangement==='surface'&&
+  <div className="fv-fallback-status" role="status">
+   MP4 aktif · Menunggu Contact terverifikasi · Input ditampilkan sementara
+  </div>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
