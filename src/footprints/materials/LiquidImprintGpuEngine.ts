@@ -30,7 +30,6 @@ precision highp float;
 in vec2 vUV;
 uniform sampler2D uMask;
 uniform vec3 uTint;
-uniform float uTime;
 uniform float uSeed;
 uniform float uFlow;
 uniform float uAge;
@@ -102,7 +101,7 @@ type MaskRecord={
  texture:WebGLTexture;signature:string;
 };
 type UniformNames='uCenter'|'uExtentPx'|'uViewport'|'uHeading'|'uMask'|'uTint'|
- 'uTime'|'uSeed'|'uFlow'|'uAge'|'uOpacity'|'uSlide'|'uTwist'|
+ 'uSeed'|'uFlow'|'uAge'|'uOpacity'|'uSlide'|'uTwist'|
  'uRelease'|'uImpulse';
 export type LiquidGpuStats={
  renderer:'WebGL2';contexts:number;activeImprints:number;
@@ -169,7 +168,7 @@ export class LiquidImprintGpuEngine{
   this.uniforms={} as Record<UniformNames,WebGLUniformLocation>;
   const names:UniformNames[]=[
    'uCenter','uExtentPx','uViewport','uHeading','uMask','uTint',
-   'uTime','uSeed','uFlow','uAge','uOpacity',
+   'uSeed','uFlow','uAge','uOpacity',
    'uSlide','uTwist','uRelease','uImpulse'
   ];
   for(const name of names){
@@ -241,7 +240,6 @@ export class LiquidImprintGpuEngine{
    clamp(f(options.widthPx??72,72),25,220),
    clamp(f(options.lengthPx??116,116),55,440));
   gl.uniform1f(this.uniforms.uFlow,clamp(f(options.flow??.7,.7),0,1));
-  gl.uniform1f(this.uniforms.uTime,timeMs/1000);
   for(const imprint of items){
    const mask=this.maskFor(imprint);
    gl.bindTexture(gl.TEXTURE_2D,mask.texture);
