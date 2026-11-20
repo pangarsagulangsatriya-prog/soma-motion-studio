@@ -8,9 +8,10 @@ import {spawn} from 'node:child_process';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from 'playwright';
-const port=4188;
-const url=`http://127.0.0.1:${port}/gpu02-lab.html?qa=1`;
-const directory='artifacts/gpu02';
+const pixi=process.env.GPU02_RENDERER==='pixi';
+const port=pixi?4189:4188;
+const url=`http://127.0.0.1:${port}/gpu02-lab.html?qa=1${pixi?'&engine=pixi':''}`;
+const directory=pixi?'artifacts/gpu02-pixi':'artifacts/gpu02';
 mkdirSync(directory,{recursive:true});
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1',
  '--port',String(port),'--strictPort'],{stdio:['ignore','pipe','pipe']});
@@ -41,7 +42,7 @@ try{
   const stats=await page.evaluate(([scenario,time])=>
    window.__gpu02QA?.runScenario(scenario,time),[name,atMs]);
   assert.ok(stats,'GPU02 research engine did not initialize');
-  assert.equal(stats.renderer,'WebGL2');
+  assert.equal(stats.renderer,pixi?'PixiJS v8 WebGL2':'WebGL2');
   assert.equal(stats.contexts,1,'Unexpected second GPU renderer context');
   assert.equal(stats.activeImprints,count,'Unexpected stamp count for '+name);
   assert.equal(stats.allocatedTextures,count,'Texture leak or duplicate stamp '+name);
@@ -157,7 +158,7 @@ try{
  assert.equal(accelerated.finalTextures,0,'GPU textures failed to expire on long timeline');
  report.checks.push('Accelerated 10-minute simulated event timeline keeps texture budget and expires all masks');
  assert.equal(report.errors.length,0,'Chromium errors: '+report.errors.join('; '));
- console.log('GPU02_PIXEL_QA_PASS',JSON.stringify(report));
+ console.log(pixi?'ENGINE02_PIXI_PIXEL_QA_PASS':'GPU02_PIXEL_QA_PASS',JSON.stringify(report));
 }catch(e){
  report.errors.push(e.stack||String(e));
  console.error('GPU02_PIXEL_QA_FAIL',e);
