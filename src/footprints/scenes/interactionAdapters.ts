@@ -9,6 +9,7 @@ import type {ReplayGaitEvent} from '../../stage/videoGaitAnalysis.ts';
 import {FloorInteractionEngine,type FloorInteractionSource,type FloorObservation}
  from './FloorInteractionEngine.ts';
 import {paintAuthenticFootprint} from './authenticFootGeometry.ts';
+import {deformationAt,type FootVisualAnchor,type FootVisualMotion} from './dynamicFootDeformation.ts';
 
 type PosePoint={x:number;y:number;visibility?:number};
 const validPoint=(p:PosePoint|undefined)=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
@@ -79,13 +80,21 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  const visibleActors:Set<string>=performerCount===1?new Set(['performer-1']):
   new Set(identity.visible.filter(id=>identity.poseIndices[id]!==null));
  for(const e of tracker.session?.events??[]){
-  if(e.kind!=='contact'||e.source!=='camera'||e.confidence<.55||
+  if(!['contact','move','release'].includes(e.kind)||e.source!=='camera'||e.confidence<.55||
    !visibleActors.has(e.performerId)||
    e.timestampMs>frame.time+70)continue;
   const uv=floorToUV(tracker.floor!,e.positionM);
-  engine.contact({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
+  const input={source,eventId:e.id,actorId:e.performerId,foot:e.foot,
    x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
-   basis:'calibrated-estimate',verified:true});
+   headingRad:e.headingRad,basis:'calibrated-estimate' as const};
+  if(e.kind==='contact')engine.contact({...input,verified:true});
+  else {
+   const anchor=[...engine.recent].reverse().find(old=>
+    old.actorId===e.performerId&&old.foot===e.foot&&old.kind==='contact');
+   const turned=anchor&&Math.abs(Math.atan2(Math.sin(e.headingRad-(anchor.headingRad??0)),
+    Math.cos(e.headingRad-(anchor.headingRad??0))))>.14;
+   engine.motion({...input,kind:e.kind==='release'?'release':turned?'pivot':'slide'});
+  }
  }
 }
 export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
@@ -108,12 +117,14 @@ export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
  if(s.ambiguous)return;
  const visibleActors=new Set(s.people.slice(0,2).map(person=>person.id));
  for(const e of s.events){
-  if(e.kind!=='contact'||e.confidence<.55||
+  if(!['contact','slide','pivot','swing'].includes(e.kind)||e.confidence<.55||
    !visibleActors.has(e.performer)||e.atMs>at+70||
    e.atMs<s.atMs-1500)continue;
-  engine.contact({source:'video',eventId:e.id,actorId:e.performer,
+  const input={source:'video' as const,eventId:e.id,actorId:e.performer,
    foot:e.foot,x:clamp(e.x),y:clamp(e.y),atMs:e.atMs,
-   confidence:e.confidence,basis:'image-2d',verified:true});
+   headingRad:e.headingRad,confidence:e.confidence,basis:'image-2d' as const};
+  if(e.kind==='contact')engine.contact({...input,verified:true});
+  else engine.motion({...input,kind:e.kind==='swing'?'release':e.kind});
  }
 }
 export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
@@ -129,11 +140,19 @@ export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
    x:uv.x,y:uv.y,confidence:1,atMs:frame.timeMs,basis:'simulated'});
  }
  for(const e of frame.session.events){
-  if(e.kind!=='contact'||e.timestampMs>frame.timeMs)continue;
+  if(!['contact','move','release'].includes(e.kind)||e.timestampMs>frame.timeMs)continue;
   const uv=floorToUV(floor,e.positionM);
-  engine.contact({source:'simulator',eventId:e.id,actorId:e.performerId,
+  const input={source:'simulator' as const,eventId:e.id,actorId:e.performerId,
    foot:e.foot,x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
-   basis:'simulated',verified:true});
+   headingRad:e.headingRad,basis:'simulated' as const};
+  if(e.kind==='contact')engine.contact({...input,verified:true});
+  else {
+   const anchor=[...engine.recent].reverse().find(old=>
+    old.actorId===e.performerId&&old.foot===e.foot&&old.kind==='contact');
+   const turned=anchor&&Math.abs(Math.atan2(Math.sin(e.headingRad-(anchor.headingRad??0)),
+    Math.cos(e.headingRad-(anchor.headingRad??0))))>.14;
+   engine.motion({...input,kind:e.kind==='release'?'release':turned?'pivot':'slide'});
+  }
  }
 }
 export function feedTouchFloorInteraction(engine:FloorInteractionEngine,input:{
@@ -149,8 +168,15 @@ export function feedTouchFloorInteraction(engine:FloorInteractionEngine,input:{
   engine.observe(base);
   engine.contact({...base,eventId:actorId+':'+input.atMs,
    foot:input.pointerId%2===0?'right':'left',kind:'touch',verified:true});
- }else if(input.kind==='move')engine.observe(base);
- else engine.release(base);
+ }else if(input.kind==='move'){
+  engine.observe(base);
+  engine.motion({...base,eventId:actorId+':move:'+Math.round(input.atMs),
+   foot:input.pointerId%2===0?'right':'left',kind:'slide'});
+ }else{
+  engine.motion({...base,eventId:actorId+':up:'+Math.round(input.atMs),
+   foot:input.pointerId%2===0?'right':'left',kind:'release'});
+  engine.release(base);
+ }
 }
 /** Software overlay only: every input source draws through the same preview.
  * Original FloorSession canvas and all hardware output remain unchanged. */
