@@ -17,7 +17,8 @@
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "hydra-synth": "1.4.0"
+    "hydra-synth": "1.4.0",
+    "pixi.js": "8.23.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
