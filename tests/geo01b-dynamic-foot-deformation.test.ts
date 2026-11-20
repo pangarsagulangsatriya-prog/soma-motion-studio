@@ -28,7 +28,7 @@ test('GEO-01B: move deforms existing sole; pivot uses shortest angular delta',()
  const slide=deformationAt(anchor,230,{kind:'slide',atMs:200,x:.50,y:.58});
  assert.equal(slide.mode,'slide');
  assert.ok(slide.amount>0&&slide.amount<=1);
- assert.ok(slide.travelX!>0);
+ assert.ok((slide.travelX??0)>0);
  const pivot=deformationAt(anchor,250,{kind:'pivot',atMs:200,
   x:.45,y:.55,headingRad:.47});
  assert.equal(pivot.mode,'pivot');
