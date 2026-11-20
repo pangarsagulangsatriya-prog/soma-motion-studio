@@ -106,3 +106,33 @@ profiling, actual MP4 A/B crossing, recovery after WebGL context loss, stage
 profile calibration, Hold/Blackout and pixel-safe output integration.
 Keep the PR in draft and leave Composer without a new visual preset until
 those gates pass.
+ 
+## MAT-03 — One Liquid Imprint study, four gait-specific responses
+
+**Implementation gate:** COMPLETE in the isolated research lab; artistic and stage-projection approval remain pending.
+
+All four states use the **same verified contact**, **same** left/right anatomical sole, and the same PixiJS v8 filter family. The state machine lives in `liquidMaterialResponse.ts`; the single shared shader lives in `liquidMaterialShader.ts` and is imported by both the Pixi compositor and the native WebGL2 comparator.
+
+| Source event | Liquid behavior | Material control |
+|---|---|---|
+| Contact | Pigment fills from heel toward toes, with a visibly moving wet boundary | `contactFill` in the first 320ms |
+| Slide | Long ink filaments align with the estimated sliding vector | `slideX`, `slideY`, `slideStrength` |
+| Pivot | In-foot spiral veins twist around a planted forefoot | `pivotTwist`, `pivotStrength` |
+| Release | Pigment thins immediately and drains into a bounded fading sole residue; the release timestamp survives toe-off settling | `releasedAtMs`, `releaseProgress` |
+
+There is a fifth internal *settle* state for an older planted print, not another material or a catalogue option. CONTACT never repeats solely because a foot remains still. SLIDE/PIVOT/RELEASE only update an existing verified contact.
+
+### Visual QA that isolates the shader
+
+The standalone lab `gpu02-lab.html?engine=pixi` now has a second group of four buttons: **Contact · isi**, **Slide · tarik**, **Pivot · pilin**, **Release · sisa**. All four freeze the **same GEO-01B sole geometry**, actor, foot, heading, position, and elapsed contact time while varying only motion signals and liquid material. This *material-only* mode is QA-only; natural gait deformation remains active in other scenarios.
+
+Script `scripts/gpu02-material-browser-qa.mjs` now captures four extra Chromium PNGs per renderer (`mat-contact-chromium.png`, etc.) and tests all **six** pairwise combinations with strict pixel thresholds and at least 90% silhouette overlap.
+
+**Verified CI:** https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/actions/runs/44685972905  
+788 unit tests passed, zero failed; Vite/TypeScript build and both native + PixiJS Chromium pixel suites passed.
+
+PixiJS material-only comparison: lowest pairwise pigment change ratio **86.8%**, with same-sole-area ratio **99.6–100%**. Each scenario contains one verified contact and one GPU footprint; the shared mask does not leak pigment outside the anatomy.
+
+### Remaining production gates
+
+Real MP4 A/B performer footage, target 30 FPS performance for 10 minutes of wall-clock time, WebGL context-loss recovery, calibration on the actual 5×5 m floor, physical blackout, and operator artistic sign-off still block Stage/Composer activation. `MATERIAL-04` pressure/archive studies remain unimplemented. Keep PR draft; no legacy visual gallery returns.
