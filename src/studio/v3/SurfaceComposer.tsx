@@ -735,8 +735,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
-  <h3>INSPECTOR <small>{selected}</small></h3>
-  {layer&&<div className="cp07-selection-bar" role="status">
+  <h3>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</h3>
+  {layer&&inspectorTab!=='scene'&&<div className="cp07-selection-bar" role="status">
    <strong>{layer.name}</strong><small>Objek {selectedLayer+1} / {layers.length} · {selected}</small>
   </div>}
   {selected!=='FLOOR'&&<LegPreviewInspector value={legTuning}
@@ -745,19 +745,20 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
    {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
-    {tab==='scene'?'Sumber':tab==='layer'?'Layer':'Objek'}</button>)}
+    {tab==='scene'?(selected==='FLOOR'?'Material':'Sumber'):tab==='layer'?'Layer':'Objek'}</button>)}
   </div>
   {inspectorTab==='scene'&&selected==='FLOOR'&&
    <section className="mat03-compose-controls" aria-label="Material MAT-03 Liquid Imprint">
-    <strong>Liquid Imprint</strong>
-    <label><input type="checkbox" checked={liquidEnabled}
-     onChange={event=>setLiquidEnabled(event.target.checked)}/> Tampilkan di Stage Monitor</label>
+    <label className="mat03-active-label"><span>Aktif</span>
+     <input type="checkbox" aria-label="Tampilkan di Stage Monitor" checked={liquidEnabled}
+      onChange={event=>setLiquidEnabled(event.target.checked)}/>
+    </label>
     {liquidEnabled&&<>
      <div role="group" aria-label="Sumber Liquid Imprint">
       <button type="button" aria-pressed={liquidMode==='demo'}
-       onClick={()=>setLiquidMode('demo')}>Coba</button>
+       onClick={()=>setLiquidMode('demo')}>Demo</button>
       <button type="button" aria-pressed={liquidMode==='track'}
-       onClick={()=>setLiquidMode('track')}>Track / Timeline</button>
+       onClick={()=>setLiquidMode('track')}>Track</button>
      </div>
      {liquidMode==='demo'&&
       <div role="group" aria-label="Respons cairan">
@@ -769,10 +770,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       <input aria-label="Aliran Liquid Imprint" type="range" min="0" max="1"
        step=".05" value={liquidFlow} onChange={event=>setLiquidFlow(+event.target.value)}/>
      </label>
-     <small role="status">{liquidStatus}</small>
-     <small>{liquidMode==='track'?
-      'Jejak dari event Track/Timeline yang terverifikasi. Gerak lain mengikuti event tersedia.':
-      'Empat gerakan simulasi untuk menilai material cair; tidak dikirim ke proyektor.'}</small>
+     <small role="status" className="mat03-engine-status" title={liquidStatus}>
+      {liquidStatus.includes('gagal')?liquidStatus:''}</small>
+     {liquidMode==='track'&&timelineCapture.events.length===0&&
+      <small role="status">Buka Track untuk merekam langkah.</small>}
     </>}
    </section>}
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
@@ -789,7 +790,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <option value="multiply">Multiply</option><option value="lighter">Add</option>
   </select></label>
   <button type="button" onClick={()=>patch({x:0,y:0,scale:100,rotation:0})}>Reset transform</button>
-  <p className="cp07-object-help">Klik objek pada Stage Monitor atau pilih dari Layers. Gunakan tombol panah untuk menggeser 1%, Shift + panah untuk 5%.</p><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Layer source<select aria-label="Pilih sumber layer"
+  <p className="cp07-object-help">Pilih objek pada Stage Monitor atau Layer.</p><label>Mask<select value={layer?.mask} onChange={e=>patch({mask:e.target.value as Mask})}><option value="none">None</option><option value="silhouette">Body silhouette</option><option value="polygon">Polygon</option></select></label><label>Opacity <input type="range" min="0" max="100" value={layer?.opacity??100} onChange={e=>patch({opacity:+e.target.value})}/>{layer?.opacity}%</label><label>Scale <input type="range" min="20" max="300" value={layer?.scale??100} onChange={e=>patch({scale:+e.target.value})}/>{layer?.scale}%</label>{(['x','y','rotation','feather'] as const).map(k=><label key={k}>{k}<input type="number" value={layer?.[k]??0} onChange={e=>patch({[k]:+e.target.value})}/></label>)}</details>} {inspectorTab==='layer'&&<><label>Layer source<select aria-label="Pilih sumber layer"
   value={layer?.mediaId??''} onChange={e=>patch({mediaId:e.target.value,
    name:COMPOSE_SOURCE_CHOICES.find(x=>x.id===e.target.value)?.label??
     media.find(x=>x.id===e.target.value)?.name??layer?.name??'Layer'})}>
