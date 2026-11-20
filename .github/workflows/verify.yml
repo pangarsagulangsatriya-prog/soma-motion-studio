@@ -38,3 +38,19 @@ jobs:
           path: artifacts/mat03-compose/
           retention-days: 30
           if-no-files-found: warn
+      - name: Install Chromium for focused Composer UX QA
+        if: contains(github.ref_name, 'cp-ux') || contains(github.head_ref, 'cp-ux')
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+      - name: Composer UX desktop and mobile Chromium QA
+        if: contains(github.ref_name, 'cp-ux') || contains(github.head_ref, 'cp-ux')
+        run: node scripts/cpux-compose-browser-qa.mjs
+      - name: Upload focused Composer UX screenshots
+        if: always() && (contains(github.ref_name, 'cp-ux') || contains(github.head_ref, 'cp-ux'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpux-compose-qa
+          path: artifacts/cpux-compose/
+          retention-days: 30
+          if-no-files-found: warn
