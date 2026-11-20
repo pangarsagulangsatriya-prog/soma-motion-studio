@@ -2,6 +2,7 @@
  * Heel at positive Y, toes at negative Y. Pure geometry; pressure is not sensed.
  * Canvas scale controls physical footprint dimensions. Never authorizes output.
  */
+import {warpFootPoint,warpedToeRadius,type FootDeformation} from './dynamicFootDeformation.ts';
 export type FootSide='left'|'right';
 export type SolePoint=readonly [number,number];
 export const FOOT_LENGTH_M=0.26;
@@ -37,7 +38,7 @@ export function paintAuthenticFootprint(
  ctx:CanvasRenderingContext2D,params:{
  x:number;y:number;side:FootSide;headingRad?:number;
  widthPx:number;lengthPx:number;alpha?:number;color?:string;
- phase?:'contact'|'prediction';
+ phase?:'contact'|'prediction';deformation?:FootDeformation;
  }){
  const {x,y,side,widthPx,lengthPx}=params;
  if(![x,y,widthPx,lengthPx].every(finite)||widthPx<=0||lengthPx<=0)return;
@@ -51,7 +52,8 @@ export function paintAuthenticFootprint(
  ctx.globalAlpha*=alpha;
  ctx.fillStyle=params.color??'#e6ebd9';
  ctx.strokeStyle=params.color??'#e6ebd9';
- const outline=footprintOutline(side);
+ const outline=footprintOutline(side).map(([px,py])=>
+  warpFootPoint(px,py,params.deformation));
  ctx.beginPath();
  ctx.moveTo(outline[0][0],outline[0][1]);
  // Quadratic smoothing retains recognizable medial arch indentation.
@@ -66,7 +68,9 @@ export function paintAuthenticFootprint(
   ctx.lineWidth=.045;ctx.setLineDash([.08,.09]);ctx.stroke();ctx.setLineDash([]);
  }else ctx.fill();
  for(const t of footprintToes(side)){
-  ctx.beginPath();ctx.ellipse(t.x,t.y,t.rx,t.ry,t.angle,0,Math.PI*2);
+  const [tx,ty]=warpFootPoint(t.x,t.y,params.deformation);
+  const radii=warpedToeRadius(t.rx,t.ry,t.y,params.deformation);
+  ctx.beginPath();ctx.ellipse(tx,ty,radii.rx,radii.ry,t.angle,0,Math.PI*2);
   if(params.phase==='prediction')ctx.stroke();else ctx.fill();
  }
  ctx.restore();
