@@ -23,6 +23,9 @@ import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STA
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {sharedAssetChoices,SHARED_TRACK_MP4_ID,type SharedAsset} from './sharedAssetModel.ts';
 import {normalizedCanvasPoint,pickTopmostObject,nudgeLayer} from './composerObjectSelection.ts';
+import {composerLiquidTrackEvents,composerLiquidDemoEvents,COMPOSER_LIQUID_PHASES,
+ type ComposerLiquidPhase,type ComposerLiquidMode} from './composerLiquidAdapter.ts';
+import type {PixiLiquidImprintCompositor} from '../../footprints/materials/PixiLiquidImprintCompositor.ts';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
@@ -115,6 +118,50 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  // Software preview starts enabled in Compose. Physical output still requires the existing routing/QA panel.
  const [blackout,setBlackout]=useState(previewBlackout);
  const [previewLive,setPreviewLive]=useState(true);
+ // Liquid Imprint lives inside Compose. Projector outputs stay unchanged.
+ const [liquidEnabled,setLiquidEnabled]=useState(true);
+ const [liquidMode,setLiquidMode]=useState<ComposerLiquidMode>('demo');
+ const [liquidPhase,setLiquidPhase]=useState<ComposerLiquidPhase>('contact');
+ const [liquidFlow,setLiquidFlow]=useState(.76);
+ const [liquidStatus,setLiquidStatus]=useState('PixiJS memuat…');
+ const liquidCanvas=useRef<HTMLCanvasElement>(null);
+ const liquidRenderer=useRef<PixiLiquidImprintCompositor|null>(null);
+ const liquidEnabledRef=useRef(liquidEnabled);liquidEnabledRef.current=liquidEnabled;
+ const liquidModeRef=useRef(liquidMode);liquidModeRef.current=liquidMode;
+ const liquidPhaseRef=useRef(liquidPhase);liquidPhaseRef.current=liquidPhase;
+ const liquidFlowRef=useRef(liquidFlow);liquidFlowRef.current=liquidFlow;
+ const liquidDemoStart=useRef(0);
+ const liquidPaintErrorRef=useRef('');
+ useEffect(()=>{liquidDemoStart.current=performance.now();},[liquidMode,liquidPhase]);
+ useEffect(()=>{
+  if(mapMode||!liquidEnabled)return;
+  const surface=liquidCanvas.current;
+  if(!surface)return;
+  let canceled=false;
+  // React StrictMode replays mount effects. Defer creation one browser frame
+  // so the canceled first mount cannot initialize/destroy the shared canvas.
+  const start=requestAnimationFrame(()=>{
+   if(canceled)return;
+   void import('../../footprints/materials/PixiLiquidImprintCompositor.ts')
+    .then(({PixiLiquidImprintCompositor})=>{
+     if(canceled)return null;
+     return PixiLiquidImprintCompositor.create(surface);
+    })
+    .then(renderer=>{
+     if(!renderer)return;
+     if(canceled){renderer.destroy();return;}
+     liquidRenderer.current=renderer;
+     setLiquidStatus('Liquid Imprint · PixiJS v8 siap');
+    })
+    .catch(err=>{if(!canceled)setLiquidStatus('Liquid Imprint gagal: '+String(err));});
+  });
+  return()=>{
+   canceled=true;cancelAnimationFrame(start);
+   const active=liquidRenderer.current;
+   liquidRenderer.current=null;
+   active?.destroy();
+  };
+ },[mapMode,liquidEnabled]);
  useEffect(()=>{
   const onGlobalBlackout=()=>setBlackout(true);
   window.addEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout);
@@ -405,6 +452,33 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false,true);
    }}
    if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height,true,true);}
+   // MAT-03: software-only liquid material. Never copied into projector
+   // bodyOutput/floorOutput or StageRoute.
+   let liquidFrame=false;
+   if(!mapMode&&liquidEnabledRef.current&&!blackoutRef.current&&
+    previewLiveRef.current&&liquidRenderer.current&&
+    selectedRef.current==='FLOOR'){
+    const demo=liquidModeRef.current==='demo';
+    const artTime=demo?now:timelineModeRef.current==='replay'
+     ?timelinePositionRef.current:now;
+    const events=demo?
+     composerLiquidDemoEvents(liquidPhaseRef.current,now,liquidDemoStart.current):
+     composerLiquidTrackEvents(timelineCaptureRef.current,artTime,
+      timelineModeRef.current==='replay'?'replay':'live');
+    try{
+     liquidRenderer.current.render(events,artTime,{
+      widthPx:118,lengthPx:190,flow:liquidFlowRef.current,lifeMs:9000
+     });
+     liquidFrame=true;
+    }catch(err){
+     liquidFrame=false;
+     const message='Liquid Imprint render gagal: '+String(err);
+     if(liquidPaintErrorRef.current!==message){
+      liquidPaintErrorRef.current=message;
+      setLiquidStatus(message);
+     }
+    }
+   }
    // CP-03: paint imported composition layers over the live FLOOR monitor.
    // The source scene remains visible underneath transparent pixels. This is
    // only a software preview: StageRoute/Map QA and projector routing remain untouched.
@@ -417,9 +491,18 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      ctx.clearRect(0,0,previewOverlay.width,previewOverlay.height);
      if(readyMedia('FLOOR')&&!blackoutRef.current&&previewLiveRef.current)
       render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false,true);
+     if(liquidFrame&&liquidCanvas.current)
+      ctx.drawImage(liquidCanvas.current,0,0,previewOverlay.width,previewOverlay.height);
     }
    }
    const preview=canvas.current;
+   if(preview){
+    preview.dataset.mat03Active=liquidFrame?'drawn':liquidRenderer.current?'gated':'loading';
+    preview.dataset.mat03Selected=selectedRef.current;
+    preview.dataset.mat03Enabled=String(liquidEnabledRef.current);
+    preview.dataset.mat03PreviewLive=String(previewLiveRef.current);
+    preview.dataset.mat03Blackout=String(blackoutRef.current);
+   }
    if(preview){const ctx=preview.getContext('2d');if(ctx){
     if(previewArrangementRef.current==='input'&&experimentSource){
      ctx.setTransform(1,0,0,1,0,0);
@@ -439,6 +522,13 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      ctx.fillStyle='#c8dbc9';ctx.font='13px sans-serif';ctx.fillText('BODY A/B',16,24);ctx.fillText('FLOOR',preview.width/2+16,24);
     }else render(ctx,selectedRef.current,preview.width,preview.height);
    }}
+   if(preview&&liquidFrame&&liquidCanvas.current&&
+    previewArrangementRef.current==='surface'&&selectedRef.current==='FLOOR'){
+    const g=preview.getContext('2d');
+    if(g){g.save();g.globalCompositeOperation='source-over';
+     g.globalAlpha=1;g.drawImage(liquidCanvas.current,0,0,preview.width,preview.height);
+     g.restore();}
+   }
    if(preview&&timelineModeRef.current==='replay'&&selectedRef.current==='FLOOR'&&
     previewArrangementRef.current==='surface'&&!blackoutRef.current&&previewLiveRef.current){
     const g=preview.getContext('2d');
@@ -557,7 +647,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    </div></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
    onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
-   <span>Visual V5 · Renderer belum dipasang</span>
+   <span>{liquidEnabled?'MAT-03 · Liquid Imprint di Composer':'MAT-03 · nonaktif'} · Preview saja</span>
    <details className="soma-ia-display-options"><summary>Display</summary>
     <label><input type="checkbox" checked={previewLive}
      onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
@@ -572,7 +662,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <aside className="s64-column cp02-library">
     <h3>Media &amp; Layers</h3>
     <div className="msv4-browser-meta">VISUAL RESET · V5</div>
-    <p className="v5-reset-empty" role="status">Katalog visual lama sudah dikosongkan. Sumber MP4 dan media tetap tersedia. Visual baru akan masuk setelah uji bentuk telapak.</p>
+    <p className="v5-reset-empty" role="status">Visual V5 · Liquid Imprint. Pilih FLOOR dan atur cairan di Inspector. MP4 dan media tetap tersedia.</p>
     <details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><small>Media lokal dan MP4 Track tetap dapat disusun sebagai layer.</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
  <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
   onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');setPreviewArrangement('surface');}}>
@@ -640,6 +730,34 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
     {tab==='scene'?'Sumber':tab==='layer'?'Layer':'Objek'}</button>)}
   </div>
+  {inspectorTab==='scene'&&selected==='FLOOR'&&
+   <section className="mat03-compose-controls" aria-label="Material MAT-03 Liquid Imprint">
+    <strong>Liquid Imprint</strong>
+    <label><input type="checkbox" checked={liquidEnabled}
+     onChange={event=>setLiquidEnabled(event.target.checked)}/> Tampilkan di Stage Monitor</label>
+    {liquidEnabled&&<>
+     <div role="group" aria-label="Sumber Liquid Imprint">
+      <button type="button" aria-pressed={liquidMode==='demo'}
+       onClick={()=>setLiquidMode('demo')}>Coba</button>
+      <button type="button" aria-pressed={liquidMode==='track'}
+       onClick={()=>setLiquidMode('track')}>Track / Timeline</button>
+     </div>
+     {liquidMode==='demo'&&
+      <div role="group" aria-label="Respons cairan">
+       {COMPOSER_LIQUID_PHASES.map(phase=><button type="button" key={phase}
+        aria-pressed={liquidPhase===phase} onClick={()=>setLiquidPhase(phase)}>
+        {phase[0].toUpperCase()+phase.slice(1)}</button>)}
+      </div>}
+     <label>Aliran · {Math.round(liquidFlow*100)}%
+      <input aria-label="Aliran Liquid Imprint" type="range" min="0" max="1"
+       step=".05" value={liquidFlow} onChange={event=>setLiquidFlow(+event.target.value)}/>
+     </label>
+     <small role="status">{liquidStatus}</small>
+     <small>{liquidMode==='track'?
+      'Jejak dari event Track/Timeline yang terverifikasi. Gerak lain mengikuti event tersedia.':
+      'Empat gerakan simulasi untuk menilai material cair; tidak dikirim ke proyektor.'}</small>
+    </>}
+   </section>}
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
    <span>{COMPOSE_SOURCE_CHOICES.find(o=>o.id===layer?.mediaId)?.label??media.find(m=>m.id===layer?.mediaId)?.name??(composerSourceKind(layer??{mediaId:'',name:''},selected)==='floor'?'Footprints / FLOOR':'Belum ada media')}</span>
@@ -673,6 +791,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-runtime" aria-hidden="true">
    <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="BODY compositor raster"/>
    <canvas ref={floorOutput} width={640} height={360} hidden aria-label="FLOOR compositor raster"/>
+    <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden
+     aria-label="MAT-03 Liquid Imprint PixiJS preview only"/>
   </div>
  </div>;
 }
