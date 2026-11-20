@@ -109,7 +109,8 @@ export function collectMaterialImpulses(
   if(e.kind==='contact'&&!e.verified)continue;
   if(e.kind!=='contact'&&e.kind!=='slide'&&e.kind!=='pivot')continue;
   const actor:0|1=e.actorId==='B'||e.actorId==='performer-2'?1:0;
-  const prior=next.findLast(i=>i.actor===actor);
+  let prior:MaterialImpulse|undefined;
+  for(let j=next.length-1;j>=0;j--)if(next[j].actor===actor){prior=next[j];break;}
   const dx=prior?Math.max(-.2,Math.min(.2,e.x-prior.x)):0;
   const dy=prior?Math.max(-.2,Math.min(.2,e.y-prior.y)):-.03;
   const kind=e.kind==='contact'?0:e.kind==='slide'?1:2;
