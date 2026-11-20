@@ -77,15 +77,21 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  }
  if(!tracker.isConfirmed||!cameraMatched||
   performerCount===2&&!idsValid)return;
+ // GaitAnalyzer stamps use the elapsed session clock. The overlay RAF uses
+ // performance.now(). Rebase both using the latest observed gait timestamp;
+ // otherwise all camera contacts appear expired as soon as they arrive.
+ const liveStatus=tracker.status;
+ if(liveStatus.lastSeenMs===null||!Number.isFinite(liveStatus.lastSeenMs))return;
+ const clockOffset=nowMs-liveStatus.lastSeenMs;
  const visibleActors:Set<string>=performerCount===1?new Set(['performer-1']):
   new Set(identity.visible.filter(id=>identity.poseIndices[id]!==null));
  for(const e of tracker.session?.events??[]){
   if(!['contact','move','release'].includes(e.kind)||e.source!=='camera'||e.confidence<.55||
    !visibleActors.has(e.performerId)||
-   e.timestampMs>frame.time+70)continue;
+   e.timestampMs>liveStatus.lastSeenMs+70)continue;
   const uv=floorToUV(tracker.floor!,e.positionM);
   const input={source,eventId:e.id,actorId:e.performerId,foot:e.foot,
-   x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
+   x:uv.x,y:uv.y,confidence:e.confidence,atMs:Math.max(0,e.timestampMs+clockOffset),
    headingRad:e.headingRad,basis:'calibrated-estimate' as const};
   if(e.kind==='contact')engine.contact({...input,verified:true});
   else {
