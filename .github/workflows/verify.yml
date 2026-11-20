@@ -22,3 +22,24 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Install Chromium for GPU-02 review
+        if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+      - name: GEO-01B pixel geometry QA
+        if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
+        run: node scripts/geo01b-browser-qa.mjs
+      - name: GPU-02 actual WebGL2 material pixel QA
+        if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
+        run: node scripts/gpu02-material-browser-qa.mjs
+      - name: Upload authentic-footprint GPU screenshots
+        if: always() && (contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu02-pixel-qa
+          path: |
+            artifacts/geo01b
+            artifacts/gpu02
+          retention-days: 30
+          if-no-files-found: warn
