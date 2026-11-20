@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOMA V5 · GPU-02 Liquid Imprint QA</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui,sans-serif;background:#070908;color:#d7dfd9}
+body{margin:0;padding:20px;display:grid;gap:15px}
+header{display:flex;gap:15px;align-items:baseline;flex-wrap:wrap}
+h1{font-size:21px;font-weight:650;margin:0}
+small,#status{color:#9caea5}#status{font:13px monospace}
+nav{display:flex;flex-wrap:wrap;gap:8px}
+button{background:#202924;color:#e1eae5;border:1px solid #4c6155;border-radius:6px;
+padding:9px 12px;cursor:pointer}button:focus-visible{outline:2px solid #a8dac6}
+button[aria-pressed="true"]{background:#385847;border-color:#b4ddc3}
+canvas{width:min(100%,1280px);aspect-ratio:16/9;height:auto;display:block;
+background:#000;border:1px solid #36473d}
+article{max-width:1280px;color:#a8b9af;line-height:1.45;font-size:13px}
+</style></head>
+<body><header><h1>GPU-02 · Liquid Imprint</h1><small>QA-only / software preview / synthetic contacts</small></header>
+<nav aria-label="Skenario QA">
+<button data-scenario="one">1 contact</button>
+<button data-scenario="two">2 contacts</button>
+<button data-scenario="six">6 contacts</button>
+<button data-scenario="slide">Slide</button>
+<button data-scenario="pivot">Pivot</button>
+<button data-scenario="release">Release</button>
+<button data-scenario="idle">Idle / decay</button>
+<button data-scenario="crossing">Crossing A/B</button>
+</nav>
+<div id="status" role="status">Menyiapkan GPU…</div>
+<canvas width="1280" height="720" id="gpu02-stage" aria-label="Siluet jejak kaki dengan material Liquid Imprint"></canvas>
+<article>Studi material terisolasi. Kontak sintetis hanya memengaruhi monitor browser. Tidak ada akses kamera, menu Compose, Map, Perform, atau perangkat proyektor.</article>
+<script type="module" src="/src/footprints/materials/gpu02Lab.ts"></script>
+</body></html>
