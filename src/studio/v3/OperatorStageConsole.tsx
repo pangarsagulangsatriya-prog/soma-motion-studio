@@ -1,7 +1,7 @@
 import {ArrowLeft,ArrowRight,Circle,MonitorOff,Pause,Play,Settings2} from 'lucide-react';
 import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
-import {PERFORM_SCENES,PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
+import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import './ops-r1-perform.css';
 
 type Props={
@@ -35,7 +35,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   </div>
   <div className="ops-r1-status" role="status" aria-live="polite">
    <div><small>ACTIVE SOURCE</small><strong>{sourceLabel}</strong></div>
-   <div><small>SCENE / SOFTWARE</small><strong>{scene}</strong></div>
+   <div><small>FLOOR / SOFTWARE</small><strong>Tracking preview</strong></div>
    <div><small>TRACKING</small><strong>{previewStatus}</strong></div>
    <div><small>HARDWARE</small><strong>{hardwareStatus}</strong></div>
   </div>
@@ -43,24 +43,20 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    <span>{unreadyReason}</span><button type="button" onClick={onRecovery}>Periksa sumber / Map QA</button>
   </div>}
   <section className="ops-r1-cue-grid" aria-label="Cue presets · delapan slot">
-   <header><strong>PERFORM CUE GRID</strong><span>Pilih cue untuk mengganti scene dan layout monitor. QA output di Map tetap berlaku terpisah.</span></header>
+   <header><strong>PERFORM CUE GRID</strong><span>Pilih cue untuk mengganti layout monitor. QA output di Map tetap berlaku terpisah.</span></header>
    <div className="ops-r1-cue-slots">
     {cueGrid.slots.map((slot,i)=><button type="button" key={slot.id}
-     className="ops-r1-slot" aria-pressed={activeSlot===i} aria-label={'Jalankan '+slot.label+', '+slot.scene+', layout '+slot.view}
+     className="ops-r1-slot" aria-pressed={activeSlot===i} aria-label={'Jalankan '+slot.label+', layout '+slot.view}
      onClick={()=>onApplySlot(i)}
-     title={'GO '+slot.label+' · '+slot.scene+' · '+slot.view}>
+     title={'GO '+slot.label+' · '+slot.view}>
      <small>{String(i+1).padStart(2,'0')}</small><b>{slot.label}</b>
-     <span>{slot.scene}</span><em>{slot.view.toUpperCase()}</em>
+     <span>FLOOR</span><em>{slot.view.toUpperCase()}</em>
     </button>)}
    </div>
    <details className="ops-r1-cue-editor"><summary>Edit cue {activeSlot+1} · preset lokal</summary>
     <label>Nama cue<input type="text" maxLength={44}
      value={cueGrid.slots[activeSlot].label}
      onChange={e=>onUpdateSlot(activeSlot,{label:e.target.value})}/></label>
-    <label>Scene<select value={cueGrid.slots[activeSlot].scene}
-     onChange={e=>onUpdateSlot(activeSlot,{scene:e.target.value as PerformSceneId})}>
-     {PERFORM_SCENES.map(id=><option key={id} value={id}>{id}</option>)}
-    </select></label>
     <label>Preview<select value={cueGrid.slots[activeSlot].view}
      onChange={e=>onUpdateSlot(activeSlot,{view:e.target.value as PerformView})}>
      {PERFORM_VIEWS.map(view=><option key={view} value={view}>{view.toUpperCase()}</option>)}
@@ -69,7 +65,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      <button type="button" onClick={onSaveCue}>Simpan cue lokal</button>
      <button type="button" onClick={onResetCues}>Reset default</button>
     </div>
-    <small>{cueMessage||'Profil cue hanya menyimpan scene dan preview. Izin cahaya tidak tersimpan.'}</small>
+    <small>{cueMessage||'Cue hanya menyimpan layout preview. Izin cahaya tidak tersimpan.'}</small>
    </details>
   </section>
   <div className="fp-operator-health" role="status" aria-live="polite">

@@ -33,11 +33,12 @@ test('Track hides secondary previews but keeps engine BODY/FLOOR raster canvases
  assert.match(stage,/motionEvents=\{\(\)=>interactionEngineRef\.current\.canonicalRecent\}/);
 });
 
-test('Compose keeps three columns: Scene Library / Stage Preview / Inspector',()=>{
+test('RESET-00 Compose keeps Media/Layers, Stage Preview and Inspector columns',()=>{
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
- assert.match(composer,/<h3>Scene Library<\/h3>/);
+ assert.match(composer,/<h3>Media &amp; Layers<\/h3>/);
  assert.match(composer,/Layer target/);
+ assert.doesNotMatch(composer,/SceneEffectBrowser|FlagshipInspector|HydraEffectInspector/);
  assert.match(composer,/cp02-editor/);
  assert.match(composer,/cp02-inspector/);
  const dock=read('../src/studio/v3/cp02-cp03-composition.css');

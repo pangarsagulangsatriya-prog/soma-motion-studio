@@ -9,46 +9,29 @@ import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stag
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
 import {SOFTWARE_PREVIEW_BLACKOUT_EVENT} from './stagePreviewCommands.ts';
 import './SurfaceComposer.css';
-import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
-import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
 import {canRenderComposeSurface} from './composePreviewGate.ts';
-import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
-import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
-import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
-import {flagshipHydraPatch,type FlagshipId} from './flagshipVisualModel.ts';
 import {ComposerEventTimeline,type TimelineMode} from './ComposerEventTimeline.tsx';
 import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timelineFootprintVisibility,type TimelineCapture} from './composerEventTimelineModel.ts';
-import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
-import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings,type HydraFootprintStyle} from '../../footprints/scenes/hydraFootprintModel.ts';
-import './vis-r3-gallery.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
-import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRule,
- resolveMotionRecipeCue,motionRecipeEnvelope,type MotionRecipeRule,type MotionRecipeCue} from '../../footprints/scenes/motionRecipeModel.ts';
-import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
-import {FootprintDemo,LegDemo} from './MappingStudioDemo.tsx';
-import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
+import {V5_COMPOSER_KEY,stripRetiredVisualLayers,resetOldVisualStorage} from './resetVisualMigration.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
-import {HydraEffectInspector} from './HydraEffectInspector.tsx';
-import {FlagshipInspector} from './FlagshipInspector.tsx';
-import {activeFlagshipForSettings} from './flagshipInspectorModel.ts';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
 import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
-import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
+import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {sharedAssetChoices,SHARED_TRACK_MP4_ID,type SharedAsset} from './sharedAssetModel.ts';
 import {normalizedCanvasPoint,pickTopmostObject,nudgeLayer} from './composerObjectSelection.ts';
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
-type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][];recipe:string;motionRecipe?:MotionRecipeRule};
+type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][]};
 type Composition=Record<Surface,Layer[]>;
 type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
 const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
-const key='soma-s64-composer-v1';
-const presetKey='soma-s64-presets-v1';
-const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'});
+const key=V5_COMPOSER_KEY;
+const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]]});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
 const validFootprint=(v:unknown):v is FootprintConfig=>{
  if(!v||typeof v!=='object')return false;
@@ -83,14 +66,9 @@ type Props={
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFloorCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentReady?:boolean;
- visualFloorCanvas?:RefObject<HTMLCanvasElement|null>;previewFloorEnabled?:boolean;
  /** Software-only composited FLOOR overlay in the shared three-monitor shell. */
  composePreviewCanvas?:RefObject<HTMLCanvasElement|null>;
- archiveHydraCanvas?:RefObject<HTMLCanvasElement|null>;
- onArchiveHydraChange?:(enabled:boolean)=>void;
- hydraSettings?:HydraFootprintSettings;
- onHydraSettingsChange?:(patch:Partial<HydraFootprintSettings>)=>void;
- hydraStatus?:string;previewResumeRevision?:number;previewBlackout?:boolean;
+ previewResumeRevision?:number;previewBlackout?:boolean;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
@@ -98,9 +76,9 @@ type Props={
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
- embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
+ embedded?:boolean;mapMode?:boolean;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const [selected,setSelected]=useState<Surface>('FLOOR');
@@ -108,8 +86,20 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  useEffect(()=>{if(experimentSource)setPreviewArrangement('input');else setPreviewArrangement('surface');},[experimentSource]);
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
- const history=useCompositionHistory<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
+ const history=useCompositionHistory<Composition>(()=>{
+  try{
+   const current=JSON.parse(localStorage.getItem(key)||'null');
+   const legacy=JSON.parse(localStorage.getItem('soma-s64-composer-v1')||'null');
+   const snapshot=valid(current)?current:valid(legacy)?legacy:null;
+   if(!snapshot)return initial();
+   const cleaned=stripRetiredVisualLayers(snapshot.composition) as Composition;
+   for(const surface of surfaces)if(!cleaned[surface]?.length)
+    cleaned[surface]=initial()[surface];
+   return cleaned;
+  }catch{return initial();}
+ });
  const composition=history.value,setComposition=history.set;
+ useEffect(()=>{try{resetOldVisualStorage(localStorage);}catch{}},[]);
  const [inspectorTab,setInspectorTab]=useState<'scene'|'layer'|'object'>('scene');
  const [dragLayer,setDragLayer]=useState<number|null>(null);
  const [dropLayer,setDropLayer]=useState<number|null>(null);
@@ -117,17 +107,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [saveStatus,setSaveStatus]=useState('Tersimpan lokal');
  const [loadingMedia,setLoadingMedia]=useState(0);
  const media=sharedAssets;
- const [archiveHydra,setArchiveHydra]=useState(false);
- const archiveHydraRef=useRef(archiveHydra);archiveHydraRef.current=archiveHydra;
- const [riftSourceId,setRiftSourceId]=useState('@stage:input');
- const riftSourceRef=useRef(riftSourceId);riftSourceRef.current=riftSourceId;
- const archiveReadyRef=useRef(false);
- const [riftReady,setRiftReady]=useState(false);
- const onArchiveHydraChangeRef=useRef(onArchiveHydraChange);
- onArchiveHydraChangeRef.current=onArchiveHydraChange;
  const [selectedLayer,setSelectedLayer]=useState(0);
- const [presets,setPresets]=useState<{name:string;snapshot:Snapshot}[]>(()=>{try{const p=JSON.parse(localStorage.getItem(presetKey)||'[]');return Array.isArray(p)?p.filter(x=>x?.name&&valid(x.snapshot)).slice(0,30):[];}catch{return [];}});
- const [presetName,setPresetName]=useState('New composition');
  const [editMask,setEditMask]=useState(false);
  const [outputOpen,setOutputOpen]=useState(false);
  const [bodyStatus,setBodyStatus]=useState('Menunggu frame tubuh.');
@@ -142,42 +122,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  },[]);
  useEffect(()=>{if(previewBlackout)setBlackout(true);},[previewBlackout]);
  useEffect(()=>{if(previewResumeRevision>0&&!previewBlackout){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision,previewBlackout]);
- const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
- const [demoFootprints,setDemoFootprints]=useState<FootprintState>(emptyFootprintState);
- const [demoNowMs,setDemoNowMs]=useState(()=>performance.now());
- const [demoFoot,setDemoFoot]=useState<FootSide>('left');
- const rehearsalEvent=(kind:FootEventKind,foot:FootSide=demoFoot)=>{
-  const atMs=performance.now();
-  setDemoFootprints(previous=>{
-   const active=previous.active[('A:'+foot) as 'A:left'|'A:right'];
-   let next=previous;
-   // The operator's Step button advances a distinct contact: release the previous stamp.
-   if(kind==='contact'&&active){
-    next=applyFootprintEvent(next,makeDemoFootEvent(next,'release',foot,atMs-.01));
-   }
-   return applyFootprintEvent(next,makeDemoFootEvent(next,kind,foot,atMs));
-  });
-  setDemoFoot(foot);
-  triggerTest(kind==='slide'?'move':kind==='pivot'?'release':'contact');
- };
- useEffect(()=>{
-  if(cameraOn||blackout||previewBlackout||!previewLive)return;
-  const timer=window.setInterval(()=>{
-   const now=performance.now();
-   setDemoNowMs(now);
-   setDemoFootprints(previous=>pruneFootprints(previous,now,{holdMs:0,decayMs:(footprint?.life??8)*1000}));
-  },120);
-  return()=>window.clearInterval(timer);
- },[cameraOn,blackout,previewBlackout,previewLive,footprint?.life]);
- const effectClock=useRef(new Map<string,{started:number;kind:string}>());
- const motionClocks=useRef(new Map<string,MotionRecipeCue>());
- const seenMotionEvents=useRef(new Set<string>());
  const activeMotionSession=useRef<string|null>(null);
- const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
- const sceneCanvases=useRef(new Map<string,HTMLCanvasElement>());
- const sceneRuntimes=useRef(new Map<string,ComposedSceneRuntime>());
- const sceneReplaySeen=useRef(new Map<string,string>());
  const previewLayerAlpha=useRef(new Map<string,number>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
  const floorOutput=useRef<HTMLCanvasElement>(null);
@@ -196,14 +142,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  };
  const outputReadyRef=useRef({body:false,floor:false});
  
- const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const motionEventsRef=useRef(motionEvents);motionEventsRef.current=motionEvents;
- const lastVerifiedContactRef=useRef<{id:string;seenAtMs:number}>({id:'',seenAtMs:0});
- const [visualWaitingForContact,setVisualWaitingForContact]=useState(false);
- const waitingForContactRef=useRef(false);
- const [visualMaterialEmpty,setVisualMaterialEmpty]=useState(false);
- const materialEmptyRef=useRef(false);
- const materialProbe=useRef<{canvas:HTMLCanvasElement;ctx:CanvasRenderingContext2D;lastMs:number;visible:boolean}|null>(null);
  const [timelineCapture,setTimelineCapture]=useState<TimelineCapture>(()=>emptyTimelineCapture());
  const timelineCaptureRef=useRef(timelineCapture);timelineCaptureRef.current=timelineCapture;
  const [timelineMode,setTimelineMode]=useState<TimelineMode>('live');
@@ -228,7 +167,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   return()=>window.clearInterval(timer);
  },[timelineMode,timelinePlaying]);
  const motionSessionRef=useRef(motionSession);motionSessionRef.current=motionSession;
- const [eventInfo,setEventInfo]=useState('Menunggu trigger layer.');
  
  const canvas=useRef<HTMLCanvasElement>(null);
  const frameRefLive=useRef(frameRef);frameRefLive.current=frameRef;
@@ -389,45 +327,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   previewMaskCache.current={at:frame.time,A:previewMaskScratch.current.A,
    B:pb?previewMaskScratch.current.B:null,safe:true};
  };
- const sceneCanvas=(layerId:string,mediaId:string,w:number,h:number,atMs:number):HTMLCanvasElement|null=>{
-  const scene=sceneIdFromSource(mediaId);if(!scene)return null;
-  let canvas=sceneCanvases.current.get(layerId);
-  if(!canvas){canvas=document.createElement('canvas');sceneCanvases.current.set(layerId,canvas);}
-  if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
-  let runtime=sceneRuntimes.current.get(layerId);
-  if(!runtime||runtime.scene!==scene){
-   runtime=new ComposedSceneRuntime(scene);
-   const old=motionEventsRef.current?.()??[];
-   runtime.skipExisting(old,motionSessionRef.current?.()??'unknown');
-   sceneRuntimes.current.set(layerId,runtime);
-  }
-  if(timelineModeRef.current==='replay'){
-   const visible=timelineAt(timelineCaptureRef.current,timelinePositionRef.current);
-   const token=timelineCaptureRef.current.session+':'+visible.length+':'+(visible.at(-1)?.id??'');
-   if(sceneReplaySeen.current.get(layerId)!==token){
-    runtime.replay(visible);sceneReplaySeen.current.set(layerId,token);
-   }
-   runtime.paint(canvas,timelinePositionRef.current);
-  }else{
-   if(sceneReplaySeen.current.has(layerId)){
-    sceneReplaySeen.current.delete(layerId);
-    runtime.skipExisting(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown');
-   }
-   runtime.ingest(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown',atMs,true);
-   runtime.paint(canvas,atMs);
-  }
-  return canvas;
- };
- useEffect(()=>{
-  const active=new Set(surfaces.flatMap(surface=>composition[surface].map(layer=>layer.id)));
-  for(const id of sceneRuntimes.current.keys())if(!active.has(id)){
-   sceneRuntimes.current.delete(id);sceneCanvases.current.delete(id);sceneReplaySeen.current.delete(id);
-  }
- },[composition]);
- useEffect(()=>()=>{
-  sceneCanvases.current.clear();sceneRuntimes.current.clear();sceneReplaySeen.current.clear();
- },[]);
-  const readyMedia=(s:Surface)=>{
+ const readyMedia=(s:Surface)=>{
   return compositionRef.current[s].some(l=>{
    if(!l.visible||!l.mediaId)return false;
    const item=mediaEls.current.get(l.mediaId);
@@ -446,63 +346,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
   const now=performance.now();
-  // Track may decode MP4 successfully without ever confirming a foot contact.
-  // The live-only preview must show that input instead of an opaque black
-  // material canvas. Keep physical mapping and saved layer source unchanged.
-  const canonical=motionEventsRef.current?.()??[];
-  const lastVerified=[...canonical].reverse().find(event=>event.kind==='contact'&&event.verified);
-  if(lastVerified&&lastVerified.eventId!==lastVerifiedContactRef.current.id)
-   lastVerifiedContactRef.current={id:lastVerified.eventId,seenAtMs:now};
-  const visualIsWaiting=!!activeFlagshipForSettings(hydraSettings)&&
-   s==='FLOOR'&&experimentSourceRef.current==='video'&&experimentReadyRef.current&&
-   (!lastVerifiedContactRef.current.seenAtMs||now-lastVerifiedContactRef.current.seenAtMs>20000);
-  // Sample the actual 2D material once per 400ms. Hydra can report READY
-  // while its composited canvas contains only black pixels.
-  let visualIsEmpty=false;
-  if(!physical&&s==='FLOOR'&&!!activeFlagshipForSettings(hydraSettings)&&
-    experimentSourceRef.current==='video'&&experimentReadyRef.current){
-   const source=visualFloorCanvas?.current;
-   if(!source)visualIsEmpty=true;
-   else{
-    if(!materialProbe.current){
-     const probe=document.createElement('canvas');probe.width=32;probe.height=18;
-     const ctx=probe.getContext('2d',{willReadFrequently:true});
-     if(ctx)materialProbe.current={canvas:probe,ctx,lastMs:-Infinity,visible:false};
-    }
-    const probe=materialProbe.current;
-    if(probe&&now-probe.lastMs>400){
-     probe.lastMs=now;
-     try{
-      probe.ctx.clearRect(0,0,32,18);
-      probe.ctx.drawImage(source,0,0,32,18);
-      const image=probe.ctx.getImageData(0,0,32,18).data;
-      let lit=0;
-      for(let i=0;i<image.length;i+=4)
-       if(Math.max(image[i],image[i+1],image[i+2])>25)lit++;
-      probe.visible=lit>=2;
-     }catch{probe.visible=false;}
-    }
-    visualIsEmpty=!!probe&&!probe.visible;
-   }
-  }
-  if(!physical&&s==='FLOOR'&&visualIsEmpty!==materialEmptyRef.current){
-   materialEmptyRef.current=visualIsEmpty;setVisualMaterialEmpty(visualIsEmpty);
-  }
-  if(!physical&&s==='FLOOR'&&visualIsWaiting!==waitingForContactRef.current){
-   waitingForContactRef.current=visualIsWaiting;
-   setVisualWaitingForContact(visualIsWaiting);
-  }
   for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
    if(overlayOnly&&kind!=='media')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
     kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
-    kind==='hydra'?(!physical&&(visualIsWaiting||visualIsEmpty)?
-      ((videoRef.current?.readyState??0)>=2&&videoRef.current?.videoWidth?
-       videoRef.current:experimentInputCanvas?.current??null):
-      !physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
-    kind==='body'?bodyCanvas.current:
-    kind==='scene'&&!physical?sceneCanvas(layer.id,layer.mediaId,w,h,now):null;
+    kind==='body'?bodyCanvas.current:null;
    if(!el)continue;
    if(el instanceof HTMLImageElement&&(!el.complete||!el.naturalWidth))continue;
    if(el instanceof HTMLVideoElement&&(el.readyState<2||!el.videoWidth))continue;
@@ -537,28 +386,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     if(body&&currentMask){g.globalCompositeOperation='destination-in';g.drawImage(currentMask,0,0,w,h);}
     g.globalCompositeOperation='source-over';
    }
-   let envelope=1;
-   const rawCue=effectClock.current.get(layer.id);
-   const cue=physical&&rawCue?.kind.startsWith('simulation:')?undefined:rawCue;
-   if(layer.recipe==='motion-v2'){
-    envelope=physical||!identitySafeRef.current?0:motionRecipeEnvelope(motionClocks.current.get(layer.id)??null,now);
-   }else if(layer.recipe!=='none'){
-    if(!cue)envelope=0;
-    else{const age=now-cue.started;
-     if(layer.recipe==='contact-reveal')envelope=Math.min(1,age/250)*Math.max(0,1-age/3000);
-     if(layer.recipe==='slide-hold')envelope=age<1500?1:Math.max(0,1-(age-1500)/750);
-     if(layer.recipe==='pivot-decay')envelope=Math.max(0,1-age/2200);
-    }
-   }
-   if(!physical&&!overlayOnly&&s===selectedRef.current)
-    previewLayerAlpha.current.set(key,Math.min(1,Math.max(0,envelope)));
-   ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100*envelope));
+   if(!physical&&!overlayOnly&&s===selectedRef.current)previewLayerAlpha.current.set(key,1);
+   ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100));
    ctx.globalCompositeOperation=layer.blend;
-   const motionCue=layer.recipe==='motion-v2'?motionClocks.current.get(layer.id):undefined;
-   if(!physical&&motionCue?.treatment==='distort'&&envelope>0){
-    const wobble=4*envelope*Math.sin((now-motionCue.started)/90);
-    ctx.translate(wobble,-wobble*.6);ctx.drawImage(off,0,0);
-   }else ctx.drawImage(off,0,0);
+   ctx.drawImage(off,0,0);
    ctx.restore();
   }
  };
@@ -587,39 +418,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      if(readyMedia('FLOOR')&&!blackoutRef.current&&previewLiveRef.current)
       render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false,true);
     }
-   }
-   // FV-03: feed ONE selected archive asset into the GPU as an unmodified
-   // source texture. Never render the composition into itself (Hydra feedback
-   // would otherwise become a recursive FLOOR -> Hydra -> FLOOR loop).
-   const sourceId=riftSourceRef.current;
-   const archiveInput=sourceId==='@stage:input'&&experimentSourceRef.current==='video'
-    ?experimentInputCanvas?.current:mediaEls.current.get(sourceId);
-   const archiveInputReady=archiveInput instanceof HTMLImageElement
-     ?archiveInput.complete&&archiveInput.naturalWidth>0
-     :archiveInput instanceof HTMLVideoElement
-      ?archiveInput.readyState>=2&&archiveInput.videoWidth>0
-      :!!archiveInput&&archiveInput.width>0&&archiveInput.height>0;
-   let archiveReady=archiveHydraRef.current&&!blackoutRef.current&&
-    previewLiveRef.current&&!!archiveHydraCanvas&&archiveInputReady&&
-    (sourceId!=='@stage:input'||experimentReadyRef.current);
-   if(archiveReady&&archiveHydraCanvas&&archiveInput){
-    if(!archiveHydraCanvas.current)archiveHydraCanvas.current=document.createElement('canvas');
-    const archive=archiveHydraCanvas.current;
-    if(archive.width!==640)archive.width=640;
-    if(archive.height!==360)archive.height=360;
-    const archiveCtx=archive.getContext('2d');
-    if(archiveCtx){
-     archiveCtx.setTransform(1,0,0,1,0,0);
-     archiveCtx.globalAlpha=1;archiveCtx.globalCompositeOperation='source-over';
-     archiveCtx.fillStyle='#000';archiveCtx.fillRect(0,0,640,360);
-     try{archiveCtx.drawImage(archiveInput,0,0,640,360);}
-     catch{archiveReady=false;}
-    }else archiveReady=false;
-   }
-   if(archiveReadyRef.current!==archiveReady){
-    archiveReadyRef.current=archiveReady;
-    setRiftReady(archiveReady);
-    onArchiveHydraChangeRef.current?.(archiveReady);
    }
    const preview=canvas.current;
    if(preview){const ctx=preview.getContext('2d');if(ctx){
@@ -680,145 +478,24 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   };raf=requestAnimationFrame(tick);
   return()=>{cancelAnimationFrame(raf);stageRoute.current=null;};
  },[]);
+ // Keep Track events exclusively for the Event Timeline after RESET-00.
  useEffect(()=>{
   if(!previewLive||blackout||!motionEvents)return;
-  let timeout=0;
+  let id=0;
   const consume=()=>{
    const events=motionEventsRef.current?.()??[];
    const session=motionSessionRef.current?.()??'unknown';
    if(activeMotionSession.current!==session){
-    activeMotionSession.current=session;motionClocks.current.clear();seenMotionEvents.current.clear();
+    activeMotionSession.current=session;
     setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);
-    // Do not re-trigger historical contacts when opening Compose or switching source.
-    for(const old of events)seenMotionEvents.current.add(old.eventId);
     setTimelineCapture(emptyTimelineCapture(session));
-    timeout=window.setTimeout(consume,85);return;
-   }
-   if(timelineModeRef.current==='live'&&events.length)
+   }else if(timelineModeRef.current==='live'&&events.length){
     setTimelineCapture(previous=>collectTimelineEvents(previous,events,session,performance.now()));
-   for(const event of events.slice(-120)){
-    if(seenMotionEvents.current.has(event.eventId))continue;
-    seenMotionEvents.current.add(event.eventId);
-    if(seenMotionEvents.current.size>1500){
-     const recent=new Set(events.map(x=>x.eventId));
-     seenMotionEvents.current=new Set([...seenMotionEvents.current].filter(id=>recent.has(id)));
-    }
-    const now=performance.now();
-    // CP-03: the unified F0 event bus also drives existing preview-only
-    // Contact/Slide/Pivot recipes for MP4 and synthetic rehearsal sources.
-    // This never enters the physical FloorSession or projector route.
-    if(event.source==='video'||event.source==='simulator'||event.source==='touch'){
-     const legacyRecipe=event.kind==='contact'&&event.verified?'contact-reveal':
-      event.kind==='slide'?'slide-hold':
-      event.kind==='pivot'||event.kind==='release'?'pivot-decay':null;
-     if(legacyRecipe){
-      for(const item of compositionRef.current.FLOOR){
-       if(item.recipe===legacyRecipe)
-        effectClock.current.set(item.id,{started:now,kind:'simulation:'+event.kind});
-      }
-      setEventInfo(event.kind+' · '+event.actorId+' · preview only');
-     }
-    }
-    for(const surface of surfaces)for(const item of compositionRef.current[surface]){
-     if(item.recipe!=='motion-v2')continue;
-     const cue=resolveMotionRecipeCue(event,normalizeMotionRecipeRule(item.motionRecipe),surface,now,identitySafeRef.current);
-     if(!cue)continue;
-     motionClocks.current.set(item.id,cue);
-     setEventInfo(cue.kind+' · '+cue.actorId+' · '+cue.surface+(cue.verified?' · verified':' · unverified'));
-    }
    }
-   timeout=window.setTimeout(consume,85);
+   id=window.setTimeout(consume,85);
   };
-  consume();return()=>clearTimeout(timeout);
+  consume();return()=>clearTimeout(id);
  },[previewLive,blackout,!!motionEvents]);
- useEffect(()=>{
-  if(!previewLive||blackout)return;
-  let id=0;
-  const tick=()=>{
-   const events=floorEventsRef.current();
-   for(const event of events.slice(-80)){
-    if(seenEvents.current.has(event.id))continue;
-    seenEvents.current.add(event.id);
-    if(seenEvents.current.size>1000)seenEvents.current.clear();
-    const match=event.kind==='contact'?'contact-reveal':event.kind==='move'?'slide-hold':event.kind==='release'?'pivot-decay':null;
-    if(match){
-     for(const surface of surfaces)for(const layer of compositionRef.current[surface])
-      if(layer.recipe===match&&(surface==='FLOOR'||(surface==='BODY A'&&(event.performerId==='performer-1'||event.performerId==='A'))||(surface==='BODY B'&&event.performerId==='B')))
-       effectClock.current.set(layer.id,{started:performance.now(),kind:event.kind});
-     setEventInfo(event.kind+' · '+event.performerId+' · '+event.id.slice(0,8));
-    }
-   }
-   id=window.setTimeout(tick,85);
-  };tick();return()=>clearTimeout(id);
- },[previewLive,blackout]);
- const actOnScene=(id:CatalogSceneId,action:SceneAction)=>{
-  if(action==='apply'){
-   onSceneChange?.(id);setSelected('FLOOR');setSelectedLayer(0);
-   setInspectorTab('scene');setPreviewArrangement('surface');
-   setHint('Scene FLOOR aktif: '+catalogRecipe(id).title);return;
-  }
-  const selectedCount=composition.FLOOR.length;
-  if(action==='add'&&selectedCount>=24){setHint('Maksimum 24 layer per permukaan.');return;}
-  const info=sceneLayerDescriptor(id);
-  const position=sceneActionPosition(action,selectedCount,selected==='FLOOR'?selectedLayer:0);
-  const fresh=makeLayer(info.mediaId,info.name);
-  fresh.opacity=info.opacity;fresh.blend=info.blend;
-  setComposition(current=>{
-   const floor=[...current.FLOOR];
-   if(action==='replace'){
-    const original=floor[position];
-    floor[position]={...original,mediaId:info.mediaId,name:info.name,
-     opacity:info.opacity,blend:info.blend,recipe:'none'};
-   }else floor.splice(position,0,fresh);
-   return {...current,FLOOR:floor};
-  });
-  setSelected('FLOOR');setSelectedLayer(position);
-  setPreviewArrangement('surface');setInspectorTab('object');
-  setHint((action==='add'?'Layer ditambah: ':'Layer diganti: ')+info.name);
- };
- const actOnFlagship=(id:FlagshipId)=>{
-  if(!onHydraSettingsChange){
-   setHint('Hydra belum terhubung ke sumber visual.');return;
-  }
-  onHydraSettingsChange(flagshipHydraPatch(id));
-  // RIFT requires an explicit archive input; TRACE/ECHO remain footprint-driven.
-  setArchiveHydra(id==='rift');
-  if(id==='rift'&&experimentSourceRef.current!=='video'&&riftSourceRef.current==='@stage:input'){
-   const firstArchive=media.find(asset=>asset.origin==='import');
-   if(firstArchive)setRiftSourceId(firstArchive.id);
-  }
-  if(id!=='rift')onArchiveHydraChangeRef.current?.(false);
-  const existing=composition.FLOOR.findIndex(item=>item.mediaId===COMPOSE_STAGE_HYDRA);
-  if(existing<0){
-   if(composition.FLOOR.length>=24){
-    setHint('Batas layer penuh. Pilih layer Hydra yang sudah ada.');return;
-   }
-   const visual=makeLayer(COMPOSE_STAGE_HYDRA,id.toUpperCase()+' / Hydra texture');
-   visual.blend='screen';visual.opacity=85;
-   setComposition(current=>({...current,FLOOR:[...current.FLOOR,visual]}));
-   setSelectedLayer(composition.FLOOR.length);
-  }else setSelectedLayer(existing);
-  setSelected('FLOOR');setPreviewArrangement('surface');setInspectorTab('scene');
-  setHint('Flagship '+id.toUpperCase()+' aktif · efek GPU menggunakan graph yang dipilih.');
- };
-  const actOnEffect=(style:HydraFootprintStyle,action:'apply'|'add')=>{
-  onHydraSettingsChange?.({enabled:true,style});
-  if(action==='add'){
-   if(composition.FLOOR.length>=24){setHint('Maksimum 24 layer per permukaan.');return;}
-   const fresh=makeLayer(COMPOSE_STAGE_HYDRA,'Hydra · '+style);
-   fresh.blend='screen';fresh.opacity=65;
-   setComposition(current=>({...current,FLOOR:[...current.FLOOR,fresh]}));
-   setSelected('FLOOR');setSelectedLayer(composition.FLOOR.length);
-   setInspectorTab('layer');setPreviewArrangement('surface');
-  }else{setInspectorTab('scene');setSelected('FLOOR');}
-  setHint('Hydra '+style+' · memakai satu engine bersama.');
- };
-  const triggerTest=(kind:'contact'|'move'|'release')=>{
-  const recipe=kind==='contact'?'contact-reveal':kind==='move'?'slide-hold':'pivot-decay';
-  for(const surface of surfaces)for(const item of compositionRef.current[surface])
-   if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind:'simulation:'+kind});
-  setTestEvent(kind);setEventInfo('SIMULASI '+kind+' (tidak dikirim ke tracking)');
- };
  const points=(e:PointerEvent<HTMLCanvasElement>)=>{
   const rect=e.currentTarget.getBoundingClientRect();
   if(editMask&&layer){
@@ -852,10 +529,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    setHint('Objek dipilih: '+layers[picked.layerIndex].name);
   }else setHint('Tidak ada objek terdeteksi pada titik ini.');
  };
- const savePreset=()=>{const name=presetName.trim().slice(0,60);if(!name)return;const next=[{name,snapshot:{version:1 as const,selected,composition:structuredClone(composition),...(footprint?{footprint:structuredClone(footprint)}:{})}},...presets.filter(p=>p.name!==name)].slice(0,30);setPresets(next);localStorage.setItem(presetKey,JSON.stringify(next));setHint('Preset tersimpan di perangkat ini.');};
- const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition,...(footprint?{footprint}: {})},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
- const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);if(x.footprint)updateFootprint?.(x.footprint);setHint('Komposisi dan parameter footprint dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
- useEffect(()=>()=>{onArchiveHydraChangeRef.current?.(false);},[]);
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
@@ -884,7 +557,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    </div></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
    onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
-   <span>Layer trigger · {eventInfo}</span>
+   <span>Visual V5 · Renderer belum dipasang</span>
    <details className="soma-ia-display-options"><summary>Display</summary>
     <label><input type="checkbox" checked={previewLive}
      onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
@@ -896,16 +569,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    {experimentReady?' · Pilih FLOOR atau BODY untuk hasil olahan.':' · Frame sumber belum siap.'}
   </p>}
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
-   <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="msv4-browser-meta">BROWSER / SCENES · MEDIA · LAYERS</div><SceneEffectBrowser activeScene={sceneId as CatalogSceneId} onSceneAction={actOnScene}
-     onEffectAction={actOnEffect} onFlagshipApply={actOnFlagship}
-     activeFlagship={activeFlagshipForSettings(hydraSettings)}
-     hydraEnabled={!!hydraSettings?.enabled} hydraSettings={hydraSettings}
-     stageCanvas={visualFloorCanvas} stageStatus={visualWaitingForContact?'waiting-contact':hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
- <label className="visr4-archive-row">
- <input type="checkbox" checked={archiveHydra}
-  onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
- Process FLOOR archive media with Hydra (software preview)</label>}
- <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
+   <aside className="s64-column cp02-library">
+    <h3>Media &amp; Layers</h3>
+    <div className="msv4-browser-meta">VISUAL RESET · V5</div>
+    <p className="v5-reset-empty" role="status">Katalog visual lama sudah dikosongkan. Sumber MP4 dan media tetap tersedia. Visual baru akan masuk setelah uji bentuk telapak.</p>
+    <details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><small>Media lokal dan MP4 Track tetap dapat disusun sebagai layer.</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
  <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
   onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');setPreviewArrangement('surface');}}>
   {m.kind==='image'&&m.url?<img src={m.url} alt=""/>:
@@ -922,11 +590,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{(visualWaitingForContact||visualMaterialEmpty)&&selected==='FLOOR'&&previewArrangement==='surface'&&
-  <div className="fv-fallback-status" role="status">
-   {visualMaterialEmpty?'Render efek kosong · MP4 ditampilkan sementara':
-    'MP4 aktif · Menunggu Contact terverifikasi · Input ditampilkan sementara'}
-  </div>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{inspectorTab==='scene'&&<p className="v5-reset-inspector">Tidak ada preset visual aktif. Gunakan Media dan Layers untuk mengatur sumber sampai renderer V5 tersedia.</p>}
+ {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
@@ -939,7 +604,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     speed={timelineSpeed} onSpeedChange={setTimelineSpeed}
     onClear={()=>{setTimelineCapture(emptyTimelineCapture(motionSessionRef.current?.()??'unknown'));
      setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);}}/>
-   <div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+   <details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
@@ -950,11 +615,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('object');}} aria-pressed={i===selectedLayer}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button>
   <div className="cp05-source-actions" role="group" aria-label="Tambahkan sumber komposisi">
    {([{id:COMPOSE_STAGE_INPUT,label:'+ MP4 / INPUT'},
-     {id:COMPOSE_STAGE_FLOOR,label:'+ Footprints'},
-     {id:COMPOSE_STAGE_HYDRA,label:'+ Hydra'}] as const).map(source=>
+     {id:COMPOSE_STAGE_FLOOR,label:'+ FLOOR / Track'}] as const).map(source=>
     <button key={source.id} type="button" onClick={()=>{
      const added=makeLayer(source.id,COMPOSE_SOURCE_CHOICES.find(x=>x.id===source.id)?.label??'Source');
-     if(source.id===COMPOSE_STAGE_HYDRA){added.blend='screen';added.opacity=65;}
+
      const at=source.id===COMPOSE_STAGE_INPUT?0:layers.length;
      setComposition(c=>{const next=[...c[selected]];next.splice(at,0,added);return {...c,[selected]:next};});
      setSelectedLayer(at);setInspectorTab('layer');
@@ -970,53 +634,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   </div>}
   {selected!=='FLOOR'&&<LegPreviewInspector value={legTuning}
    onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>}
-  {selected==='FLOOR'&&footprint&&updateFootprint&&<MappingStudioFootprintControls value={footprint} onChange={updateFootprint}/>}
+  
   <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
    {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
-    {tab==='scene'?'Scene':tab==='layer'?'Layer':'Objek'}</button>)}
+    {tab==='scene'?'Sumber':tab==='layer'?'Layer':'Objek'}</button>)}
   </div>
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
    <span>{COMPOSE_SOURCE_CHOICES.find(o=>o.id===layer?.mediaId)?.label??media.find(m=>m.id===layer?.mediaId)?.name??(composerSourceKind(layer??{mediaId:'',name:''},selected)==='floor'?'Footprints / FLOOR':'Belum ada media')}</span>
   </div>}
- {inspectorTab==='scene'&&<label className="cp04-scene-select">Scene aktif
-  <select value={sceneId} onChange={e=>{
-   onSceneChange?.(e.target.value as 'footprints'|FloorSceneId);
-   setSelected('FLOOR');setSelectedLayer(0);
-  }} aria-label="Scene aktif pada FLOOR">
-   {COMPOSE_SCENES.map(scene=><option value={scene.id} key={scene.id}>{scene.name}</option>)}
-  </select>
- </label>}
- {inspectorTab==='scene'&&<details className="soma-ia-hydra" open>
-  <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
-  {activeFlagshipForSettings(hydraSettings)&&hydraSettings?
-   <FlagshipInspector id={activeFlagshipForSettings(hydraSettings)!} value={hydraSettings}
-    status={hydraStatus} onChange={onHydraSettingsChange}/>:
-   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>}
-  {hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&
-   !hydraSettings.catalogVisual&&<div className="fv03-archive-source">
-    <label>RIFT · Archive texture source
-     <select aria-label="RIFT archive source" value={riftSourceId} onChange={e=>{
-      setRiftSourceId(e.currentTarget.value);
-      onArchiveHydraChangeRef.current?.(false);archiveReadyRef.current=false;
-     }}>
-      <option value="@stage:input">Track MP4 / video input</option>
-      {media.filter(asset=>asset.origin==='import').map(asset=>
-       <option key={asset.id} value={asset.id}>{asset.name}</option>)}
-     </select>
-    </label>
-    <label className="visr4-archive-row">
-     <input type="checkbox" checked={archiveHydra} onChange={e=>{
-      setArchiveHydra(e.currentTarget.checked);
-      if(!e.currentTarget.checked)onArchiveHydraChangeRef.current?.(false);
-     }}/> Enable RIFT archive displacement
-    </label>
-    <small role="status">{riftReady?
-     'Arsip aktif · Contact, Slide, Pivot mengubah UV secara lokal':
-     'Pilih MP4 Track atau gambar/video dari Media. Jalankan video dan aktifkan RIFT.'}</small>
-   </div>}
- </details>}
  {inspectorTab==='object'&&<details className="uxr3-advanced" open>
   <summary>Object · transform &amp; mask</summary>
   <label>Object name<input type="text" maxLength={90} value={layer?.name??''}
@@ -1034,39 +661,13 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <option value="">No source / empty</option>
    {COMPOSE_SOURCE_CHOICES.filter(source=>source.id!==SHARED_TRACK_MP4_ID||!media.some(m=>m.id===SHARED_TRACK_MP4_ID)).map(source=>
     <option key={source.id} value={source.id}>{source.label}</option>)}
-   {ARTISTIC_CATALOG.map(recipe=><option key={recipe.id} value={sceneSourceId(recipe.id)}>{recipe.title} / Scene</option>)}
+   
    {sharedAssetChoices(media).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
   </select></label>
   <label>Opacity · {layer?.opacity??100}%
    <input type="range" min="0" max="100" value={layer?.opacity??100}
     onChange={e=>patch({opacity:Number(e.target.value)})}/></label>
-  <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
- {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
-  <strong>EVENT → MEDIA TREATMENT</strong>
-  <label>Input event<select value={normalizeMotionRecipeRule(layer.motionRecipe).trigger}
-   onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),
-    trigger:e.target.value as MotionRecipeRule['trigger'],verifiedOnly:e.target.value==='contact'}})}>
-   {MOTION_RECIPE_TRIGGERS.map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}
-  </select></label>
-  <label>Visual treatment<select value={normalizeMotionRecipeRule(layer.motionRecipe).treatment}
-   onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),
-    treatment:e.target.value as MotionRecipeRule['treatment']}})}>
-   {MOTION_RECIPE_TREATMENTS.map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}
-  </select></label>
-  <label>Duration · {normalizeMotionRecipeRule(layer.motionRecipe).durationMs}ms
-   <input type="range" min="100" max="12000" step="100"
-    value={normalizeMotionRecipeRule(layer.motionRecipe).durationMs}
-    onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),durationMs:Number(e.target.value)}})}/></label>
-  <label>Strength · {Math.round(normalizeMotionRecipeRule(layer.motionRecipe).strength*100)}%
-   <input type="range" min="0" max="1" step=".05"
-    value={normalizeMotionRecipeRule(layer.motionRecipe).strength}
-    onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),strength:Number(e.target.value)}})}/></label>
-  <label className="visr4-check"><input type="checkbox" checked={normalizeMotionRecipeRule(layer.motionRecipe).verifiedOnly}
-   onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),verifiedOnly:e.target.checked}})}/>
-   Verified only</label>
-  <small>Kontak kaki wajib terverifikasi. Slide dan Pivot belum didukung klasifikasi terverifikasi. Mode eksperimen hanya muncul di preview software.</small>
- </section>}</>}
- {inspectorTab==='scene'&&<details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);if(p.snapshot.footprint)updateFootprint?.(structuredClone(p.snapshot.footprint));setHint('Preset dimuat: '+p.name);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details>}
+  <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label></>}
  {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
   </div>
   <div className="s64-runtime" aria-hidden="true">

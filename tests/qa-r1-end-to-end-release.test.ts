@@ -1,12 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ARTISTIC_CATALOG} from '../src/footprints/scenes/artisticCatalog.ts';
-import {ArtisticFootprintRuntime} from '../src/footprints/scenes/ArtisticFootprintRuntime.ts';
 import {FloorInteractionEngine} from '../src/footprints/scenes/FloorInteractionEngine.ts';
-import {MOTION_RECIPE_DEFAULT,resolveMotionRecipeCue} from '../src/footprints/scenes/motionRecipeModel.ts';
 import {defaultStageSurfacePlan,outputSurfaceDecision} from '../src/footprints/stage-optics/DualSurfaceCalibration.ts';
 import {defaultPerformCueGrid,normalizePerformCueGrid,performCueAuthorizesLight} from '../src/studio/v3/performCueModel.ts';
-import {COMPOSE_SCENES} from '../src/studio/v3/composeWorkspaceModel.ts';
 import {stageHardwareAvailable} from '../src/footprints/stage-optics/StageHardwareGate.ts';
 import {emptyQaReleaseRecord,evaluateQaRelease,QA_REQUIRED_IDS,QA_PHYSICAL_IDS,parseQaReleaseRecord} from '../src/studio/v3/qaReleaseGate.ts';
 
@@ -24,34 +20,18 @@ const sixSteps=()=>{
  return engine;
 };
 
-test('QA-R1 E2E: 14 Compose scenes, six contacts each, no marks added by replay',()=>{
- const bus=sixSteps();
- assert.equal(ARTISTIC_CATALOG.length,14);
- assert.deepEqual(ARTISTIC_CATALOG.map(s=>s.id),COMPOSE_SCENES.map(s=>s.id));
- const events=bus.canonicalRecent;
- assert.equal(events.filter(e=>e.kind==='contact').length,6);
- assert.equal(new Set(events.filter(e=>e.kind==='contact').map(e=>e.eventId)).size,6);
- for(const recipe of ARTISTIC_CATALOG){
-  const runtime=new ArtisticFootprintRuntime();
-  runtime.ingest(events,bus.generation,5000);
-  assert.equal(runtime.contactCount,6,recipe.id);
-  runtime.ingest(events,bus.generation,5100);
-  assert.equal(runtime.contactCount,6,'replay '+recipe.id);
-  runtime.skipExisting(events,bus.generation);
-  runtime.ingest(events,bus.generation,5200);
-  assert.equal(runtime.contactCount,0,'switch '+recipe.id);
- }
+test('QA-R1 E2E: six independent canonical contacts survive the visual reset',()=>{
+ const bus=sixSteps(),events=bus.canonicalRecent.filter(e=>e.kind==='contact');
+ assert.equal(events.length,6);
+ assert.equal(new Set(events.map(e=>e.eventId)).size,6);
+ assert.deepEqual(events.map(e=>e.actorId),['A','B','A','B','A','B']);
 });
-
 test('QA-R1 E2E: 10 seconds still and identity ambiguity do not stamp contacts',()=>{
  const bus=new FloorInteractionEngine();bus.reset('camera');
  for(let ms=1000;ms<=11000;ms+=100){
   bus.observe({source:'camera',actorId:'A',x:.45,y:.48,atMs:ms,confidence:.9,basis:'presence-only'});
  }
  assert.equal(bus.canonicalRecent.filter(e=>e.kind==='contact').length,0);
- const artist=new ArtisticFootprintRuntime();
- artist.ingest(bus.canonicalRecent,bus.generation);
- assert.equal(artist.contactCount,0);
  const ambiguous=bus.contact({source:'camera',actorId:'unassigned-0',eventId:'false-step',
   foot:'left',verified:true,basis:'image-2d',x:.5,y:.5,atMs:11100,confidence:.8});
  assert.equal(ambiguous,null);
@@ -61,12 +41,12 @@ test('QA-R1 E2E: two actor surfaces keep A/B independent across six steps',()=>{
  const bus=sixSteps(),events=bus.canonicalRecent.filter(e=>e.kind==='contact');
  assert.deepEqual(events.map(e=>e.actorId),['A','B','A','B','A','B']);
  assert.deepEqual(events.map(e=>e.foot),['left','right','left','right','left','right']);
- const layerA=events.map(e=>resolveMotionRecipeCue(e,MOTION_RECIPE_DEFAULT,'BODY A',6000)).filter(Boolean);
- const layerB=events.map(e=>resolveMotionRecipeCue(e,MOTION_RECIPE_DEFAULT,'BODY B',6000)).filter(Boolean);
+ const layerA=events.filter(e=>e.actorId==='A');
+ const layerB=events.filter(e=>e.actorId==='B');
  assert.equal(layerA.length,3);assert.equal(layerB.length,3);
- assert.ok(layerA.every(c=>c?.actorId==='A'));
- assert.ok(layerB.every(c=>c?.actorId==='B'));
- assert.ok(events.every(e=>resolveMotionRecipeCue(e,MOTION_RECIPE_DEFAULT,'FLOOR',6000)));
+ assert.ok(layerA.every(e=>e.actorId==='A'&&e.verified));
+ assert.ok(layerB.every(e=>e.actorId==='B'&&e.verified));
+ assert.ok(events.every(e=>e.actorId==='A'||e.actorId==='B'));
 });
 
 test('QA-R1 E2E: MP4 ↔ simulator ↔ camera source sessions never reuse IDs',()=>{

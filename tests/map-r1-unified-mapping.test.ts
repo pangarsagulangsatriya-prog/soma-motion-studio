@@ -4,7 +4,6 @@ import {readFileSync} from 'node:fs';
 import {normalizedPointer,moveMapCorner} from '../src/studio/v3/mapCornerModel.ts';
 import {defaultStageSurfacePlan,validateStageSurfacePlan,
  assessSurfaceProof} from '../src/footprints/stage-optics/DualSurfaceCalibration.ts';
-import {FLOOR_SCENE_IDS} from '../src/footprints/scenes/sceneRegistry.ts';
 
 const source=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8');
 test('MAP-R1: 4-corner drag coordinates clamp to normalized UV with safe invalid-coordinate rejection',()=>{
@@ -40,7 +39,7 @@ test('MAP-R1: navigation goes to Stage Map instead of opening legacy Projector w
  assert.match(app,/onNavigateStageWorkspace=\{workspace=>\{/);
  assert.match(app,/workspace==='map'\?'mapping'/);
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
- assert.match(stage,/<SurfaceComposer embedded sceneId=\{floorScene\} mapMode=\{mappingOpen\}/);
+ assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen\}/);
 });
 test('MAP-R1: 4-point editor reuses safety-critical editPlan and numerical controls as advanced',()=>{
  const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
@@ -68,5 +67,5 @@ test('MAP-R1: Stage Map uses existing BODY/FLOOR compositor and routing; no extr
  assert.match(composer,/floorCanvas=\{floorOutput\} legacyProjection=\{projection\} experimentLocked=\{experimentLocked\}/);
  assert.match(composer,/kind==='floor'\?\(timelineModeRef\.current==='replay'&&!physical\?null:experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
  assert.ok(!source('../src/studio/v3/MapFourCornerEditor.tsx').includes('getUserMedia('));
- assert.equal(FLOOR_SCENE_IDS.length,13);
+ assert.doesNotMatch(composer,/SceneEffectBrowser|HydraEffectInspector|ARTISTIC_CATALOG/);
 });

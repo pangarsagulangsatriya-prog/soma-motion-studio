@@ -30,7 +30,7 @@ test('IA-R1: each local destination routes into the one Stage session',()=>{
  assert.match(stage,/case 'tracking':setView\('stage'\)/);
  assert.match(stage,/case 'composer':setView\('stage'\)/);
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
- assert.match(stage,/<SurfaceComposer embedded sceneId=\{floorScene\} mapMode=\{mappingOpen\}/);
+ assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen\}/);
 });
 
 test('IA-R1: no second Footprints source picker or stage tabs underneath the global navigation',()=>{
@@ -57,19 +57,15 @@ test('IA-R1: shared stage source does not reinitialize on each destination',()=>
  assert.equal((stage.match(/new FloorInteractionEngine\(/g)||[]).length,1);
 });
 
-test('IA-R1: Compose has compact media/layers/presets and one Hydra inspector',()=>{
+test('RESET-00 IA-R1: Compose keeps media and layers with no old FX presets',()=>{
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
- for(const cls of ['soma-ia-media','soma-ia-layers','soma-ia-presets','soma-ia-hydra'])
+ for(const cls of ['soma-ia-media','soma-ia-layers'])
   assert.ok(composer.includes(cls),cls);
- const hydra=read('../src/studio/v3/HydraEffectInspector.tsx');
- assert.match(composer,/<HydraEffectInspector value=\{hydraSettings\}/);
- assert.match(hydra,/onChange\?\.\(\{enabled:e.currentTarget.checked\}\)/);
- assert.match(stage,/hydraSettings=\{hydraSettings\} onHydraSettingsChange=\{updateHydra\}/);
- assert.ok(!composer.includes('Advanced Mapping &amp; Output QA'));
+ assert.doesNotMatch(composer,/HydraEffectInspector|FlagshipInspector|SceneEffectBrowser|soma-ia-presets/);
+ assert.doesNotMatch(stage,/hydraSettings|snowfallCanvas|proceduralCanvas/);
  assert.match(composer,/if\(mapMode\)return <section className="map-r1-workspace"/);
 });
-
 test('IA-R1: entering Perform restores visible monitor and has source-aware status',()=>{
  const app=read('../src/App.tsx');
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
