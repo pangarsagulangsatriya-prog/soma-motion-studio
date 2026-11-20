@@ -13,13 +13,13 @@ const event=(id:string,kind:FootMotionEventV2['kind'],x:number,y:number,verified
  speed:.4,atMs:1000,confidence:1,verified,
  verification:verified?'simulated':'unverified',coordinateBasis:'simulated'
 });
-test('FV02: TRACE and ECHO select distinct GPU material passes; RIFT stays on legacy Flow until FV03',()=>{
+test('FV02/FV03: TRACE, ECHO and RIFT select three distinct GPU material passes',()=>{
  const trace=normalizeHydraFootprintSettings(flagshipHydraPatch('trace'));
  const echo=normalizeHydraFootprintSettings(flagshipHydraPatch('echo'));
  const rift=normalizeHydraFootprintSettings(flagshipHydraPatch('rift'));
  assert.equal(materialMode(trace),'trace');
  assert.equal(materialMode(echo),'echo');
- assert.equal(materialMode(rift),null);
+ assert.equal(materialMode(rift),'rift');
  assert.equal(materialMode({...trace,catalogVisual:true}),null);
 });
 test('FV02: six verified contacts yield six bounded impulses, repeated input does not double-stamp',()=>{
