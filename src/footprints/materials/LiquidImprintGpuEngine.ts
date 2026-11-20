@@ -5,6 +5,8 @@
  * output authorization. WebGL2 prototype; Pixi v8 integration awaits gate.
  */
 import {paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
+import {liquidMaterialResponse} from './liquidMaterialResponse.ts';
+import {MATERIAL03_GLSL} from './liquidMaterialShader.ts';
 import type {FloorInteractionEvent} from '../scenes/FloorInteractionEngine.ts';
 import {collectLiquidImprints,LIQUID_LIMIT,type LiquidImprint,type LiquidTimelineOptions}
  from './liquidImprintTimeline.ts';
@@ -34,74 +36,22 @@ uniform float uSeed;
 uniform float uFlow;
 uniform float uAge;
 uniform float uOpacity;
+uniform float uContactFill;
+uniform float uSlideStrength;
+uniform float uPivotStrength;
+uniform float uReleaseProgress;
 uniform vec2 uSlide;
 uniform float uTwist;
-uniform float uRelease;
-uniform float uImpulse;
 out vec4 outColor;
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float noise(vec2 p){
- vec2 i=floor(p),f=fract(p);
- f=f*f*(3.-2.*f);
- return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),
- mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);
-}
-float fbm(vec2 p){
- float a=.5,v=0.;
- for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+3.71;a*=.5;}
- return v;
-}
+${MATERIAL03_GLSL}
 void main(){
- // Geometry alpha stays intact. All wave/flow displacement is confined to
- // the pigment field: neither rings nor noise may extend outside the toes.
  float coverage=texture(uMask,vUV).a;
  if(coverage<.015)discard;
- // The source alpha is immutable. All advection, bending and collapse
- // operate on the *interior pigment coordinates*, never on the silhouette.
- float seconds=max(0.,uAge);
- float velocity=.16+.29*uFlow;
- vec2 sole=vUV-.5;
- float theta=uTwist*(.15+.85*(1.-vUV.y));
- vec2 turned=vec2(cos(theta)*sole.x-sin(theta)*sole.y,
-                   sin(theta)*sole.x+cos(theta)*sole.y)+.5;
- vec2 sheared=turned-uSlide*(.28*uImpulse);
- float ageFlow=seconds*(velocity+.065*sin(sheared.x*8.+uSeed*9.));
- vec2 advected=sheared+vec2(
-   .033*sin((sheared.y+uSeed)*15.-seconds*1.8),
-   -ageFlow
+ vec3 pigment=mat03Pigment(
+  vUV,uAge,uSeed,uFlow,uContactFill,uSlide,
+  uSlideStrength,uTwist,uPivotStrength,uReleaseProgress,uTint
  );
- vec2 drift=vec2(
-  fbm(advected*7.8+vec2(uSeed*5.,-seconds*.24)),
-  fbm(advected*8.9+vec2(seconds*.21,uSeed*7.))
- )-.5;
- vec2 liquid=advected+drift*(.095*uFlow);
- float channels=fbm(liquid*9.7+vec2(uSeed*4.1,seconds*.09));
- float veinWarp=fbm(liquid*14.0+uSeed*8.3);
- float phase=liquid.y*33.+liquid.x*5.5+veinWarp*8.5;
- float seam=1.-smoothstep(.07,.23,abs(sin(phase)));
- float vein=1.-smoothstep(.10,.29,abs(sin(
-   liquid.x*25.-liquid.y*11.+channels*10.+seconds*.5
- )));
- float band=clamp(seam*.87+vein*.35,0.,1.);
- float basin=clamp((channels-.22)*1.85,0.,1.);
- // Surges after contact/slide/pivot. At release, the ink thins and drains.
- float surge=.18+uImpulse*.82;
- float drier=1.-.53*uRelease;
- vec3 dark=uTint*.075;
- vec3 middle=uTint*(.40+.50*basin);
- vec3 pigment=mix(dark,middle,.58+.36*basin);
- pigment+=uTint*(.46*band*surge);
- pigment+=vec3(.20,.24,.25)*pow(band,2.)*surge;
- // A slender moving meniscus crosses heel → arch → forefoot. Keep it
- // inside the alpha mask; avoid circular echoes outside the footprint.
- float meniscusY=.91-seconds*(.31+.12*uFlow)
-  +.038*sin(liquid.x*13.+uSeed*7.+seconds*2.1);
- float meniscus=exp(-pow((vUV.y-meniscusY)*17.,2.));
- float wake=exp(-pow((vUV.y-(meniscusY+.16))*11.,2.));
- pigment+=uTint*(.61*meniscus+.13*wake)*(.68+.32*surge);
- pigment+=vec3(.17,.20,.21)*meniscus;
- pigment*=drier;
- outColor=vec4(clamp(pigment,0.,1.),coverage*uOpacity);
+ outColor=vec4(pigment,coverage*uOpacity);
 }`;
 
 type MaskRecord={
@@ -110,7 +60,7 @@ type MaskRecord={
 };
 type UniformNames='uCenter'|'uExtentPx'|'uViewport'|'uHeading'|'uMask'|'uTint'|
  'uSeed'|'uFlow'|'uAge'|'uOpacity'|'uSlide'|'uTwist'|
- 'uRelease'|'uImpulse';
+ 'uContactFill'|'uSlideStrength'|'uPivotStrength'|'uReleaseProgress';
 export type LiquidGpuStats={
  renderer:'WebGL2';contexts:number;activeImprints:number;
  material:'Liquid Imprint (research)';orientationUncertain:number;
@@ -177,7 +127,8 @@ export class LiquidImprintGpuEngine{
   const names:UniformNames[]=[
    'uCenter','uExtentPx','uViewport','uHeading','uMask','uTint',
    'uSeed','uFlow','uAge','uOpacity',
-   'uSlide','uTwist','uRelease','uImpulse'
+   'uSlide','uTwist','uContactFill','uSlideStrength',
+   'uPivotStrength','uReleaseProgress'
   ];
   for(const name of names){
    const location=gl.getUniformLocation(this.program,name);
@@ -186,7 +137,7 @@ export class LiquidImprintGpuEngine{
   }
  }
  get stats():LiquidGpuStats{return {...this.lastStats};}
- private maskFor(imprint:LiquidImprint):MaskRecord{
+ private maskFor(imprint:LiquidImprint,freezeAnatomy=false):MaskRecord{
   let entry=this.masks.get(imprint.id);
   if(!entry){
    const canvas=document.createElement('canvas');
@@ -203,7 +154,8 @@ export class LiquidImprintGpuEngine{
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   }
-  const d=imprint.deformation;
+  const d=freezeAnatomy?
+   {mode:'stance' as const,amount:0}:imprint.deformation;
   const signature=[imprint.foot,d.mode,d.amount,d.travelX,d.travelY,d.pivotRad]
    .map(v=>typeof v==='number'?Math.round(v*120):String(v)).join(':');
   if(signature!==entry.signature){
@@ -224,7 +176,9 @@ export class LiquidImprintGpuEngine{
   return entry;
  }
  render(events:readonly FloorInteractionEvent[],timeMs:number,options:LiquidTimelineOptions&{
-  flow?:number;widthPx?:number;lengthPx?:number
+  flow?:number;widthPx?:number;lengthPx?:number;
+  /** QA only: hold identical sole silhouette while inspecting pigments. */
+  materialOnlyQA?:boolean
  }={}):LiquidGpuStats{
   if(this.destroyed)throw Error('GPU-02 renderer already destroyed');
   const gl=this.gl;
@@ -249,27 +203,21 @@ export class LiquidImprintGpuEngine{
    clamp(f(options.lengthPx??116,116),55,440));
   gl.uniform1f(this.uniforms.uFlow,clamp(f(options.flow??.7,.7),0,1));
   for(const imprint of items){
-   const mask=this.maskFor(imprint);
+   const mask=this.maskFor(imprint,options.materialOnlyQA===true);
+   const response=liquidMaterialResponse(imprint);
    gl.bindTexture(gl.TEXTURE_2D,mask.texture);
    gl.uniform2f(this.uniforms.uCenter,imprint.x,imprint.y);
    gl.uniform1f(this.uniforms.uHeading,
     imprint.orientationKnown?Math.PI/2-imprint.headingRad:0);
    gl.uniform1f(this.uniforms.uSeed,imprint.seed);
    gl.uniform1f(this.uniforms.uAge,imprint.ageMs/1000);
-   gl.uniform1f(this.uniforms.uOpacity,imprint.opacity*.94);
-   const deformation=imprint.deformation;
-   const strength=clamp(f(deformation.amount,0),0,1);
-   const slide=deformation.mode==='slide';
-   gl.uniform2f(this.uniforms.uSlide,
-    slide?clamp(f(deformation.travelX??0,0),-1,1):0,
-    slide?clamp(f(deformation.travelY??0,0),-1,1):0);
-   gl.uniform1f(this.uniforms.uTwist,
-    deformation.mode==='pivot'?
-     clamp(f(deformation.pivotRad??0,0),-.9,.9)*strength:0);
-   gl.uniform1f(this.uniforms.uRelease,
-    deformation.mode==='toe-off'?strength:0);
-   gl.uniform1f(this.uniforms.uImpulse,
-    deformation.mode==='stance'?0:strength);
+   gl.uniform1f(this.uniforms.uOpacity,response.opacity*.94);
+   gl.uniform2f(this.uniforms.uSlide,response.slideX,response.slideY);
+   gl.uniform1f(this.uniforms.uTwist,response.pivotTwist*response.pivotStrength);
+   gl.uniform1f(this.uniforms.uContactFill,response.contactFill);
+   gl.uniform1f(this.uniforms.uSlideStrength,response.slideStrength);
+   gl.uniform1f(this.uniforms.uPivotStrength,response.pivotStrength);
+   gl.uniform1f(this.uniforms.uReleaseProgress,response.releaseProgress);
    const actorB=imprint.actorId==='B'||imprint.actorId.includes('2');
    gl.uniform3f(this.uniforms.uTint,
     actorB?.49:.86,actorB?.80:.88,actorB?.90:.74);
