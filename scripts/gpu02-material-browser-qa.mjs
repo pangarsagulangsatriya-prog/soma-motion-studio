@@ -30,8 +30,30 @@ try{
   '--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
  ]});
  const page=await browser.newPage({viewport:{width:1340,height:970},deviceScaleFactor:1});
+ // Measure actual browser WebGL contexts on the shared stage canvas.
+ // A reported numeric stats.contexts value alone cannot prove isolation.
+ await page.addInitScript(()=>{
+  const original=HTMLCanvasElement.prototype.getContext;
+  const live=new Set();
+  window.__gpu02ContextProbe={stageContexts:0,allContexts:0};
+  HTMLCanvasElement.prototype.getContext=function(kind,...args){
+   const result=original.call(this,kind,...args);
+   if(result&&/^(webgl|webgl2|experimental-webgl)$/.test(String(kind))){
+    live.add(result);
+    window.__gpu02ContextProbe.allContexts=live.size;
+    if(this.id==='gpu02-stage'){
+     window.__gpu02ContextProbe.stageContexts=1;
+    }
+   }
+   return result;
+  };
+ });
  page.on('pageerror',e=>report.errors.push(e.message));
  await page.goto(url,{waitUntil:'networkidle'});
+ const probe=await page.evaluate(()=>window.__gpu02ContextProbe);
+ assert.equal(probe.stageContexts,1,
+  'Expected exactly one real WebGL context on the stage canvas');
+ report.contextProbe=probe;
  await page.locator('#gpu02-stage').waitFor({state:'visible'});
  const cases=[
   ['one',1,10390],['two',2,10450],['six',6,10450],
@@ -90,6 +112,7 @@ try{
   'Pivot did not produce a visible deformation');
  assert.notEqual(o.one.pixels.hash,o.release.pixels.hash,
   'Release did not produce a visible toe-off');
+ report.checks.push('Browser getContext probe confirms one actual stage GPU context');
  report.checks.push('One WebGL2 context; one/two/six contacts produce exact imprints');
  report.checks.push('Liquid pigment stays within original foot alpha');
  report.checks.push('Slide/pivot/release yield distinct GPU pixel captures');
