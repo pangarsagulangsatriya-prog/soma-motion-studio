@@ -5,6 +5,8 @@
  */
 import {Application,CanvasSource,Filter,Sprite,Texture} from 'pixi.js';
 import {paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
+import {liquidMaterialResponse} from './liquidMaterialResponse.ts';
+import {MATERIAL03_GLSL} from './liquidMaterialShader.ts';
 import type {FloorInteractionEvent} from '../scenes/FloorInteractionEngine.ts';
 import {collectLiquidImprints,LIQUID_LIMIT,type LiquidImprint,type LiquidTimelineOptions}
  from './liquidImprintTimeline.ts';
@@ -19,65 +21,23 @@ uniform sampler2D uTexture;
 uniform float uAge;
 uniform float uSeed;
 uniform float uFlow;
-uniform float uImpulse;
+uniform float uContactFill;
+uniform float uSlideStrength;
+uniform float uPivotStrength;
+uniform float uReleaseProgress;
 uniform float uTwist;
-uniform float uRelease;
 uniform vec2 uSlide;
 uniform vec3 uTint;
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float noise(vec2 p){
- vec2 i=floor(p),f=fract(p);
- f=f*f*(3.-2.*f);
- return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),
- mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);
-}
-float fbm(vec2 p){
- float a=.5,v=0.;
- for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+3.71;a*=.5;}
- return v;
-}
+${MATERIAL03_GLSL}
 void main(){
- vec4 footprint=texture(uTexture,vTextureCoord);
- float coverage=footprint.a;
+ float coverage=texture(uTexture,vTextureCoord).a;
  if(coverage<.015)discard;
- float seconds=max(0.,uAge);
- vec2 sole=vTextureCoord-.5;
- float theta=uTwist*(.15+.85*(1.-vTextureCoord.y));
- vec2 turned=vec2(cos(theta)*sole.x-sin(theta)*sole.y,
-                   sin(theta)*sole.x+cos(theta)*sole.y)+.5;
- vec2 sheared=turned-uSlide*(.28*uImpulse);
- float velocity=.16+.29*uFlow;
- float ageFlow=seconds*(velocity+.065*sin(sheared.x*8.+uSeed*9.));
- vec2 advected=sheared+vec2(
-  .033*sin((sheared.y+uSeed)*15.-seconds*1.8),-ageFlow
+ vec3 pigment=mat03Pigment(
+  vTextureCoord,uAge,uSeed,uFlow,
+  uContactFill,uSlide,uSlideStrength,uTwist,
+  uPivotStrength,uReleaseProgress,uTint
  );
- vec2 drift=vec2(
-  fbm(advected*7.8+vec2(uSeed*5.,-seconds*.24)),
-  fbm(advected*8.9+vec2(seconds*.21,uSeed*7.))
- )-.5;
- vec2 liquid=advected+drift*(.095*uFlow);
- float channels=fbm(liquid*9.7+vec2(uSeed*4.1,seconds*.09));
- float veinWarp=fbm(liquid*14.+uSeed*8.3);
- float phase=liquid.y*33.+liquid.x*5.5+veinWarp*8.5;
- float seam=1.-smoothstep(.07,.23,abs(sin(phase)));
- float vein=1.-smoothstep(.10,.29,abs(sin(
-   liquid.x*25.-liquid.y*11.+channels*10.+seconds*.5
- )));
- float band=clamp(seam*.87+vein*.35,0.,1.);
- float basin=clamp((channels-.22)*1.85,0.,1.);
- float surge=.18+uImpulse*.82;
- vec3 pigment=mix(uTint*.075,uTint*(.40+.50*basin),.58+.36*basin);
- pigment+=uTint*(.46*band*surge);
- pigment+=vec3(.20,.24,.25)*pow(band,2.)*surge;
- float meniscusY=.91-seconds*(.31+.12*uFlow)
-   +.038*sin(liquid.x*13.+uSeed*7.+seconds*2.1);
- float meniscus=exp(-pow((vTextureCoord.y-meniscusY)*17.,2.));
- float wake=exp(-pow((vTextureCoord.y-(meniscusY+.16))*11.,2.));
- pigment+=uTint*(.61*meniscus+.13*wake)*(.68+.32*surge);
- pigment+=vec3(.17,.20,.21)*meniscus;
- pigment*=1.-.53*uRelease;
- float alpha=coverage;
- finalColor=vec4(clamp(pigment,0.,1.)*alpha,alpha);
+ finalColor=vec4(pigment*coverage,coverage);
 }`;
 
 type RecordEntry={
@@ -112,8 +72,9 @@ void main(void){
   resources:{
    liquidUniforms:{
     uAge:{value:0,type:'f32'},uSeed:{value:0,type:'f32'},
-    uFlow:{value:.7,type:'f32'},uImpulse:{value:0,type:'f32'},
-    uTwist:{value:0,type:'f32'},uRelease:{value:0,type:'f32'},
+    uFlow:{value:.7,type:'f32'},uContactFill:{value:0,type:'f32'},
+    uSlideStrength:{value:0,type:'f32'},uPivotStrength:{value:0,type:'f32'},
+    uReleaseProgress:{value:0,type:'f32'},uTwist:{value:0,type:'f32'},
     uSlide:{value:new Float32Array([0,0]),type:'vec2<f32>'},
     uTint:{value:new Float32Array([.86,.88,.74]),type:'vec3<f32>'}
    }
@@ -177,7 +138,9 @@ export class PixiLiquidImprintCompositor{
   this.masks.delete(id);
  }
  render(events:readonly FloorInteractionEvent[],timeMs:number,options:LiquidTimelineOptions&{
-  flow?:number;widthPx?:number;lengthPx?:number
+  flow?:number;widthPx?:number;lengthPx?:number;
+  /** QA only: freeze anatomy to compare shader material at one identical mask. */
+  materialOnlyQA?:boolean
  }={}):PixiLiquidStats{
   if(this.destroyed)throw Error('ENGINE-02 Pixi compositor destroyed');
   const items=collectLiquidImprints(events,timeMs,options);
@@ -188,7 +151,9 @@ export class PixiLiquidImprintCompositor{
   const flow=clamp(safe(options.flow??.7,.7),0,1);
   for(const imprint of items){
    const entry=this.masks.get(imprint.id)??this.createMask(imprint);
-   const d=imprint.deformation;
+   const d=options.materialOnlyQA?
+    {mode:'stance' as const,amount:0}:imprint.deformation;
+   const response=liquidMaterialResponse(imprint);
    const signature=[imprint.foot,d.mode,d.amount,d.travelX,d.travelY,d.pivotRad]
     .map(v=>typeof v==='number'?Math.round(v*120):String(v)).join(':');
    if(entry.signature!==signature){
@@ -205,19 +170,17 @@ export class PixiLiquidImprintCompositor{
    sprite.position.set(imprint.x*this.canvas.width,imprint.y*this.canvas.height);
    sprite.width=width;sprite.height=height;
    sprite.rotation=imprint.orientationKnown?Math.PI/2-imprint.headingRad:0;
-   sprite.alpha=imprint.opacity*.94;
+   sprite.alpha=response.opacity*.94;
    const uniforms=entry.filter.resources.liquidUniforms.uniforms;
-   const strength=clamp(safe(d.amount,0),0,1);
    uniforms.uAge=imprint.ageMs/1000;
    uniforms.uSeed=imprint.seed;
    uniforms.uFlow=flow;
-   uniforms.uImpulse=d.mode==='stance'?0:strength;
-   uniforms.uRelease=d.mode==='toe-off'?strength:0;
-   uniforms.uTwist=d.mode==='pivot'?clamp(safe(d.pivotRad??0,0),-.9,.9)*strength:0;
-   uniforms.uSlide=new Float32Array([
-    d.mode==='slide'?clamp(safe(d.travelX??0,0),-1,1):0,
-    d.mode==='slide'?clamp(safe(d.travelY??0,0),-1,1):0
-   ]);
+   uniforms.uContactFill=response.contactFill;
+   uniforms.uSlideStrength=response.slideStrength;
+   uniforms.uPivotStrength=response.pivotStrength;
+   uniforms.uReleaseProgress=response.releaseProgress;
+   uniforms.uTwist=response.pivotTwist*response.pivotStrength;
+   uniforms.uSlide=new Float32Array([response.slideX,response.slideY]);
    const b=imprint.actorId==='B'||imprint.actorId.includes('2');
    uniforms.uTint=new Float32Array(b?[.49,.80,.90]:[.86,.88,.74]);
   }
