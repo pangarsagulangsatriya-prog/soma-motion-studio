@@ -35,6 +35,10 @@ uniform float uSeed;
 uniform float uFlow;
 uniform float uAge;
 uniform float uOpacity;
+uniform vec2 uSlide;
+uniform float uTwist;
+uniform float uRelease;
+uniform float uImpulse;
 out vec4 outColor;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){
@@ -53,28 +57,43 @@ void main(){
  // the pigment field: neither rings nor noise may extend outside the toes.
  float coverage=texture(uMask,vUV).a;
  if(coverage<.015)discard;
- vec2 local=vUV;
- float evolution=uTime*.38+uSeed*7.1;
+ // The source alpha is immutable. All advection, bending and collapse
+ // operate on the *interior pigment coordinates*, never on the silhouette.
+ float seconds=max(0.,uAge);
+ float velocity=.16+.29*uFlow;
+ vec2 sole=vUV-.5;
+ float theta=uTwist*(.15+.85*(1.-vUV.y));
+ vec2 turned=vec2(cos(theta)*sole.x-sin(theta)*sole.y,
+                   sin(theta)*sole.x+cos(theta)*sole.y)+.5;
+ vec2 sheared=turned-uSlide*(.28*uImpulse);
+ float ageFlow=seconds*(velocity+.065*sin(sheared.x*8.+uSeed*9.));
+ vec2 advected=sheared+vec2(
+   .033*sin((sheared.y+uSeed)*15.-seconds*1.8),
+   -ageFlow
+ );
  vec2 drift=vec2(
-  fbm(local*6.8+vec2(evolution*.21,-evolution*.12)),
-  fbm(local*7.4+vec2(-evolution*.11,evolution*.26))
+  fbm(advected*7.8+vec2(uSeed*5.,-seconds*.24)),
+  fbm(advected*8.9+vec2(seconds*.21,uSeed*7.))
  )-.5;
- // Refract pigment coordinates, not the silhouette's alpha channel.
- vec2 advected=local+drift*(.085*uFlow);
- float pool=fbm(advected*10.0+vec2(evolution*.14,uSeed*12.));
- float folds=fbm(advected*24.0+vec2(uSeed*6.,-evolution*.25));
- float flowPhase=advected.y*27.+pool*13.-evolution*1.9;
- float blade=1.-smoothstep(.05,.24,abs(sin(flowPhase)));
- float branch=1.-smoothstep(.035,.21,abs(sin(
-  advected.x*19.-advected.y*9.+folds*12.+evolution)));
- float caustic=clamp(blade*.78+branch*.42,0.,1.);
- float pooled=clamp(pool*.94+folds*.16-.12,0.,1.);
- // Deep ink channels and fine wet reflective ridges remain foot-shaped.
- vec3 pigment=mix(uTint*.18,uTint*.91,pooled);
- pigment+=uTint*(.58*caustic);
- pigment+=vec3(.14,.16,.17)*pow(caustic,3.);
- pigment=mix(pigment,uTint*.72,.12*(1.-coverage));
- pigment*=.95+.05*sin(uAge*.8+uSeed*5.);
+ vec2 liquid=advected+drift*(.095*uFlow);
+ float channels=fbm(liquid*9.7+vec2(uSeed*4.1,seconds*.09));
+ float veinWarp=fbm(liquid*14.0+uSeed*8.3);
+ float phase=liquid.y*33.+liquid.x*5.5+veinWarp*8.5;
+ float seam=1.-smoothstep(.07,.23,abs(sin(phase)));
+ float vein=1.-smoothstep(.10,.29,abs(sin(
+   liquid.x*25.-liquid.y*11.+channels*10.+seconds*.5
+ )));
+ float band=clamp(seam*.87+vein*.35,0.,1.);
+ float basin=clamp((channels-.22)*1.85,0.,1.);
+ // Surges after contact/slide/pivot. At release, the ink thins and drains.
+ float surge=.18+uImpulse*.82;
+ float drier=1.-.53*uRelease;
+ vec3 dark=uTint*.075;
+ vec3 middle=uTint*(.40+.50*basin);
+ vec3 pigment=mix(dark,middle,.58+.36*basin);
+ pigment+=uTint*(.46*band*surge);
+ pigment+=vec3(.20,.24,.25)*pow(band,2.)*surge;
+ pigment*=drier;
  outColor=vec4(clamp(pigment,0.,1.),coverage*uOpacity);
 }`;
 
@@ -83,7 +102,8 @@ type MaskRecord={
  texture:WebGLTexture;signature:string;
 };
 type UniformNames='uCenter'|'uExtentPx'|'uViewport'|'uHeading'|'uMask'|'uTint'|
- 'uTime'|'uSeed'|'uFlow'|'uAge'|'uOpacity';
+ 'uTime'|'uSeed'|'uFlow'|'uAge'|'uOpacity'|'uSlide'|'uTwist'|
+ 'uRelease'|'uImpulse';
 export type LiquidGpuStats={
  renderer:'WebGL2';contexts:number;activeImprints:number;
  material:'Liquid Imprint (research)';orientationUncertain:number;
@@ -149,7 +169,8 @@ export class LiquidImprintGpuEngine{
   this.uniforms={} as Record<UniformNames,WebGLUniformLocation>;
   const names:UniformNames[]=[
    'uCenter','uExtentPx','uViewport','uHeading','uMask','uTint',
-   'uTime','uSeed','uFlow','uAge','uOpacity'
+   'uTime','uSeed','uFlow','uAge','uOpacity',
+   'uSlide','uTwist','uRelease','uImpulse'
   ];
   for(const name of names){
    const location=gl.getUniformLocation(this.program,name);
@@ -230,6 +251,19 @@ export class LiquidImprintGpuEngine{
    gl.uniform1f(this.uniforms.uSeed,imprint.seed);
    gl.uniform1f(this.uniforms.uAge,imprint.ageMs/1000);
    gl.uniform1f(this.uniforms.uOpacity,imprint.opacity*.94);
+   const deformation=imprint.deformation;
+   const strength=clamp(f(deformation.amount,0),0,1);
+   const slide=deformation.mode==='slide';
+   gl.uniform2f(this.uniforms.uSlide,
+    slide?clamp(f(deformation.travelX??0,0),-1,1):0,
+    slide?clamp(f(deformation.travelY??0,0),-1,1):0);
+   gl.uniform1f(this.uniforms.uTwist,
+    deformation.mode==='pivot'?
+     clamp(f(deformation.pivotRad??0,0),-.9,.9)*strength:0);
+   gl.uniform1f(this.uniforms.uRelease,
+    deformation.mode==='toe-off'?strength:0);
+   gl.uniform1f(this.uniforms.uImpulse,
+    deformation.mode==='stance'?0:strength);
    const actorB=imprint.actorId==='B'||imprint.actorId.includes('2');
    gl.uniform3f(this.uniforms.uTint,
     actorB?.49:.86,actorB?.80:.88,actorB?.90:.74);
