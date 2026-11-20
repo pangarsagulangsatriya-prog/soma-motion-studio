@@ -77,12 +77,36 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-scenario
   runScenario(value);
  });
 }
+/** Accelerated 10-minute timeline sweep for GPU resource checks.
+ * This samples the time domain, not wall-clock 10-minute FPS performance. */
+function runAcceleratedSweep(){
+ const events:FloorInteractionEvent[]=[];
+ let peak=0,frames=0,created=0;
+ for(let seconds=0;seconds<600;seconds+=5){
+  const n=Math.floor(seconds/5);
+  const atMs=seconds*1000;
+  events.push(contact(10000+n,n%2?'B':'A',n%2?'right':'left',
+   .18+(n%5)*.16,.35+(n%3)*.14,atMs));
+  const stats=engine.render(events,atMs+100,{
+   flow:.76,lifeMs:9000
+  });
+  frames++;
+  peak=Math.max(peak,stats.allocatedTextures);
+  created++;
+  if(stats.allocatedTextures>stats.maxTextures)
+   throw Error('GPU02 texture budget exceeded');
+ }
+ const cleared=engine.render(events,610000,{flow:.76,lifeMs:9000});
+ return {sampledMinutes:10,frames,syntheticContacts:created,peakTextures:peak,
+  finalTextures:cleared.allocatedTextures,contexts:cleared.contexts};
+}
 declare global{
  interface Window{
   __gpu02QA?:{
    runScenario:(scenario:LiquidLabScenario,timeMs?:number)=>ReturnType<typeof engine.render>;
    stats:()=>ReturnType<typeof engine.render>;
    events:()=>readonly FloorInteractionEvent[];
+   acceleratedSweep:()=>ReturnType<typeof runAcceleratedSweep>;
    destroy:()=>void;
   };
  }
@@ -91,6 +115,7 @@ window.__gpu02QA={
  runScenario,
  stats:()=>engine.stats,
  events:()=>lastEvents,
+ acceleratedSweep:runAcceleratedSweep,
  destroy:()=>{cancelAnimationFrame(anim);engine.destroy();}
 };
 runScenario(active);
