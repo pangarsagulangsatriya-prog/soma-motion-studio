@@ -5,7 +5,7 @@
 import type {FootMotionEventV2} from './FootMotionEventV2.ts';
 import type {HydraFootprintSettings} from './hydraFootprintModel.ts';
 
-export type MaterialMode='trace'|'echo';
+export type MaterialMode='trace'|'echo'|'rift';
 export type MaterialImpulse={id:string;x:number;y:number;dx:number;dy:number;kind:0|1|2;atMs:number;actor:0|1};
 export const MAX_MATERIAL_IMPULSES=20;
 export const MATERIAL_LIFE_MS=2800;
@@ -50,6 +50,8 @@ void main(){
  vec3 original=texture(uSource,st).rgb;
  float material=0.,erosion=0.,wake=0.;
  vec2 direction=vec2(0.);
+ vec2 riftShift=vec2(0.);
+ float riftZone=0.;
  for(int i=0;i<20;i++){
   if(i>=uCount)break;
   vec4 e=uImpulses[i],v=uVectors[i];
@@ -69,6 +71,19 @@ void main(){
   float distanceWeight=exp(-dot(diff,diff)*350.);
   direction+=v.xy*distanceWeight*decay;
   wake+=distanceWeight*decay;
+  // RIFT: UV perturbation is confined to the footprint influence field.
+  // Contact tears locally, slide pulls horizontally, pivot twists its edge.
+  float zone=exp(-dot(diff,diff)*420.)*decay;
+  float fractureLine=sin((st.y+e.y*.13)*uResolution.y*.47+
+   noise(st*91.+vec2(uTime*.07,float(i)))*8.);
+  float jagged=sign(fractureLine);
+  float isSlide=step(.5,e.w)*(1.-step(1.5,e.w));
+  float isPivot=step(1.5,e.w);
+  vec2 tangent=vec2(-diff.y,diff.x);
+  riftShift+=zone*(vec2(jagged*(.008+.017*uDistortion),0.)+
+   v.xy*(.55+isSlide*.95)*uDistortion+
+   tangent*isPivot*(.28+.8*uDistortion));
+  riftZone=max(riftZone,zone);
  }
  float grain=noise(st*uResolution*.6+uTime*.05);
  // TRACE: contact fills an irregular SDF, slide scrapes edges and pivot fractures.
@@ -85,7 +100,14 @@ void main(){
  preserve*=exp(-max(0.,uDelta)*(.38+.34*max(0.,1.-uEnergy)));
  vec3 echo=max(original*1.2,previous*preserve);
  echo+=vec3(wake*.12, wake*.19, wake*.18);
- vec3 result=uMode<.5?mix(original,trace,clamp(uMix,0.,1.)):mix(original,echo,clamp(uMix,0.,1.));
+ // The archive remains still outside active footprint fields.
+ vec2 uvRift=clamp(st+clamp(riftShift,vec2(-.085),vec2(.085)),vec2(.001),vec2(.999));
+ vec3 displaced=texture(uSource,uvRift).rgb;
+ float split=smoothstep(.035,.38,riftZone);
+ vec3 rift=mix(original,displaced,split*uMix);
+ rift+=vec3(smoothstep(.5,.95,riftZone)*uDistortion*.09);
+ vec3 result=uMode<.5?mix(original,trace,clamp(uMix,0.,1.)):
+  uMode<1.5?mix(original,echo,clamp(uMix,0.,1.)):rift;
  // Final energy stays bounded to avoid runaway feedback over long rehearsals.
  outColor=vec4(clamp(result,vec3(0.),vec3(1.)),1.);
 }`;
@@ -96,6 +118,7 @@ export function materialMode(settings:Pick<HydraFootprintSettings,'artwork'|'sty
  if(settings.catalogVisual)return null;
  if(settings.style==='grain'&&settings.artwork==='trace')return 'trace';
  if(settings.style==='echo'&&settings.artwork==='wave-record')return 'echo';
+ if(settings.style==='flow'&&settings.artwork==='negative-memory')return 'rift';
  return null;
 }
 export function collectMaterialImpulses(
@@ -215,7 +238,7 @@ export class FootprintGpuMaterialRuntime{
   gl.uniform1f(uni('uFeedback'),settings.feedback);
   gl.uniform1f(uni('uDistortion'),settings.distortion);
   gl.uniform1f(uni('uEnergy'),Math.min(1,this.impulses.reduce((n,i)=>n+Math.exp(-(nowMs-i.atMs)/850)*.24,0)));
-  gl.uniform1f(uni('uMode'),mode==='trace'?0:1);
+  gl.uniform1f(uni('uMode'),mode==='trace'?0:mode==='echo'?1:2);
   gl.uniform1i(uni('uCount'),this.impulses.length);
   const points=new Float32Array(MAX_MATERIAL_IMPULSES*4);
   const vectors=new Float32Array(MAX_MATERIAL_IMPULSES*4);

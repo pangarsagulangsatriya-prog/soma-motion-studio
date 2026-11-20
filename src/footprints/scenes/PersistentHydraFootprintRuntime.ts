@@ -17,6 +17,7 @@ export class PersistentHydraFootprintRuntime {
  private sourceContext:CanvasRenderingContext2D|null=null;
  private outputCanvas:HTMLCanvasElement|null=null;
  private style:HydraFootprintStyle|null=null;
+ private graphSignature='';
  private lastAt=0;
  private seen=new Set<string>();
  private generation=-1;
@@ -38,7 +39,7 @@ export class PersistentHydraFootprintRuntime {
  get isDestroyed(){return this.destroyed;}
  resetFeedback(){
   if(!this.engine||this.status!=='ready')return;
-  try{this.gpuMaterial?.reset();this.materialSeen.clear();this.engine.synth.hush?.();this.style=null;this.configure(this.settings);}
+  try{this.gpuMaterial?.reset();this.materialSeen.clear();this.engine.synth.hush?.();this.style=null;this.graphSignature='';this.configure(this.settings);}
   catch(error){this.fail(error instanceof Error?error.message:'Hydra reset failed');}
  }
  get output(){return this.status==='ready'?this.outputCanvas:null;}
@@ -87,10 +88,11 @@ export class PersistentHydraFootprintRuntime {
   // The user-selected Hydra graph must always win. Artwork and catalog
   // decide the source texture only, never silently override the effect.
   const selected:HydraFootprintStyle=this.settings.style;
-  if(this.style===selected)return;
+  const signature=selected+':'+(materialMode(this.settings)==='rift'?'rift-local':'standard');
+  if(this.graphSignature===signature)return;
   try{
    this.applyGraph(selected);
-   this.style=selected;this.lastGoodStyle=this.style;
+   this.style=selected;this.graphSignature=signature;this.lastGoodStyle=this.style;
   }catch(error){
    // Attempt to recover last known-good shader and keep existing FLOOR raster.
    try{if(this.lastGoodStyle)this.applyGraph(this.lastGoodStyle);}catch{}
@@ -110,6 +112,10 @@ export class PersistentHydraFootprintRuntime {
    graph=source().blend(h.src(h.o0).scale(1.008).rotate(.002),feedback);
   }else if(style==='interference'){
    graph=source().modulate(h.osc(24,.04),amount).blend(h.osc(3,.02),()=>mix()*.15);
+  }else if(materialMode(this.settings)==='rift'){
+   // RIFT has already displaced archive texels locally in WebGL2.
+   // Adding Hydra's global noise/feedback would shift untouched archive pixels.
+   graph=source();
   }else{
    graph=source().modulate(h.noise(4,.1),amount).blend(h.src(h.o0).scale(1.004),feedback);
   }
@@ -117,7 +123,7 @@ export class PersistentHydraFootprintRuntime {
   h.render(h.o0);
  }
  tick(source:HTMLCanvasElement|null,events:readonly FootMotionEventV2[],
-  generation:number,nowMs:number){
+  generation:number,nowMs:number,archiveSource=false){
   if(this.destroyed||this.status!=='ready'||!this.engine||!this.sourceContext||!source)return;
   if(!Number.isFinite(nowMs))return;
   if(generation!==this.generation){
@@ -125,13 +131,15 @@ export class PersistentHydraFootprintRuntime {
    this.motion={...HYDRA_MOTION_IDLE};
    try{this.engine.synth.hush?.();}catch{}
    // A new source must not inherit previous frame feedback.
-   this.style=null;this.configure(this.settings);
+   this.style=null;this.graphSignature='';this.configure(this.settings);
   }
   try{
    const recipe=this.settings.artwork==='off'&&this.settings.catalogVisual?
     catalogRecipe(this.settings.catalogScene):null;
    const artwork=this.settings.artwork!=='off'?this.settings.artwork:(recipe?.style??'off');
-   const sceneKey=this.settings.artwork!=='off'?'flagship:'+artwork:
+   const riftArchive=archiveSource&&materialMode(this.settings)==='rift';
+   const sceneKey=riftArchive?'rift:archive':
+    this.settings.artwork!=='off'?'flagship:'+artwork:
     recipe?'catalog:'+recipe.id:'off';
    if(sceneKey!==this.lastArtwork){
     if(this.lastArtwork==='off')this.art.reset(generation);
@@ -142,7 +150,26 @@ export class PersistentHydraFootprintRuntime {
    }
    this.sourceContext.fillStyle='#000';
    this.sourceContext.fillRect(0,0,640,360);
-   if(artwork!=='off'&&this.artCanvas){
+   if(riftArchive&&source.width>0&&source.height>0){
+    let materialSource:HTMLCanvasElement=source;
+    if(this.gpuMaterial&&!this.gpuMaterialUnavailable){
+     try{
+      const fresh=events.filter(event=>{
+       if(this.materialSeen.has(event.eventId))return false;
+       this.materialSeen.add(event.eventId);return true;
+      });
+      if(this.materialSeen.size>2500){
+       const currentIds=new Set(events.map(event=>event.eventId));
+       this.materialSeen=new Set([...this.materialSeen].filter(id=>currentIds.has(id)));
+      }
+      materialSource=this.gpuMaterial.paint(source,fresh,generation,nowMs,this.settings);
+     }catch{
+      this.gpuMaterialUnavailable=true;
+      this.gpuMaterial.dispose();this.gpuMaterial=null;
+     }
+    }
+    this.sourceContext.drawImage(materialSource,0,0,640,360);
+   }else if(artwork!=='off'&&this.artCanvas){
     this.art.ingest(events,generation,nowMs);
     this.art.paint(this.artCanvas,nowMs,normalizeArtisticFootprintConfig({
      style:artwork,view:this.settings.artworkView,treatment:this.settings.artworkTreatment,
@@ -202,7 +229,7 @@ export class PersistentHydraFootprintRuntime {
   try{this.outputCanvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}catch{}
   this.engine=null;this.sourceCanvas=null;this.sourceContext=null;this.outputCanvas=null;
   this.gpuMaterial?.dispose();this.gpuMaterial=null;
-  this.artCanvas=null;this.art.reset(-1);this.materialSeen.clear();
+  this.artCanvas=null;this.art.reset(-1);this.materialSeen.clear();this.graphSignature='';
   this.seen.clear();this.loading=null;
  }
 }
