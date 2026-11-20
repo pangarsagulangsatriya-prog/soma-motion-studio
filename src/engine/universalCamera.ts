@@ -7,7 +7,7 @@ export type CameraCaptureProfile='wide-720'|'wide-480'|'compatible';
 export function cameraDeviceLabel(device:Pick<CameraDeviceInfo,'label'>,index:number):string{
  return device.label.trim()||`Kamera ${index+1} · izinkan kamera untuk melihat nama`;
 }
-export function normalizeCameraDevices(devices:readonly CameraDeviceInfo[]):CameraDeviceInfo[]{
+export function normalizeCameraDevices<T extends Pick<MediaDeviceInfo,'kind'|'deviceId'|'label'>>(devices:readonly T[]):T[]{
  const seen=new Set<string>();
  return devices.filter(d=>{
   if(d.kind!=='videoinput'||!d.deviceId||seen.has(d.deviceId))return false;
