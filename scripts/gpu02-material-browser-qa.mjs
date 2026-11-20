@@ -110,6 +110,64 @@ try{
   await page.locator('#gpu02-stage').screenshot({path:file});
   report.screenshots.push(file);
  }
+ // MAT-03: four material-only variants share the EXACT same anatomy,
+ // contact time, identity, origin ID and spatial transform. Pixel changes
+ // therefore belong to pigment behavior, not differing sole geometry.
+ const material=await page.evaluate(()=>{
+  const canvas=document.querySelector('#gpu02-stage');
+  if(!(canvas instanceof HTMLCanvasElement)||!window.__gpu02QA)
+   throw Error('MAT03 cannot access real compositor pixels');
+  const c=document.createElement('canvas');
+  c.width=canvas.width;c.height=canvas.height;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  if(!ctx)throw Error('MAT03 cannot read material pixels');
+  const scenarios=['mat-contact','mat-slide','mat-pivot','mat-release'];
+  const images={};const stats={};
+  for(const scenario of scenarios){
+   const out=window.__gpu02QA.runScenario(scenario,10130);
+   if(out.activeImprints!==1||out.allocatedTextures!==1)
+    throw Error('MAT03 expected one stamped sole in '+scenario);
+   stats[scenario]=out.activeImprints;
+   ctx.clearRect(0,0,c.width,c.height);
+   ctx.drawImage(canvas,0,0);
+   images[scenario]=ctx.getImageData(0,0,c.width,c.height).data;
+  }
+  const comparisons=[];
+  for(let a=0;a<scenarios.length;a++)for(let b=a+1;b<scenarios.length;b++){
+   const left=scenarios[a],right=scenarios[b];
+   const A=images[left],B=images[right];
+   let overlap=0,different=0,union=0,alphaOverlap=0;
+   for(let i=0;i<A.length;i+=4){
+    const ax=A[i+3]>48,bx=B[i+3]>48;
+    if(ax||bx)union++;
+    if(ax&&bx){
+     alphaOverlap++;overlap++;
+     if(Math.abs(A[i]-B[i])+Math.abs(A[i+1]-B[i+1])+
+        Math.abs(A[i+2]-B[i+2])>28)different++;
+    }
+   }
+   comparisons.push({a:left,b:right,overlap,different,
+    pigmentDifference:different/Math.max(1,overlap),
+    sameSoleArea:alphaOverlap/Math.max(1,union)});
+  }
+  return {scenarioCount:scenarios.length,stats,comparisons};
+ });
+ report.material03=material;
+ assert.equal(material.scenarioCount,4);
+ for(const pair of material.comparisons){
+  assert.ok(pair.overlap>1200,'MAT03 mask missing: '+JSON.stringify(pair));
+  assert.ok(pair.sameSoleArea>.90,
+   'MAT03 comparison did not preserve sole silhouette: '+JSON.stringify(pair));
+  assert.ok(pair.pigmentDifference>.16,
+   'MAT03 material phases not visibly different with locked anatomy: '+JSON.stringify(pair));
+ }
+ for(const name of ['mat-contact','mat-slide','mat-pivot','mat-release']){
+  await page.evaluate(scenario=>window.__gpu02QA.runScenario(scenario,10130),name);
+  const path=directory+'/'+name+'-chromium.png';
+  await page.locator('#gpu02-stage').screenshot({path});
+  report.screenshots.push(path);
+ }
+ report.checks.push('MAT-03 four distinct pigment phases pass six pairwise differences with identical sole masks');
  const o=report.scenarios;
  assert.ok(o.six.pixels.lit>o.one.pixels.lit*3,
   'Six impacts do not produce six distinct footprints');
