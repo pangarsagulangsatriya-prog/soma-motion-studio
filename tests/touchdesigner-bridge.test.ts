@@ -102,7 +102,9 @@ test('Perform UI exposes third output route and the TD start is never a physical
  const stageCode=fs.readFileSync('src/studio/v3/FootprintsStageWorkspace.tsx','utf8');
  const recv=fs.readFileSync('touchdesigner/soma_webserver_callbacks.py','utf8');
  assert.match(consoleCode,/TouchDesignerPerformPanel/);
- assert.match(consoleCode,/setOutputRouteMode\('touchdesigner'\)/);
+ assert.match(consoleCode,/handleRouteChange\(item.id\)/);
+ const routes=fs.readFileSync('src/studio/v3/performDestinationModel.ts','utf8');
+ assert.match(routes,/id:'touchdesigner'/);
  assert.match(stageCode,/getTouchDesignerSnapshot/);
  assert.match(recv,/secrets\.compare_digest/);
  assert.match(recv,/data\['blackout'\] = True/);

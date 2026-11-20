@@ -1,0 +1,59 @@
+/** PF-UX-01/04 — one honest destination contract for the Perform panel.
+ * These labels only describe observable browser/session state. They never grant light. */
+import type {PerformOutputRouteMode,PerformPrimaryAction,PerformSurfaceBadge} from './performOutputModel.ts';
+
+export const PERFORM_DESTINATIONS=[
+ {id:'soma',label:'SOMA Direct',medium:'Visual · Proyektor',description:'Visual FLOOR/BODY melalui jendela SOMA. LIVE perlu izin build dan QA Map.'},
+ {id:'resolume',label:'Resolume',medium:'Visual · Clean Feed',description:'Jendela visual 16:9 untuk ditangkap Resolume. Jendela terbuka belum membuktikan penerimaan di Resolume.'},
+ {id:'touchdesigner',label:'TouchDesigner',medium:'Data · Kaki A/B',description:'Posisi kaki, kontak, slide, pivot dan cue melalui WebSocket lokal. Visual dan izin proyektor dikelola di TouchDesigner.'}
+] as const satisfies ReadonlyArray<{id:PerformOutputRouteMode;label:string;medium:string;description:string}>;
+
+export type DestinationTone='locked'|'attention'|'idle'|'open'|'live';
+export type DestinationPresentation={
+ state:string;hint:string;tone:DestinationTone;
+ action:string;kind:'info'|'setup'|'open'|'review'|'qa'|'arm'|'live'|'td-panel';
+};
+
+export function presentPerformDestination(input:{
+ route:PerformOutputRouteMode;
+ primary:PerformPrimaryAction;
+ floor:PerformSurfaceBadge;
+ body:PerformSurfaceBadge;
+}):DestinationPresentation{
+ const {route,primary,floor,body}=input;
+ if(route==='touchdesigner')return {
+  state:'Koneksi lokal',hint:'Status koneksi ditampilkan pada panel TouchDesigner.',
+  tone:'idle',action:'Atur koneksi',kind:'td-panel'
+ };
+ if(route==='resolume'){
+  const open=floor.opened||body.opened;
+  const connected=floor.connected||body.connected;
+  return open?{
+   state:connected?'Feed terbuka':'Jendela feed dibuka',
+   hint:'Periksa penerimaan dan mapping di Resolume secara terpisah.',
+   tone:'open',action:floor.opened?'Lihat Feed FLOOR':'Buka Feed FLOOR',kind:'review'
+  }:{
+   state:'Feed belum dibuka',hint:'Clean feed visual 16:9; Resolume perlu menangkapnya.',
+   tone:'idle',action:'Buka Feed FLOOR',kind:'open'
+  };
+ }
+ // SOMA Direct respects the exact existing physical-output authorization model.
+ switch(primary.kind){
+  case 'build-locked':return {state:'Terkunci · build',hint:'Output fisik dinonaktifkan pada build ini.',tone:'locked',action:'Mengapa terkunci?',kind:'info'};
+  case 'preview-only':return {state:'Terkunci · latihan',hint:'MP4/3D hanya untuk pratinjau.',tone:'locked',action:'Lihat syarat output',kind:'info'};
+  case 'fix-setup':return {state:'Perlu setup',hint:primary.detail,tone:'attention',action:'Perbaiki setup',kind:'setup'};
+  case 'open-output':return {state:'Siap dibuka',hint:'Jendela baru dimulai Blackout.',tone:'idle',action:'Buka Output',kind:'open'};
+  case 'run-qa':return {state:'Terbuka · Blackout',hint:'Lanjutkan QA lima titik di Map.',tone:'open',action:'Uji di Map',kind:'qa'};
+  case 'arm-live':return {state:'Terbuka · siap diuji',hint:'Hanya setelah QA dan konfirmasi operator.',tone:'open',action:primary.label,kind:'arm'};
+  case 'monitor-live':return {state:'LIVE',hint:'Gunakan BLACKOUT ketika perlu memadamkan output.',tone:'live',action:'Lihat Output LIVE',kind:'live'};
+ }
+}
+export function routeChangeRequiresBlackout(previous:PerformOutputRouteMode,next:PerformOutputRouteMode){
+ return previous!==next;
+}
+/** A local cue never authorizes projected media, except an explicitly active TD data cue bridge. */
+export function performCueScope(route:PerformOutputRouteMode):string{
+ return route==='touchdesigner'
+  ?'Tampilan operator; cue juga dikirim ke TouchDesigner saat data sedang mengalir.'
+  :'Cue mengganti tampilan monitor operator saja. Keluaran fisik tetap mengikuti Compose/Map.';
+}

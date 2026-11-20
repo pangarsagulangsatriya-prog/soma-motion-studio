@@ -74,7 +74,8 @@ test('OPS-R1: cue layouts survive visual reset and blackout remains fail-closed'
  assert.match(stage,/cueNavigationRef\.current\.previous\(\)/);
  assert.match(console,/disabled=\{activeSlot===cueGrid\.slots\.length-1\}/);
  assert.match(console,/cueGrid\.slots\.map/);
- assert.match(console,/Pilih cue untuk mengganti layout monitor/);
+ assert.match(console,/performCueScope\(outputRouteMode\)/);
+ assert.match(console,/Tampilan berikutnya/);
  assert.ok(!console.includes('setTransport('));
 });
 test('OPS-R1: cue recall never activates projector, and Map QA remains separate',()=>{

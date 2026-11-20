@@ -317,3 +317,69 @@
 .fp-operator-mode .ops-r1-route-toggle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:auto;max-width:100%}
 .fp-operator-mode .ops-r1-route-toggle button{font-size:10px;padding:5px 7px;min-height:28px}
 @media(max-width:690px){.fp-operator-mode .ops-r1-route-toggle button{font-size:9px;padding:5px 4px}}
+
+/* PF-UX-01..05: route-focused Perform console; deep channel controls live in Details. */
+.fp-operator-mode .ops-r1-output-card{gap:9px;padding:12px}
+.fp-operator-mode .ops-r1-output-top{justify-content:flex-start}
+.fp-operator-mode .ops-r1-route-toggle{
+ width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:4px;background:#0b160e;border-radius:9px;padding:4px;
+}
+.fp-operator-mode .ops-r1-route-toggle button{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:2px;white-space:normal;text-align:center;line-height:1.2;
+ min-height:49px;padding:7px 4px;border-radius:7px;font-size:11px;
+}
+.fp-operator-mode .ops-r1-route-toggle button small{
+ font:600 9px ui-monospace,monospace;letter-spacing:.07em;color:#92ae9b;
+}
+.fp-operator-mode .ops-r1-route-toggle button[aria-pressed=true] small{color:#d0eabc}
+.fp-operator-mode .ops-r1-destination-status{
+ display:flex;flex-direction:column;gap:3px;padding:8px 10px;
+ border:1px solid #38503e;border-radius:8px;background:#0d1811;
+}
+.fp-operator-mode .ops-r1-destination-status strong{font-size:12px;color:#dfeedd}
+.fp-operator-mode .ops-r1-destination-status span{font-size:10.5px;line-height:1.4;color:#9bb29f}
+.fp-operator-mode .ops-r1-destination-status[data-tone=locked]{border-color:#746147;background:#211c15}
+.fp-operator-mode .ops-r1-destination-status[data-tone=locked] strong{color:#f1d5a8}
+.fp-operator-mode .ops-r1-destination-status[data-tone=attention]{border-color:#806849}
+.fp-operator-mode .ops-r1-destination-status[data-tone=open]{border-color:#64836b}
+.fp-operator-mode .ops-r1-destination-status[data-tone=live]{border-color:#7cb987;background:#193121}
+.fp-operator-mode .ops-r1-output-details,
+.fp-operator-mode .ops-r1-cue-editor{
+ border-top:1px solid #314b38;padding-top:6px;
+}
+.fp-operator-mode .ops-r1-output-details summary,
+.fp-operator-mode .ops-r1-cue-editor summary{
+ cursor:pointer;min-height:28px;display:flex;align-items:center;
+ padding:4px 2px;color:#bed2bd;font-size:10.5px;
+}
+.fp-operator-mode .ops-r1-output-details>p{margin:6px 0 9px;font-size:10.5px;line-height:1.45;color:#9fb4a1}
+.fp-operator-mode .ops-r1-output-details>.ops-r1-channel-row{margin:6px 0}
+.fp-operator-mode .ops-r1-detail-blackout{
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ min-height:30px;border-radius:6px;border:1px solid #936560;background:#34211e;
+ color:#f1d8d2;font-size:10px;font-weight:650;cursor:pointer;
+ padding:5px 9px;margin-top:8px;
+}
+.fp-operator-mode .ops-r1-cue-grid{gap:7px}
+.fp-operator-mode .ops-r1-cue-transport{
+ display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.35fr);gap:7px;
+}
+.fp-operator-mode .ops-r1-cue-transport button{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-height:38px;font-size:11.5px;font-weight:650;padding:6px 8px;
+ border-radius:7px;cursor:pointer;
+}
+.fp-operator-mode .ops-r1-cue-transport button:disabled{opacity:.38;cursor:not-allowed}
+.fp-operator-mode .ops-r1-cue-scope{margin:0;font-size:10.5px;line-height:1.4;color:#9ab09e}
+.fp-operator-mode .ops-r1-next-cue{padding:9px 11px}
+.fp-operator-mode .ops-r1-cue-editor .ops-r1-all-slots{margin:8px 0}
+@media(max-width:600px){
+ .fp-operator-mode .ops-r1-route-toggle button{font-size:10px}
+ .fp-operator-mode .ops-r1-cue-transport{grid-template-columns:1fr 1.3fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-operator-mode .ops-r1-route-toggle button,
+ .fp-operator-mode .ops-r1-cue-transport button{transition:none}
+}
