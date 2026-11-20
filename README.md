@@ -1,9 +1,9 @@
 # SOMA — S6.7.2.5 Browser QA
 
 **Result:** FAILURE  
-**Commit:** `8886e2bb1f6fd9d38f3f06bee403b4a93d89f590`  
-**Run:** [GitHub Actions #44792642197](https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/actions/runs/44792642197)  
-**Generated:** 2026-11-20T18:27:13.692Z  
+**Commit:** `c9682e4ce22db0e88f132cf82a16b30da7242cd3`  
+**Run:** [GitHub Actions #44796355370](https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/actions/runs/44796355370)  
+**Generated:** 2026-11-20T18:51:10.486Z  
 
 ## Playwright results
 
