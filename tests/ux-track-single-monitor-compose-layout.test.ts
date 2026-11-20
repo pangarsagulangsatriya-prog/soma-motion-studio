@@ -33,18 +33,21 @@ test('Track hides secondary previews but keeps engine BODY/FLOOR raster canvases
  assert.match(stage,/motionEvents=\{\(\)=>interactionEngineRef\.current\.canonicalRecent\}/);
 });
 
-test('RESET-00 Compose keeps Media/Layers, Stage Preview and Inspector columns',()=>{
+test('Compose prioritizes Stage Monitor and keeps Media, Layers, Timeline and Inspector accessible',()=>{
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
- const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
- assert.match(composer,/<h3>Media &amp; Layers<\/h3>/);
- assert.match(composer,/Layer target/);
+ const css=read('../src/studio/v3/cpux-compose-focus.css');
+ assert.match(composer,/className="soma-ia-media"/);
+ assert.match(composer,/className="cp02-editor"/);
+ assert.match(composer,/className="cp02-inspector"/);
+ assert.match(composer,/className="cpux-timeline-drawer"/);
+ assert.match(composer,/className="soma-ia-layers"/);
+ assert.match(composer,/className="cp04-command-menu"/);
+ assert.match(composer,/className="s64-stage"/);
  assert.doesNotMatch(composer,/SceneEffectBrowser|FlagshipInspector|HydraEffectInspector/);
- assert.match(composer,/cp02-editor/);
- assert.match(composer,/cp02-inspector/);
- const dock=read('../src/studio/v3/cp02-cp03-composition.css');
- assert.ok(dock.includes('grid-template-columns:minmax(190px,.95fr)'));
- assert.match(composer,/INSPECTOR|Inspector/);
- assert.match(css,/data-workspace=compose\] \.s64-embedded \.s64-layout\{grid-template-columns:minmax\(176px,220px\) minmax\(0,1fr\) minmax\(186px,238px\)/);
+ assert.match(css,/grid-template-columns:minmax\\(0,1fr\\) minmax\\(270px,300px\\)!important/);
+ assert.match(css,/\.fp-stage-overview:not\\(\\[hidden\\]\\)\\{/);
+ assert.match(css,/display:none!important/);
+ assert.match(css,/@media\\(max-width:960px\\)/);
 });
 
 test('Compose exposes original three monitors only when editor is active',()=>{
