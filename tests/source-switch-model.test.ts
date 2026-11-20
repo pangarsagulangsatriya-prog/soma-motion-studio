@@ -10,7 +10,8 @@ test('S6.8.1: all four source routes remain available, Labs are explicit',()=>{
  assert.deepEqual(SOURCE_CHOICES.map(x=>x.id),['webcam','phone','video','simulator']);
  assert.equal(SOURCE_CHOICES.filter(x=>x.kind==='live').length,2);
  assert.deepEqual(SOURCE_CHOICES.filter(x=>x.kind==='experiment').map(x=>x.id),['video','simulator']);
- assert.equal(SOURCE_LABELS.phone,'Hubungkan kamera');
+ assert.equal(SOURCE_LABELS.phone,'Kamera HP');
+ assert.equal(SOURCE_LABELS.webcam,'Kamera lain');
 });
 test('initial state does not invent an active camera',()=>{
  assert.deepEqual(deriveFootprintsInputStatus(base),{

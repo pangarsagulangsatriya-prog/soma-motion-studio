@@ -53,9 +53,9 @@ test('CAM-03–05: static frontend retains QR/manual and explains USB, HDMI, IP/
  assert.match(picker,/normalizeCameraDevices/);
  assert.match(picker,/devicechange/);
  assert.match(picker,/onDisconnect/);
- assert.match(picker,/OBS Virtual Camera/);
+ assert.match(read('../src/engine/cameraRouteModel.ts'),/OBS/);
  assert.match(picker,/HDMI/);
- assert.match(picker,/NDI Webcam Input/);
+ assert.match(read('../src/engine/cameraRouteModel.ts'),/NDI/);
  assert.match(phone,/setMode\('qr'\)/);
  assert.match(phone,/setMode\('manual'\)/);
  assert.match(app,/onMirrorCamera=\{mirrorPhoneCamera\}/);
@@ -67,7 +67,7 @@ test('CAM-03–05: static frontend retains QR/manual and explains USB, HDMI, IP/
 test('CAM-UX: picker auto-selects one device but never auto-starts camera',async()=>{
  const {readFileSync}=await import('node:fs');
  const source=readFileSync(new URL('../src/stage/UsbPhoneCameraReceiver.tsx',import.meta.url),'utf8');
- assert.match(source,/list\.length===1\?list\[0\]\.deviceId:''/);
+ assert.match(source,/preferredCameraDevice\(list,intent,saved,savedLabel\)/);
  assert.match(source,/onClick=\{\(\)=>void connect\(\)\}/);
  assert.match(source,/aria-label="Muat ulang daftar kamera"/);
  assert.doesNotMatch(source,/soma-usb-intro/);
@@ -79,10 +79,10 @@ test('CAM-UX: QR/manual preserved and tabs use compact labels',async()=>{
  const source=readFileSync(new URL('../src/stage/PhoneCameraReceiver.tsx',import.meta.url),'utf8');
  assert.match(source,/<Cable size=\{15\}/);
  assert.match(source,/<QrCode size=\{15\}/);
- assert.match(source,/<KeyRound size=\{15\}/);
+ assert.match(source,/<KeyRound size=\{14\}/);
  assert.match(source,/<span>Kabel<\/span>/);
  assert.match(source,/<span>Nirkabel<\/span>/);
- assert.match(source,/<span>Kode<\/span>/);
+ assert.match(source,/onUseManual=\{\(\)=>setMode\('manual'\)\}/);
  assert.match(source,/<AutomaticPhoneReceiver/);
  assert.match(source,/<ManualPhoneCameraReceiver/);
 });
@@ -120,7 +120,7 @@ test('CAM-UX static QR sends user into code step without promising an automatic 
  assert.match(qr,/onUseManual&&<button/);
 });
 
-test('CAM-UI-02: help control is outside three-cell segmented camera tabs',async()=>{
+test('CAM-UI-02: help control stays outside two-route HP tabs',async()=>{
  const {readFileSync}=await import('node:fs');
  const get=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8');
  const phone=get('../src/stage/PhoneCameraReceiver.tsx');
@@ -130,7 +130,7 @@ test('CAM-UI-02: help control is outside three-cell segmented camera tabs',async
  assert.match(phone,/className="soma-camera-help-button"/);
  assert.match(phone,/<Cable size=\{15\}/);
  assert.match(phone,/<QrCode size=\{15\}/);
- assert.match(phone,/<KeyRound size=\{15\}/);
+ assert.match(phone,/<KeyRound size=\{14\}/);
  assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
  const cameraCss=get('../src/studio/v3/trk06-control-polish.css');
  assert.match(cameraCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
