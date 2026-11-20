@@ -7,6 +7,7 @@ import {
 import type {FootMotionEventV2} from './FootMotionEventV2.ts';
 import {ArtisticFootprintRuntime,normalizeArtisticFootprintConfig} from './ArtisticFootprintRuntime.ts';
 import {catalogRecipe} from './artisticCatalog.ts';
+import {FootprintGpuMaterialRuntime,materialMode} from './FootprintGpuMaterialRuntime.ts';
 
 /** One Hydra instance and one stable s0 canvas per Compose workspace.
  * This is a SOFTWARE visual post-processor. Physical routing stays on its existing QA gate. */
@@ -23,6 +24,9 @@ export class PersistentHydraFootprintRuntime {
  private settings:HydraFootprintSettings=normalizeHydraFootprintSettings(null);
  private readonly art=new ArtisticFootprintRuntime();
  private artCanvas:HTMLCanvasElement|null=null;
+ private gpuMaterial:FootprintGpuMaterialRuntime|null=null;
+ private gpuMaterialUnavailable=false;
+ private materialSeen=new Set<string>();
  private lastArtwork='off';
  private loading:Promise<void>|null=null;
  private destroyed=false;
@@ -34,7 +38,7 @@ export class PersistentHydraFootprintRuntime {
  get isDestroyed(){return this.destroyed;}
  resetFeedback(){
   if(!this.engine||this.status!=='ready')return;
-  try{this.engine.synth.hush?.();this.style=null;this.configure(this.settings);}
+  try{this.gpuMaterial?.reset();this.materialSeen.clear();this.engine.synth.hush?.();this.style=null;this.configure(this.settings);}
   catch(error){this.fail(error instanceof Error?error.message:'Hydra reset failed');}
  }
  get output(){return this.status==='ready'?this.outputCanvas:null;}
@@ -57,6 +61,10 @@ export class PersistentHydraFootprintRuntime {
     if(!ctx)throw Error('2D input texture unavailable');
     this.sourceCanvas=input;this.sourceContext=ctx;
     this.artCanvas=document.createElement('canvas');this.artCanvas.width=640;this.artCanvas.height=360;
+    // A second offscreen WebGL2 material pass supplies the existing Hydra s0.
+    // If WebGL2 is unavailable, keep using the artistic 2D canvas as source.
+    try{this.gpuMaterial=new FootprintGpuMaterialRuntime(document.createElement('canvas'));}
+    catch{this.gpuMaterialUnavailable=true;this.gpuMaterial=null;}
     // Never start Hydra's own RAF: this instance is ticked by the existing Stage loop.
     const engine=new HydraConstructor({
      canvas,width:640,height:360,autoLoop:false,makeGlobal:false,
@@ -113,7 +121,7 @@ export class PersistentHydraFootprintRuntime {
   if(this.destroyed||this.status!=='ready'||!this.engine||!this.sourceContext||!source)return;
   if(!Number.isFinite(nowMs))return;
   if(generation!==this.generation){
-   this.generation=generation;this.seen.clear();this.art.reset(generation);
+   this.generation=generation;this.seen.clear();this.materialSeen.clear();this.art.reset(generation);this.gpuMaterial?.reset();
    this.motion={...HYDRA_MOTION_IDLE};
    try{this.engine.synth.hush?.();}catch{}
    // A new source must not inherit previous frame feedback.
@@ -138,7 +146,26 @@ export class PersistentHydraFootprintRuntime {
      style:artwork,view:this.settings.artworkView,treatment:this.settings.artworkTreatment,
      intensity:this.settings.mix,persistence:recipe?.persistence??.76,catalog:recipe??undefined
     }));
-    this.sourceContext.drawImage(this.artCanvas,0,0,640,360);
+    const mode=materialMode(this.settings);
+    let materialSource:HTMLCanvasElement=this.artCanvas;
+    if(mode&&this.gpuMaterial&&!this.gpuMaterialUnavailable){
+     try{
+      const fresh=events.filter(event=>{
+       if(this.materialSeen.has(event.eventId))return false;
+       this.materialSeen.add(event.eventId);return true;
+      });
+      if(this.materialSeen.size>2500){
+       const recent=new Set(events.map(e=>e.eventId));
+       this.materialSeen=new Set([...this.materialSeen].filter(id=>recent.has(id)));
+      }
+      materialSource=this.gpuMaterial.paint(this.artCanvas,fresh,generation,nowMs,this.settings);
+     }catch{
+      // Shader / context failures must not black out the existing FLOOR preview.
+      this.gpuMaterialUnavailable=true;
+      this.gpuMaterial.dispose();this.gpuMaterial=null;
+     }
+    }
+    this.sourceContext.drawImage(materialSource,0,0,640,360);
    }else if(source.width&&source.height)this.sourceContext.drawImage(source,0,0,640,360);
    // Seen IDs survive bounded history changes and prohibit re-triggering a paused event.
    for(const e of events){
@@ -172,7 +199,8 @@ export class PersistentHydraFootprintRuntime {
   try{this.engine?.regl?.destroy?.();}catch{}
   try{this.outputCanvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}catch{}
   this.engine=null;this.sourceCanvas=null;this.sourceContext=null;this.outputCanvas=null;
-  this.artCanvas=null;this.art.reset(-1);
+  this.gpuMaterial?.dispose();this.gpuMaterial=null;
+  this.artCanvas=null;this.art.reset(-1);this.materialSeen.clear();
   this.seen.clear();this.loading=null;
  }
 }
