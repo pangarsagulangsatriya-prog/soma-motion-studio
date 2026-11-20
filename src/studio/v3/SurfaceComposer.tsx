@@ -724,6 +724,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onHydraSettingsChange(flagshipHydraPatch(id));
   // RIFT requires an explicit archive input; TRACE/ECHO remain footprint-driven.
   setArchiveHydra(id==='rift');
+  if(id==='rift'&&experimentSourceRef.current!=='video'&&riftSourceRef.current==='@stage:input'){
+   const firstArchive=media.find(asset=>asset.origin==='import');
+   if(firstArchive)setRiftSourceId(firstArchive.id);
+  }
   if(id!=='rift')onArchiveHydraChangeRef.current?.(false);
   const existing=composition.FLOOR.findIndex(item=>item.mediaId===COMPOSE_STAGE_HYDRA);
   if(existing<0){
