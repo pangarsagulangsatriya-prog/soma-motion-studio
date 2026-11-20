@@ -9,7 +9,7 @@ export const COMPOSE_STAGE_HYDRA='@stage:hydra' as const;
 export const COMPOSE_STAGE_BODY='@stage:body' as const;
 export type ComposeStageSourceId=typeof COMPOSE_STAGE_FLOOR|typeof COMPOSE_STAGE_INPUT|
  typeof COMPOSE_STAGE_HYDRA|typeof COMPOSE_STAGE_BODY;
-export type ComposerSourceKind='floor'|'input'|'hydra'|'body'|'media'|'empty';
+export type ComposerSourceKind='floor'|'input'|'hydra'|'body'|'scene'|'media'|'empty';
 export type ComposerSurface='FLOOR'|'BODY A'|'BODY B';
 export type ComposerSourceLayer={mediaId:string;name:string;visible:boolean;opacity:number;blend:string};
 const validStageIds=new Set<string>([COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,
@@ -20,6 +20,7 @@ export function composerSourceKind(layer:Pick<ComposerSourceLayer,'mediaId'|'nam
  if(layer.mediaId===COMPOSE_STAGE_INPUT)return 'input';
  if(layer.mediaId===COMPOSE_STAGE_HYDRA)return 'hydra';
  if(layer.mediaId===COMPOSE_STAGE_BODY)return 'body';
+ if(/^@scene:[a-z0-9-]+$/.test(layer.mediaId))return 'scene';
  if(layer.mediaId.startsWith('@stage:'))return 'empty';
  if(layer.mediaId)return 'media';
  // Old saved compositions used an empty media ID for the base raster.
@@ -39,7 +40,7 @@ export function composerLayerOrder<T extends ComposerSourceLayer>(
   if(kind==='empty')return [];
   // The previous physical-output safety gate still owns stage authorisation.
   if(physical&&experiment)return [];
-  if(physical&&(kind==='input'||kind==='hydra'))return [];
+  if(physical&&(kind==='input'||kind==='hydra'||kind==='scene'))return [];
   if(physical&&kind==='body'&&surface==='FLOOR')return [];
   return [{layer,kind}];
  });
