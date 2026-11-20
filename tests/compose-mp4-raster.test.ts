@@ -27,7 +27,7 @@ test('Track passes original MP4 decoded raster to Compose; no separate decoder',
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(stage,/experimentInputCanvas=\{cameraCanvas\} experimentFloorCanvas=\{floorCanvas\}/);
  assert.match(stage,/experimentSource=\{experimentalKind\}/);
- assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+ assert.match(composer,/kind==='floor'\?\(timelineModeRef\.current==='replay'&&!physical\?null:experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
  assert.match(composer,/composerLayerOrder\(/);
  assert.match(composer,/experimentSource&&<button type="button"/);
 });

@@ -436,3 +436,59 @@
 .fp-stage-workspace[data-workspace="compose"] .msv4-root .cp08-empty{
  font-size:11px;color:#abb4bb;
 }
+
+/* CP-09 / event capture and scrubbable software replay */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-timeline{
+ display:flex;flex-direction:column;gap:9px;padding:11px 12px;margin:10px 0;
+ background:#131820;border:1px solid #323b44;border-radius:8px;min-width:0;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-timeline-head,
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-time-markers{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-timeline-head strong{
+ font-size:10px;letter-spacing:.09em;color:#cddad9;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-timeline-head span,
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-time-markers{
+ font-size:10px;font-variant-numeric:tabular-nums;color:#a5b4bd;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-transport{
+ display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-transport button,
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-transport select{
+ min-height:29px!important;font-size:10px!important;padding:5px 8px!important;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-transport label{
+ display:flex;align-items:center;gap:5px;font-size:10px!important;color:#9ba8b4;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-scrubber{
+ width:100%;accent-color:#94d3ca;cursor:pointer;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lanes{
+ display:flex;flex-direction:column;gap:4px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lane{
+ display:grid;grid-template-columns:68px minmax(0,1fr);align-items:center;gap:8px;
+ min-height:23px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lane>span{
+ font-size:9px;letter-spacing:.05em;color:#8f9ca6;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lane-track{
+ position:relative;height:17px;border:1px solid #303d47;border-radius:3px;
+ background:repeating-linear-gradient(90deg,#1a222b 0,#1a222b calc(10% - 1px),#35414b calc(10% - 1px),#35414b 10%);
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-event-dot{
+ position:absolute;top:2px;transform:translateX(-50%);
+ min-height:11px!important;height:11px!important;width:7px;min-width:7px;
+ padding:0!important;border:0!important;border-radius:3px!important;
+ background:#9dd5cb!important;cursor:pointer;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lane:nth-child(2) .cp09-event-dot{background:#a7afe2!important}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lane:nth-child(3) .cp09-event-dot{background:#dbc48f!important}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-lane:nth-child(4) .cp09-event-dot{background:#a3acba!important}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-timeline-note{
+ display:block;color:#82929e;font-size:10px;line-height:1.4;
+}

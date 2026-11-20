@@ -98,7 +98,7 @@ test('VIS-R4: archival image/video enters existing Hydra, physical route stays c
  assert.match(stage,/hydraRuntime\.current\.tick\(archiveHydraCanvas\.current/);
  assert.match(stage,/hydraRuntime\.current\.tick\(cleanFloorOutput\.current/);
  assert.match(stage,/floorCanvas=\{cleanFloorOutput\}/);
- assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+ assert.match(composer,/kind==='floor'\?\(timelineModeRef\.current==='replay'&&!physical\?null:experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
  assert.match(composer,/if\(experiment&&physical\)return/);
  assert.match(composer,/archiveHydraCanvas\.current=document\.createElement\('canvas'\)/);
  assert.match(composer,/render\(archiveCtx,'FLOOR',640,360,true,false\)/);

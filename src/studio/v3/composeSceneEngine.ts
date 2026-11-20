@@ -5,6 +5,7 @@
 import {ARTISTIC_CATALOG,validateCatalogSceneId,type CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
 import {ArtisticFootprintRuntime} from '../../footprints/scenes/ArtisticFootprintRuntime.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
+import type {TimelineEvent} from './composerEventTimelineModel.ts';
 
 export const SCENE_SOURCE_PREFIX='@scene:' as const;
 export type SceneAction='apply'|'replace'|'add';
@@ -64,7 +65,13 @@ export class ComposedSceneRuntime{
   this.generation=events.at(-1)?.generation??0;
   this.runtime.skipExisting(events,this.generation);
  }
- paint(canvas:HTMLCanvasElement,atMs:number){
+ replay(events:readonly TimelineEvent[]){
+  this.runtime.reset(0);
+  for(const item of events){
+   this.runtime.ingest([{...item.event,generation:0,eventId:item.id}],0,item.atMs);
+  }
+ }
+  paint(canvas:HTMLCanvasElement,atMs:number){
   const recipe=ARTISTIC_CATALOG.find(x=>x.id===this.scene);
   if(!recipe)return;
   this.runtime.paint(canvas,atMs,{style:recipe.style,view:'both',
