@@ -42,10 +42,10 @@ test('camera constraints default to horizontal wide 16:9 720p, never vertical',(
  assert.equal(isPortraitStreamDimensions(1280,720),false);
 });
 
-test('compose stage monitor view tabs start with FLOOR first and include FOOT and SKELETON',()=>{
+test('compose stage monitor keeps Floor, A/B, Split and real Skeleton without Foot',()=>{
  assert.deepEqual(
   COMPOSE_VIEW_TABS.map(t=>t.id),
-  ['FLOOR','LEG A','LEG B','SPLIT','FOOT','SKELETON']
+  ['FLOOR','LEG A','LEG B','SPLIT','SKELETON']
  );
  assert.equal(COMPOSE_VIEW_TABS[0].id,'FLOOR');
 });

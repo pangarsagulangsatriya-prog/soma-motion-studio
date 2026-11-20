@@ -40,6 +40,7 @@ import {
  type ComposeMonitorView,type LowerBodyComposerState,type LowerBodySimAction,type SavedLowerBodyPreset
 } from './composeLowerBodyModel.ts';
 import {renderLowerBodyStageMonitor} from './composeLowerBodyRenderer.ts';
+import {SlidersHorizontal} from 'lucide-react';
 import {paintComposeSkeletonMonitor,type ComposeSkeletonBackdrop} from './composeSkeletonMonitor.ts';
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
@@ -109,6 +110,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [monitorView,setMonitorView]=useState<ComposeMonitorView>('FLOOR');
  const monitorViewRef=useRef(monitorView);monitorViewRef.current=monitorView;
+ const [legControlsOpen,setLegControlsOpen]=useState(false);
  const [lowerBody,setLowerBody]=useState<LowerBodyComposerState>(()=>defaultLowerBodyState());
  const lowerBodyRef=useRef(lowerBody);lowerBodyRef.current=lowerBody;
  const [savedLowerBodyPresets,setSavedLowerBodyPresets]=useState<SavedLowerBodyPreset[]>(()=>
@@ -127,6 +129,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  useEffect(()=>{setSkeletonBackdrop('black');setSkeletonInputId('track');},[experimentSource]);
  const selectMonitorView=(view:ComposeMonitorView)=>{
   setMonitorView(view);
+  setLegControlsOpen(false);
   if(view==='FLOOR'){
    setSelected('FLOOR');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');
   }else if(view==='LEG A'){
@@ -781,7 +784,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-heading">
    <div className="cpux-heading-label">
     <h2>Compose</h2>
-    <span>{monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='FOOT'?'Foot · Sole Contact':monitorView==='SKELETON'?'Skeleton 33 Titik':'Lower-Body · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
+    <span>{monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='SKELETON'?'Skeleton · 33 titik':'Kaki · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
    </div>
    <div className="s64-safety">
     <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
@@ -809,7 +812,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     </div>
    </details>
   </div>
-  <div className="s64-layout" data-inspector-tab={inspectorTab}>
+  <div className="s64-layout" data-inspector-tab={inspectorTab}
+   data-compose-view={monitorView}
+   data-compose-dock={monitorView==='FLOOR'||legControlsOpen&&monitorView!=='SKELETON'?'inspect':'wide'}>
    <aside className="s64-column cp02-library">
     <details className="soma-ia-media"><summary>Media <span>{media.length}</span></summary><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
  <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
@@ -832,32 +837,38 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       })()}
      </div>
      <div className="lb-view-tabs" role="group" aria-label="Pilih bidang preview">
-     {COMPOSE_VIEW_TABS.map(tab=><button key={tab.id} type="button"
-      title={tab.title}
-      aria-pressed={previewArrangement!=='input'&&monitorView===tab.id}
-      onClick={()=>selectMonitorView(tab.id)}>{tab.label}</button>)}
-     {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
-       onClick={()=>setPreviewArrangement("input")}>CAM · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div>
-    {monitorView==='SKELETON'&&<div className="cp-compose-skeleton-controls" aria-label="Tampilan skeleton">
-     <span className="cp-compose-skeleton-label">Skeleton · 33 titik</span>
-     <div role="group" aria-label="Latar skeleton" className="cp-compose-skeleton-modes">
-      <button type="button" aria-pressed={skeletonBackdrop==='black'}
-       onClick={()=>setSkeletonBackdrop('black')} title="Skeleton pada latar hitam">Hitam</button>
-      <button type="button" aria-pressed={skeletonBackdrop==='input'}
-       onClick={()=>setSkeletonBackdrop('input')} title="Tampilkan video atau gambar input bersama skeleton">Input</button>
+      {COMPOSE_VIEW_TABS.map(tab=><button key={tab.id} type="button"
+       title={tab.title}
+       aria-pressed={monitorView===tab.id}
+       onClick={()=>selectMonitorView(tab.id)}>{tab.label}</button>)}
      </div>
-     {skeletonBackdrop==='input'&&media.some(m=>m.origin==='import')&&
-      <select className="cp-compose-skeleton-input" aria-label="Sumber gambar untuk Skeleton"
-       title="Hanya sumber Track yang memiliki data deteksi pose"
-       value={skeletonInputId} onChange={event=>setSkeletonInputId(event.target.value)}>
-       <option value="track">Input Track</option>
-       {media.filter(m=>m.origin==='import').map(m=>
-        <option key={m.id} value={m.id}>{m.name}</option>)}
-      </select>}
-     {skeletonBackdrop==='input'&&skeletonInputId!=='track'&&
-      <small className="cp-compose-skeleton-info">Media impor · belum dilacak</small>}
-    </div>}
+     {monitorView==='SKELETON'&&<div className="cp-compose-skeleton-controls" aria-label="Tampilan skeleton">
+      <div role="group" aria-label="Latar skeleton" className="cp-compose-skeleton-modes">
+       <button type="button" aria-pressed={skeletonBackdrop==='black'}
+        onClick={()=>setSkeletonBackdrop('black')} title="Skeleton dengan latar hitam">Hitam</button>
+       <button type="button" aria-pressed={skeletonBackdrop==='input'}
+        onClick={()=>setSkeletonBackdrop('input')} title="Tampilkan video atau gambar input">Input</button>
+      </div>
+      {skeletonBackdrop==='input'&&media.some(m=>m.origin==='import')&&
+       <select className="cp-compose-skeleton-input" aria-label="Sumber gambar untuk Skeleton"
+        title="Media impor belum memiliki hasil deteksi skeleton"
+        value={skeletonInputId} onChange={event=>setSkeletonInputId(event.target.value)}>
+        <option value="track">Input Track</option>
+        {media.filter(m=>m.origin==='import').map(m=>
+         <option key={m.id} value={m.id}>{m.name}</option>)}
+       </select>}
+      {skeletonBackdrop==='input'&&skeletonInputId!=='track'&&
+       <small className="cp-compose-skeleton-info" title="Gambar ini belum diproses oleh tracking">Belum dilacak</small>}
+     </div>}
+     {(monitorView==='LEG A'||monitorView==='LEG B'||monitorView==='SPLIT')&&
+      <button type="button" className="cp-compose-leg-settings"
+       aria-expanded={legControlsOpen} aria-controls="soma-compose-leg-inspector"
+       onClick={()=>setLegControlsOpen(open=>!open)}
+       title="Tampilkan atau sembunyikan pengaturan visual kaki">
+       <SlidersHorizontal size={14} aria-hidden="true"/>
+       {legControlsOpen?'Tutup pengaturan':'Atur kaki'}
+      </button>}
+    </div>
     <div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&
   <div className="cp07-stage-selected" aria-hidden="true">
@@ -876,7 +887,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     {monitorView==='FLOOR'&&liquidMode==='track'&&timelineCapture.events.length===0&&
      <span role="status">Belum ada jejak dari Track</span>}
     {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<span>{cameraOn&&bodySelected?bodyStatus:'Simulasi aktif · uji mask paha, warna, tekstur, atau crossing'}</span>}
-    {inspectorTab==='object'&&
+    {monitorView==='FLOOR'&&inspectorTab==='object'&&
      <button type="button" onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>
       {editMask?'Selesai edit mask':'Edit mask'}</button>}
    </div>
@@ -914,12 +925,13 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      setSelectedLayer(at);setInspectorTab('layer');
     }}>{source.label}</button>)}
   </div><button disabled={layers.length<=1} onClick={()=>{setComposition(c=>({...c,[selected]:c[selected].filter((_,i)=>i!==selectedLayer)}));setSelectedLayer(0);}}>Hapus layer</button></details></section>
-   <aside className="s64-column cp02-inspector"
+   <aside className="s64-column cp02-inspector" id="soma-compose-leg-inspector"
+   hidden={monitorView==='SKELETON'||(monitorView!=='FLOOR'&&!legControlsOpen)}
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
-  <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:monitorView==='SKELETON'?'Skeleton Only':monitorView==='FOOT'?'Foot Contact':'Lower-Body · '+monitorView}</h3>
-  {monitorView!=='FLOOR'&&<LowerBodyQuickInspector
+  <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:'Visual Kaki · '+monitorView}</h3>
+  {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<LowerBodyQuickInspector
    view={monitorView}
    state={lowerBody}
    onChange={setLowerBody}
@@ -937,7 +949,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      {tab==='scene'?'Material':tab==='layer'?'Layer':'Objek'}</button>)}
    </div>
   </>}
-  {monitorView!=='FLOOR'&&<details className="lb-advanced-drawer">
+  {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<details className="lb-advanced-drawer">
    <summary>Advanced · Mask kalibrasi &amp; layer teknis</summary>
    <LegPreviewInspector value={legTuning}
     onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>

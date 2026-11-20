@@ -9,7 +9,6 @@ export const COMPOSE_VIEW_TABS:readonly {id:ComposeMonitorView;label:string;titl
  {id:'LEG A',label:'LEG A',title:'Masking & visual kaki Performer A (paha atas ke bawah)'},
  {id:'LEG B',label:'LEG B',title:'Masking & visual kaki Performer B (paha atas ke bawah)'},
  {id:'SPLIT',label:'SPLIT',title:'Tampilan ganda LEG A & LEG B secara bersamaan'},
- {id:'FOOT',label:'FOOT',title:'Fokus telapak, pergelangan kaki & kontak lantai'},
  {id:'SKELETON',label:'SKELETON',title:'Deteksi skeleton 33 titik dari Track · hitam atau input'}
 ];
 
