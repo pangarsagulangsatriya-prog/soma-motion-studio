@@ -1,24 +1,12 @@
 import {useEffect,useRef,useState} from 'react';
+import type {RefObject} from 'react';
 import {ARTISTIC_CATALOG,type CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
 import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintStyle} from '../../footprints/scenes/hydraFootprintModel.ts';
-import {ArtisticFootprintRuntime} from '../../footprints/scenes/ArtisticFootprintRuntime.ts';
+import type {HydraFootprintSettings} from '../../footprints/scenes/hydraFootprintModel.ts';
+import {FlagshipLivePreview} from './FlagshipLivePreview.tsx';
 import {paintSceneSample,syntheticSceneEvents,type SceneAction} from './composeSceneEngine.ts';
 import {FLAGSHIP_RECIPES,type FlagshipId,type FlagshipRecipe} from './flagshipVisualModel.ts';
 
-function FlagshipPreview({recipe}:{recipe:FlagshipRecipe}){
- const ref=useRef<HTMLCanvasElement>(null);
- useEffect(()=>{
-  const canvas=ref.current;if(!canvas)return;
-  const renderer=new ArtisticFootprintRuntime();
-  const events=syntheticSceneEvents();
-  renderer.ingest(events,0,1100);
-  // Same visual texture painter as the live Hydra source; GPU graph is selected separately.
-  renderer.paint(canvas,1180,{style:recipe.artwork==='off'?'trace':recipe.artwork,
-   view:'both',treatment:'artistic',intensity:recipe.mix,persistence:recipe.id==='echo'?.95:.8});
- },[recipe]);
- return <canvas ref={ref} width={240} height={135} className="cp08-scene-frame"
-  aria-label={'Sampel tekstur '+recipe.title}/>;
-}
 function SceneCard({id,title,subtitle,selected,onAction}:{
  id:CatalogSceneId;title:string;subtitle:string;selected:boolean;
  onAction:(id:CatalogSceneId,action:SceneAction)=>void;
@@ -37,13 +25,16 @@ function SceneCard({id,title,subtitle,selected,onAction}:{
   </div>
  </article>;
 }
-export function SceneEffectBrowser({activeScene,onSceneAction,onEffectAction,onFlagshipApply,activeFlagship,hydraEnabled}:{
+export function SceneEffectBrowser({activeScene,onSceneAction,onEffectAction,onFlagshipApply,activeFlagship,hydraEnabled,hydraSettings,stageCanvas,stageStatus}:{
  activeScene:CatalogSceneId;
  onSceneAction:(id:CatalogSceneId,action:SceneAction)=>void;
  onEffectAction:(id:HydraFootprintStyle,action:'apply'|'add')=>void;
  onFlagshipApply:(id:FlagshipId)=>void;
  activeFlagship:FlagshipId|null;
  hydraEnabled:boolean;
+ hydraSettings?:HydraFootprintSettings;
+ stageCanvas?:RefObject<HTMLCanvasElement|null>;
+ stageStatus?:string;
 }){
  const [query,setQuery]=useState('');
  const [legacyMode,setLegacyMode]=useState<'scenes'|'effects'>('scenes');
@@ -60,7 +51,8 @@ export function SceneEffectBrowser({activeScene,onSceneAction,onEffectAction,onF
   <div className="cp08-scene-list fv01-flagship-list">
    {flagships.map(p=><article className="cp08-scene-card fv01-flagship-card" key={p.id}
       data-selected={activeFlagship===p.id} aria-label={'Flagship '+p.title}>
-     <FlagshipPreview recipe={p}/>
+     <FlagshipLivePreview recipe={p} active={activeFlagship===p.id}
+       settings={hydraSettings} stageCanvas={stageCanvas} stageStatus={stageStatus}/>
      <div className="cp08-scene-body">
       <div className="fv01-name"><strong>{p.title}</strong><small>{p.subtitle}</small></div>
       <small>{p.description}</small>
@@ -72,7 +64,7 @@ export function SceneEffectBrowser({activeScene,onSceneAction,onEffectAction,onF
     </article>)}
    {!flagships.length&&<p className="cp08-empty">Visual flagship tidak ditemukan.</p>}
   </div>
-  <small className="cp08-preview-note">Sampel tekstur dari renderer artistik SOMA. Hydra memproses teksturnya saat visual dipilih. Material GPU dan distorsi arsip lokal dikembangkan di FV-02/03.</small>
+  <small className="cp08-preview-note">Thumbnail bergerak memakai material GPU SOMA dengan langkah simulasi. Visual aktif menampilkan output Hydra Stage ketika siap; RIFT sampel menggunakan arsip sintetis.</small>
   <details className="fv01-legacy" aria-label="Legacy visual scenes and effects">
    <summary>Legacy · 14 scenes &amp; 4 effects</summary>
    <div className="cp08-browser-tabs" role="group" aria-label="Jenis aset Legacy">
