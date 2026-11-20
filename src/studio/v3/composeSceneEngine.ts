@@ -47,7 +47,8 @@ export class ComposedSceneRuntime{
  private runtime=new ArtisticFootprintRuntime();
  private session:string|null=null;
  private generation=0;
- constructor(readonly scene:CatalogSceneId){}
+ readonly scene:CatalogSceneId;
+ constructor(scene:CatalogSceneId){this.scene=scene;}
  ingest(events:readonly FootMotionEventV2[],session:string,atMs:number,initialize=false){
   const generation=events.at(-1)?.generation??this.generation;
   if(this.session!==session||this.generation!==generation){
