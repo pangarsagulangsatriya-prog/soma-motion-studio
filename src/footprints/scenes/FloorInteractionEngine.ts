@@ -3,11 +3,11 @@ import {toFootMotionEvent,type FootMotionEventV2} from './FootMotionEventV2.ts';
  * Existing camera gait engine owns metric contact; this engine NEVER estimates
  * foot pressure, grants projector output, or modifies FootstepEvent v3. */
 export type FloorInteractionSource='camera'|'phone'|'video'|'simulator'|'touch';
-export type FloorInteractionKind='presence'|'movement'|'contact'|'touch'|'release';
+export type FloorInteractionKind='presence'|'movement'|'contact'|'touch'|'slide'|'pivot'|'release';
 export type FloorInteractionBasis='calibrated-estimate'|'image-2d'|'simulated'|'presence-only';
 export type FloorInteractionEvent={
  id:string;originEventId?:string;source:FloorInteractionSource;kind:FloorInteractionKind;
- actorId:string;foot?:'left'|'right';
+ actorId:string;foot?:'left'|'right';headingRad?:number;
  x:number;y:number;radius:number;speed:number;confidence:number;
  atMs:number;basis:FloorInteractionBasis;
  /** Truthful provenance. Even verified camera contacts are only estimated, not force readings. */
@@ -17,18 +17,23 @@ export type FloorObservation=Pick<FloorInteractionEvent,
  'source'|'actorId'|'x'|'y'|'confidence'|'atMs'|'basis'>;
 export type FloorContactInput=FloorObservation&{
  eventId:string;foot:'left'|'right';verified:boolean;kind?:'contact'|'touch';
+ headingRad?:number;
+};
+export type FloorMotionInput=FloorObservation&{
+ eventId:string;foot:'left'|'right';kind:'slide'|'pivot'|'release';
+ headingRad?:number;
 };
 export type FloorInteractionSnapshot={
  source:FloorInteractionSource|null;events:FloorInteractionEvent[];
  actors:string[];counts:Record<FloorInteractionKind,number>;
 };
-const kinds=['presence','movement','contact','touch','release'] as const;
+const kinds=['presence','movement','contact','touch','slide','pivot','release'] as const;
 let engineInstanceSerial=0;
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 const unit=(n:unknown)=>finite(n)&&n>=0&&n<=1;
 const valid=(o:FloorObservation)=>unit(o.x)&&unit(o.y)&&unit(o.confidence)&&
  finite(o.atMs)&&o.atMs>=0&&typeof o.actorId==='string'&&o.actorId.length>0&&o.actorId.length<=64;
-const emptyCounts=()=>({presence:0,movement:0,contact:0,touch:0,release:0});
+const emptyCounts=()=>({presence:0,movement:0,contact:0,touch:0,slide:0,pivot:0,release:0});
 type Last={x:number;y:number;atMs:number};
 export class FloorInteractionEngine{
  private source:FloorInteractionSource|null=null;
@@ -82,6 +87,7 @@ export class FloorInteractionEngine{
   if(!this.accepts(o)||!o.eventId||o.eventId.length>180||
    !['left','right'].includes(o.foot)||!o.verified||
    o.actorId.startsWith('unassigned-')||
+   (o.headingRad!==undefined&&!finite(o.headingRad))||
    (o.kind==='touch'&&o.source!=='touch')||
    (o.kind!=='touch'&&o.source==='touch'))return null;
   // An untrusted visual observation never becomes a contact.
@@ -92,7 +98,31 @@ export class FloorInteractionEngine{
   if(this.seenOrder.length>6000)this.seenContacts.delete(this.seenOrder.shift()!);
   return this.push({source:o.source,actorId:o.actorId,originEventId:o.eventId,
    x:o.x,y:o.y,confidence:o.confidence,atMs:o.atMs,basis:o.basis,
-   kind:o.kind??'contact',foot:o.foot,radius:.03,speed:0,verified:o.verified});
+   kind:o.kind??'contact',foot:o.foot,headingRad:o.headingRad,
+   radius:.03,speed:0,verified:o.verified});
+ }
+ /** Visual movement evidence can reshape the current stamped contact,
+  * but NEVER adds another contact or inherits hardware authorization. */
+ motion(o:FloorMotionInput):FloorInteractionEvent|null{
+  if(!this.accepts(o)||!o.eventId||o.eventId.length>180||
+   o.actorId.startsWith('unassigned-')||
+   !['left','right'].includes(o.foot)||
+   !['slide','pivot','release'].includes(o.kind)||
+   (o.headingRad!==undefined&&!finite(o.headingRad))||
+   (o.source!=='touch'&&o.basis==='presence-only'))return null;
+  const previous=[...this.events].reverse().find(e=>e.actorId===o.actorId&&
+   e.foot===o.foot&&e.atMs<=o.atMs&&
+   (e.kind==='contact'||e.kind==='touch'||e.kind==='release'));
+  // An articulated motion without a preceding live contact is not a sole.
+  if(!previous||previous.kind==='release')return null;
+  const key='motion:'+o.source+':'+o.actorId+':'+o.foot+':'+o.eventId;
+  if(this.seenContacts.has(key))return null;
+  this.seenContacts.add(key);this.seenOrder.push(key);
+  if(this.seenOrder.length>6000)this.seenContacts.delete(this.seenOrder.shift()!);
+  return this.push({source:o.source,actorId:o.actorId,originEventId:o.eventId,
+   foot:o.foot,headingRad:o.headingRad,
+   x:o.x,y:o.y,confidence:o.confidence,atMs:o.atMs,basis:o.basis,
+   kind:o.kind,radius:.03,speed:0,verified:false});
  }
  release(o:FloorObservation):FloorInteractionEvent|null{
   if(!this.accepts(o))return null;
