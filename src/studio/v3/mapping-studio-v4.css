@@ -492,3 +492,48 @@
 .fp-stage-workspace[data-workspace="compose"] .msv4-root .cp09-timeline-note{
  display:block;color:#82929e;font-size:10px;line-height:1.4;
 }
+
+/* FV-01 — focused visual instruments; legacy catalog stays available on demand. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-browser-head{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ color:#d7e6e1;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-browser-head strong{
+ font-size:11px;letter-spacing:.13em;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-browser-head small{
+ color:#99b8b4;font-size:10px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-list{
+ gap:12px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card{
+ background:#14191e;border-color:#414f56;gap:9px;padding:9px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card .cp08-scene-frame{
+ aspect-ratio:16/9;max-height:none;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card .fv01-name{
+ display:flex;align-items:baseline;justify-content:space-between;gap:7px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card .fv01-name strong{
+ font-size:14px;letter-spacing:.04em;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card .fv01-name small{
+ font-size:10px;color:#a7b9ba;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card .fv01-apply{
+ width:100%;min-height:32px;border-color:#648f88;color:#d6eee9;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card .fv01-apply[aria-pressed="true"]{
+ background:#2d534d;color:#e8fffa;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-legacy{
+ padding:8px;border:1px solid #36434b;border-radius:7px;margin-top:8px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-legacy>summary{
+ cursor:pointer;font-size:11px;color:#aab7bf;padding:5px 2px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-legacy[open]{
+ display:flex;flex-direction:column;gap:10px;
+}
