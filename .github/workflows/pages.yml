@@ -25,6 +25,32 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build -- --mode githubpages
+      # Publish only the self-contained MAT-03 research lab from a pinned,
+      # tested feature commit. The main Studio app and projector output
+      # continue to come from main and are not replaced by the draft PR.
+      - name: Checkout reviewed MAT-03 lab snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: 2ee8ee3064df8f00042d34ad6e4c64d142119344
+          path: mat03-lab
+          persist-credentials: false
+      - name: Install MAT-03 lab dependencies
+        working-directory: mat03-lab
+        run: npm ci
+      - name: Build isolated MAT-03 lab for GitHub Pages
+        working-directory: mat03-lab
+        run: |
+          npx vite build --mode githubpages-mat03
+          test -s dist/gpu02-lab.html
+          test ! -f dist/index.html
+          grep -q '/soma-motion-studio/assets/' dist/gpu02-lab.html
+      - name: Add lab route without replacing SOMA main app
+        run: |
+          test -s dist/index.html
+          cp -a mat03-lab/dist/. dist/
+          test -s dist/index.html
+          test -s dist/gpu02-lab.html
+          printf '%s\n' '2ee8ee3064df8f00042d34ad6e4c64d142119344' > dist/mat03-commit.txt
       # Browser dependencies are pinned and deliberately ephemeral: npm ci stays reproducible.
       - name: Install TRK-05 browser QA dependencies
         run: npm install --no-save --package-lock=false playwright@1.56.1 pixelmatch@6.0.0 pngjs@7.0.0
