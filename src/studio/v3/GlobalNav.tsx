@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCircle,
- Layers3,Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Save,ScanFace,Search,
- Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
+ Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Save,Search,
+ X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
 import type {FootprintsInputChoice} from './sourceSwitchModel.ts';
@@ -16,7 +16,6 @@ const NAV_KEY='soma-primary-navigation-v3';
 type LegacyScene=Exclude<SceneId,'footprints'>;
 const mobileQuery='(max-width: 760px)';
 const labsIcons:Record<LabsId,typeof Footprints>={
- liquid:Type,echo:Layers3,cut:Sparkles,body:ScanFace,hydra:Sparkles,
  sound:AudioLines,capture:Camera,archive:BookOpen,video:Film,rehearsal:Activity,simulator:Box
 };
 
@@ -137,9 +136,7 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
   onFootprints();
  };
  const action:Record<LabsId,()=>void>={
-  liquid:()=>onInstrument('liquid'),echo:()=>onInstrument('echo'),
-  cut:()=>onInstrument('cut'),body:()=>onInstrument('body'),
-  hydra:onHydraLab,sound:onSoundLab,capture:onCaptureLab,archive:onArchive,
+  sound:onSoundLab,capture:onCaptureLab,archive:onArchive,
   video:()=>onStageTool('video'),rehearsal:()=>onStageTool('rehearsal'),
   simulator:()=>onStageTool('simulator')
  };
@@ -245,7 +242,7 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
     {filtered.length===0&&<div className="soma-labs-empty">
      <Search size={21} aria-hidden="true"/>
      <strong>Tidak ada modul yang cocok</strong>
-     <p>Gunakan kata kunci lain, seperti video, suara, atau siluet.</p>
+     <p>Gunakan kata kunci lain, seperti video, suara, atau simulasi.</p>
      <button type="button" onClick={()=>{setLabsQuery('');searchRef.current?.focus();}}>Lihat semua</button>
     </div>}
     {filtered.map(group=><div className="soma-labs-group" key={group.id}>
