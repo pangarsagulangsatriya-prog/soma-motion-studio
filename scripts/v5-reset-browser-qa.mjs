@@ -30,8 +30,16 @@ try{
  await page.getByRole('button',{name:'Compose workspace'}).click();
  await page.locator('.s64-layout').waitFor({state:'visible',timeout:15000});
  const compose=page.locator('.s64-layout');
- assert.ok((await compose.innerText()).includes('Media & Layers'),'Expected Media & Layers panel');
- assert.ok((await compose.innerText()).includes('Katalog visual lama sudah dikosongkan'),'Expected V5 reset notice');
+ await page.screenshot({path:directory+'/compose-before-assert.png',fullPage:true});
+ const headings=await page.locator('.cp02-library h3').allTextContents();
+ const bodyPreview=(await page.locator('body').innerText()).slice(0,2200);
+ const composeText=await compose.innerText();
+ report.dom={headings,bodyPreview,composePreview:composeText.slice(0,1400)};
+ console.log('V5_RESET_DOM_DIAG',JSON.stringify(report.dom));
+ assert.ok(headings.some(t=>/Media\\s*(?:&|&amp;)\\s*Layers/i.test(t)),
+  'Expected Media & Layers panel; headings='+JSON.stringify(headings));
+ assert.ok(composeText.includes('Katalog visual lama sudah dikosongkan'),
+  'Expected V5 reset notice; Compose text='+composeText.slice(0,450));
  const oldSelectors=['.fv01-flagship-card','.fv04-live-canvas','.soma-ia-hydra','.fp-hydra-controls','.cp08-scene-card'];
  for(const selector of oldSelectors)assert.equal(await page.locator(selector).count(),0,'Retired control found '+selector);
  const oldTexts=['TRACE','ECHO','RIFT','Snowfall','Fireworks','Effect Recipe','Hydra shader'];
