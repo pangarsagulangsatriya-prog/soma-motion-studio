@@ -76,11 +76,9 @@ export class PersistentHydraFootprintRuntime {
  configure(raw:HydraFootprintSettings){
   this.settings=normalizeHydraFootprintSettings(raw);
   if(!this.engine||this.status==='fallback')return;
-  const motifStyle=this.settings.artwork!=='off'?this.settings.artwork:
-   this.settings.catalogVisual?catalogRecipe(this.settings.catalogScene).style:null;
-  const selected:HydraFootprintStyle=motifStyle===null?this.settings.style:
-   motifStyle==='trace'?'echo':motifStyle==='compression'?'grain':
-   motifStyle==='negative-memory'?'interference':'flow';
+  // The user-selected Hydra graph must always win. Artwork and catalog
+  // decide the source texture only, never silently override the effect.
+  const selected:HydraFootprintStyle=this.settings.style;
   if(this.style===selected)return;
   try{
    this.applyGraph(selected);
