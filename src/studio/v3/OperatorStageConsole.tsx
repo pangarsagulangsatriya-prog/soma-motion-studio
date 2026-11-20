@@ -80,7 +80,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  };
 
  const handleOpenSurface=(surface:StageSurface)=>{
-  const res=openDualSurfaceOutputWindow(surface,outputRouteMode);
+  const res=openDualSurfaceOutputWindow(surface,isResolume?'resolume':'soma');
   setPopupBlocked(res.popupBlocked);
   setOutputNotice(res.message);
  };
