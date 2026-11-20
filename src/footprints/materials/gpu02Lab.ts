@@ -2,6 +2,7 @@
  * Fixed timeline allows identical Chromium QA captures and reproducible review.
  */
 import {LiquidImprintGpuEngine} from './LiquidImprintGpuEngine.ts';
+import {PixiLiquidImprintCompositor} from './PixiLiquidImprintCompositor.ts';
 import type {FloorInteractionEvent} from '../scenes/FloorInteractionEngine.ts';
 
 export type LiquidLabScenario='one'|'two'|'six'|'slide'|'pivot'|'release'|'idle'|'crossing';
@@ -12,7 +13,11 @@ const canvas=document.querySelector<HTMLCanvasElement>('#gpu02-stage');
 const status=document.querySelector<HTMLElement>('#status');
 if(!canvas||!status)throw Error('GPU02 lab element missing');
 const label=status;
-const engine=new LiquidImprintGpuEngine(canvas);
+// Exactly one active renderer. The Pixi mode does not construct the native
+// WebGL reference engine; neither Stage nor a second canvas is initialized.
+const usePixi=new URLSearchParams(location.search).get('engine')==='pixi';
+const engine=usePixi?await PixiLiquidImprintCompositor.create(canvas):
+ new LiquidImprintGpuEngine(canvas);
 let lastEvents:FloorInteractionEvent[]=[];
 let active:LiquidLabScenario='six';
 let clock=10450;
@@ -67,7 +72,7 @@ function runScenario(scenario:LiquidLabScenario,timeMs=10450){
  updateControls();
  const stats=engine.render(lastEvents,clock,{flow:.76,lifeMs:9000});
  label.textContent=active.toUpperCase()+' · '+stats.activeImprints+
-  ' tapak · '+stats.contexts+' WebGL2 · texture '+stats.allocatedTextures+
+  ' tapak · '+stats.contexts+' '+stats.renderer+' · texture '+stats.allocatedTextures+
   ' · arah belum terbaca '+stats.orientationUncertain;
  return stats;
 }
