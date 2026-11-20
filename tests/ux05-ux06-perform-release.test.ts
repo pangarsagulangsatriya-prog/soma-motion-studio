@@ -4,14 +4,14 @@ import {defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,perfo
 import {operatorShortcut} from '../src/studio/v3/OperatorStageModel.ts';
 import {emptyQaReleaseRecord,parseQaReleaseRecord,evaluateQaRelease,QA_PHYSICAL_IDS} from '../src/studio/v3/qaReleaseGate.ts';
 
-test('eight Perform cue slots retain scene and monitor view after serialization',()=>{
+test('eight Perform cue slots retain monitor layouts and drop retired visual scenes',()=>{
  const original=defaultPerformCueGrid();
  assert.equal(original.slots.length,PERFORM_GRID_SIZE);
- const updated=updatePerformCueSlot(original,3,{label:'Crossing',scene:'snowfall',view:'split'});
+ const updated=updatePerformCueSlot(original,3,{label:'Crossing',view:'split'});
  const restored=normalizePerformCueGrid(JSON.parse(JSON.stringify(updated)));
  assert.equal(restored.slots[3].label,'Crossing');
  assert.equal(restored.slots[3].view,'split');
- assert.equal(restored.slots[3].scene,'snowfall');
+ assert.equal(restored.slots[3].scene,'footprints');
  assert.equal(original.slots[3].label,'Cue 04');
 });
 
