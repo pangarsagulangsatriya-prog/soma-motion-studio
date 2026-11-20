@@ -1,4 +1,5 @@
 import {FOOT_LENGTH_M,FOOT_WIDTH_M,paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
+import {deformationAt,shortestAngle,type FootVisualMotion} from '../scenes/dynamicFootDeformation.ts';
 import type {CalibrationQATarget} from '../validation/CalibrationQA.ts';
 import {floorToUV,type FloorSpace} from '../spatial/coordinates.ts';
 import {validateFloorSession,type FloorSession,type FootstepEvent} from '../spatial/events.ts';
@@ -61,6 +62,29 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
   }
  }
  const last=new Map<string,{x:number;y:number}>();
+ const currentContact=new Map<string,FootstepEvent>();
+ const motionByContact=new Map<string,FootVisualMotion>();
+ const endMs=s.events.at(-1)?.timestampMs??0;
+ // A session export must show settled imprints. A timed preview can show
+ // a heel landing or movement for the few frames when it actually happens.
+ const renderMs=Number.isFinite(options.maxTimeMs)?
+  Math.max(0,options.maxTimeMs!):endMs+2000;
+ for(const event of s.events){
+  if(event.timestampMs>(options.maxTimeMs??Infinity))break;
+  const key=event.performerId+':'+event.foot;
+  if(event.kind==='contact')currentContact.set(key,event);
+  else if(event.kind==='move'||event.kind==='release'){
+   const contact=currentContact.get(key);
+   if(!contact)continue;
+   const uv=floorToUV(s.floor,event.positionM);
+   const angle=shortestAngle(event.headingRad-contact.headingRad);
+   motionByContact.set(contact.id,{
+    kind:event.kind==='release'?'release':Math.abs(angle)>.14?'pivot':'slide',
+    atMs:event.timestampMs,x:uv.x,y:uv.y,headingRad:event.headingRad
+   });
+   if(event.kind==='release')currentContact.delete(key);
+  }
+ }
  const widthPx=FOOT_WIDTH_M*w/s.floor.widthM;
  const lengthPx=FOOT_LENGTH_M*h/s.floor.depthM;
  for(const e of s.events){
@@ -78,6 +102,10 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
    x:pt.x,y:pt.y,side:e.foot,headingRad:Math.PI/2-e.headingRad,
    widthPx,lengthPx,color:c,
    alpha:e.kind==='prediction'?.25:.94,
+   deformation:e.kind==='contact'?deformationAt({
+    atMs:e.timestampMs,
+    ...floorToUV(s.floor,e.positionM),headingRad:e.headingRad
+   },renderMs,motionByContact.get(e.id)):undefined,
    phase:e.kind==='prediction'?'prediction':'contact'
   });
  }
