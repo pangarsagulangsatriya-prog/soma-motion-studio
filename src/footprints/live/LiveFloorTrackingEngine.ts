@@ -20,7 +20,8 @@ export const cameraBindingKey=(binding:CameraBinding|null):string|null=>{
 export type LiveFloorStatus={
  calibrated:boolean;confirmed:boolean;cameraMatched:boolean;tracking:boolean;
  contacts:number;events:number;lastSeenMs:number|null;activePerformerIds:string[];reason:string;
- footMotions:{performerId:string;foot:FootSide;motion:GaitMotion;confidence:number}[];
+ footMotions:{performerId:string;foot:FootSide;motion:GaitMotion;confidence:number;
+  headingRad?:number;positionM?:FloorPoint;atMs?:number}[];
 };
 /**
  * The single existing SOMA GaitAnalyzer supplies phase/stamp samples here.
@@ -36,7 +37,8 @@ export class LiveFloorTrackingEngine{
  private grounded=new Set<string>();
  private performers=new Set<string>(['performer-1']);
  private lastPoint=new Map<string,FloorPoint>();
- private motion=new Map<string,{performerId:string;foot:FootSide;motion:GaitMotion;confidence:number}>();
+ private motion=new Map<string,{performerId:string;foot:FootSide;motion:GaitMotion;confidence:number;
+  headingRad?:number;positionM?:FloorPoint;atMs?:number}>();
  private seen=new Map<string,number>();
  private received=new Map<string,number>();
  private rejection='';
@@ -143,9 +145,10 @@ export class LiveFloorTrackingEngine{
   const previous=this.seen.get(key);
   if(previous!==undefined&&sample.t-previous>450)this.lose(side,performerId);
   this.seen.set(key,sample.t);this.received.set(key,sample.t);
-  this.motion.set(key,{performerId,foot:side,motion:sample.motionKind??'unknown',confidence:sample.confidence});
   const now=Math.max(this.logicalTime+1,Math.round(sample.t));
   this.logicalTime=now;
+  this.motion.set(key,{performerId,foot:side,motion:sample.motionKind??'unknown',
+   confidence:sample.confidence,atMs:now});
   const observe=(phase:'swing'|'stance',p:FloorPoint|null,heading:number)=>
    this.eventEngine!.observe({performerId,foot:side,
     timestampMs:now,phase,positionM:p,headingRad:heading,
@@ -163,6 +166,10 @@ export class LiveFloorTrackingEngine{
     return [];
    }
    this.rejection='';
+   // Preserve calibrated image-derived floor displacement for SOFTWARE
+   // deformation even while the contact engine holds its stable anchor.
+   this.motion.set(key,{...this.motion.get(key)!,positionM:grounded.positionM,
+    headingRad:grounded.headingRad});
    const last=this.lastPoint.get(key);
    const distance=last?Math.hypot(last.xM-grounded.positionM.xM,last.yM-grounded.positionM.yM):0;
    // Keep the previously PRINTED ground location fixed until a new
