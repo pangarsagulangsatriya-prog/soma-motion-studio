@@ -117,8 +117,17 @@ try{
  assert.ok((await pixels()).lit<report.phases.Contact.lit*.5,
   'Liquid toggle OFF leaves visible pigment');
  report.checks.push('Empty Track and material OFF remain safe');
- await mat.getByRole('checkbox',{name:'Tampilkan di Stage Monitor'}).check();
- await mat.getByRole('button',{name:'Demo',exact:true}).click();
+ // The Pixi renderer is recreated after an ON toggle; avoid waiting for
+ // unrelated navigation promises while Chromium initializes WebGL.
+ await mat.getByRole('checkbox',{name:'Tampilkan di Stage Monitor'})
+  .click({noWaitAfter:true,timeout:12000});
+ await page.waitForFunction(()=>document.querySelector(
+  '#soma-compose-focus input[aria-label="Tampilkan di Stage Monitor"]')?.checked===true,
+  null,{timeout:12000});
+ await page.waitForFunction(()=>document.querySelector(
+  'canvas[aria-label^="Visual preview composer"]')?.dataset.mat03Active==='drawn',
+  null,{timeout:16000});
+ await mat.getByRole('button',{name:'Demo',exact:true}).click({noWaitAfter:true});
  await mat.getByRole('button',{name:'Contact'}).click();
  await page.waitForTimeout(200);
  const desktop=dir+'/desktop.png';await page.screenshot({path:desktop});report.screenshots.push(desktop);
