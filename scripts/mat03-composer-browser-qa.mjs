@@ -68,7 +68,7 @@ try{
   if(v.colored<=25){
    const diagnostic=await page.evaluate(()=>{
     const a=document.querySelector('canvas[aria-label^="Visual preview composer"]');
-    const b=document.querySelector('canvas[aria-label="MAT-03 Liquid Imprint PixiJS preview only"]');
+    const b=document.querySelector('#mat03-pixi-preview');
     const check=(source)=>{
      if(!source)return null;
      const scratch=document.createElement('canvas');
@@ -85,6 +85,11 @@ try{
      return {colored,brightest,width:source.width,height:source.height};
     };
     return {preview:check(a),pixi:check(b),
+     stageFlags:a?.dataset,
+     canvases:Array.from(document.querySelectorAll('canvas')).map(c=>({
+      id:c.id,aria:c.getAttribute('aria-label'),width:c.width,height:c.height,
+      hidden:c.hidden,connected:c.isConnected
+     })),
      inspector:document.querySelector('.mat03-compose-controls')?.textContent,
      selected:document.querySelector('.uxr3-compose-preview-bar')?.textContent};
    });
