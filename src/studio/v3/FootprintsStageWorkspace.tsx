@@ -204,31 +204,11 @@ export function FootprintsStageWorkspace({
     current?.kind==='video'?(current.video?.currentTime??current.timeMs/1000)*1000:
     current?.kind==='simulator'?current.timeMs:now;
    engine.expire(time);
-   if(hydraSettingsRef.current.enabled&&hydraRuntime.current.status==='ready'&&!previewHoldRef.current){
-    if(archiveHydraReady.current&&archiveHydraCanvas.current){
-     const isRift=hydraSettingsRef.current.style==='flow'&&
-      hydraSettingsRef.current.artwork==='negative-memory'&&!hydraSettingsRef.current.catalogVisual;
-     // Keep RIFT's selected material profile; legacy archive processing still
-     // supports its historical plain-Hydra source mode.
-     hydraRuntime.current.configure(isRift?hydraSettingsRef.current:
-      {...hydraSettingsRef.current,artwork:'off',catalogVisual:false});
-     hydraRuntime.current.tick(archiveHydraCanvas.current,engine.canonicalRecent,
-      engine.generation,now,isRift);
-    }else{
-     hydraRuntime.current.configure(hydraSettingsRef.current);
-     hydraRuntime.current.tick(cleanFloorOutput.current,engine.canonicalRecent,engine.generation,now);
-    }
-   }
-   // Stage material is a persistent 2D canvas. WebGL presentation buffers
-   // are not reliable sources for an asynchronously composited canvas.
-   hydraStablePreviewCanvas.current=hydraRuntime.current.compositingSource;
    const canvas=interactionCanvas.current;
    if(canvas&&!previewHoldRef.current)
     paintFloorInteractionOverlay(canvas,engine,time,Math.max(1200,footprint.life*1000));
    if(now-lastRead>=500){
-    lastRead=now;const runtime=hydraRuntime.current;
-    setHydraStatus(v=>v===(hydraSettingsRef.current.enabled?runtime.status:'off')?v:hydraSettingsRef.current.enabled?runtime.status:'off');
-    setHydraReason(v=>v===runtime.reason?v:runtime.reason);
+    lastRead=now;
     const snap=engine.snapshot;
     const next={actors:snap.actors.length,
      contacts:snap.counts.contact+snap.counts.touch,events:snap.events.length};
@@ -239,156 +219,6 @@ export function FootprintsStageWorkspace({
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
  },[touchDemo,footprint.life]);
- // F1 paints a separate, clean FLOOR surface from the same F0 bus.
- // A source generation reset clears previous snow contacts on MP4 seek.
- useEffect(()=>{
-  if(floorScene!=='snowfall'||!snowfallCanvas.current)return;
-  const renderer=new SnowfallRenderer(snowfallCanvas.current);
-  setSnowfallRendererMode(renderer.mode);
-  let raf=0,last=0,lastRead=0;
-  const draw=(now:number)=>{
-   raf=requestAnimationFrame(draw);
-   if(now-last<1000/30)return;
-   last=now;
-   const scene=snowfallScene,bus=interactionEngineRef.current,cfg=snowfallConfig.current;
-   const freeze=cfg.paused||previewHoldRef.current;
-   if(scene.paused!==freeze)scene.setPaused(freeze);
-   scene.consume(bus.recent,bus.generation,!freeze);
-   const reactiveRate=Math.min(1,cfg.rate+
-    audioLevelLive.current*proceduralConfig.current.audioMix*.5);
-   scene.step(now,{snowfall:reactiveRate,recoverySeconds:cfg.recovery,paused:freeze});
-   renderer.render(scene,scene.visualTimeMs,{snowfall:reactiveRate,recoverySeconds:cfg.recovery,paused:freeze});
-   cleanFloorOutput.current=snowfallCanvas.current;
-   if(now-lastRead>180){
-    lastRead=now;setSnowfallCount(old=>old===scene.count?old:scene.count);
-   }
-  };
-  raf=requestAnimationFrame(draw);
-  return()=>{cancelAnimationFrame(raf);renderer.dispose();};
- },[floorScene,snowfallScene]);
- useEffect(()=>{
-  try{localStorage.setItem('soma-floor-scene-v1',floorScene);}catch{}
- },[floorScene]);
- // Shared audio envelope; optional mic only after explicit browser permission.
- useEffect(()=>{
-  let raf=0,lastRead=0;
-  const draw=(now:number)=>{
-   raf=requestAnimationFrame(draw);
-   if(now-lastRead<100)return;
-   lastRead=now;
-   const level=audioMeter.current.sample(
-    sceneAudioSourceRef.current,analyserRef.current);
-   audioLevelLive.current=level;
-   setSceneAudioLevel(prev=>Math.abs(prev-level)<.025?prev:level);
-  };
-  raf=requestAnimationFrame(draw);
-  return()=>{
-   cancelAnimationFrame(raf);audioRequest.current++;
-   void audioMeter.current.disable();
-  };
- },[]);
- const selectAudioInput=async(next:FloorAudioSource)=>{
-  const request=++audioRequest.current;
-  setSceneAudioError('');
-  if(next==='microphone'){
-   try{
-    await audioMeter.current.enableMicrophone();
-    if(request!==audioRequest.current){await audioMeter.current.disable();return;}
-    setSceneAudioSource('microphone');
-   }catch(error){
-    if(request!==audioRequest.current)return;
-    setSceneAudioSource('off');
-    setSceneAudioError(error instanceof Error?error.message:'Akses mikrofon gagal.');
-   }
-  }else{
-   setSceneAudioSource(next);
-   await audioMeter.current.disable();
-  }
- };
- // All 12 non-Snowfall scenes share a single continuously mounted canvas,
- // so input tracking and physical projector connections never restart.
- useEffect(()=>{
-  if(floorScene==='footprints'||floorScene==='snowfall'||!proceduralCanvas.current)return;
-  const canvas=proceduralCanvas.current;
-  const bus=interactionEngineRef.current;
-  // Switching scenes discards old events synchronously in selectFloorScene.
-  // Do not skip again in this effect: an immediate first step can arrive
-  // between React commit and effect and must remain eligible to trigger.
-  proceduralRuntime.setScene(floorScene,bus.generation);
-  let raf=0,last=0,lastRead=0;
-  const draw=(now:number)=>{
-   raf=requestAnimationFrame(draw);
-   if(now-last<1000/30)return;
-   last=now;
-   const bus=interactionEngineRef.current,cfg=proceduralConfig.current;
-   const paused=cfg.paused||previewHoldRef.current;
-   proceduralRuntime.ingest(bus.recent,bus.generation,!paused);
-   proceduralRuntime.step(now,{...cfg,paused,
-    audioLevel:audioLevelLive.current});
-   if(!paused)proceduralRuntime.paint(canvas,{...cfg,
-    audioLevel:audioLevelLive.current,paused});
-   cleanFloorOutput.current=canvas;
-   if(now-lastRead>180){
-    lastRead=now;
-    setSceneCount(old=>old===proceduralRuntime.contactCount?old:
-     proceduralRuntime.contactCount);
-   }
-  };
-  raf=requestAnimationFrame(draw);
-  return()=>cancelAnimationFrame(raf);
- },[floorScene,proceduralRuntime]);
- const selectFloorScene=(next:'footprints'|FloorSceneId)=>{
-  if(next==='footprints'&&sceneAudioSourceRef.current==='microphone'){
-   audioRequest.current++;
-   setSceneAudioSource('off');
-   void audioMeter.current.disable();
-  }
-  const bus=interactionEngineRef.current,scene=snowfallScene;
-  scene.reset(bus.generation);
-  scene.consume(bus.recent,bus.generation,false);
-  proceduralRuntime.setScene(next==='footprints'?'spring-garden':next,bus.generation);
-  proceduralRuntime.skipExisting(bus.recent,bus.generation);
-  setSnowfallCount(0);setSceneCount(0);setSnowfallPaused(false);setFloorScene(next);
-  cleanFloorOutput.current=next==='footprints'?floorCanvas.current:
-   next==='snowfall'?snowfallCanvas.current:proceduralCanvas.current;
- };
- const resetSnowfall=()=>{
-  const scene=snowfallScene,bus=interactionEngineRef.current;
-  scene.reset(bus.generation);scene.consume(bus.recent,bus.generation,false);
-  scene.setPaused(snowfallPaused||previewHoldRef.current);
-  proceduralRuntime.reset(bus.generation);
-  proceduralRuntime.skipExisting(bus.recent,bus.generation);
-  setSnowfallCount(0);setSceneCount(0);
- };
- const applyFloorPreset=(preset:FloorScenePreset)=>{
-  selectFloorScene(preset.sceneId);
-  setSceneIntensity(preset.intensity);setSceneRadius(preset.radius);
-  setScenePersistence(preset.persistence);setSceneQuality(preset.quality);
-  setSceneAudioMix(preset.audioMix);
-  setSnowfallRate(preset.intensity);
-  setSnowfallRecovery(Math.round(12+(1-preset.persistence)*228));
- };
- const saveScenePreset=(name:string)=>{
-  if(floorScene==='footprints')return;
-  try{
-   const next=saveFloorPreset(localStorage,{
-    schema:'soma.floor-scene-preset',version:1,
-    name:name.trim().slice(0,64),sceneId:floorScene,
-    intensity:floorScene==='snowfall'?snowfallRate:sceneIntensity,
-    radius:sceneRadius,
-    persistence:floorScene==='snowfall'?1-(snowfallRecovery-12)/228:scenePersistence,
-    audioMix:sceneAudioMix,quality:sceneQuality
-   });
-   setUserPresets(next);
-  }catch(error){setSceneAudioError(error instanceof Error?error.message:'Preset gagal disimpan.');}
- };
- const deleteScenePreset=(name:string)=>{
-  try{
-   const next=userPresets.filter(p=>p.name!==name);
-   localStorage.setItem('soma-floor-scene-presets-v1',JSON.stringify(next));
-   setUserPresets(next);
-  }catch{setSceneAudioError('Tidak dapat menghapus preset lokal.');}
- };
  const onExperimentFrame=useCallback((frame:ExperimentalFrame|null)=>setExperimentFrame(frame),[]);
  const onExperimentClip=useCallback((clip:File|null)=>{
   experimentFrameRef.current=null;setExperimentFrame(null);setExperimentClip(clip);
@@ -463,7 +293,6 @@ export function FootprintsStageWorkspace({
  const applyPerformSlot=(index:number)=>{
   const slot=performGrid.slots[index];if(!slot)return;
   // Cue loads scene/layout only, never hardware light permissions.
-  selectFloorScene(slot.scene);
   setOperatorCue(['overview','body','floor','split'].indexOf(slot.view));
   setActivePerformSlot(index);setPerformMessage('Cue '+(index+1)+' diterapkan. Output fisik mengikuti QA Map.');
  };
@@ -728,8 +557,7 @@ export function FootprintsStageWorkspace({
  const floorPointer=(event:PointerEvent<HTMLDivElement>,kind:'down'|'move'|'up')=>{
   if(!touchDemo||operatorMode)return;
   const target=event.currentTarget;
-  const surface=floorScene==='snowfall'?snowfallCanvas.current:
-   floorScene==='footprints'?floorCanvas.current:proceduralCanvas.current;
+  const surface=floorCanvas.current;
   const rect=surface?.getBoundingClientRect()??target.getBoundingClientRect();
   const uv=floorPointerCoordinates(event.clientX,event.clientY,rect);
   if(!uv)return;
