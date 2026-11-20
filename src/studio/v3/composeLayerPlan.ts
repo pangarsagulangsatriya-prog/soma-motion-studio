@@ -7,7 +7,7 @@ export const COMPOSE_STAGE_FLOOR='@stage:floor' as const;
 export const COMPOSE_STAGE_INPUT='@stage:input' as const;
 export const COMPOSE_STAGE_BODY='@stage:body' as const;
 export type ComposeStageSourceId=typeof COMPOSE_STAGE_FLOOR|typeof COMPOSE_STAGE_INPUT|
- typeof typeof COMPOSE_STAGE_BODY;
+ typeof COMPOSE_STAGE_BODY;
 export type ComposerSourceKind='floor'|'input'|'body'|'media'|'empty';
 export type ComposerSurface='FLOOR'|'BODY A'|'BODY B';
 export type ComposerSourceLayer={mediaId:string;name:string;visible:boolean;opacity:number;blend:string};
