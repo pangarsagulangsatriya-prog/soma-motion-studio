@@ -763,3 +763,40 @@
 @media(prefers-reduced-motion:reduce){
  .soma-camera-method-row :is(button,svg){transition:none!important;transform:none!important}
 }
+
+/* CAMERA-E2E — native Mac picker, clear HP transport choice. */
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-camera{
+ display:flex;flex-direction:column;gap:6px;padding:10px;
+ border:1px solid #35513c;border-radius:9px;background:#112017;
+ animation:trk06-panel-enter .17s ease-out both;
+}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-camera>label{font-size:11px;font-weight:650;color:#d5e7cf}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-device-wrap{position:relative;display:flex;align-items:center}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-device-wrap select{
+ width:100%;min-width:0;min-height:39px;padding:7px 32px 7px 9px;
+ appearance:none;background:#1c3023;color:#e5f2dc;
+ border:1px solid #54745a;border-radius:7px;font-size:11px;font-weight:600;
+ font-family:inherit;cursor:pointer;
+}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-device-wrap select:disabled{opacity:.65;cursor:progress}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-device-wrap svg{
+ position:absolute;right:10px;pointer-events:none;color:#b8d0b8;
+}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-camera small{font-size:10px;line-height:1.4;color:#a7bba7}
+.fp-stage-workspace[data-workspace="track"] .soma-track-mac-device-wrap select:focus-visible,
+.fp-stage-workspace[data-workspace="track"] .soma-phone-manual-fallback:focus-visible{outline:2px solid #cfe6aa;outline-offset:2px}
+.fp-stage-workspace[data-workspace="track"] .soma-setup-pair-tabs{
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.fp-stage-workspace[data-workspace="track"] .soma-phone-manual-fallback,
+.fp-stage-workspace[data-workspace="track"] .soma-phone-manual-back{
+ display:flex;align-items:center;justify-content:center;gap:6px;
+ width:100%;min-height:33px;border:1px solid #4d6953;border-radius:7px;
+ background:#22362a;color:#d7ebd3;font-size:11px;cursor:pointer;
+}
+.fp-stage-workspace[data-workspace="track"] .soma-phone-no-auto{
+ margin:4px 0!important;font-size:10.5px;line-height:1.4;color:#d3c59c;
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-stage-workspace[data-workspace="track"] .soma-track-mac-camera{animation:none}
+}

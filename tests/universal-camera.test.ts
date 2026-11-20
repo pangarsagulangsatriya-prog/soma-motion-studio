@@ -80,8 +80,8 @@ test('CAM-UX: QR/manual preserved and tabs use compact labels',async()=>{
  assert.match(source,/<Cable size=\{15\}/);
  assert.match(source,/<QrCode size=\{15\}/);
  assert.match(source,/<KeyRound size=\{15\}/);
- assert.match(source,/<span>USB<\/span>/);
- assert.match(source,/<span>QR<\/span>/);
+ assert.match(source,/<span>Kabel<\/span>/);
+ assert.match(source,/<span>Nirkabel<\/span>/);
  assert.match(source,/<span>Kode<\/span>/);
  assert.match(source,/<AutomaticPhoneReceiver/);
  assert.match(source,/<ManualPhoneCameraReceiver/);
@@ -132,6 +132,8 @@ test('CAM-UI-02: help control is outside three-cell segmented camera tabs',async
  assert.match(phone,/<QrCode size=\{15\}/);
  assert.match(phone,/<KeyRound size=\{15\}/);
  assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
+ const cameraCss=get('../src/studio/v3/trk06-control-polish.css');
+ assert.match(cameraCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\) 37px!important/);
  assert.match(stage,/data-camera-setup=\{sourceStatus.selection==='phone'&&phonePanelOpen\?'open':'closed'\}/);
  assert.match(css,/prefers-reduced-motion:reduce/);

@@ -40,6 +40,8 @@ test('USB-03: Track phone has explicit USB, QR and manual options',()=>{
  assert.match(receiver,/setMode\('usb'\)/);
  assert.match(receiver,/setMode\('qr'\)/);
  assert.match(receiver,/setMode\('manual'\)/);
+ assert.match(receiver,/<span>Kabel<\/span>/);
+ assert.match(receiver,/<span>Nirkabel<\/span>/);
  assert.match(receiver,/<UsbPhoneCameraReceiver/);
  assert.match(usb,/enumerateDevices/);
  assert.match(usb,/addEventListener\?\.\('devicechange'/);
