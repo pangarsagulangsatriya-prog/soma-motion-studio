@@ -68,6 +68,7 @@ test('SKELETON: Compose has explicit black/input switch and no simulated skeleto
  assert.match(src,/aria-label="Latar skeleton"/);
  assert.match(src,/onClick=\{\(\)=>setSkeletonBackdrop\('input'\)\}/);
  assert.match(src,/Media impor · belum dilacak/);
+ assert.match(src,/input:!blackoutRef.current&&previewLiveRef.current\?source:null/);
  assert.match(stage,/experimentFrameRef=\{experimentFrameRef\}/);
  assert.match(helper,/drawSkeletonBodies/);
  assert.match(helper,/if\(!config.inputFromTrack\)return/);

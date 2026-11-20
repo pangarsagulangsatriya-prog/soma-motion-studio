@@ -615,7 +615,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
        :cameraOnRef.current&&bodySelectedRef.current
         ?videoRefLive.current.current:null);
      paintComposeSkeletonMonitor(ctx,preview.width,preview.height,{
-      backdrop:skeletonBackdropRef.current,input:source,
+      backdrop:skeletonBackdropRef.current,
+      input:!blackoutRef.current&&previewLiveRef.current?source:null,
       inputFromTrack:importedId==='track',
       experimentFrame:experimentSourceRef.current?experiment:null,
       liveFrame:frameRefLive.current.current,
