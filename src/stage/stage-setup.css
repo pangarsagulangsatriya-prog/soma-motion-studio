@@ -429,3 +429,17 @@
 @media(min-width:1201px){
  .fp-stage-inspector[data-mode=setup] .soma-guide-mobile-scrim{display:none!important}
 }
+/* USB-03: the same input picker works in Guided Setup and in Track. */
+.soma-setup-phone-choices .soma-usb-phone{display:flex;flex-direction:column;gap:10px;width:100%;min-width:0}
+.soma-setup-phone-choices .soma-usb-phone .soma-usb-intro{font-size:12px;line-height:1.5;color:#bed1c1;margin:0}
+.soma-setup-phone-choices .soma-usb-phone>label{font-size:12px;color:#cadac9}
+.soma-setup-phone-choices .soma-usb-phone>select{width:100%;min-width:0;min-height:40px;padding:8px;
+ background:#152119;color:#e2f0e0;border:1px solid #58705c;border-radius:6px;font-size:12px}
+.soma-setup-phone-choices .soma-usb-actions{display:flex;flex-wrap:wrap;gap:8px}
+.soma-setup-phone-choices .soma-usb-actions>button{min-height:38px;border-radius:7px;cursor:pointer}
+.soma-setup-phone-choices .soma-usb-actions>button:disabled{opacity:.5;cursor:not-allowed}
+.soma-setup-phone-choices .soma-usb-phone>.soma-usb-status{width:100%;box-sizing:border-box;
+ padding:9px;border-radius:6px;color:#d6ecd5;background:#223b28;font-size:12px;line-height:1.4;margin:0}
+.soma-setup-phone-choices .soma-usb-phone>.soma-usb-status[data-phase=error]{color:#ffcabf;background:#492b25}
+.soma-setup-phone-choices .soma-usb-phone>small{font-size:11px;line-height:1.5;color:#aabdaf}
+.soma-setup-phone-choices .soma-usb-phone :is(select,button):focus-visible{outline:2px solid #d5edae;outline-offset:2px}

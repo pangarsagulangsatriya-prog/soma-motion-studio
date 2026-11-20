@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {AutomaticPhoneReceiver} from './AutomaticPhoneReceiver.tsx';
+import {UsbPhoneCameraReceiver} from './UsbPhoneCameraReceiver.tsx';
 import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
  samplePhonePeer} from './PhoneDeviceTelemetry.ts';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal,phoneCameraUrl} from './PhoneSignal.ts';
@@ -110,19 +111,20 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
  </section>;
 }
 
-/** QR is default; the S6.1 code-copy route remains an explicit fallback. */
+/** USB webcam is the default; existing QR and manual WebRTC remain available. */
 export function PhoneCameraReceiver({onStream,onDisconnect}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
 }){
- const [mode,setMode]=useState<'qr'|'manual'>('qr');
+ const [mode,setMode]=useState<'usb'|'qr'|'manual'>('usb');
  return <div className="soma-setup-phone-choices">
-  <div className="soma-setup-pair-tabs" role="group" aria-label="Pilihan pairing kamera HP">
+  <div className="soma-setup-pair-tabs" role="group" aria-label="Metode kamera HP">
+   <button type="button" aria-pressed={mode==='usb'} onClick={()=>setMode('usb')}>Kabel USB</button>
    <button type="button" aria-pressed={mode==='qr'} onClick={()=>setMode('qr')}>
     QR</button>
    <button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>
     Manual</button>
   </div>
-  {mode==='qr'?
+  {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>:mode==='qr'?
    <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
     onUseManual={()=>setMode('manual')}/>:
    <ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>}
