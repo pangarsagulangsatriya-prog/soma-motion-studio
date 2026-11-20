@@ -4,6 +4,10 @@ on:
     branches: [main]
     paths:
       - 'src/footprints/scenes/**'
+      - 'src/footprints/materials/**'
+      - 'gpu02-lab.html'
+      - 'tests/gpu02-liquid-material.test.ts'
+      - 'scripts/gpu02-material-browser-qa.mjs'
       - 'src/footprints/spatial/events.ts'
       - 'src/footprints/simulator/**'
       - 'tests/geo01b-dynamic-foot-deformation.test.ts'
@@ -35,6 +39,8 @@ jobs:
         run: node scripts/v5-reset-browser-qa.mjs
       - name: Verify anatomical and dynamic footprint pixels in Chromium
         run: node scripts/geo01b-browser-qa.mjs
+      - name: Verify GPU-02 Liquid Imprint masked WebGL pixels
+        run: node scripts/gpu02-material-browser-qa.mjs
       - name: Upload reset screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,5 +49,6 @@ jobs:
           path: |
             artifacts/v5-reset
             artifacts/geo01b
+            artifacts/gpu02
           if-no-files-found: warn
           retention-days: 30
