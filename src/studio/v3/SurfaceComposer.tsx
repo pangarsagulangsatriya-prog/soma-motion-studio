@@ -631,28 +631,34 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  </section>;
  return <div className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
-  <div className="s64-heading"><div><small>COMPOSE / MAPPING STUDIO</small><h2>{selected==='FLOOR'?'Footprint Studio':'Leg Surface Studio'}</h2><small>{selected==='FLOOR'?'Shape · timing · material · stage placement':'Dynamic lower-body mapping · A/B'}</small></div>
-   <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">
-    <span className="cp04-save-status" role="status">{loadingMedia>0?'Memuat '+loadingMedia+' media…':saveStatus}</span>
-    <button type="button" disabled={!history.canUndo} onClick={performUndo}
-     title="Undo · Ctrl/Cmd+Z" aria-label="Batalkan perubahan">Undo</button>
-    <button type="button" disabled={!history.canRedo} onClick={performRedo}
-     title="Redo · Ctrl/Cmd+Shift+Z" aria-label="Ulangi perubahan">Redo</button>
-    <button type="button" className={resetArmed?'cp04-reset-confirm':'cp04-reset'}
-     onClick={resetComposition} aria-label={resetArmed?'Konfirmasi reset komposisi':'Reset komposisi'}
-     title={resetArmed?'Klik lagi untuk mereset komposisi':'Hanya reset layer dan parameter; tidak mengubah kamera atau proyektor'}>
-     {resetArmed?'Konfirmasi reset':'Reset'}
-    </button>
-    {resetArmed&&<button type="button" onClick={()=>setResetArmed(false)}>Batal</button>}
-   </div></div>
-  <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
-   onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
-   <span>{liquidEnabled?'MAT-03 · Liquid Imprint di Composer':'MAT-03 · nonaktif'} · Preview saja</span>
+  <div className="s64-heading">
+   <div className="cpux-heading-label"><h2>Composer</h2><span>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</span></div>
+   <details className="cp04-command-menu">
+    <summary aria-label="Opsi komposisi" title="Undo, redo, reset">Opsi</summary>
+    <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">
+     {loadingMedia>0&&<span role="status">Memuat {loadingMedia} media…</span>}
+     {saveStatus==='Penyimpanan gagal'&&<span role="alert">{saveStatus}</span>}
+     <button type="button" disabled={!history.canUndo} onClick={performUndo} aria-label="Batalkan perubahan">Undo</button>
+     <button type="button" disabled={!history.canRedo} onClick={performRedo} aria-label="Ulangi perubahan">Redo</button>
+     <button type="button" className={resetArmed?'cp04-reset-confirm':'cp04-reset'}
+      onClick={resetComposition} aria-label={resetArmed?'Konfirmasi reset komposisi':'Reset komposisi'}>
+      {resetArmed?'Konfirmasi reset':'Reset'}
+     </button>
+     {resetArmed&&<button type="button" onClick={()=>setResetArmed(false)}>Batal</button>}
+    </div>
+   </details>
+  </div>
+  <div className="s64-safety">
+   <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
+    disabled={previewBlackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
+   <span className="cpux-preview-status" role="status">{blackout||previewBlackout?'Padam':'Preview software'}</span>
    <details className="soma-ia-display-options"><summary>Display</summary>
     <label><input type="checkbox" checked={previewLive}
      onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
+    <button type="button" onClick={openPreview}>Buka preview terpisah</button>
     <button type="button" onClick={()=>setBlackout(true)}>Padam preview</button>
-   </details></div>
+   </details>
+  </div>
   <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'siap':'preview saja'}</div>
   {experimentSource&&<p className="msv4-experiment-source-status" role="status">
    {composeExperimentStatus(experimentSource,experimentReady,selected)}
@@ -660,10 +666,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   </p>}
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
    <aside className="s64-column cp02-library">
-    <h3>Media &amp; Layers</h3>
-    <div className="msv4-browser-meta">VISUAL RESET · V5</div>
-    <p className="v5-reset-empty" role="status">Visual V5 · Liquid Imprint. Pilih FLOOR dan atur cairan di Inspector. MP4 dan media tetap tersedia.</p>
-    <details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><small>Media lokal dan MP4 Track tetap dapat disusun sebagai layer.</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
+    <details className="soma-ia-media"><summary>Media <span>{media.length}</span></summary><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
  <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
   onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');setPreviewArrangement('surface');}}>
   {m.kind==='image'&&m.url?<img src={m.url} alt=""/>:
@@ -674,18 +677,30 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  </div>)}</div>
  {media.some(m=>m.origin==='track')&&<small>MP4 Track dipakai langsung dari decoder Track. Tidak perlu unggah ulang.</small>}
  {assetNotice&&<small role="status">{assetNotice}</small>}
- <small>Impor berlaku selama sesi Stage terbuka; file lokal perlu dipilih lagi setelah reload.</small></details></aside>
-   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>STAGE MONITOR <small>· Layer target / Workspace 01</small></strong><div role="group" aria-label="Pilih bidang preview">
-     {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab("layer");setPreviewArrangement("surface");}}>{surface}</button>)}
+ </details></aside>
+   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>Stage Monitor</strong><div role="group" aria-label="Pilih bidang preview">
+     {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab(surface==='FLOOR'?'scene':'layer');setPreviewArrangement("surface");}}>{surface}</button>)}
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{inspectorTab==='scene'&&<p className="v5-reset-inspector">Tidak ada preset visual aktif. Gunakan Media dan Layers untuk mengatur sumber sampai renderer V5 tersedia.</p>}
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
-  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><ComposerEventTimeline capture={timelineCapture} positionMs={timelinePosition}
+  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div>
+   <div className="s64-bar">
+    {liquidMode==='track'&&selected==='FLOOR'&&timelineCapture.events.length===0&&
+     <span role="status">Belum ada jejak dari Track</span>}
+    {selected!=='FLOOR'&&<span>{bodyStatus}</span>}
+    {inspectorTab==='object'&&
+     <button type="button" onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>
+      {editMask?'Selesai edit mask':'Edit mask'}</button>}
+   </div>
+   <details className="cpux-timeline-drawer">
+    <summary>Timeline <span>{timelineCapture.events.length>0?
+     timelineCapture.events.length+' event':'Belum ada event'}</span></summary>
+    <ComposerEventTimeline capture={timelineCapture} positionMs={timelinePosition}
     onSeek={ms=>{timelinePositionRef.current=ms;setTimelinePosition(ms);}}
     mode={timelineMode} onModeChange={mode=>{
      setTimelineMode(mode);
@@ -694,7 +709,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     speed={timelineSpeed} onSpeedChange={setTimelineSpeed}
     onClear={()=>{setTimelineCapture(emptyTimelineCapture(motionSessionRef.current?.()??'unknown'));
      setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);}}/>
-   <details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+   
+   </details>
+   <details className="soma-ia-layers"><summary>Layer <span>{layers.length}</span></summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
