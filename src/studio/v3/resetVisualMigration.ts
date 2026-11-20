@@ -8,17 +8,25 @@ export const LEGACY_VISUAL_STORAGE_KEYS=[
  'soma-floor-scene-presets-v1',
  'soma-floor-hydra-v1',
  'soma-s64-presets-v1',
- 'soma-s64-composer-v1'
+ 'soma-s64-composer-v1',
+ V5_PRESET_KEY
 ] as const;
 export function isRetiredVisualSource(mediaId:string):boolean{
  return mediaId==='@stage:hydra'||mediaId.startsWith('@scene:');
 }
 /** Keep Track MP4, user media, base FLOOR and BODY layer IDs. */
-export function stripRetiredVisualLayers<T extends {mediaId:string}>(
+export function stripRetiredVisualLayers<T extends {mediaId:string;recipe?:unknown;motionRecipe?:unknown}>(
  composition:Record<string,T[]>
 ):Record<string,T[]>{
  return Object.fromEntries(Object.entries(composition).map(([surface,layers])=>[
-  surface,layers.filter(layer=>!isRetiredVisualSource(layer.mediaId))
+  surface,layers.filter(layer=>!isRetiredVisualSource(layer.mediaId)).map(layer=>{
+   // Historical media layers can contain obsolete visual treatment data.
+   // Retain IDs, media references, transforms and masks; drop effect programs.
+   const clean={...layer};
+   delete clean.recipe;
+   delete clean.motionRecipe;
+   return clean;
+  })
  ]));
 }
 export function resetOldVisualStorage(storage:Pick<Storage,'removeItem'>):void{
