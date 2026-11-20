@@ -44,7 +44,7 @@ export function FootprintsSourceScreen({mode,cameraError,onWebcam,onPhone,onVide
      </button>
      <button type="button" className="fp-source-choice" disabled={connecting} onClick={onPhone}>
       <span className="fp-source-choice-icon"><Smartphone size={20} aria-hidden="true"/></span>
-      <span className="fp-source-choice-copy"><strong>Kamera HP</strong><small>Pairing QR · Live</small></span>
+      <span className="fp-source-choice-copy"><strong>Kamera HP</strong><small>Kabel USB / QR · Horizontal 16:9</small></span>
       <ArrowUpRight size={15} className="fp-source-choice-arrow" aria-hidden="true"/>
      </button>
     </div>

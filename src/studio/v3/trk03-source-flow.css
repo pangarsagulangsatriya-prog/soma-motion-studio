@@ -132,3 +132,14 @@
   transition:none!important;
  }
 }
+
+/* USB-03 — compact device picker; main Stage Monitor owns the 16:9 preview. */
+.soma-track-phone-pairing .soma-usb-phone{display:flex;flex-direction:column;gap:9px;min-width:0}
+.soma-track-phone-pairing .soma-usb-intro{font-size:12px;line-height:1.5;margin:0;color:#c2d2c3}
+.soma-track-phone-pairing .soma-usb-phone>label{font-size:11px;font-weight:600;color:#cfdfcb}
+.soma-track-phone-pairing .soma-usb-phone>select{width:100%;min-height:38px;border:1px solid #506a53;border-radius:7px;background:#102018;color:#e4efdf;padding:7px;font-size:12px}
+.soma-track-phone-pairing .soma-usb-actions{display:flex;flex-wrap:wrap;gap:7px}
+.soma-track-phone-pairing .soma-usb-actions>button{flex:1 1 auto;min-height:36px;font-size:12px}
+.soma-track-phone-pairing .soma-usb-status{margin:0;padding:8px;border-radius:6px;background:#203629;color:#cce6ce;font-size:12px;line-height:1.5}
+.soma-track-phone-pairing .soma-usb-status[data-phase=error]{color:#ffb4a7;background:#422524}
+.soma-track-phone-pairing .soma-usb-phone>small{font-size:11px;color:#bacbbb;line-height:1.5}

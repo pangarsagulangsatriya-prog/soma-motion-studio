@@ -3,6 +3,7 @@ import {FootprintsPanel} from './footprints/FootprintsPanel';
 import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {DirectPuppetSession} from './footprints/simulator/puppet-controller.ts';
 import {defaultFloorSpace} from './footprints/spatial/coordinates.ts';
+import {createLandscapePhoneCamera,type LandscapePhoneCamera} from './engine/landscapePhoneCamera.ts';
 import {preserveCurrentSource} from './studio/v3/sourceE2EGuard.ts';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
@@ -109,6 +110,7 @@ export default function App(){
  const video=useRef<HTMLVideoElement>(null),stage=useRef<HTMLDivElement>(null),importRef=useRef<HTMLInputElement>(null),playback=useRef<HTMLAudioElement|null>(null);
  const frameRef=useRef<MotionFrame>(emptyFrame()),engine=useRef(new AudioEngine()).current,mapper=useRef(new MappingEngine()).current,tracker=useRef(new CameraTracker()).current,recorder=useRef(new Recorder()).current,motionLog=useRef(new MotionLog()).current;
  const activeCameraMode=useRef<'laptop'|'phone'>('laptop');
+ const phoneLandscapeRef=useRef<LandscapePhoneCamera|null>(null);
  const [footprintsChoice,setFootprintsChoice]=useState<FootprintsInputChoice|null>(null);
  const [sourceSwitchBusy,setSourceSwitchBusy]=useState(false);
  const [sourceSwitchError,setSourceSwitchError]=useState('');
@@ -135,7 +137,7 @@ export default function App(){
  useEffect(()=>{tracker.setProjection(projection.running);return()=>tracker.setProjection(false);},[tracker,projection.running]);
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
- const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
+ const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);phoneLandscapeRef.current?.stop();phoneLandscapeRef.current=null;setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
  const processFrame=useCallback((f:MotionFrame)=>{
   frameRef.current=f;cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
   if(f.tracked)hasPlayed.current=true;
@@ -170,10 +172,10 @@ export default function App(){
  async function startPhoneCamera(stream:MediaStream){
   if(requestedFootprintsChoice.current!=='phone')return;
   if(!stream.active||!stream.getVideoTracks().length){
-   notify('HP belum mengirim video. Ulangi sambungan WebRTC.');return;
+   notify('HP belum mengirim video. Periksa kabel atau sambungan QR.');return;
   }
   requestStageBlackout(()=>projection.setTransport('blackout'));
-  liveFloorEngine.revoke('Sumber kamera berubah ke HP; kalibrasi harus diulang.');
+  liveFloorEngine.revoke('Sumber kamera HP berubah; kalibrasi harus diulang.');
   multiPoseRouter.reset();setLiveFloorApproval(null);
   stopCamera();
   const op=++cameraOperation.current;
@@ -186,17 +188,43 @@ export default function App(){
   activeCameraMode.current='phone';
   setFootprintsChoice('phone');setSourceSwitchError('');
   setSource('camera');sourceRef.current='camera';setCameraBusy(true);
-  setCameraOn(true);setCameraError('');
-  await tracker.start(video.current!,()=>sr.current,
-   frame=>{
-    if(op===cameraOperation.current&&requestedFootprintsChoice.current==='phone')
-     processFrame(frame);
-   },
-   message=>{if(op!==cameraOperation.current)return;
-    setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
-   message=>{if(op!==cameraOperation.current)return;
-    setCameraOn(false);setCameraBusy(false);setCameraError(message);notify(message);},
-   undefined,stream);
+  setCameraOn(false);setCameraError('');
+  try{
+   // Normalization changes actual video pixels, not just CSS; all pose/Map
+   // coordinates and FLOOR/BODY outputs see the same horizontal 16:9 frame.
+   const landscape=await createLandscapePhoneCamera(stream,()=>{
+    if(op===cameraOperation.current)stopPhoneCamera();
+   });
+   if(op!==cameraOperation.current||requestedFootprintsChoice.current!=='phone'){
+    landscape.stop();return;
+   }
+   phoneLandscapeRef.current=landscape;
+   setCameraOn(true);
+   await tracker.start(video.current!,()=>sr.current,
+    frame=>{
+     if(op===cameraOperation.current&&requestedFootprintsChoice.current==='phone')
+      processFrame(frame);
+    },
+    message=>{if(op!==cameraOperation.current)return;
+     setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
+    message=>{if(op!==cameraOperation.current)return;
+     setCameraOn(false);setCameraBusy(false);setCameraError(message);notify(message);},
+    undefined,landscape.stream);
+   if(!tracker.running)throw Error('Pelacak SOMA gagal memulai kamera HP.');
+  }catch(error){
+   if(op!==cameraOperation.current)return;
+   const message=error instanceof Error?error.message:'Video HP gagal dibuka.';
+   stopPhoneCamera();setCameraError(message);notify(message);
+   throw error;
+  }
+ }
+ function rotatePhoneCamera(){
+  if(activeCameraMode.current!=='phone'||!phoneLandscapeRef.current)return;
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  liveFloorEngine.revoke('Orientasi kamera berubah; ulangi kalibrasi Map.');
+  multiPoseRouter.reset();setLiveFloorApproval(null);
+  const angle=phoneLandscapeRef.current.rotate90();
+  notify(`Gambar HP diputar ${angle}°. Periksa kaki dan kalibrasi ulang Map.`);
  }
  function stopPhoneCamera(){
   if(activeCameraMode.current!=='phone')return;
@@ -346,7 +374,7 @@ export default function App(){
  function changeMapping(id:string,patch:Partial<Mapping>){update({mappings:sr.current.mappings.map(m=>m.id===id?{...m,...patch}:m)});}
  function playTake(t:Take){if(playing===t.id){playback.current?.pause();setPlaying(null);return;}playback.current?.pause();engine.mute();setMuted(true);const a=new Audio(t.url);a.volume=.6;playback.current=a;a.onended=()=>setPlaying(null);a.play().then(()=>setPlaying(t.id)).catch(()=>notify('Rekaman belum bisa diputar. Unduh audionya untuk membuka di pemutar lain.'));}
  function reset(){stopCamera();mapper.reset();sr.current=defaults();setSettings(sr.current);setActivePreset('Clean / Serat');engine.mute();setMuted(true);cal.current=null;setCalibration(null);setSource('camera');sourceRef.current='camera';clearInputFrame('hands');setModal(null);notify('Instrumen kembali ke pengaturan awal. Preset dan rekaman tetap tersedia.');}
- useEffect(()=>{try{const data=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(data))setPresets(data.slice(0,40).flatMap(p=>{try{return [{id:String(p.id),name:String(p.name).slice(0,40),settings:validatePreset({version:1,settings:p.settings})}];}catch{return [];}}));}catch{}return()=>{tracker.dispose(video.current??undefined);recorder.stop();void engine.dispose();playback.current?.pause();};},[tracker,engine,recorder]);
+ useEffect(()=>{try{const data=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(data))setPresets(data.slice(0,40).flatMap(p=>{try{return [{id:String(p.id),name:String(p.name).slice(0,40),settings:validatePreset({version:1,settings:p.settings})}];}catch{return [];}}));}catch{}return()=>{phoneLandscapeRef.current?.stop();tracker.dispose(video.current??undefined);recorder.stop();void engine.dispose();playback.current?.pause();};},[tracker,engine,recorder]);
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),6500);return()=>clearTimeout(t);},[notice]);
  useEffect(()=>{if(!recording)return;const t=setInterval(()=>setRecordSeconds(s=>s+1),1000);return()=>clearInterval(t);},[recording]);
  useEffect(()=>{mouse.current.pinch=mousePinch;mouse.current.open=mouseOpen;},[mousePinch,mouseOpen]);
@@ -463,10 +491,10 @@ export default function App(){
      router={multiPoseRouter} projection={projection} audioAnalyser={audioOn?engine.analyser:null}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
-     phoneActive={activeCameraMode.current==='phone'&&cameraOn}
+     phoneActive={activeCameraMode.current==='phone'&&cameraOn&&!cameraBusy}
      sourceStatus={deriveFootprintsInputStatus({
       selection:footprintsChoice,cameraOn,cameraBusy,cameraError,
-      phoneActive:activeCameraMode.current==='phone'&&cameraOn,
+      phoneActive:activeCameraMode.current==='phone'&&cameraOn&&!cameraBusy,
       switchBusy:sourceSwitchBusy,switchError:sourceSwitchError
      })}
      experimentPuppet={experimentPuppetRef.current} experimentPuppetRevision={experimentPuppetRevision}
@@ -476,6 +504,7 @@ export default function App(){
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>{void switchFootprintsSource('webcam');}}
      onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
+     onRotatePhone={rotatePhoneCamera}
      onEnterOperator={()=>{
       requestStageBlackout(()=>projection.setTransport('blackout'));
       setFootprintsOperator(true);setClean(false);

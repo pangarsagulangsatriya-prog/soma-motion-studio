@@ -7,7 +7,7 @@ export type FootprintsInputStatus={
 };
 export const SOURCE_CHOICES=[
  {id:'webcam',label:'Webcam laptop',description:'Live · kamera komputer',kind:'live'},
- {id:'phone',label:'Kamera HP',description:'Live · pairing QR/WebRTC',kind:'live'},
+ {id:'phone',label:'Kamera HP',description:'Live · kabel USB / QR',kind:'live'},
  {id:'video',label:'Video MP4',description:'Input lokal · Pose/Gait 2D',kind:'experiment'},
  {id:'simulator',label:'Simulasi 3D',description:'Input sintetis · floor virtual',kind:'experiment'}
 ] as const;
@@ -20,14 +20,14 @@ export function deriveFootprintsInputStatus(input:{
 }):FootprintsInputStatus{
  const {selection,cameraOn,cameraBusy,cameraError,phoneActive,switchBusy,switchError}=input;
  // Camera failures and camera busy states must not leak into MP4 / 3D sessions.
- if(switchError||(selection==='webcam'&&cameraError&&!cameraOn))
+ if(switchError||((selection==='webcam'||selection==='phone')&&cameraError&&!cameraOn))
   return {selection,phase:'error',message:switchError||cameraError};
- if(switchBusy||(selection==='webcam'&&cameraBusy))
+ if(switchBusy||((selection==='webcam'||selection==='phone')&&cameraBusy))
   return {selection,phase:'connecting',message:'Menyiapkan '+(selection?SOURCE_LABELS[selection]:'sumber')+'…'};
  if(selection==='phone'){
   return {selection,phase:phoneActive&&cameraOn?'ready':'pairing',
-   message:phoneActive&&cameraOn?'Video HP tersambung. Periksa pembacaan kaki.':
-   'Scan QR atau gunakan kode pairing untuk menyambungkan HP.'};
+   message:phoneActive&&cameraOn?'Video HP horizontal 16:9. Periksa pembacaan kaki.':
+   'Sambungkan HP lewat kabel USB atau pindai QR.'};
  }
  if(selection==='webcam'){
   return {selection,phase:cameraOn?'ready':'idle',message:cameraOn?'Webcam tersambung.':'Webcam belum aktif.'};
