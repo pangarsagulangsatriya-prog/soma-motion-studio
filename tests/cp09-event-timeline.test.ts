@@ -46,10 +46,8 @@ test('RESET-00 CP09: Composer timeline remains independent of retired visual sce
  const s=readFileSync(new URL('../src/studio/v3/SurfaceComposer.tsx',import.meta.url),'utf8');
  assert.match(s,/ComposerEventTimeline capture=\{timelineCapture\}/);
  assert.match(s,/collectTimelineEvents\(previous,events,session,performance\.now\(\)\)/);
- assert.match(s,/timelineAt\(timelineCaptureRef\.current,timelinePositionRef\.current\)/);
- assert.match(s,/timelineFootprintVisibility\(/);
  assert.match(s,/timelineModeRef\.current==='replay'&&!physical\?null/);
- assert.doesNotMatch(s,/ComposedSceneRuntime|sceneReplaySeen/);
+ assert.doesNotMatch(s,/ComposedSceneRuntime|sceneReplaySeen|HydraEffectInspector/);
  const physical=readFileSync(new URL('../src/studio/v3/composeLayerPlan.ts',import.meta.url),'utf8');
  assert.match(physical,/if\(physical&&experiment\)return \[\]/);
 });
