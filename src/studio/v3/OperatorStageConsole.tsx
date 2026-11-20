@@ -7,6 +7,7 @@ import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
+import {PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
@@ -45,6 +46,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  const [outputRouteMode,setOutputRouteMode]=useState<PerformOutputRouteMode>('soma');
  const [outputNotice,setOutputNotice]=useState('');
  const [popupBlocked,setPopupBlocked]=useState(false);
+ const [outputDetailsOpen,setOutputDetailsOpen]=useState(false);
 
  const cue=operatorCueAt(index);
  const currentSlot=cueGrid.slots[activeSlot];
@@ -65,12 +67,21 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   operatorConfirm:dualSession.operatorConfirm
  });
 
- // Keep default Perform uncluttered: show 4 nearby cues around activeSlot; full 8 slots inside collapsible Detail drawer.
- const windowStart=Math.max(0,Math.min(cueGrid.slots.length-4,activeSlot-1));
- const visibleIndices=[windowStart,windowStart+1,windowStart+2,windowStart+3].filter(i=>i<cueGrid.slots.length);
 
  const isResolume=outputRouteMode==='resolume';
  const isTouchDesigner=outputRouteMode==='touchdesigner';
+ const destination=presentPerformDestination({
+  route:outputRouteMode,primary:summary.primaryAction,
+  floor:summary.floorBadge,body:summary.bodyBadge
+ });
+ const handleRouteChange=(next:PerformOutputRouteMode)=>{
+  if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
+  // Switching destinations cannot silently leave prior output illuminating the stage.
+  blackoutAllDualSurfaces('Tujuan output diganti; verifikasi sebelum membuka ulang.');
+  window.dispatchEvent(new Event('soma:td-blackout'));
+  setOutputRouteMode(next);setOutputDetailsOpen(false);setPopupBlocked(false);
+  setOutputNotice('');
+ };
 
  const handleBlackoutAll=()=>{
   blackoutAllDualSurfaces('BLACKOUT dari Perform. Periksa cahaya proyektor secara fisik.');
@@ -103,25 +114,20 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  };
 
  const handlePrimaryAction=()=>{
-  if(isResolume){
-   handleOpenSurface('floor');
-   return;
-  }
+  if(destination.kind==='info'){setOutputDetailsOpen(true);return;}
+  if(isResolume){handleOpenSurface('floor');return;}
   const act=summary.primaryAction;
   if(act.kind==='open-output'||act.kind==='monitor-live'){
-   handleOpenSurface(act.surface);
-   return;
+   handleOpenSurface(act.surface);return;
   }
   if(act.kind==='arm-live'){
    const res=armDualSurfaceLiveFromPerform(act.surface);
-   setOutputNotice(res.message);
-   return;
+   setOutputNotice(res.message);return;
   }
-  if(act.kind==='fix-setup'||act.kind==='preview-only'){
-   if((!cameraOk||!identityOk||act.kind==='preview-only')&&onGoTrack){onGoTrack();return;}
+  if(act.kind==='fix-setup'){
+   if((!cameraOk||!identityOk)&&onGoTrack){onGoTrack();return;}
    if(onGoMap){onGoMap();return;}
-   onRecovery();
-   return;
+   onRecovery();return;
   }
   if(onGoMap){onGoMap();return;}
   onRecovery();
@@ -133,17 +139,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    <div className="ops-r1-head-left">
     <h1>Perform</h1>
     <span className="ops-r1-head-meta">
-     <b className="ops-r1-global-pill" data-tone={summary.globalStatus.tone}>{summary.globalStatus.label}</b>
-     <span>· {sourceLabel} · {performerCount}P · {contacts} kontak</span>
+     <span>{sourceLabel} · {performerCount}P · {contacts} kontak</span>
     </span>
    </div>
    <div className="ops-r1-head-right">
-    <span className="ops-r1-surface-badge" data-tone={summary.floorBadge.tone}>
-     FLOOR {summary.floorBadge.status}
-    </span>
-    <span className="ops-r1-surface-badge" data-tone={summary.bodyBadge.tone}>
-     BODY {summary.bodyBadge.status}
-    </span>
     <button type="button" className="ops-r1-head-btn" onClick={onExit}>
      <Settings2 size={13}/> Edit Compose
     </button>
@@ -151,81 +150,74 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   </header>
 
   <div className="ops-r1-console-shell">
-   {/* 1. Direct Output Control (SOMA Direct or Feed Resolume + FLOOR/BODY handoff) */}
-   <section className="ops-r1-output-card" aria-label="Kontrol Output Proyektor">
-    <div className="ops-r1-output-top">
-     <strong>Output Proyektor</strong>
-     <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
-      <button type="button" aria-pressed={outputRouteMode==='soma'} onClick={()=>{setOutputRouteMode('soma');setOutputNotice('');}}>
-       SOMA Direct
-      </button>
-      <button type="button" aria-pressed={isResolume} onClick={()=>{setOutputRouteMode('resolume');setOutputNotice('');}}>
-       Feed Resolume
-      </button>
-      <button type="button" aria-pressed={isTouchDesigner} onClick={()=>{setOutputRouteMode('touchdesigner');setOutputNotice('');}}>
-       TouchDesigner
-      </button>
-     </div>
+   {/* PF-UX: one destination, one status, one primary action. Deep controls stay in Detail. */}
+   <section className="ops-r1-output-card" aria-label="Tujuan output">
+    <div className="ops-r1-output-top"><strong>Tujuan Output</strong></div>
+    <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
+     {PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
+      aria-pressed={outputRouteMode===item.id}
+      onClick={()=>handleRouteChange(item.id)}
+      title={item.description}>
+      <span>{item.label}</span><small>{item.id==='touchdesigner'?'DATA':'VISUAL'}</small>
+     </button>)}
     </div>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
      <>
-    <button type="button"
-     className="ops-r1-primary-cta"
-     data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
-     onClick={handlePrimaryAction}>
-     <Tv size={14}/> {isResolume
-      ?(summary.floorBadge.opened?'Lihat Clean Feed Resolume (FLOOR)':'Buka Clean Feed Resolume (FLOOR)')
-      :summary.primaryAction.label}
-    </button>
-    <p className="ops-r1-output-hint">
-     {isResolume
-      ?'16:9 hitam bersih (Luma Key / Add). Tangkap di Resolume Arena via Window Capture / Browser Source / OBS / Spout / Syphon.'
-      :`${previewStatus} · ${summary.primaryAction.detail}`}
-    </p>
-
-    <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
-     {(['floor','body'] as const).map(surface=>{
-      const badge=surface==='floor'?summary.floorBadge:summary.bodyBadge;
-      const isFloor=surface==='floor';
-      return <div key={surface} className="ops-r1-channel" data-tone={badge.tone}>
-       <div className="ops-r1-channel-meta">
-        <b>{isFloor?'FLOOR':'BODY'}</b>
-        <span>{isResolume?(badge.opened?'Feed aktif':'Clean 16:9'):badge.status}</span>
+      <div className="ops-r1-destination-status" data-tone={destination.tone} role="status" aria-live="polite">
+       <strong>{destination.state}</strong>
+       <span>{destination.hint}</span>
+      </div>
+      <button type="button" className="ops-r1-primary-cta"
+       data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
+       onClick={handlePrimaryAction}>
+       <Tv size={14}/>{destination.action}
+      </button>
+      {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
+       role={popupBlocked?'alert':'status'}>
+       <span>{outputNotice}</span>
+       {popupBlocked&&<button type="button" onClick={()=>handleOpenSurface('floor')}>Coba lagi</button>}
+      </div>}
+      <details className="ops-r1-output-details" open={outputDetailsOpen}
+       onToggle={event=>setOutputDetailsOpen(event.currentTarget.open)}>
+       <summary>Detail koneksi, FLOOR/BODY &amp; keamanan</summary>
+       <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
+       {!isResolume&&<p>{summary.primaryAction.detail}</p>}
+       <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
+        {(['floor','body'] as const).map(surface=>{
+         const badge=surface==='floor'?summary.floorBadge:summary.bodyBadge;
+         const isFloor=surface==='floor';
+         return <div key={surface} className="ops-r1-channel" data-tone={badge.tone}>
+          <div className="ops-r1-channel-meta">
+           <b>{isFloor?'FLOOR':'BODY'}</b>
+           <span>{isResolume?(badge.opened?'Jendela terbuka':'Belum dibuka'):badge.status}</span>
+          </div>
+          <div className="ops-r1-channel-btns">
+           <button type="button" disabled={!isResolume&&!STAGE_HARDWARE_ENABLED}
+            onClick={()=>handleOpenSurface(surface)}>
+            <ExternalLink size={11}/>{badge.opened?'Lihat':isResolume?'Buka Feed':'Buka'}
+           </button>
+           {isResolume&&<button type="button" className="ops-r1-copy-btn"
+            aria-label={`Salin URL Feed Resolume ${isFloor?'FLOOR':'BODY'}`}
+            title="Salin URL Clean Feed" onClick={()=>handleCopyFeedUrl(surface)}>
+            <Copy size={11}/>URL
+           </button>}
+           {badge.opened&&<button type="button"
+            aria-label={`Tutup output ${badge.label}`}
+            onClick={()=>handleCloseSurface(surface)}><X size={11}/></button>}
+          </div>
+         </div>;
+        })}
        </div>
-       <div className="ops-r1-channel-btns">
-        <button type="button"
-         disabled={!isResolume&&!STAGE_HARDWARE_ENABLED}
-         onClick={()=>handleOpenSurface(surface)}>
-         <ExternalLink size={11}/> {badge.opened?'Lihat':(isResolume?'Buka Feed':'Buka')}
-        </button>
-        {isResolume&&<button type="button"
-         className="ops-r1-copy-btn"
-         aria-label={`Salin URL Feed Resolume ${isFloor?'FLOOR':'BODY'}`}
-         title="Salin URL Clean Feed"
-         onClick={()=>handleCopyFeedUrl(surface)}>
-         <Copy size={11}/> URL
-        </button>}
-        {badge.opened&&<button type="button"
-         aria-label={`Tutup output ${badge.label}`}
-         onClick={()=>handleCloseSurface(surface)}>
-         <X size={11}/>
-        </button>}
-       </div>
-      </div>;
-     })}
-    </div>
-
-    {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'} role={popupBlocked?'alert':'status'}>
-     <span>{outputNotice}</span>
-     {popupBlocked&&<button type="button" onClick={()=>handleOpenSurface('floor')}>Coba lagi</button>}
-    </div>}
-
-    {unreadyReason&&!popupBlocked&&!isResolume&&<div className="ops-r1-recovery" role="alert">
-     <span><ShieldAlert size={13}/> {unreadyReason}</span>
-     <button type="button" onClick={onRecovery}>Map QA</button>
-    </div>}
+       {!isResolume&&unreadyReason&&<div className="ops-r1-recovery">
+        <span><ShieldAlert size={13}/>{unreadyReason}</span>
+        <button type="button" onClick={onRecovery}>Map QA</button>
+       </div>}
+       <button type="button" className="ops-r1-detail-blackout" onClick={handleBlackoutAll}>
+        <MonitorOff size={13}/>BLACKOUT semua jalur
+       </button>
+      </details>
      </>}
    </section>
 
@@ -245,25 +237,14 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      </div>
     </div>
 
-    <header className="ops-r1-cue-head">
-     <strong>TAMPILAN &amp; CUE</strong>
-     <span>Pilih cue untuk mengganti layout monitor. QA output di Map tetap berlaku terpisah.</span>
-    </header>
-
-    <div className="ops-r1-cue-slots">
-     {visibleIndices.map(i=>{
-      const slot=cueGrid.slots[i];
-      return <button type="button" key={slot.id}
-       className="ops-r1-slot" aria-pressed={activeSlot===i} data-next={activeSlot+1===i||undefined}
-       aria-label={'Jalankan '+slot.label+', layout '+slot.view}
-       onClick={()=>onApplySlot(i)}
-       title={'GO '+slot.label+' · '+slot.view}>
-       <small>{String(i+1).padStart(2,'0')}</small><b>{slot.label}</b>
-       <em>{slot.view.toUpperCase()}</em>
-      </button>;
-     })}
+    <div className="ops-r1-cue-transport" role="group" aria-label="Kontrol tampilan operator">
+     <button type="button" onClick={onPrevious} disabled={activeSlot===0}>
+      <ArrowLeft size={14}/>Sebelumnya
+     </button>
+     <button type="button" onClick={onNext} disabled={activeSlot===cueGrid.slots.length-1}
+      className="fp-operator-go">Tampilan berikutnya <ArrowRight size={14}/></button>
     </div>
-
+    <p className="ops-r1-cue-scope">{performCueScope(outputRouteMode)}</p>
     <details className="ops-r1-cue-editor">
      <summary>Detail · Semua 8 cue, edit &amp; rekam</summary>
      <div className="ops-r1-all-slots">
@@ -282,6 +263,11 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       {PERFORM_VIEWS.map(view=><option key={view} value={view}>{view.toUpperCase()}</option>)}
      </select></label>
      <div className="ops-r1-cue-actions">
+      <button type="button" onClick={held?onResume:onHold}
+       disabled={held&&!canResume} aria-pressed={held}>
+       {held?<Play size={12}/>:<Pause size={12}/>}
+       {held?'Lanjutkan Preview':'Tahan Preview'}
+      </button>
       <button type="button" onClick={onSaveCue}>Simpan cue lokal</button>
       <button type="button" onClick={onResetCues}>Reset default</button>
       <button type="button" onClick={onRecordVideo}
@@ -298,31 +284,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     </details>
    </section>
 
-   {/* 3. Compact Transport Bar */}
-   <div className="fp-operator-dock" role="toolbar" aria-label="Kontrol Perform">
-    <div className="fp-operator-dock-group">
-     <button type="button" onClick={onPrevious} disabled={activeSlot===0}>
-      <ArrowLeft size={14}/> Prev <kbd className="ops-r1-kbd">←</kbd>
-     </button>
-     <button type="button" onClick={onNext} disabled={activeSlot===cueGrid.slots.length-1}
-      className="fp-operator-go">
-      GO · Berikutnya <kbd className="ops-r1-kbd">Space</kbd> <ArrowRight size={14}/>
-     </button>
-    </div>
-    <div className="fp-operator-dock-group">
-     <button type="button" onClick={held?onResume:onHold}
-      disabled={held&&!canResume} aria-pressed={held} className={held?'fp-operator-hold-active':''}>
-      {held?<Play size={14}/>:<Pause size={14}/>}
-      {held?'Lanjutkan Preview':'Tahan Preview'}
-     </button>
-     <button type="button" className="fp-operator-blackout" onClick={handleBlackoutAll}>
-      <MonitorOff size={15}/> BLACKOUT <kbd className="ops-r1-kbd">B</kbd>
-     </button>
-    </div>
-   </div>
-   <p className="fp-operator-hotkeys">
-    <kbd>Space</kbd>/<kbd>→</kbd> GO · <kbd>←</kbd> Prev · <kbd>B</kbd>/<kbd>Esc</kbd> Blackout
-   </p>
+   {/* Blackout remains persistently available in the global SOMA header.
+       Physical switching, browser disconnect and TD all remain fail-closed. */}
   </div>
  </>;
 }
