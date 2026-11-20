@@ -12,10 +12,10 @@ import './SurfaceComposer.css';
 import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
 import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
 import {canRenderComposeSurface} from './composePreviewGate.ts';
-import {catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
+import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
 import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
 import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
-import {ComposedSceneRuntime,sceneIdFromSource,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
+import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
 import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings,type HydraFootprintStyle} from '../../footprints/scenes/hydraFootprintModel.ts';
 import './vis-r3-gallery.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
@@ -365,6 +365,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   runtime.paint(canvas,atMs);
   return canvas;
  };
+ useEffect(()=>{
+  const active=new Set(surfaces.flatMap(surface=>composition[surface].map(layer=>layer.id)));
+  for(const id of sceneRuntimes.current.keys())if(!active.has(id)){
+   sceneRuntimes.current.delete(id);sceneCanvases.current.delete(id);
+  }
+ },[composition]);
  useEffect(()=>()=>{
   sceneCanvases.current.clear();sceneRuntimes.current.clear();
  },[]);
@@ -813,6 +819,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <option value="">No source / empty</option>
    {COMPOSE_SOURCE_CHOICES.filter(source=>source.id!==SHARED_TRACK_MP4_ID||!media.some(m=>m.id===SHARED_TRACK_MP4_ID)).map(source=>
     <option key={source.id} value={source.id}>{source.label}</option>)}
+   {ARTISTIC_CATALOG.map(recipe=><option key={recipe.id} value={sceneSourceId(recipe.id)}>{recipe.title} / Scene</option>)}
    {sharedAssetChoices(media).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
   </select></label>
   <label>Opacity · {layer?.opacity??100}%
