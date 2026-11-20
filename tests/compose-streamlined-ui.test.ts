@@ -14,21 +14,21 @@ test('Compose navigation keeps five relevant modes and SPLIT',()=>{
  assert.doesNotMatch(ui,/>CAM · \{experimentSource/);
  assert.match(ui,/COMPOSE_VIEW_TABS\.map/);
 });
-test('Compose SKELETON uses full-width monitor without legacy lower-body inspector',()=>{
+test('Compose only hides the right inspector for Skeleton Input',()=>{
  const ui=composer();
  const style=css();
  assert.match(ui,/data-compose-view=\{monitorView\}/);
  assert.match(ui,/data-compose-dock=\{/);
- assert.match(ui,/hidden=\{monitorView==='SKELETON'\|\|/);
+ assert.match(ui,/hidden=\{!composeInspectorVisible\(monitorView,skeletonBackdrop\)\}/);
  assert.match(style,/\.s64-layout\[data-compose-dock="wide"\]/);
  assert.match(style,/\.cp02-inspector\[hidden\]/);
  assert.match(style,/data-compose-view="SKELETON"/);
 });
-test('Compose LEG A/B and SPLIT retain opt-in controls, never disable masker',()=>{
+test('Compose LEG A/B and SPLIT keep visible controls and existing masker',()=>{
  const ui=composer();
- assert.match(ui,/setLegControlsOpen\(false\)/);
- assert.match(ui,/aria-expanded=\{legControlsOpen\}/);
- assert.match(ui,/Atur kaki/);
+ assert.doesNotMatch(ui,/legControlsOpen/);
+ assert.doesNotMatch(ui,/Atur kaki/);
+ assert.match(ui,/composeInspectorVisible/);
  assert.match(ui,/LowerBodyQuickInspector/);
  assert.match(ui,/renderLowerBodyStageMonitor/);
  assert.match(ui,/paintComposeSkeletonMonitor/);
@@ -39,4 +39,12 @@ test('Compose skeleton black/input toggle stays adjacent to monitor modes',()=>{
  assert.match(ui,/setSkeletonBackdrop\('black'\)/);
  assert.match(ui,/setSkeletonBackdrop\('input'\)/);
  assert.match(css(),/\.uxr3-compose-preview-bar>\.cp-compose-skeleton-controls/);
+});
+
+test('Compose centers the Stage Monitor title above the five view tabs',()=>{
+ const style=css();
+ assert.match(style,/\.uxr3-compose-preview-bar>\.cpux-monitor-title/);
+ assert.match(style,/text-align:center!important/);
+ assert.match(style,/grid-column:1\/-1!important/);
+ assert.match(style,/\.uxr3-compose-preview-bar>\.lb-view-tabs/);
 });

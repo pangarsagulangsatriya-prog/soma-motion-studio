@@ -2,6 +2,10 @@
  *  Pure module (no DOM/React dependencies) so logic is unit-testable and reusable across Compose & Perform. */
 
 export type ComposeMonitorView='FLOOR'|'LEG A'|'LEG B'|'SPLIT'|'FOOT'|'SKELETON';
+/** Show the right inspector for every mode except SKELETON's Input overlay. */
+export function composeInspectorVisible(view:ComposeMonitorView,backdrop:'black'|'input'):boolean{
+ return view!=='SKELETON'||backdrop!=='input';
+}
 
 /** Exact benchmark-aligned order: FLOOR is always first, followed by lower-body, foot, and skeleton views. */
 export const COMPOSE_VIEW_TABS:readonly {id:ComposeMonitorView;label:string;title:string}[]=[

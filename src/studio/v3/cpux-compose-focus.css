@@ -484,3 +484,64 @@
   transition:none!important;transform:none!important;
  }
 }
+
+/* COMPOSE-RESTORE-03 — persistent LEG controls; only Skeleton/Input is wide. */
+#soma-compose-focus .s64-layout[data-compose-dock="inspect"]>.cp02-inspector{
+ display:flex!important;
+}
+#soma-compose-focus .s64-layout>.cp02-inspector[hidden]{display:none!important}
+#soma-compose-focus .cp-compose-detection-note{
+ margin:0 0 9px;color:#a8bfaf;font-size:11px;line-height:1.45;
+}
+/* Center Stage Monitor heading above the mode selector, at any viewport. */
+#soma-compose-focus .uxr3-compose-preview-bar{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+ justify-content:stretch!important;align-items:center!important;
+ justify-items:center!important;gap:6px 8px!important;margin-bottom:8px!important;
+}
+#soma-compose-focus .uxr3-compose-preview-bar>.cpux-monitor-title{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ grid-column:1/-1!important;grid-row:1!important;justify-self:center!important;
+ flex:none!important;margin:0!important;text-align:center!important;
+ max-width:100%;min-width:0;gap:7px!important;
+}
+#soma-compose-focus .uxr3-compose-preview-bar>.cpux-monitor-title strong{font-size:13px!important}
+#soma-compose-focus .uxr3-compose-preview-bar>.lb-view-tabs{
+ display:flex!important;grid-template-columns:none!important;
+ grid-column:2!important;grid-row:2!important;justify-self:center!important;
+ flex:none!important;max-width:100%!important;margin:0!important;
+}
+#soma-compose-focus .uxr3-compose-preview-bar>.cp-compose-skeleton-controls{
+ display:flex!important;grid-template-columns:none!important;
+ grid-column:3!important;grid-row:2!important;justify-self:end!important;
+ flex:none!important;margin:0!important;min-width:0;
+}
+@media(max-width:1100px){
+ #soma-compose-focus .uxr3-compose-preview-bar{
+  grid-template-columns:minmax(0,1fr)!important;justify-items:center!important;gap:6px!important;
+ }
+ #soma-compose-focus .uxr3-compose-preview-bar>.cpux-monitor-title{
+  grid-column:1!important;grid-row:1!important;flex:none!important;justify-self:center!important;
+ }
+ #soma-compose-focus .uxr3-compose-preview-bar>.lb-view-tabs{
+  grid-column:1!important;grid-row:2!important;order:0!important;
+  justify-self:center!important;overflow-x:auto!important;
+  max-width:100%!important;min-width:0!important;flex:none!important;
+ }
+ #soma-compose-focus .uxr3-compose-preview-bar>.cp-compose-skeleton-controls{
+  grid-column:1!important;grid-row:3!important;order:0!important;
+  justify-self:center!important;justify-content:center!important;flex:none!important;
+ }
+}
+@media(max-width:520px){
+ #soma-compose-focus .uxr3-compose-preview-bar>.lb-view-tabs{
+  flex:none!important;width:max-content!important;max-width:100%!important;
+ }
+ #soma-compose-focus .uxr3-compose-preview-bar>.cp-compose-skeleton-controls{
+  flex:none!important;width:auto!important;max-width:100%!important;flex-wrap:wrap!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #soma-compose-focus .uxr3-compose-preview-bar *{transition:none!important}
+}
