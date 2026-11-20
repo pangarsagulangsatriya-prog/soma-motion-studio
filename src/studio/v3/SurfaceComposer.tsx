@@ -826,14 +826,15 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  {media.some(m=>m.origin==='track')&&<small>MP4 Track dipakai langsung dari decoder Track. Tidak perlu unggah ulang.</small>}
  {assetNotice&&<small role="status">{assetNotice}</small>}
  </details></aside>
-   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar">
-     <div className="cpux-monitor-title">
+   <section className="s64-center cp02-editor">
+    <div className="cp-compose-monitor-heading cpux-monitor-title" role="heading" aria-level={3}>
       <strong>Stage Monitor</strong>
       {(()=>{
        const prov=deriveComposeProvenance({liquidMode,experimentSource,cameraOn,floorReady});
        return <span className="cpux-provenance-tag" data-kind={prov.kind} title={prov.detail}>{prov.label}</span>;
       })()}
-     </div>
+    </div>
+    <div className="uxr3-compose-preview-bar">
      <div className="lb-view-tabs" role="group" aria-label="Pilih bidang preview">
       {COMPOSE_VIEW_TABS.map(tab=><button key={tab.id} type="button"
        title={tab.title}
@@ -921,9 +922,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:monitorView==='SKELETON'?'Skeleton 33 titik':'Visual Kaki · '+monitorView}</h3>
-  {monitorView==='SKELETON'&&<p className="cp-compose-detection-note">Mengikuti deteksi tubuh dari Track.</p>}
-  {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<LowerBodyQuickInspector
-   view={monitorView}
+  {monitorView==='SKELETON'&&<p className="cp-compose-detection-note">Skeleton mengikuti Track. Pengaturan di bawah memengaruhi visual LEG A/B dan SPLIT.</p>}
+  {monitorView!=='FLOOR'&&<LowerBodyQuickInspector
+   view={monitorView==='SKELETON'?'SPLIT':monitorView}
    state={lowerBody}
    onChange={setLowerBody}
    savedPresets={savedLowerBodyPresets}

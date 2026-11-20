@@ -12,7 +12,7 @@ test('FLOOR keeps its controls in every backdrop state',()=>{
  assert.equal(composeInspectorVisible('FLOOR','black'),true);
  assert.equal(composeInspectorVisible('FLOOR','input'),true);
 });
-test('Skeleton only collapses the right inspector for Input',()=>{
+test('Skeleton keeps the right inspector visible with black and Input',()=>{
  assert.equal(composeInspectorVisible('SKELETON','black'),true);
- assert.equal(composeInspectorVisible('SKELETON','input'),false);
+ assert.equal(composeInspectorVisible('SKELETON','input'),true);
 });
