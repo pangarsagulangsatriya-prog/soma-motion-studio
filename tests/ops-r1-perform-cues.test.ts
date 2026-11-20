@@ -1,25 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {FLOOR_SCENE_IDS} from '../src/footprints/scenes/sceneRegistry.ts';
 import {operatorCueAt,operatorShortcut} from '../src/studio/v3/OperatorStageModel.ts';
 import {
  defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,evaluatePerformReadiness,
  PERFORM_GRID_SIZE,PERFORM_SCENES,performCueAuthorizesLight
 } from '../src/studio/v3/performCueModel.ts';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
-test('OPS-R1: eight cue cards have unique stable slots and use the 14 existing FLOOR scenes',()=>{
+test('OPS-R1: eight cue cards preserve stable IDs without deleted visual scenes',()=>{
  const grid=defaultPerformCueGrid();
  assert.equal(grid.schema,'soma.perform-cues');
  assert.equal(grid.slots.length,PERFORM_GRID_SIZE);
  assert.deepEqual(new Set(grid.slots.map(c=>c.id)).size,8);
- assert.deepEqual(PERFORM_SCENES,['footprints',...FLOOR_SCENE_IDS]);
+ assert.deepEqual(PERFORM_SCENES,['footprints']);
  assert.ok(grid.slots.every(s=>PERFORM_SCENES.includes(s.scene)));
 });
 test('OPS-R1: editing a cue keeps other slots unchanged and persists data only',()=>{
  const grid=defaultPerformCueGrid();
- const next=updatePerformCueSlot(grid,3,{label:'Arsip putus',scene:'the-swarm',view:'split'});
- assert.equal(next.slots[3].scene,'the-swarm');
+ const next=updatePerformCueSlot(grid,3,{label:'Arsip putus',view:'split'});
+ assert.equal(next.slots[3].scene,'footprints');
  assert.equal(next.slots[3].label,'Arsip putus');
  assert.equal(next.slots[3].view,'split');
  assert.deepEqual(grid.slots[0],next.slots[0]);
@@ -38,7 +37,7 @@ test('OPS-R1: malformed and stale cue profiles do not carry arbitrary scenes or 
  assert.equal(safe.slots[0].scene,'footprints');
  assert.equal(safe.slots[1].label,'Custom Cue');
  assert.equal('releaseApproved' in safe,false);
- assert.throws(()=>updatePerformCueSlot(grid,99,{scene:'snowfall'}));
+ assert.throws(()=>updatePerformCueSlot(grid,99,{view:'split'}));
 });
 test('OPS-R1: MP4/3D remain software preview with no hardware-ready state',()=>{
  for(const source of ['video','simulator'] as const){
@@ -63,10 +62,10 @@ test('OPS-R1: existing four view cues and blackout hotkey are preserved',()=>{
  assert.equal(operatorShortcut('KeyB',true),null);
  assert.equal(operatorShortcut('ArrowRight',false),'next');
 });
-test('OPS-R1: stage uses same scene renderer and latches blackout on tracking failure',()=>{
+test('OPS-R1: cue layouts survive visual reset and blackout remains fail-closed',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const console=read('../src/studio/v3/OperatorStageConsole.tsx');
- assert.match(stage,/selectFloorScene\(slot\.scene\)/);
+ assert.doesNotMatch(stage,/selectFloorScene\(slot\.scene\)/);
  assert.match(stage,/setOperatorCue\(\['overview','body','floor','split'\]\.indexOf\(slot\.view\)\)/);
  assert.match(stage,/onBlackoutRef\.current\(\);setPerformBlackout\(true\)/);
  assert.match(stage,/onResume=\{\(\)=>\{if\(performUnsafeRef\.current\)return;/);
@@ -75,7 +74,7 @@ test('OPS-R1: stage uses same scene renderer and latches blackout on tracking fa
  assert.match(stage,/cueNavigationRef\.current\.previous\(\)/);
  assert.match(console,/disabled=\{activeSlot===cueGrid\.slots\.length-1\}/);
  assert.match(console,/cueGrid\.slots\.map/);
- assert.match(console,/Pilih cue untuk mengganti scene dan layout monitor/);
+ assert.match(console,/Pilih cue untuk mengganti layout monitor/);
  assert.ok(!console.includes('setTransport('));
 });
 test('OPS-R1: cue recall never activates projector, and Map QA remains separate',()=>{
