@@ -100,6 +100,7 @@ type Props={
 };
 export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
+ const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
  useEffect(()=>{if(experimentSource)setPreviewArrangement('input');else setPreviewArrangement('surface');},[experimentSource]);
@@ -542,7 +543,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       ?archiveInput.readyState>=2&&archiveInput.videoWidth>0
       :!!archiveInput&&archiveInput.width>0&&archiveInput.height>0;
    let archiveReady=archiveHydraRef.current&&!blackoutRef.current&&
-    previewLiveRef.current&&!!archiveHydraCanvas&&archiveInputReady;
+    previewLiveRef.current&&!!archiveHydraCanvas&&archiveInputReady&&
+    (sourceId!=='@stage:input'||experimentReadyRef.current);
    if(archiveReady&&archiveHydraCanvas&&archiveInput){
     if(!archiveHydraCanvas.current)archiveHydraCanvas.current=document.createElement('canvas');
     const archive=archiveHydraCanvas.current;
