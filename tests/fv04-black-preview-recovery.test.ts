@@ -20,7 +20,7 @@ test('Black preview recovery: Stage shows MP4 until a new verified contact exist
  assert.match(src,/lastVerifiedContactRef/);
  assert.match(src,/event\.kind==='contact'&&event\.verified/);
  assert.match(src,/now-lastVerifiedContactRef\.current\.seenAtMs>20000/);
- assert.match(src,/kind==='hydra'\?\(!physical&&visualIsWaiting\?/);
+ assert.match(src,/kind==='hydra'\?\(!physical&&\(visualIsWaiting\|\|visualIsEmpty\)\?/);
  assert.match(src,/experimentInputCanvas\?\.current\?\?null/);
  assert.match(src,/MP4 aktif · Menunggu Contact terverifikasi/);
  assert.match(src,/stageStatus=\{visualWaitingForContact\?'waiting-contact':hydraStatus\}/);
