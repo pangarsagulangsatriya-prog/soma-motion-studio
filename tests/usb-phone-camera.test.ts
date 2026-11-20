@@ -43,7 +43,7 @@ test('USB-03: Track phone has explicit USB, QR and manual options',()=>{
  assert.match(receiver,/<UsbPhoneCameraReceiver/);
  assert.match(usb,/enumerateDevices/);
  assert.match(usb,/addEventListener\?\.\('devicechange'/);
- assert.match(usb,/getUserMedia\(\{audio:false,video:/);
+ assert.match(usb,/openUniversalCamera\(navigator\.mediaDevices,deviceId\)/);
  assert.match(usb,/onDisconnect/);
  assert.match(stage,/<PhoneCameraReceiver onStream=\{onPhoneStream\}/);
 });

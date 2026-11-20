@@ -36,7 +36,7 @@ export function landscapeFramePlan(width:number,height:number,
   offsetX:(outputWidth-drawnWidth)/2,offsetY:(outputHeight-drawnHeight)/2};
 }
 
-export type LandscapePhoneCamera={stream:MediaStream;stop:()=>void;rotate90:()=>LandscapeRotation;};
+export type LandscapePhoneCamera={stream:MediaStream;stop:()=>void;rotate90:()=>LandscapeRotation;toggleMirror:()=>boolean;};
 
 /**
  * Draw to one real canvas, then feed its video track to SOMA. Closing the
@@ -57,7 +57,9 @@ export async function createLandscapePhoneCamera(input:MediaStream,
  const ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx){source.srcObject=null;throw Error('Kanvas kamera tidak tersedia.');}
  let raf=0,stopped=false,output:MediaStream|null=null,mutedTimer:ReturnType<typeof setTimeout>|null=null;
- let overrideRotation:LandscapeRotation|null=null;
+ let overrideRotation:LandscapeRotation|null=null,mirrored=false;
+ let frameCallbackId:number|null=null,frameWatchdog:ReturnType<typeof setInterval>|null=null;
+ let lastDecodedFrame=performance.now();
  const onEnded=()=>{if(stopped)return;stop();onSourceEnded();};
  const onMute=()=>{if(mutedTimer)clearTimeout(mutedTimer);
   mutedTimer=setTimeout(()=>{if(track.muted)onEnded();},1500);};
@@ -65,6 +67,8 @@ export async function createLandscapePhoneCamera(input:MediaStream,
  const stop=()=>{
   if(stopped)return;
   stopped=true;cancelAnimationFrame(raf);
+  if(frameCallbackId!==null)source.cancelVideoFrameCallback?.(frameCallbackId);
+  if(frameWatchdog)clearInterval(frameWatchdog);frameWatchdog=null;
   if(mutedTimer)clearTimeout(mutedTimer);mutedTimer=null;
   track.removeEventListener('ended',onEnded);
   track.removeEventListener('mute',onMute);
@@ -80,6 +84,16 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   await source.play();
   if(stopped||track.readyState!=='live')throw Error('Kamera HP terputus saat menyiapkan video.');
   if(!source.videoWidth||!source.videoHeight)throw Error('Frame kamera HP belum tersedia.');
+  // requestVideoFrameCallback confirms newly decoded frames, not merely a live track.
+  // In hidden tabs a browser can throttle callbacks: avoid false disconnection there.
+  if(typeof source.requestVideoFrameCallback==='function'){
+   const onDecoded=()=>{lastDecodedFrame=performance.now();
+    if(!stopped)frameCallbackId=source.requestVideoFrameCallback(onDecoded);};
+   frameCallbackId=source.requestVideoFrameCallback(onDecoded);
+   frameWatchdog=setInterval(()=>{
+    if(!stopped&&document.visibilityState==='visible'&&performance.now()-lastDecodedFrame>3200)onEnded();
+   },550);
+  }
   let lastPaint=0;
   const paint=(time:number)=>{
    if(stopped)return;
@@ -92,6 +106,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
    ctx.fillStyle='#050807';ctx.fillRect(0,0,canvas.width,canvas.height);
    ctx.save();ctx.translate(canvas.width/2,canvas.height/2);
    if(p.rotation)ctx.rotate(p.rotation*Math.PI/180);
+   if(mirrored)ctx.scale(-1,1);
    ctx.drawImage(source,-sw*p.scale/2,-sh*p.scale/2,sw*p.scale,sh*p.scale);
    ctx.restore();
   };
@@ -103,6 +118,6 @@ export async function createLandscapePhoneCamera(input:MediaStream,
    const current=overrideRotation??(isPortraitStreamDimensions(source.videoWidth,source.videoHeight)?90:0);
    overrideRotation=((current+90)%360) as LandscapeRotation;
    return overrideRotation;
-  }};
+  },toggleMirror:()=>{mirrored=!mirrored;return mirrored;}};
  }catch(error){stop();throw error;}
 }

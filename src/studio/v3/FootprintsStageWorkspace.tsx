@@ -103,7 +103,7 @@ type Props={
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onOpenProjection:()=>void;
  onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
- onPhoneDisconnect:()=>void;onRotatePhone:()=>void;onEnterOperator:()=>void;
+ onPhoneDisconnect:()=>void;onRotatePhone:()=>void;onMirrorCamera:()=>void;onEnterOperator:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  operatorMode:boolean;onExitOperator:()=>void;
  softwareBlackout:boolean;onResumeSoftwarePreview:()=>void;
@@ -119,7 +119,7 @@ export function FootprintsStageWorkspace({
  cameraDevices,selectedCameraId,onSelectCameraDevice,
  phoneActive,sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
- onPhoneStream,onPhoneDisconnect,onRotatePhone,
+ onPhoneStream,onPhoneDisconnect,onRotatePhone,onMirrorCamera,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  operatorMode,onExitOperator,softwareBlackout,onResumeSoftwarePreview,footprint,updateFootprint
 }:Props){
@@ -1045,17 +1045,21 @@ export function FootprintsStageWorkspace({
        onClick={onStartBody}>Aktifkan Body</button>}
       {sourceStatus.selection==='phone'&&phoneActive&&<button type="button" className="soma-track-side-action"
        onClick={onRotatePhone} title="Putar isi gambar kamera HP, keluaran tetap horizontal 16:9">
-       Putar gambar HP 90°
+       Putar gambar 90°
+      </button>
+      {sourceStatus.selection==='phone'&&phoneActive&&<button type="button" className="soma-track-side-action"
+       onClick={onMirrorCamera} title="Cerminkan isi gambar kamera; Map perlu diperiksa ulang">
+       Cerminkan gambar
       </button>}
       {sourceStatus.selection==='phone'&&!phonePanelOpen&&<button type="button" className="soma-track-side-action"
        aria-expanded={phonePanelOpen} aria-controls="soma-track-phone-pairing"
        onClick={()=>{setPhonePanelOpen(v=>!v);setCalibrationOpen(false);setInspectorOpen(false);}}>
-       {phoneActive?'Lihat koneksi HP':'Hubungkan HP'}
+       {phoneActive?'Lihat sambungan':'Hubungkan kamera'}
       </button>}
       {sourceStatus.selection==='phone'&&<section id="soma-track-phone-pairing" className="soma-track-phone-pairing"
        hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}
-       aria-label="Pairing kamera HP">
-       <header className="soma-track-phone-heading"><strong>Koneksi kamera HP</strong>
+       aria-label="Hubungkan kamera universal">
+       <header className="soma-track-phone-heading"><strong>Hubungkan kamera</strong>
         <button type="button" aria-label="Tutup pairing kamera HP" onClick={closePhonePanel}>×</button>
        </header>
        <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
