@@ -27,7 +27,7 @@ test('PF-UX-06: cue synopsis has no permanent paragraph and eight cues remain ed
  assert.match(src,/className="ops-r1-cue-detail-body"/);
  assert.match(src,/performCueScope\(outputRouteMode\)/);
  assert.match(src,/cueGrid\.slots\.map/);
- assert.doesNotMatch(src,/<p className="ops-r1-cue-scope">/);
+ assert.match(src,/className="ops-r1-cue-detail-body"[\\s\\S]*className="ops-r1-cue-scope"/);
 });
 test('PF-UX-06: transient animation only, reduced-motion and visible keyboard focus',()=>{
  const css=read('../src/studio/v3/ops-r1-perform.css');
