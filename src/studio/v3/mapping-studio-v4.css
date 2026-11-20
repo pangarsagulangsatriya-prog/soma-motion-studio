@@ -537,3 +537,22 @@
 .fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-legacy[open]{
  display:flex;flex-direction:column;gap:10px;
 }
+
+/* FV-03 · explicit archive texture assignment in the existing Hydra Inspector. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv03-archive-source{
+ display:flex;flex-direction:column;gap:11px;margin:12px 0 2px;
+ padding:12px 10px;background:#172229;border:1px solid #4f7777;border-radius:7px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv03-archive-source>label:first-child{
+ display:flex;flex-direction:column;gap:7px;color:#c4dfdd;font-size:11px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv03-archive-source select{
+ min-height:34px;background:#202b33;border:1px solid #53616b;border-radius:5px;
+ color:#e7efef;max-width:100%;padding:5px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv03-archive-source .visr4-archive-row{
+ display:flex;align-items:center;gap:8px;font-size:11px;color:#aabdbb;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv03-archive-source small{
+ font-size:10px;color:#9eb4b2;line-height:1.5;
+}
