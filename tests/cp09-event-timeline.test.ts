@@ -42,15 +42,14 @@ test('CP09: captures bounded event history',()=>{
  const c=collectTimelineEvents(emptyTimelineCapture('A'),events,'A',1000);
  assert.equal(c.events.length,MAX_TIMELINE_EVENTS);
 });
-test('CP09: Composer timeline shares capture with scene layers and never arms projector',()=>{
+test('RESET-00 CP09: Composer timeline remains independent of retired visual scenes',()=>{
  const s=readFileSync(new URL('../src/studio/v3/SurfaceComposer.tsx',import.meta.url),'utf8');
  assert.match(s,/ComposerEventTimeline capture=\{timelineCapture\}/);
  assert.match(s,/collectTimelineEvents\(previous,events,session,performance\.now\(\)\)/);
  assert.match(s,/timelineAt\(timelineCaptureRef\.current,timelinePositionRef\.current\)/);
  assert.match(s,/timelineFootprintVisibility\(/);
  assert.match(s,/timelineModeRef\.current==='replay'&&!physical\?null/);
- const scene=readFileSync(new URL('../src/studio/v3/composeSceneEngine.ts',import.meta.url),'utf8');
- assert.match(scene,/replay\(events:readonly TimelineEvent\[\]\)/);
+ assert.doesNotMatch(s,/ComposedSceneRuntime|sceneReplaySeen/);
  const physical=readFileSync(new URL('../src/studio/v3/composeLayerPlan.ts',import.meta.url),'utf8');
  assert.match(physical,/if\(physical&&experiment\)return \[\]/);
 });
