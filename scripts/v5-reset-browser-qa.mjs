@@ -36,7 +36,7 @@ try{
  const composeText=await compose.innerText();
  report.dom={headings,bodyPreview,composePreview:composeText.slice(0,1400)};
  console.log('V5_RESET_DOM_DIAG',JSON.stringify(report.dom));
- assert.ok(headings.some(t=>/Media\\s*(?:&|&amp;)\\s*Layers/i.test(t)),
+ assert.ok(headings.some(t=>t.trim().toLowerCase()==='media & layers'),
   'Expected Media & Layers panel; headings='+JSON.stringify(headings));
  assert.ok(composeText.includes('Katalog visual lama sudah dikosongkan'),
   'Expected V5 reset notice; Compose text='+composeText.slice(0,450));
