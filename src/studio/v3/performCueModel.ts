@@ -1,15 +1,15 @@
 /** OPS-R1 — operator cue cards. Data only: no projector live/QA permission stored here. */
-import {FLOOR_SCENE_IDS,type FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
-export type PerformSceneId='footprints'|FloorSceneId;
+/** V5 reset: cue scene values are normalized to diagnostic FLOOR mode. */
+export type PerformSceneId='footprints';
 export type PerformView='overview'|'body'|'floor'|'split';
 export type PerformCueSlot={id:string;label:string;scene:PerformSceneId;view:PerformView};
 export type PerformCueGrid={schema:'soma.perform-cues';version:1;slots:PerformCueSlot[]};
 export const PERFORM_CUE_STORAGE_KEY='soma-perform-cues-v1';
-export const PERFORM_SCENES:readonly PerformSceneId[]=['footprints',...FLOOR_SCENE_IDS];
+export const PERFORM_SCENES:readonly PerformSceneId[]=['footprints'];
 export const PERFORM_VIEWS:readonly PerformView[]=['overview','body','floor','split'];
 export const PERFORM_GRID_SIZE=8;
 export function defaultPerformCueGrid():PerformCueGrid{
- const defaults:PerformSceneId[]=['footprints','snowfall','living-water','the-swarm','spring-garden','ectoplasmic-fog','fireflies','footprints'];
+ const defaults:PerformSceneId[]=Array.from({length:PERFORM_GRID_SIZE},()=> 'footprints');
  return {schema:'soma.perform-cues',version:1,slots:defaults.map((scene,index)=>({
   id:'cue-'+(index+1),label:'Cue '+String(index+1).padStart(2,'0'),
   scene,view:index===0?'overview':index===7?'split':index%2===0?'body':'floor'
@@ -26,7 +26,8 @@ export function normalizePerformCueGrid(raw:unknown):PerformCueGrid{
   const slot=record.slots[index];
   if(!slot||typeof slot!=='object'||typeof slot.id!=='string'||slot.id!=='cue-'+(index+1)||seen.has(slot.id))return fresh;
   seen.add(slot.id);
-  const scene=PERFORM_SCENES.includes(slot.scene)?slot.scene:fresh.slots[index].scene;
+  // Discard retired scene IDs from historical cue-grid presets.
+  const scene:PerformSceneId='footprints';
   const view=PERFORM_VIEWS.includes(slot.view)?slot.view:fresh.slots[index].view;
   const label=typeof slot.label==='string'&&slot.label.trim()?slot.label.trim().slice(0,44):fresh.slots[index].label;
   slots.push({id:slot.id,label,scene,view});
