@@ -968,7 +968,7 @@ export function FootprintsStageWorkspace({
      footprint={footprint} updateFootprint={updateFootprint}
      sharedAssets={sharedAssetRegistry.assets} onImportAssets={sharedAssetRegistry.addFiles}
      onRemoveAsset={sharedAssetRegistry.removeAsset} assetNotice={sharedAssetRegistry.notice}
-     experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFloorCanvas={floorCanvas}
+     experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFrameRef={experimentFrameRef} experimentFloorCanvas={floorCanvas}
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput}
