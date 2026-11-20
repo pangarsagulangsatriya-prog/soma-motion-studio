@@ -131,6 +131,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const liquidPhaseRef=useRef(liquidPhase);liquidPhaseRef.current=liquidPhase;
  const liquidFlowRef=useRef(liquidFlow);liquidFlowRef.current=liquidFlow;
  const liquidDemoStart=useRef(0);
+ const liquidPaintErrorRef=useRef('');
  useEffect(()=>{liquidDemoStart.current=performance.now();},[liquidMode,liquidPhase]);
  useEffect(()=>{
   if(mapMode||!liquidEnabled)return;
@@ -459,7 +460,14 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       widthPx:118,lengthPx:190,flow:liquidFlowRef.current,lifeMs:9000
      });
      liquidFrame=true;
-    }catch{liquidFrame=false;}
+    }catch(err){
+     liquidFrame=false;
+     const message='Liquid Imprint render gagal: '+String(err);
+     if(liquidPaintErrorRef.current!==message){
+      liquidPaintErrorRef.current=message;
+      setLiquidStatus(message);
+     }
+    }
    }
    // CP-03: paint imported composition layers over the live FLOOR monitor.
    // The source scene remains visible underneath transparent pixels. This is
