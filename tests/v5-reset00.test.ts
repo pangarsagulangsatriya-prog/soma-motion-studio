@@ -49,7 +49,10 @@ test('RESET-00: no gallery, visual Inspector or Hydra GPU engine in Stage/Compos
   'ARTISTIC_CATALOG','MOTION_RECIPE_TRIGGERS','Effect Recipe']){
   assert.ok(!stage.includes(legacy)&&!compose.includes(legacy),'Legacy renderer still referenced: '+legacy);
  }
- assert.match(compose,/Media &amp; Layers/);
+ assert.match(compose,/className="soma-ia-media"/);
+ assert.match(compose,/className="s64-upload"/);
+ assert.match(compose,/onImportAssets|onRemoveAsset/);
+ assert.match(compose,/className="soma-ia-layers"/);
  assert.match(compose,/ComposerEventTimeline capture=\{timelineCapture\}/);
  assert.match(stage,/FloorInteractionEngine/);
  assert.match(stage,/useSharedAssetRegistry/);
