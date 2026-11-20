@@ -2,7 +2,7 @@
  * PixiJS v8 and the native WebGL2 reference import this exact function.
  * Every phase stays INSIDE the immutable GEO-01B anatomical alpha mask.
  */
-export const MATERIAL03_GLSL=String.raw\`
+export const MATERIAL03_GLSL=String.raw`
 float matHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float matNoise(vec2 p){
  vec2 i=floor(p),f=fract(p);
@@ -77,4 +77,4 @@ vec3 mat03Pigment(
  pigment*=residue;
  return clamp(pigment,0.,1.);
 }
-\`;
+`;
