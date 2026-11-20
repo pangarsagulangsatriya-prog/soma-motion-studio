@@ -34,6 +34,10 @@ try{
  await page.getByRole('button',{name:'Compose workspace'}).click();
  const composer=page.getByRole('region',{name:'Compose Workspace — media dan layer'});
  await composer.waitFor({timeout:20000});
+ // Workspace navigation deliberately triggers a software BLACKOUT.
+ // Respect the existing operator safety gate before inspecting pixels.
+ const resume=page.getByRole('button',{name:'Resume preview'});
+ if(await resume.count())await resume.first().click();
  const controls=composer.getByRole('region',{name:'Material MAT-03 Liquid Imprint'});
  await controls.waitFor({timeout:15000});
  try{
