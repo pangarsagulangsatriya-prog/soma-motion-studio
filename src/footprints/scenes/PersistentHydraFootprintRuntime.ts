@@ -106,7 +106,12 @@ export class PersistentHydraFootprintRuntime {
   const feedback=()=>Math.min(.65,this.settings.feedback*(.25+.75*this.motion.energy));
   const mix=()=>clamp01(this.settings.mix);
   let graph;
-  if(style==='grain'){
+  // FV-02/03 materials already apply local grain, UV displacement and
+  // bounded feedback. Feeding Hydra global noise/feedback over them obscures
+  // all contours and can accumulate dark flicker over the entire stage.
+  if(materialMode(this.settings)!==null){
+   graph=source();
+  }else if(style==='grain'){
    graph=source().modulate(h.noise(3,.1),amount).blend(h.noise(20,.12),()=>mix()*.12);
   }else if(style==='echo'){
    graph=source().blend(h.src(h.o0).scale(1.008).rotate(.002),feedback);
