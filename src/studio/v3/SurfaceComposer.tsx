@@ -9,33 +9,22 @@ import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stag
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
 import {SOFTWARE_PREVIEW_BLACKOUT_EVENT} from './stagePreviewCommands.ts';
 import './SurfaceComposer.css';
-import type {FloorSceneId} from '../../footprints/scenes/sceneRegistry.ts';
-import {COMPOSE_SCENES} from './composeWorkspaceModel.ts';
 import {canRenderComposeSurface} from './composePreviewGate.ts';
-import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
-import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
-import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
-import {flagshipHydraPatch,type FlagshipId} from './flagshipVisualModel.ts';
 import {ComposerEventTimeline,type TimelineMode} from './ComposerEventTimeline.tsx';
 import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timelineFootprintVisibility,type TimelineCapture} from './composerEventTimelineModel.ts';
-import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
-import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings,type HydraFootprintStyle} from '../../footprints/scenes/hydraFootprintModel.ts';
-import './vis-r3-gallery.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRule,
  resolveMotionRecipeCue,motionRecipeEnvelope,type MotionRecipeRule,type MotionRecipeCue} from '../../footprints/scenes/motionRecipeModel.ts';
 import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
+import {V5_COMPOSER_KEY,V5_PRESET_KEY,stripRetiredVisualLayers,resetOldVisualStorage} from './resetVisualMigration.ts';
 import {FootprintDemo,LegDemo} from './MappingStudioDemo.tsx';
 import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
-import {HydraEffectInspector} from './HydraEffectInspector.tsx';
-import {FlagshipInspector} from './FlagshipInspector.tsx';
-import {activeFlagshipForSettings} from './flagshipInspectorModel.ts';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
 import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
-import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
+import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
 import {sharedAssetChoices,SHARED_TRACK_MP4_ID,type SharedAsset} from './sharedAssetModel.ts';
 import {normalizedCanvasPoint,pickTopmostObject,nudgeLayer} from './composerObjectSelection.ts';
@@ -46,8 +35,8 @@ type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;
 type Composition=Record<Surface,Layer[]>;
 type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
 const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
-const key='soma-s64-composer-v1';
-const presetKey='soma-s64-presets-v1';
+const key=V5_COMPOSER_KEY;
+const presetKey=V5_PRESET_KEY;
 const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
 const validFootprint=(v:unknown):v is FootprintConfig=>{
@@ -83,14 +72,9 @@ type Props={
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFloorCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentReady?:boolean;
- visualFloorCanvas?:RefObject<HTMLCanvasElement|null>;previewFloorEnabled?:boolean;
  /** Software-only composited FLOOR overlay in the shared three-monitor shell. */
  composePreviewCanvas?:RefObject<HTMLCanvasElement|null>;
- archiveHydraCanvas?:RefObject<HTMLCanvasElement|null>;
- onArchiveHydraChange?:(enabled:boolean)=>void;
- hydraSettings?:HydraFootprintSettings;
- onHydraSettingsChange?:(patch:Partial<HydraFootprintSettings>)=>void;
- hydraStatus?:string;previewResumeRevision?:number;previewBlackout?:boolean;
+ previewResumeRevision?:number;previewBlackout?:boolean;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  router:MultiPoseGaitRouter;floorTracker:LiveFloorTrackingEngine;projection:Projection;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;floorReady:boolean;
@@ -98,9 +82,9 @@ type Props={
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
- embedded?:boolean;mapMode?:boolean;sceneId?:'footprints'|FloorSceneId;onSceneChange?:(id:'footprints'|FloorSceneId)=>void;
+ embedded?:boolean;mapMode?:boolean;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,sceneId='footprints',onSceneChange,visualFloorCanvas,previewFloorEnabled=false,composePreviewCanvas,motionEvents,motionSession,archiveHydraCanvas,onArchiveHydraChange,hydraSettings,onHydraSettingsChange,hydraStatus,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const [selected,setSelected]=useState<Surface>('FLOOR');
@@ -108,8 +92,20 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  useEffect(()=>{if(experimentSource)setPreviewArrangement('input');else setPreviewArrangement('surface');},[experimentSource]);
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
- const history=useCompositionHistory<Composition>(()=>{try{const p=JSON.parse(localStorage.getItem(key)||'null');return valid(p)?p.composition:initial();}catch{return initial();}});
+ const history=useCompositionHistory<Composition>(()=>{
+  try{
+   const current=JSON.parse(localStorage.getItem(key)||'null');
+   const legacy=JSON.parse(localStorage.getItem('soma-s64-composer-v1')||'null');
+   const snapshot=valid(current)?current:valid(legacy)?legacy:null;
+   if(!snapshot)return initial();
+   const cleaned=stripRetiredVisualLayers(snapshot.composition) as Composition;
+   for(const surface of surfaces)if(!cleaned[surface]?.length)
+    cleaned[surface]=initial()[surface];
+   return cleaned;
+  }catch{return initial();}
+ });
  const composition=history.value,setComposition=history.set;
+ useEffect(()=>{try{resetOldVisualStorage(localStorage);}catch{}},[]);
  const [inspectorTab,setInspectorTab]=useState<'scene'|'layer'|'object'>('scene');
  const [dragLayer,setDragLayer]=useState<number|null>(null);
  const [dropLayer,setDropLayer]=useState<number|null>(null);
@@ -117,14 +113,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [saveStatus,setSaveStatus]=useState('Tersimpan lokal');
  const [loadingMedia,setLoadingMedia]=useState(0);
  const media=sharedAssets;
- const [archiveHydra,setArchiveHydra]=useState(false);
- const archiveHydraRef=useRef(archiveHydra);archiveHydraRef.current=archiveHydra;
- const [riftSourceId,setRiftSourceId]=useState('@stage:input');
- const riftSourceRef=useRef(riftSourceId);riftSourceRef.current=riftSourceId;
- const archiveReadyRef=useRef(false);
- const [riftReady,setRiftReady]=useState(false);
- const onArchiveHydraChangeRef=useRef(onArchiveHydraChange);
- onArchiveHydraChangeRef.current=onArchiveHydraChange;
  const [selectedLayer,setSelectedLayer]=useState(0);
  const [presets,setPresets]=useState<{name:string;snapshot:Snapshot}[]>(()=>{try{const p=JSON.parse(localStorage.getItem(presetKey)||'[]');return Array.isArray(p)?p.filter(x=>x?.name&&valid(x.snapshot)).slice(0,30):[];}catch{return [];}});
  const [presetName,setPresetName]=useState('New composition');
@@ -175,9 +163,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const activeMotionSession=useRef<string|null>(null);
  const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
- const sceneCanvases=useRef(new Map<string,HTMLCanvasElement>());
- const sceneRuntimes=useRef(new Map<string,ComposedSceneRuntime>());
- const sceneReplaySeen=useRef(new Map<string,string>());
  const previewLayerAlpha=useRef(new Map<string,number>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
  const floorOutput=useRef<HTMLCanvasElement>(null);
@@ -198,12 +183,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  
  const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const motionEventsRef=useRef(motionEvents);motionEventsRef.current=motionEvents;
- const lastVerifiedContactRef=useRef<{id:string;seenAtMs:number}>({id:'',seenAtMs:0});
- const [visualWaitingForContact,setVisualWaitingForContact]=useState(false);
- const waitingForContactRef=useRef(false);
- const [visualMaterialEmpty,setVisualMaterialEmpty]=useState(false);
- const materialEmptyRef=useRef(false);
- const materialProbe=useRef<{canvas:HTMLCanvasElement;ctx:CanvasRenderingContext2D;lastMs:number;visible:boolean}|null>(null);
  const [timelineCapture,setTimelineCapture]=useState<TimelineCapture>(()=>emptyTimelineCapture());
  const timelineCaptureRef=useRef(timelineCapture);timelineCaptureRef.current=timelineCapture;
  const [timelineMode,setTimelineMode]=useState<TimelineMode>('live');
