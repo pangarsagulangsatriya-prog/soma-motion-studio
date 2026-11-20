@@ -1163,8 +1163,11 @@ export function FootprintsStageWorkspace({
      hydraSettings={hydraSettings} onHydraSettingsChange={updateHydra} hydraStatus={hydraStatus}
      previewResumeRevision={previewResumeRevision} previewBlackout={softwareBlackout}
      archiveHydraCanvas={archiveHydraCanvas}
-     onArchiveHydraChange={enabled=>{archiveHydraReady.current=enabled;
-      if(enabled)setHydraSettings(v=>v.enabled?v:normalizeHydraFootprintSettings({...v,enabled:true}));}}
+     onArchiveHydraChange={enabled=>{
+      if(!enabled&&archiveHydraReady.current)hydraRuntime.current.resetFeedback();
+      archiveHydraReady.current=enabled;
+      if(enabled)setHydraSettings(v=>v.enabled?v:normalizeHydraFootprintSettings({...v,enabled:true}));
+     }}
      frameRef={frameRef} videoRef={videoRef}
      router={router} floorTracker={tracker} projection={projection}
      cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
