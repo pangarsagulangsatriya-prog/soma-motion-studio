@@ -10,6 +10,10 @@ import {FootstepEventEngine,createFloorSession}
  from '../src/footprints/spatial/events.ts';
 import {defaultFloorSpace} from '../src/footprints/spatial/coordinates.ts';
 import {paintFloorCanvas} from '../src/footprints/simulator/floorCanvas.ts';
+import {feedLiveFloorInteractions} from '../src/footprints/scenes/interactionAdapters.ts';
+import type {MotionFrame} from '../src/engine/types.ts';
+import type {MultiPoseStatus} from '../src/footprints/live/MultiPoseGaitRouter.ts';
+import type {LiveFloorTrackingEngine} from '../src/footprints/live/LiveFloorTrackingEngine.ts';
 
 const anchor={x:.45,y:.55,headingRad:0,atMs:100};
 test('GEO-01B: heel settles; toe-off requires actual release evidence',()=>{
@@ -131,4 +135,40 @@ test('GEO-01B: painter changes toe coordinates without canvas state leaks',()=>{
   deformation:{mode:'toe-off',amount:.9}});
  assert.equal(toes.length,5);
  assert.notDeepEqual(toes,first);
+});
+
+test('GEO-01B: camera gait clock is rebased and small calibrated slides stay non-stamping',()=>{
+ const engine=new FloorInteractionEngine();
+ engine.reset('camera');
+ const floor=defaultFloorSpace();
+ const pose=Array.from({length:33},()=>({x:.5,y:.8,visibility:1}));
+ const frame={source:'camera',tracked:true,time:10000,pose} as unknown as MotionFrame;
+ const tracker={
+  isConfirmed:true,calibrationData:null,floor,sessionEpoch:2,
+  session:{events:[{
+   id:'foot-1',kind:'contact',source:'camera',performerId:'performer-1',
+   foot:'left',timestampMs:480,positionM:{xM:1,yM:1},
+   headingRad:0,confidence:.9
+  }]},
+  status:{lastSeenMs:500,footMotions:[{
+   performerId:'performer-1',foot:'left',motion:'slide',confidence:.9,
+   atMs:500,positionM:{xM:1.05,yM:1},headingRad:0
+  }]}
+ } as unknown as LiveFloorTrackingEngine;
+ feedLiveFloorInteractions(engine,{
+  source:'camera',frame,identity:{} as MultiPoseStatus,
+  performerCount:1,tracker,cameraMatched:true,videoAspect:16/9,nowMs:10050
+ });
+ const contact=engine.recent.find(e=>e.kind==='contact');
+ const slide=engine.recent.find(e=>e.kind==='slide');
+ assert.ok(contact&&slide);
+ assert.equal(contact.atMs,10030);
+ assert.equal(slide.atMs,10050);
+ assert.equal(engine.snapshot.counts.contact,1);
+ assert.equal(floorEventCanStamp(slide),false);
+ const deformed=deformationAt({x:contact.x,y:contact.y,
+  headingRad:contact.headingRad,atMs:contact.atMs},10070,{
+   kind:'slide',atMs:slide.atMs,x:slide.x,y:slide.y
+  });
+ assert.equal(deformed.mode,'slide');
 });
