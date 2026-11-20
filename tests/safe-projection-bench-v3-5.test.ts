@@ -52,7 +52,7 @@ test('V3.5 default FLOOR artwork reads original clean canvas, not software inter
  assert.match(composer,/floorCanvas,cameraOn,bodySelected/);
  assert.match(composer,/for\(const \{layer,kind\} of composerLayerOrder\(/);
  assert.match(composer,/if\(experiment&&physical\)return/);
- assert.match(composer,/kind==='floor'\?\(experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+ assert.match(composer,/kind==='floor'\?\(timelineModeRef\.current==='replay'&&!physical\?null:experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
  assert.match(composer,/floorMedia=floorReadyRef\.current/);
  assert.match(stage,/ref=\{floorCanvas\}/);
  assert.match(stage,/ref=\{interactionCanvas\}/);
