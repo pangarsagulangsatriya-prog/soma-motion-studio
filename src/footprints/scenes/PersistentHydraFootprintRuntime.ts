@@ -20,6 +20,10 @@ export class PersistentHydraFootprintRuntime {
  private graphSignature='';
  private lastAt=0;
  private lastFrameMs=0;
+ private lastPixelProbeMs=0;
+ private pixelProbeCanvas:HTMLCanvasElement|null=null;
+ private pixelProbeContext:CanvasRenderingContext2D|null=null;
+ private readableMaterial=true;
  private seen=new Set<string>();
  private generation=-1;
  private motion:HydraMotionUniforms={...HYDRA_MOTION_IDLE};
@@ -44,6 +48,16 @@ export class PersistentHydraFootprintRuntime {
   catch(error){this.fail(error instanceof Error?error.message:'Hydra reset failed');}
  }
  get output(){return this.status==='ready'?this.outputCanvas:null;}
+ /** Compose copies the WebGL canvas after the GPU has presented a frame.
+  * Its non-preserved drawing buffer can read black even while Hydra is READY.
+  * A flagship uses Hydra source() directly, so the persistent 2D input holds
+  * exactly the shader material intended for composition.
+  */
+ get compositingSource():HTMLCanvasElement|null{
+  if(this.status!=='ready')return null;
+  return materialMode(this.settings)!==null?this.sourceCanvas:this.outputCanvas;
+ }
+ get previewDiagnostic(){return this.reason;}
  get motionUniforms(){return {...this.motion};}
  /** A retained software buffer; never a projector destination. */
  async initialize(canvas:HTMLCanvasElement,settings:HydraFootprintSettings){
@@ -62,6 +76,9 @@ export class PersistentHydraFootprintRuntime {
     const ctx=input.getContext('2d',{alpha:false});
     if(!ctx)throw Error('2D input texture unavailable');
     this.sourceCanvas=input;this.sourceContext=ctx;
+    this.pixelProbeCanvas=document.createElement('canvas');
+    this.pixelProbeCanvas.width=32;this.pixelProbeCanvas.height=18;
+    this.pixelProbeContext=this.pixelProbeCanvas.getContext('2d',{willReadFrequently:true});
     this.artCanvas=document.createElement('canvas');this.artCanvas.width=640;this.artCanvas.height=360;
     // A second offscreen WebGL2 material pass supplies the existing Hydra s0.
     // If WebGL2 is unavailable, keep using the artistic 2D canvas as source.
@@ -128,7 +145,24 @@ export class PersistentHydraFootprintRuntime {
   graph.out(h.o0);
   h.render(h.o0);
  }
- tick(source:HTMLCanvasElement|null,events:readonly FootMotionEventV2[],
+ /** Cheap reduced-resolution signal test: catches a black GPU material
+  * before it enters Composer. Never touches physical projector output. */
+ private materialHasSignal(canvas:HTMLCanvasElement,nowMs:number):boolean{
+  if(!this.pixelProbeContext||nowMs-this.lastPixelProbeMs<350)return this.readableMaterial;
+  this.lastPixelProbeMs=nowMs;
+  const ctx=this.pixelProbeContext;
+  try{
+   ctx.clearRect(0,0,32,18);ctx.drawImage(canvas,0,0,32,18);
+   const image=ctx.getImageData(0,0,32,18).data;
+   let lit=0;
+   for(let i=0;i<image.length;i+=4){
+    if(Math.max(image[i],image[i+1],image[i+2])>28)lit++;
+   }
+   this.readableMaterial=lit>=2;
+  }catch{this.readableMaterial=false;}
+  return this.readableMaterial;
+ }
+  tick(source:HTMLCanvasElement|null,events:readonly FootMotionEventV2[],
   generation:number,nowMs:number,archiveSource=false){
   if(this.destroyed||this.status!=='ready'||!this.engine||!this.sourceContext||!source)return;
   if(!Number.isFinite(nowMs))return;
@@ -211,6 +245,10 @@ export class PersistentHydraFootprintRuntime {
      }
     }
     this.sourceContext.drawImage(materialSource,0,0,640,360);
+    if(mode&&this.art.contactCount>0&&!this.materialHasSignal(this.sourceCanvas!,nowMs)){
+     this.sourceContext.drawImage(this.artCanvas,0,0,640,360);
+     this.reason='Material GPU kosong · render artistik digunakan';
+    }else if(this.reason==='Material GPU kosong · render artistik digunakan')this.reason='';
    }else if(source.width&&source.height)this.sourceContext.drawImage(source,0,0,640,360);
    // Seen IDs survive bounded history changes and prohibit re-triggering a paused event.
    for(const e of events){
@@ -245,7 +283,8 @@ export class PersistentHydraFootprintRuntime {
   try{this.outputCanvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}catch{}
   this.engine=null;this.sourceCanvas=null;this.sourceContext=null;this.outputCanvas=null;
   this.gpuMaterial?.dispose();this.gpuMaterial=null;
-  this.artCanvas=null;this.art.reset(-1);this.materialSeen.clear();this.graphSignature='';
+  this.artCanvas=null;this.pixelProbeCanvas=null;this.pixelProbeContext=null;
+  this.art.reset(-1);this.materialSeen.clear();this.graphSignature='';
   this.seen.clear();this.loading=null;
  }
 }
