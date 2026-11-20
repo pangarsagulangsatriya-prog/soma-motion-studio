@@ -241,7 +241,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}
    <section className="ops-r1-cue-grid" aria-label="Cue presets · delapan slot">
-    <div className="ops-r1-next-cue" aria-label="Ringkasan cue aktif dan berikutnya">
+    <div className="ops-r1-next-cue" aria-label="Ringkasan cue aktif dan berikutnya" title={cue.description}>
      <div className="ops-r1-cue-now">
       <small>AKTIF</small>
       <strong>{currentSlot.label}</strong>
