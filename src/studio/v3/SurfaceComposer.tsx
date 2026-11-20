@@ -169,6 +169,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
  const sceneCanvases=useRef(new Map<string,HTMLCanvasElement>());
  const sceneRuntimes=useRef(new Map<string,ComposedSceneRuntime>());
+ const sceneReplaySeen=useRef(new Map<string,string>());
  const previewLayerAlpha=useRef(new Map<string,number>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
  const floorOutput=useRef<HTMLCanvasElement>(null);
@@ -387,9 +388,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    sceneRuntimes.current.set(layerId,runtime);
   }
   if(timelineModeRef.current==='replay'){
-   runtime.replay(timelineAt(timelineCaptureRef.current,timelinePositionRef.current));
+   const visible=timelineAt(timelineCaptureRef.current,timelinePositionRef.current);
+   const token=timelineCaptureRef.current.session+':'+visible.length+':'+(visible.at(-1)?.id??'');
+   if(sceneReplaySeen.current.get(layerId)!==token){
+    runtime.replay(visible);sceneReplaySeen.current.set(layerId,token);
+   }
    runtime.paint(canvas,timelinePositionRef.current);
   }else{
+   if(sceneReplaySeen.current.has(layerId)){
+    sceneReplaySeen.current.delete(layerId);
+    runtime.skipExisting(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown');
+   }
    runtime.ingest(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown',atMs,true);
    runtime.paint(canvas,atMs);
   }
@@ -398,11 +407,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  useEffect(()=>{
   const active=new Set(surfaces.flatMap(surface=>composition[surface].map(layer=>layer.id)));
   for(const id of sceneRuntimes.current.keys())if(!active.has(id)){
-   sceneRuntimes.current.delete(id);sceneCanvases.current.delete(id);
+   sceneRuntimes.current.delete(id);sceneCanvases.current.delete(id);sceneReplaySeen.current.delete(id);
   }
  },[composition]);
  useEffect(()=>()=>{
-  sceneCanvases.current.clear();sceneRuntimes.current.clear();
+  sceneCanvases.current.clear();sceneRuntimes.current.clear();sceneReplaySeen.current.clear();
  },[]);
   const readyMedia=(s:Surface)=>{
   return compositionRef.current[s].some(l=>{
@@ -426,7 +435,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
    if(overlayOnly&&kind!=='media')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
-    kind==='floor'?(experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
+    kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
     kind==='hydra'?(!physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
     kind==='body'?bodyCanvas.current:
@@ -589,16 +598,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   const consume=()=>{
    const events=motionEventsRef.current?.()??[];
    const session=motionSessionRef.current?.()??'unknown';
-   if(timelineModeRef.current==='live'&&events.length){
-    setTimelineCapture(previous=>collectTimelineEvents(previous,events,session,performance.now()));
-   }
    if(activeMotionSession.current!==session){
     activeMotionSession.current=session;motionClocks.current.clear();seenMotionEvents.current.clear();
     setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);
     // Do not re-trigger historical contacts when opening Compose or switching source.
     for(const old of events)seenMotionEvents.current.add(old.eventId);
+    setTimelineCapture(emptyTimelineCapture(session));
     timeout=window.setTimeout(consume,85);return;
    }
+   if(timelineModeRef.current==='live'&&events.length)
+    setTimelineCapture(previous=>collectTimelineEvents(previous,events,session,performance.now()));
    for(const event of events.slice(-120)){
     if(seenMotionEvents.current.has(event.eventId))continue;
     seenMotionEvents.current.add(event.eventId);
