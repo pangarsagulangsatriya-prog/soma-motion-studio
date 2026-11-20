@@ -102,6 +102,21 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
    engine.motion({...input,kind:e.kind==='release'?'release':turned?'pivot':'slide'});
   }
  }
+ // Slide/pivot may be detected well before the 12 cm metric move threshold.
+ // Render the gait hypothesis from calibrated foot XY; never stamp it or
+ // pass it to physical projector authorization.
+ for(const m of liveStatus.footMotions){
+  if((m.motion!=='slide'&&m.motion!=='pivot')||
+   m.confidence<.55||!visibleActors.has(m.performerId)||!m.positionM||
+   m.atMs===undefined||!Number.isFinite(m.atMs)||
+   Math.abs(liveStatus.lastSeenMs-m.atMs)>300)continue;
+  const uv=floorToUV(tracker.floor!,m.positionM);
+  engine.motion({source,
+   actorId:m.performerId,foot:m.foot,kind:m.motion,
+   eventId:'gait:'+tracker.sessionEpoch+':'+m.performerId+':'+m.foot+':'+m.atMs+':'+m.motion,
+   x:uv.x,y:uv.y,atMs:Math.max(0,m.atMs+clockOffset),
+   headingRad:m.headingRad,confidence:m.confidence,basis:'calibrated-estimate'});
+ }
 }
 export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
  frame:Extract<ExperimentalFrame,{kind:'video'}>){
