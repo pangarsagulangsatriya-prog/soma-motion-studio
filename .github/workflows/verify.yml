@@ -33,6 +33,9 @@ jobs:
       - name: GPU-02 actual WebGL2 material pixel QA
         if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
         run: node scripts/gpu02-material-browser-qa.mjs
+      - name: ENGINE-02 PixiJS v8 WebGL material and motion QA
+        if: contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02')
+        run: GPU02_RENDERER=pixi node scripts/gpu02-material-browser-qa.mjs
       - name: Upload authentic-footprint GPU screenshots
         if: always() && (contains(github.ref_name, 'gpu02') || contains(github.head_ref, 'gpu02'))
         uses: actions/upload-artifact@v4
@@ -41,5 +44,6 @@ jobs:
           path: |
             artifacts/geo01b
             artifacts/gpu02
+            artifacts/gpu02-pixi
           retention-days: 30
           if-no-files-found: warn
