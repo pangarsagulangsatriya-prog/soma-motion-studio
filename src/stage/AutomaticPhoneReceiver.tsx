@@ -175,10 +175,10 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
     <div className="soma-track-qr-frame"><PhonePairQr value={cameraUrl}/></div>
    </div>
    <p className="soma-track-static-qr-hint">
-    Scan di HP, lalu sambungkan lewat kode Manual.
+    Pindai QR di HP.
    </p>
    {onUseManual&&<button type="button" className="soma-setup-primary soma-track-create-qr"
-    onClick={onUseManual}>Lanjut Manual</button>}
+    onClick={onUseManual}>Lanjut ke Kode</button>}
   </div>;
  }
  return <div className="soma-auto-pair" data-phase={phase}

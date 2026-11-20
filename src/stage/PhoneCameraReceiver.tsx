@@ -1,4 +1,5 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
+import {CircleHelp,Copy,Link2,X} from 'lucide-react';
 import {AutomaticPhoneReceiver} from './AutomaticPhoneReceiver.tsx';
 import {UsbPhoneCameraReceiver} from './UsbPhoneCameraReceiver.tsx';
 import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
@@ -83,47 +84,124 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
   }catch(e){setConnection(e instanceof Error?e.message:'Kode jawaban gagal.');}
   finally{setBusy(false);}
  };
- const copy=async(text:string)=>{
-  try{await navigator.clipboard.writeText(text);setConnection('Kode disalin. Tempel melalui chat pribadi ke perangkat tujuan.');}
-  catch{setConnection('Pilih teks kode dan salin secara manual.');}
- };
  const url=phoneCameraUrl(window.location.origin,window.location.pathname);
- return <section className="soma-setup-phone" aria-label="Hubungkan kamera HP">
-  <h3>Gunakan HP sebagai kamera</h3>
-  <p>SOMA berjalan di laptop. HP cukup membuka halaman kamera melalui HTTPS, mengirim video tanpa audio, dan tetap menyala selama latihan.</p>
-  <p><b>Halaman HP:</b> <a href={url} target="_blank" rel="noreferrer">{url}</a></p>
-  <button type="button" onClick={()=>void copy(url)}>Salin tautan halaman HP</button>
-  <p className="soma-setup-hint">Pairing manual awal: salin kode OFFER ke HP lewat pesan pribadi; salin kode ANSWER kembali ke laptop. Kode panjang karena belum ada server signaling/QR room. Gunakan kedua perangkat di Wi-Fi sama.</p>
-  <button type="button" className="soma-setup-primary" disabled={busy} onClick={()=>void begin()}>
-   {busy?'Menyiapkan…':'1. Buat kode OFFER di laptop'}</button>
-  {offer&&<><label>Kode OFFER dari laptop
-    <textarea readOnly rows={3} value={offer} onFocus={e=>e.target.select()}/></label>
-    <button type="button" onClick={()=>void copy(offer)}>Salin OFFER</button>
-    <label>2. Tempel kode ANSWER dari HP
-     <textarea rows={3} value={answer} onChange={e=>setAnswer(e.target.value)}
-      placeholder="Paste kode dari halaman kamera HP…"/></label>
-    <button type="button" className="soma-setup-primary" disabled={!answer.trim()||busy}
-     onClick={()=>void apply()}>3. Sambungkan video HP ke SOMA</button>
+ const copy=async(text:string)=>{
+  try{
+   await navigator.clipboard.writeText(text);
+   setConnection(text===url?'Tautan disalin. Buka di HP.':'Kode disalin. Tempel ke halaman HP.');
+  }catch{setConnection('Salin melalui bagian Lihat tautan atau Lihat kode.');}
+ };
+ const connected=pc.current?.connectionState==='connected';
+ const showStatus=connection!=='Belum dipasangkan'&&connection!=='Koneksi HP ditutup.'&&
+  !connection.startsWith('Kirim kode OFFER');
+ return <section className="soma-manual-pair" aria-label="Pairing kamera HP lewat kode">
+  <div className="soma-manual-step">
+   <span className="soma-manual-number" aria-hidden="true">1</span>
+   <div className="soma-manual-step-text"><strong>Buka kamera di HP</strong></div>
+   <button type="button" className="soma-manual-copy" onClick={()=>void copy(url)}
+    title="Salin tautan halaman kamera ke HP"><Link2 size={14} aria-hidden="true"/> Salin tautan</button>
+  </div>
+  <details className="soma-manual-reveal">
+   <summary>Lihat tautan HP</summary>
+   <a href={url} target="_blank" rel="noreferrer" title="Buka halaman kamera di HP">{url}</a>
+  </details>
+  {!offer?<button type="button" className="soma-setup-primary soma-manual-primary" disabled={busy}
+    onClick={()=>void begin()}>
+    <span className="soma-manual-number" aria-hidden="true">2</span>
+    {busy?'Menyiapkan kode…':'Buat kode laptop'}
+   </button>:<>
+   <div className="soma-manual-step soma-manual-offer">
+    <span className="soma-manual-number" aria-hidden="true">2</span>
+    <div className="soma-manual-step-text"><strong>Kode laptop siap</strong></div>
+    <button type="button" className="soma-manual-copy" onClick={()=>void copy(offer)}
+     title="Salin kode laptop ke halaman HP"><Copy size={14} aria-hidden="true"/> Salin kode</button>
+   </div>
+   <details className="soma-manual-reveal">
+    <summary>Lihat kode laptop</summary>
+    <textarea readOnly rows={3} value={offer} aria-label="Kode OFFER laptop"
+     onFocus={e=>e.currentTarget.select()}/>
+   </details>
+   <label className="soma-manual-answer">
+    <span><span className="soma-manual-number" aria-hidden="true">3</span> Kode balasan HP</span>
+    <textarea rows={2} value={answer} onChange={e=>setAnswer(e.target.value)}
+     placeholder="Tempel kode dari HP…" aria-label="Tempel kode balasan HP"/>
+   </label>
+   <button type="button" className="soma-setup-primary soma-manual-primary" disabled={!answer.trim()||busy}
+    onClick={()=>void apply()}>{busy?'Menghubungkan…':'Sambungkan HP'}</button>
   </>}
-  <button type="button" className="soma-setup-secondary" onClick={stop}>Putuskan sambungan HP</button>
-  <div className="soma-setup-status" role="status">{connection}</div>
-  <small>WebRTC berusaha membuat jalur terenkripsi secara langsung. Pada jaringan yang memblokir koneksi peer-to-peer, TURN mungkin diperlukan; server relay belum disediakan pada MVP ini.</small>
+  {showStatus&&<div className="soma-manual-status" role="status" aria-live="polite"
+   data-phase={/gagal|ditolak|terputus|error/i.test(connection)?'error':connected?'connected':'info'}>
+   {connection}
+  </div>}
+  {(offer||connected)&&<button type="button" className="soma-manual-stop" onClick={stop}>
+   Putuskan
+  </button>}
  </section>;
 }
 
-/** CAM-03: Universal local cameras share one picker; QR/manual remain available. */
+/** Camera transport modes. Long instructions stay behind contextual help. */
 export function PhoneCameraReceiver({onStream,onDisconnect}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
 }){
  const [mode,setMode]=useState<'usb'|'qr'|'manual'>('usb');
- return <div className="soma-setup-phone-choices">
+ const [helpOpen,setHelpOpen]=useState(false);
+ const helpId=useId();
+ const helpButton=useRef<HTMLButtonElement>(null);
+ const helpPanel=useRef<HTMLElement>(null);
+ const staticPages=window.location.hostname.endsWith('github.io');
+ const guide=mode==='usb'?[
+  'Sambungkan kamera USB, HDMI capture, atau aktifkan webcam virtual.',
+  'Pilih nama kamera lalu klik Sambungkan.',
+  'Periksa gambar 16:9 dan ulangi Map bila sumber berubah.'
+ ]:mode==='qr'?(staticPages?[
+  'Pindai QR memakai kamera HP untuk membuka halaman pengirim.',
+  'Izinkan kamera pada HP.',
+  'Kembali ke laptop, pilih Kode untuk menyambungkan video.'
+ ]:[
+  'Klik Tampilkan QR, lalu pindai dengan HP.',
+  'Izinkan akses kamera HP.',
+  'Cek gambar sebelum melanjutkan Map.'
+ ]):[
+  'Salin tautan halaman kamera ke HP dan buka di browser HP.',
+  'Buat kode laptop, lalu salin ke halaman HP.',
+  'Tempel kode balasan dari HP dan klik Sambungkan HP.'
+ ];
+ useEffect(()=>{
+  if(!helpOpen)return;
+  const key=(e:KeyboardEvent)=>{
+   if(e.key==='Escape'){e.preventDefault();setHelpOpen(false);helpButton.current?.focus();}
+  };
+  const outside=(e:PointerEvent)=>{
+   const target=e.target as Node;
+   if(!helpButton.current?.contains(target)&&!helpPanel.current?.contains(target))setHelpOpen(false);
+  };
+  document.addEventListener('keydown',key);
+  document.addEventListener('pointerdown',outside);
+  return()=>{document.removeEventListener('keydown',key);document.removeEventListener('pointerdown',outside);};
+ },[helpOpen]);
+ return <div className="soma-setup-phone-choices soma-camera-pairing-compact">
   <div className="soma-setup-pair-tabs" role="group" aria-label="Metode sambungan kamera">
-   <button type="button" aria-pressed={mode==='usb'} onClick={()=>setMode('usb')} aria-label="Kamera USB, HDMI, atau virtual">Perangkat</button>
-   <button type="button" aria-pressed={mode==='qr'} onClick={()=>setMode('qr')} aria-label="HP melalui kode QR">
-    QR HP</button>
-   <button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')} aria-label="Pairing kode manual">
-    Kode</button>
+   <button type="button" aria-pressed={mode==='usb'}
+    onClick={()=>{setMode('usb');setHelpOpen(false);}} aria-label="Kamera USB, HDMI, atau virtual">Perangkat</button>
+   <button type="button" aria-pressed={mode==='qr'}
+    onClick={()=>{setMode('qr');setHelpOpen(false);}} aria-label="HP melalui kode QR">QR HP</button>
+   <button type="button" aria-pressed={mode==='manual'}
+    onClick={()=>{setMode('manual');setHelpOpen(false);}} aria-label="Pairing kode manual">Kode</button>
+   <button type="button" ref={helpButton} className="soma-camera-help-button"
+    title="Lihat petunjuk" aria-label="Petunjuk koneksi kamera" aria-expanded={helpOpen}
+    aria-controls={helpId} onClick={()=>setHelpOpen(value=>!value)}>
+    <CircleHelp size={17} aria-hidden="true"/>
+   </button>
   </div>
+  {helpOpen&&<section ref={helpPanel} id={helpId} className="soma-camera-help-pop"
+   role="dialog" aria-label="Panduan sambungan kamera" aria-modal={false}>
+   <header><strong>{mode==='usb'?'Kamera perangkat':mode==='qr'?'Kamera HP lewat QR':'Sambungkan dengan kode'}</strong>
+    <button type="button" onClick={()=>{setHelpOpen(false);helpButton.current?.focus();}}
+     aria-label="Tutup petunjuk"><X size={16} aria-hidden="true"/></button>
+   </header>
+   <ol>{guide.map((step,index)=><li key={index}>{step}</li>)}</ol>
+   {mode==='qr'&&staticPages&&<p>GitHub Pages membutuhkan pertukaran kode manual setelah QR dibuka.</p>}
+  </section>}
   {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>:mode==='qr'?
    <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
     onUseManual={()=>setMode('manual')}/>:

@@ -1059,7 +1059,7 @@ export function FootprintsStageWorkspace({
       {sourceStatus.selection==='phone'&&<section id="soma-track-phone-pairing" className="soma-track-phone-pairing"
        hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}
        aria-label="Hubungkan kamera universal">
-       <header className="soma-track-phone-heading"><strong>Pilih perangkat</strong>
+       <header className="soma-track-phone-heading"><strong>Koneksi</strong>
         <button type="button" aria-label="Tutup pilihan kamera" onClick={closePhonePanel}>×</button>
        </header>
        <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>

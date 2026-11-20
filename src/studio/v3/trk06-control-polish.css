@@ -513,3 +513,144 @@
  }
  .soma-camera-quick-connect .soma-usb-chevron{transform:translateY(-50%)!important}
 }
+
+
+/* TRK-CAM-HELP: compact pairing, contextual popover, restrained micro-interactions. */
+.soma-camera-pairing-compact{position:relative;gap:9px!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-pairing-compact>.soma-setup-pair-tabs{
+ grid-template-columns:repeat(3,minmax(0,1fr)) 38px!important;
+ gap:3px!important;align-items:center;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-pairing-compact .soma-setup-pair-tabs>button.soma-camera-help-button{
+ display:grid!important;place-items:center;
+ min-width:0;width:36px!important;height:35px;min-height:35px!important;
+ padding:0!important;border-radius:7px;cursor:pointer;
+ color:#c2d5bf;background:transparent!important;
+ transition:background-color .14s ease,color .14s ease,transform .14s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-help-button:is(:hover,[aria-expanded=true]){
+ color:#e5f4dc!important;background:#284432!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-help-button:active{transform:scale(.95)}
+.soma-camera-pairing-compact .soma-camera-help-pop{
+ position:absolute;z-index:30;top:43px;left:0;right:0;
+ padding:12px 13px 13px;border:1px solid #68866a;border-radius:10px;
+ background:#192c20;color:#e7f1df;box-shadow:0 12px 36px #0009;
+ max-height:min(360px,55dvh);overflow-y:auto;
+ animation:soma-help-reveal .16s ease both;
+}
+.soma-camera-help-pop>header{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.soma-camera-help-pop>header strong{font-size:13px;font-weight:700;line-height:1.4}
+.soma-camera-help-pop>header button{
+ display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;
+ padding:0;background:transparent;color:#c6dcc7;border:1px solid #445c4c;
+ border-radius:7px;cursor:pointer;
+}
+.soma-camera-help-pop>header button:hover{background:#304d37}
+.soma-camera-help-pop ol{margin:9px 0 0;padding-left:21px;font-size:12px;line-height:1.55;color:#c9dbca}
+.soma-camera-help-pop li{margin:0 0 6px;padding-left:3px}
+.soma-camera-help-pop p{font-size:11px;line-height:1.5;color:#b6cbb5;margin:8px 0 0}
+.soma-camera-pairing-compact .soma-manual-pair{
+ display:flex;flex-direction:column;gap:8px;width:100%;min-width:0;
+ animation:soma-help-reveal .18s ease both;
+}
+.soma-manual-pair .soma-manual-step{
+ display:flex;align-items:center;gap:9px;min-height:42px;min-width:0;
+ background:#14251a;border:1px solid #3d5942;border-radius:9px;
+ padding:6px 9px;box-sizing:border-box;
+}
+.soma-manual-pair .soma-manual-number{
+ flex:0 0 22px;display:inline-grid;place-items:center;
+ width:22px;height:22px;font-size:11px;font-weight:800;
+ background:#33533a;color:#e0efcb;border-radius:6px;
+}
+.soma-manual-pair .soma-manual-step-text{min-width:0;flex:1}
+.soma-manual-pair .soma-manual-step-text strong{
+ display:block;font-weight:650;font-size:12px;color:#e3eee0;
+}
+.soma-manual-pair .soma-manual-copy{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ flex:0 0 auto;min-height:31px!important;padding:6px 8px;
+ background:#284532;color:#e4efd9;border:1px solid #557159;
+ border-radius:7px;font-size:11px;font-weight:660;cursor:pointer;
+ transition:background-color .16s ease,transform .16s ease;
+}
+.soma-manual-pair .soma-manual-copy:hover{background:#3c6045}
+.soma-manual-pair .soma-manual-copy:active{transform:scale(.97)}
+.soma-manual-pair .soma-manual-reveal{
+ margin:0;padding:0 3px 0 30px;min-width:0;
+}
+.soma-manual-pair .soma-manual-reveal>summary{
+ width:max-content;max-width:100%;cursor:pointer;
+ font-size:11px;color:#aec8af;line-height:1.5;padding:2px 0;
+}
+.soma-manual-pair .soma-manual-reveal[open]{padding-bottom:5px}
+.soma-manual-pair .soma-manual-reveal :is(a,textarea){
+ display:block;box-sizing:border-box;width:100%;min-width:0;margin-top:6px;
+ color:#d5e6d0;font-size:11px;line-height:1.4;overflow-wrap:anywhere;
+}
+.soma-manual-pair .soma-manual-reveal textarea{
+ padding:8px;background:#101c15;border:1px solid #3f5f46;border-radius:7px;resize:vertical;
+}
+.soma-manual-pair .soma-manual-answer{
+ display:flex;flex-direction:column;gap:7px;
+ font-size:12px;color:#d7e9d3;font-weight:660;
+}
+.soma-manual-pair .soma-manual-answer>span{
+ display:flex;align-items:center;gap:9px;
+}
+.soma-manual-pair .soma-manual-answer textarea{
+ box-sizing:border-box;width:100%;min-width:0;min-height:60px;
+ background:#101e16;color:#e3eee0;border:1px solid #57715d;
+ border-radius:8px;font-size:12px;padding:9px;resize:vertical;
+}
+.soma-manual-pair .soma-manual-answer textarea::placeholder{color:#899f8e}
+.soma-manual-pair .soma-manual-primary{
+ display:flex;align-items:center;justify-content:center;gap:9px;
+ width:100%!important;min-height:42px!important;padding:10px!important;
+ border:1px solid #d5e9ae!important;background:#d4e8af!important;
+ color:#1a301e!important;font-size:12px!important;font-weight:730!important;
+ border-radius:9px!important;cursor:pointer;
+ transition:background-color .15s ease,transform .15s ease,box-shadow .15s ease;
+}
+.soma-manual-pair .soma-manual-primary .soma-manual-number{
+ background:#3e603f;color:#f0f7e1;
+}
+.soma-manual-pair .soma-manual-primary:hover:not(:disabled){
+ background:#e4f3c5!important;transform:translateY(-1px);box-shadow:0 3px 9px #0005;
+}
+.soma-manual-pair .soma-manual-primary:active:not(:disabled){transform:translateY(1px)}
+.soma-manual-pair .soma-manual-primary:disabled{opacity:.48;cursor:not-allowed}
+.soma-manual-pair .soma-manual-status{
+ padding:8px 9px;font-size:11px;line-height:1.45;
+ border-radius:8px;background:#263f2e;color:#cbdcc6;
+ animation:soma-help-reveal .15s ease both;
+}
+.soma-manual-pair .soma-manual-status[data-phase=error]{
+ background:#442d2a;color:#ffcbc2;
+}
+.soma-manual-pair .soma-manual-stop{
+ align-self:flex-end;min-height:30px;border:0;
+ background:transparent;color:#acbfac;font-size:11px;cursor:pointer;
+}
+.soma-manual-pair .soma-manual-stop:hover{color:#f3dacd}
+.soma-camera-pairing-compact :is(button,textarea,summary,a):focus-visible{
+ outline:2px solid #ddf0b5;outline-offset:2px;
+}
+@keyframes soma-help-reveal{
+ from{opacity:.65;transform:translateY(5px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@media(max-width:500px){
+ .soma-camera-help-pop{max-height:48dvh}
+ .soma-manual-pair .soma-manual-copy{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-camera-pairing-compact :is(.soma-manual-pair,.soma-camera-help-pop,button,.soma-manual-status){
+  animation:none!important;transition:none!important;transform:none!important;
+ }
+}
