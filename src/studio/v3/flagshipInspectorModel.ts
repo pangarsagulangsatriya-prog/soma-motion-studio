@@ -8,8 +8,7 @@ const COMMON={max:1} as const;
 export const FLAGSHIP_CONTROLS:Record<FlagshipId,readonly FlagshipControl[]>={
  trace:[
   {key:'mix',label:'Material density',description:'Tingkat keterlihatan lapisan material',...COMMON},
-  {key:'distortion',label:'Fracture',description:'Gangguan kontur di sekitar tapak',max:.4},
-  {key:'feedback',label:'Residual feedback',description:'Retensi Hydra yang terbatas',max:.65}
+  {key:'distortion',label:'Fracture',description:'Gangguan kontur di sekitar tapak',max:.4}
  ],
  echo:[
   {key:'feedback',label:'Memory',description:'Retensi gambar di framebuffer sebelumnya',max:.65},
@@ -18,8 +17,7 @@ export const FLAGSHIP_CONTROLS:Record<FlagshipId,readonly FlagshipControl[]>={
  ],
  rift:[
   {key:'distortion',label:'Archive displacement',description:'Jarak pergeseran piksel di sekitar kaki',max:.4},
-  {key:'mix',label:'Rupture strength',description:'Seberapa kuat arsip terbelah pada area kontak',...COMMON},
-  {key:'feedback',label:'Texture feedback',description:'Pengaturan global Hydra; RIFT lokal menjaga area arsip di luar kontak',max:.65}
+  {key:'mix',label:'Rupture strength',description:'Seberapa kuat arsip terbelah pada area kontak',...COMMON}
  ]
 };
 export function activeFlagshipForSettings(settings:HydraFootprintSettings|null|undefined):FlagshipId|null{
