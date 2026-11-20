@@ -36,16 +36,20 @@ try{
  const composeText=await compose.innerText();
  report.dom={headings,bodyPreview,composePreview:composeText.slice(0,1400)};
  console.log('V5_RESET_DOM_DIAG',JSON.stringify(report.dom));
- assert.ok(headings.some(t=>t.trim().toLowerCase()==='media & layers'),
-  'Expected Media & Layers panel; headings='+JSON.stringify(headings));
- assert.ok(composeText.includes('Katalog visual lama sudah dikosongkan'),
-  'Expected V5 reset notice; Compose text='+composeText.slice(0,450));
+ assert.equal(await compose.locator('details.soma-ia-media').count(),1,
+  'Media drawer must remain available after reset');
+ assert.equal(await compose.locator('details.soma-ia-layers').count(),1,
+  'Layer drawer must remain available after reset');
+ assert.equal(await compose.locator('details.cpux-timeline-drawer').count(),1,
+  'Timeline drawer must remain available after reset');
+ assert.equal(composeText.includes('Katalog visual lama sudah dikosongkan'),false,
+  'Retired reset notice must not remain visible');
  const oldSelectors=['.fv01-flagship-card','.fv04-live-canvas','.soma-ia-hydra','.fp-hydra-controls','.cp08-scene-card'];
  for(const selector of oldSelectors)assert.equal(await page.locator(selector).count(),0,'Retired control found '+selector);
  const oldTexts=['TRACE','ECHO','RIFT','Snowfall','Fireworks','Effect Recipe','Hydra shader'];
  const visibleText=await compose.innerText();
  for(const name of oldTexts)assert.ok(!visibleText.includes(name),'Retired visual '+name+' visible');
- report.checks.push('Compose: retired catalogs/effect controls absent; Media/Layers visible');
+ report.checks.push('Compose: retired catalogs/effect controls absent; Media and Layers available as drawers');
  await page.screenshot({path:directory+'/compose-reset.png',fullPage:true});
  await page.getByRole('button',{name:'Map workspace'}).click();
  await page.locator('.map-r1-workspace').waitFor({state:'visible',timeout:15000});
