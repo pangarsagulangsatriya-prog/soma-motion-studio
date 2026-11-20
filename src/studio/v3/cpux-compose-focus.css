@@ -248,7 +248,7 @@
  grid-column:2!important;grid-row:2!important;
 }
 #soma-compose-focus .s64-stage{display:block!important;}
-.fp-stage-workspace:has(#soma-compose-focus) .fp-stage-overview:not([hidden]){
+.fp-stage-workspace[data-workspace="compose"]:has(#soma-compose-focus) .fp-stage-overview:not([hidden]){
  display:none!important;
 }
 @media(max-width:960px){
