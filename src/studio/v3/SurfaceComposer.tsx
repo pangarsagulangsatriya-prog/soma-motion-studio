@@ -15,6 +15,8 @@ import {canRenderComposeSurface} from './composePreviewGate.ts';
 import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
 import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
 import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
+import {ComposerEventTimeline,type TimelineMode} from './ComposerEventTimeline.tsx';
+import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timelineFootprintVisibility,type TimelineCapture} from './composerEventTimelineModel.ts';
 import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
 import {HYDRA_FOOTPRINT_STYLES,type HydraFootprintSettings,type HydraFootprintStyle} from '../../footprints/scenes/hydraFootprintModel.ts';
 import './vis-r3-gallery.css';
@@ -187,6 +189,29 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  
  const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const motionEventsRef=useRef(motionEvents);motionEventsRef.current=motionEvents;
+ const [timelineCapture,setTimelineCapture]=useState<TimelineCapture>(()=>emptyTimelineCapture());
+ const timelineCaptureRef=useRef(timelineCapture);timelineCaptureRef.current=timelineCapture;
+ const [timelineMode,setTimelineMode]=useState<TimelineMode>('live');
+ const timelineModeRef=useRef(timelineMode);timelineModeRef.current=timelineMode;
+ const [timelinePlaying,setTimelinePlaying]=useState(false);
+ const [timelinePosition,setTimelinePosition]=useState(0);
+ const [timelineSpeed,setTimelineSpeed]=useState(1);
+ const timelinePositionRef=useRef(timelinePosition);timelinePositionRef.current=timelinePosition;
+ const playbackRef=useRef({playing:timelinePlaying,speed:timelineSpeed});
+ playbackRef.current={playing:timelinePlaying,speed:timelineSpeed};
+ useEffect(()=>{
+  if(timelineMode!=='replay'||!timelinePlaying)return;
+  let last=performance.now();
+  const timer=window.setInterval(()=>{
+   const now=performance.now(),elapsed=Math.min(250,now-last);last=now;
+   const result=timelineStep(timelinePositionRef.current,elapsed,
+    Math.max(1000,timelineCaptureRef.current.events.at(-1)?.atMs??0),playbackRef.current.speed);
+   timelinePositionRef.current=result.positionMs;
+   setTimelinePosition(result.positionMs);
+   if(!result.playing)setTimelinePlaying(false);
+  },50);
+  return()=>window.clearInterval(timer);
+ },[timelineMode,timelinePlaying]);
  const motionSessionRef=useRef(motionSession);motionSessionRef.current=motionSession;
  const [eventInfo,setEventInfo]=useState('Menunggu trigger layer.');
  
@@ -361,8 +386,13 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    runtime.skipExisting(old,motionSessionRef.current?.()??'unknown');
    sceneRuntimes.current.set(layerId,runtime);
   }
-  runtime.ingest(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown',atMs,true);
-  runtime.paint(canvas,atMs);
+  if(timelineModeRef.current==='replay'){
+   runtime.replay(timelineAt(timelineCaptureRef.current,timelinePositionRef.current));
+   runtime.paint(canvas,timelinePositionRef.current);
+  }else{
+   runtime.ingest(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown',atMs,true);
+   runtime.paint(canvas,atMs);
+  }
   return canvas;
  };
  useEffect(()=>{
@@ -514,6 +544,23 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      ctx.fillStyle='#c8dbc9';ctx.font='13px sans-serif';ctx.fillText('BODY A/B',16,24);ctx.fillText('FLOOR',preview.width/2+16,24);
     }else render(ctx,selectedRef.current,preview.width,preview.height);
    }}
+   if(preview&&timelineModeRef.current==='replay'&&selectedRef.current==='FLOOR'&&
+    previewArrangementRef.current==='surface'&&!blackoutRef.current&&previewLiveRef.current){
+    const g=preview.getContext('2d');
+    if(g){
+     const marks=timelineFootprintVisibility(timelineCaptureRef.current,timelinePositionRef.current,
+      (footprint?.life??8)*1000);
+     g.save();g.globalCompositeOperation='screen';
+     for(const mark of marks){
+      g.save();g.globalAlpha=mark.opacity*.9;
+      g.translate(mark.x*preview.width,mark.y*preview.height);
+      g.fillStyle=footprint?.colors?.[mark.foot]??'#dce7df';
+      g.beginPath();g.ellipse(0,0,Math.max(3,(footprint?.size??30)*.22),
+       Math.max(7,(footprint?.size??30)*.5),0,0,Math.PI*2);g.fill();g.restore();
+     }
+     g.restore();
+    }
+   }
    const masks=maskCache.current;
    const live=previewLiveRef.current&&!blackoutRef.current;
    const cameraKey=floorRef.current.boundCamera;
@@ -542,8 +589,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   const consume=()=>{
    const events=motionEventsRef.current?.()??[];
    const session=motionSessionRef.current?.()??'unknown';
+   if(timelineModeRef.current==='live'&&events.length){
+    setTimelineCapture(previous=>collectTimelineEvents(previous,events,session,performance.now()));
+   }
    if(activeMotionSession.current!==session){
     activeMotionSession.current=session;motionClocks.current.clear();seenMotionEvents.current.clear();
+    setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);
     // Do not re-trigger historical contacts when opening Compose or switching source.
     for(const old of events)seenMotionEvents.current.add(old.eventId);
     timeout=window.setTimeout(consume,85);return;
@@ -749,7 +800,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
-  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div><div className="s64-bar"><span>{experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):`${selected} · ${cameraOn?'Camera connected':'Camera offline'} · ${selected==='FLOOR'?(floorReady?'Floor verified':'Floor not ready'):performerCount+' performer(s)'}`}</span><button onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>{editMask?'Selesai edit':'Edit mask'}</button><button onClick={openPreview}>Buka preview terpisah</button></div><ComposerEventTimeline capture={timelineCapture} positionMs={timelinePosition}
+    onSeek={ms=>{timelinePositionRef.current=ms;setTimelinePosition(ms);}}
+    mode={timelineMode} onModeChange={mode=>{
+     setTimelineMode(mode);
+     if(mode==='replay'){setSelected('FLOOR');setPreviewArrangement('surface');}
+    }} playing={timelinePlaying} onPlayingChange={setTimelinePlaying}
+    speed={timelineSpeed} onSpeedChange={setTimelineSpeed}
+    onClear={()=>{setTimelineCapture(emptyTimelineCapture(motionSessionRef.current?.()??'unknown'));
+     setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);}}/>
+   <div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
