@@ -36,7 +36,19 @@ try{
  await composer.waitFor({timeout:20000});
  const controls=composer.getByRole('region',{name:'Material MAT-03 Liquid Imprint'});
  await controls.waitFor({timeout:15000});
- await controls.getByText('Liquid Imprint · PixiJS v8 siap').waitFor({timeout:30000});
+ try{
+  await controls.getByText('Liquid Imprint · PixiJS v8 siap').waitFor({timeout:9500});
+ }catch(err){
+  const diagnostic=await page.evaluate(()=>({
+   inspector:document.querySelector('.mat03-compose-controls')?.textContent,
+   runtime:document.querySelector('.s64-runtime-status')?.textContent,
+   canvasExists:!!document.querySelector('canvas[aria-label="MAT-03 Liquid Imprint PixiJS preview only"]')
+  }));
+  result.diagnostic=diagnostic;
+  await page.screenshot({path:artifact+'/failure-init.png',fullPage:true});
+  console.error('MAT03_INIT_DIAGNOSTIC',JSON.stringify(diagnostic));
+  throw err;
+ }
  const stage=composer.locator('canvas[aria-label^="Visual preview composer"]');
  await stage.waitFor({timeout:10000});
  const pixels=()=>stage.evaluate(canvas=>{
