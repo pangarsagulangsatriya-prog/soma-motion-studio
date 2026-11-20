@@ -118,11 +118,11 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
  const [mode,setMode]=useState<'usb'|'qr'|'manual'>('usb');
  return <div className="soma-setup-phone-choices">
   <div className="soma-setup-pair-tabs" role="group" aria-label="Metode sambungan kamera">
-   <button type="button" aria-pressed={mode==='usb'} onClick={()=>setMode('usb')}>Semua kamera</button>
-   <button type="button" aria-pressed={mode==='qr'} onClick={()=>setMode('qr')}>
-    QR</button>
-   <button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>
-    Manual</button>
+   <button type="button" aria-pressed={mode==='usb'} onClick={()=>setMode('usb')} aria-label="Kamera USB, HDMI, atau virtual">Perangkat</button>
+   <button type="button" aria-pressed={mode==='qr'} onClick={()=>setMode('qr')} aria-label="HP melalui kode QR">
+    QR HP</button>
+   <button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')} aria-label="Pairing kode manual">
+    Kode</button>
   </div>
   {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/>:mode==='qr'?
    <AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
