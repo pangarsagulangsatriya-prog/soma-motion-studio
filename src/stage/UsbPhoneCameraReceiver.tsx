@@ -161,7 +161,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
    <div className="soma-usb-help-body">
     <p><b>USB / HP:</b> gunakan kabel data, aktifkan mode webcam.</p>
     <p><b>HDMI:</b> hubungkan melalui capture card USB.</p>
-    <p><b>OBS / IP / NDI:</b> aktifkan virtual webcam terlebih dulu.</p>
+    <p><b>OBS / IP / NDI:</b> aktifkan OBS Virtual Camera atau NDI Webcam Input terlebih dulu.</p>
    </div>
   </details>
  </section>;
