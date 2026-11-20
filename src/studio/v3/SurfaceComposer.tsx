@@ -15,7 +15,7 @@ import {canRenderComposeSurface} from './composePreviewGate.ts';
 import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
 import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
 import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
-import {flagshipHydraPatch,FLAGSHIP_RECIPES,type FlagshipId} from './flagshipVisualModel.ts';
+import {flagshipHydraPatch,type FlagshipId} from './flagshipVisualModel.ts';
 import {ComposerEventTimeline,type TimelineMode} from './ComposerEventTimeline.tsx';
 import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timelineFootprintVisibility,type TimelineCapture} from './composerEventTimelineModel.ts';
 import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
