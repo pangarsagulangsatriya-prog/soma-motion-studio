@@ -82,6 +82,7 @@ import './trk09-ux-polish.css';
 import './cp01-compose-shell.css';
 import './cp02-cp03-composition.css';
 import './cp04-compose-microinteraction.css';
+import './cpux-compose-focus.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
