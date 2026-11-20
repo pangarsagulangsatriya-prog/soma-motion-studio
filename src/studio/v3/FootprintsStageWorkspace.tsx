@@ -141,6 +141,7 @@ export function FootprintsStageWorkspace({
  const snowfallCanvas=useRef<HTMLCanvasElement>(null);
  const proceduralCanvas=useRef<HTMLCanvasElement>(null);
  const hydraFloorCanvas=useRef<HTMLCanvasElement>(null);
+ const hydraStablePreviewCanvas=useRef<HTMLCanvasElement|null>(null);
  const archiveHydraCanvas=useRef<HTMLCanvasElement|null>(null);
  const archiveHydraReady=useRef(false);
  const hydraRuntime=useRef<PersistentHydraFootprintRuntime>(new PersistentHydraFootprintRuntime());
@@ -305,6 +306,9 @@ export function FootprintsStageWorkspace({
      hydraRuntime.current.tick(cleanFloorOutput.current,engine.canonicalRecent,engine.generation,now);
     }
    }
+   // Stage material is a persistent 2D canvas. WebGL presentation buffers
+   // are not reliable sources for an asynchronously composited canvas.
+   hydraStablePreviewCanvas.current=hydraRuntime.current.compositingSource;
    const canvas=interactionCanvas.current;
    if(canvas&&!previewHoldRef.current)
     paintFloorInteractionOverlay(canvas,engine,time,Math.max(1200,footprint.life*1000));
@@ -1157,7 +1161,7 @@ export function FootprintsStageWorkspace({
      experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFloorCanvas={floorCanvas}
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
-     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraFloorCanvas}
+     bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput} visualFloorCanvas={hydraStablePreviewCanvas}
      composePreviewCanvas={composeFloorOverlay}
      previewFloorEnabled={hydraSettings.enabled&&hydraStatus==='ready'}
      hydraSettings={hydraSettings} onHydraSettingsChange={updateHydra} hydraStatus={hydraStatus}
