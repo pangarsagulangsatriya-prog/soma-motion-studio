@@ -54,19 +54,27 @@ void main(){
  float coverage=texture(uMask,vUV).a;
  if(coverage<.015)discard;
  vec2 local=vUV;
- float evolution=uTime*.15+uSeed*4.8;
- float field=fbm(local*8.+vec2(evolution*.48,-evolution));
- vec2 velocity=vec2(sin((local.y+field)*22.+evolution*2.),
-                      cos((local.x-field)*19.-evolution*1.8));
- vec2 advected=local+velocity*(.026*uFlow)*(1.+.25*sin(uAge*1.2));
- float ripple=sin(advected.y*48.+fbm(advected*13.+uSeed*8.)*9.-uTime*2.6);
- float filaments=pow(.5+.5*ripple,8.);
- float marbling=fbm(advected*18.+vec2(0.,uSeed*13.+evolution*.9));
- float mineral=clamp(.28+.72*marbling+.22*filaments,0.,1.);
- float edge=clamp(coverage*3.,0.,1.);
- vec3 pigment=mix(uTint*.42,uTint*1.20,mineral);
- pigment=mix(pigment,uTint*.92,.17*filaments);
- pigment*=.88+.12*edge;
+ float evolution=uTime*.38+uSeed*7.1;
+ vec2 drift=vec2(
+  fbm(local*6.8+vec2(evolution*.21,-evolution*.12)),
+  fbm(local*7.4+vec2(-evolution*.11,evolution*.26))
+ )-.5;
+ // Refract pigment coordinates, not the silhouette's alpha channel.
+ vec2 advected=local+drift*(.085*uFlow);
+ float pool=fbm(advected*10.0+vec2(evolution*.14,uSeed*12.));
+ float folds=fbm(advected*24.0+vec2(uSeed*6.,-evolution*.25));
+ float flowPhase=advected.y*27.+pool*13.-evolution*1.9;
+ float blade=1.-smoothstep(.05,.24,abs(sin(flowPhase)));
+ float branch=1.-smoothstep(.035,.21,abs(sin(
+  advected.x*19.-advected.y*9.+folds*12.+evolution)));
+ float caustic=clamp(blade*.78+branch*.42,0.,1.);
+ float pooled=clamp(pool*.94+folds*.16-.12,0.,1.);
+ // Deep ink channels and fine wet reflective ridges remain foot-shaped.
+ vec3 pigment=mix(uTint*.18,uTint*.91,pooled);
+ pigment+=uTint*(.58*caustic);
+ pigment+=vec3(.14,.16,.17)*pow(caustic,3.);
+ pigment=mix(pigment,uTint*.72,.12*(1.-coverage));
+ pigment*=.95+.05*sin(uAge*.8+uSeed*5.);
  outColor=vec4(clamp(pigment,0.,1.),coverage*uOpacity);
 }`;
 
