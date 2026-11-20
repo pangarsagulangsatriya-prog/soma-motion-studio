@@ -93,6 +93,60 @@ try{
  report.checks.push('Liquid pigment stays within original foot alpha');
  report.checks.push('Slide/pivot/release yield distinct GPU pixel captures');
  report.checks.push('A/B crossing and bounded idle/expiry captured');
+ // Temporal proof: identical stamped silhouette, moving internal pigment.
+ // The two frames are independently rendered from the same verified contact.
+ const temporal=await page.evaluate(()=>{
+  const stage=document.querySelector('#gpu02-stage');
+  if(!(stage instanceof HTMLCanvasElement)||!window.__gpu02QA)
+   throw Error('GPU02 stage unavailable for motion verification');
+  const c=document.createElement('canvas');c.width=stage.width;c.height=stage.height;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  if(!ctx)throw Error('Canvas2D temporal QA unavailable');
+  const pixels=(time)=>{
+   window.__gpu02QA.runScenario('one',time);
+   ctx.clearRect(0,0,c.width,c.height);
+   ctx.drawImage(stage,0,0);
+   return ctx.getImageData(0,0,c.width,c.height).data;
+  };
+  const first=pixels(10390),second=pixels(10990);
+  let overlapping=0,changed=0,union=0,silhouetteAgreement=0;
+  for(let i=0;i<first.length;i+=4){
+   const a=first[i+3]>48,b=second[i+3]>48;
+   if(a||b)union++;
+   if(a&&b){
+    silhouetteAgreement++;
+    overlapping++;
+    if(Math.abs(first[i]-second[i])+
+       Math.abs(first[i+1]-second[i+1])+
+       Math.abs(first[i+2]-second[i+2])>27)changed++;
+   }
+  }
+  return {
+   overlapping,changed,union,
+   movingPigmentRatio:changed/Math.max(1,overlapping),
+   stableSilhouetteRatio:silhouetteAgreement/Math.max(1,union)
+  };
+ });
+ report.temporal=temporal;
+ assert.ok(temporal.overlapping>1500,'Temporal mask too small or missing');
+ assert.ok(temporal.movingPigmentRatio>.12,
+  'Liquid pigment did not visibly move within the same contact: '+JSON.stringify(temporal));
+ assert.ok(temporal.stableSilhouetteRatio>.90,
+  'Foot silhouette changed while only pigment time advanced: '+JSON.stringify(temporal));
+ await page.evaluate(()=>window.__gpu02QA.runScenario('one',10390));
+ await page.locator('#gpu02-stage').screenshot({path:directory+'/flow-early-chromium.png'});
+ await page.evaluate(()=>window.__gpu02QA.runScenario('one',10990));
+ await page.locator('#gpu02-stage').screenshot({path:directory+'/flow-late-chromium.png'});
+ report.screenshots.push(directory+'/flow-early-chromium.png',directory+'/flow-late-chromium.png');
+ report.checks.push('Moving internal pigment across 600ms with stable footprint alpha silhouette');
+ const accelerated=await page.evaluate(()=>window.__gpu02QA.acceleratedSweep());
+ report.accelerated=accelerated;
+ assert.equal(accelerated.sampledMinutes,10);
+ assert.ok(accelerated.frames>=100);
+ assert.equal(accelerated.contexts,1);
+ assert.ok(accelerated.peakTextures<=32);
+ assert.equal(accelerated.finalTextures,0,'GPU textures failed to expire on long timeline');
+ report.checks.push('Accelerated 10-minute simulated event timeline keeps texture budget and expires all masks');
  assert.equal(report.errors.length,0,'Chromium errors: '+report.errors.join('; '));
  console.log('GPU02_PIXEL_QA_PASS',JSON.stringify(report));
 }catch(e){
