@@ -91,7 +91,24 @@ export type PixiLiquidStats={
 };
 function createFilter():Filter{
  return Filter.from({
-  gl:{fragment:PIXI_MATERIAL_FRAGMENT},
+  gl:{
+   // Explicit Pixi v8 filter-vertex contract (required by v8.23 types).
+   vertex:`
+in vec2 aPosition;
+out vec2 vTextureCoord;
+uniform vec4 uInputSize;
+uniform vec4 uOutputFrame;
+uniform vec4 uOutputTexture;
+void main(void){
+ vec2 position=aPosition*uOutputFrame.zw+uOutputFrame.xy;
+ position.x=position.x*(2.0/uOutputTexture.x)-1.0;
+ position.y=position.y*(2.0*uOutputTexture.z/uOutputTexture.y)-uOutputTexture.z;
+ gl_Position=vec4(position,0.0,1.0);
+ vTextureCoord=aPosition*(uOutputFrame.zw*uInputSize.zw);
+}
+`,
+   fragment:PIXI_MATERIAL_FRAGMENT
+  },
   resources:{
    liquidUniforms:{
     uAge:{value:0,type:'f32'},uSeed:{value:0,type:'f32'},
