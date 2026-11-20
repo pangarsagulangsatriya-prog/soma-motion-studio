@@ -104,7 +104,7 @@ export class PixiLiquidImprintCompositor{
   });
   app.ticker.stop();
   if(app.renderer.type!==1) {
-   app.destroy(true);
+   app.destroy(false);
    throw Error('ENGINE-02 WebGL renderer unavailable');
   }
   return new PixiLiquidImprintCompositor(canvas,app);
@@ -196,6 +196,7 @@ export class PixiLiquidImprintCompositor{
   if(this.destroyed)return;
   this.destroyed=true;
   for(const id of this.masks.keys())this.dispose(id);
-  this.app.destroy(true);
+  // React owns the HTML canvas. Destroy GPU resources without removing DOM.
+  this.app.destroy(false);
  }
 }
