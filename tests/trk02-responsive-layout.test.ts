@@ -10,16 +10,22 @@ const persistent=read('../src/studio/v3/persistent-stage-workspace.css');
 
 test('Track stays scoped; Compose styles load after Track overrides',()=>{
  const imports=[...stage.matchAll(/import '\.\/([\w-]+\.css)'/g)].map(m=>m[1]);
- assert.deepEqual(imports.slice(-12),[
+ assert.deepEqual(imports.slice(-13),[
  'trk02-layout.css','trk03-source-flow.css','trk04-feedback.css','trk06-control-polish.css',
  'trk06a-status-ownership.css','trk06c-micro-feedback.css','trk07-functional-layout.css',
  'trk08-mp4-compact.css','trk09-ux-polish.css',
- 'cp01-compose-shell.css','cp02-cp03-composition.css','cp04-compose-microinteraction.css'
+ 'cp01-compose-shell.css','cp02-cp03-composition.css','cp04-compose-microinteraction.css',
+ 'cpux-compose-focus.css'
  ]);
  assert.match(layout,/\.fp-stage-workspace\.fp-persistent-layout\.soma-ia-four-workspaces\[data-workspace=track\]/);
  assert.ok(!layout.includes('[data-workspace=compose]'));
  assert.ok(!layout.includes('[data-workspace=map]'));
  assert.ok(!layout.includes('[data-workspace=perform]'));
+ const focused=read('../src/studio/v3/cpux-compose-focus.css');
+ assert.match(focused,/data-workspace="compose"/);
+ assert.ok(!focused.includes('[data-workspace="track"]'),'No Track override in Composer polish');
+ assert.ok(!focused.includes('[data-workspace="map"]'),'No Map override in Composer polish');
+ assert.ok(!focused.includes('[data-workspace="perform"]'),'No Perform override in Composer polish');
 });
 
 test('desktop uses bounded 272px source rail and 960px 16:9 input',()=>{
