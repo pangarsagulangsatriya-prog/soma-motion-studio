@@ -218,6 +218,15 @@ export default function App(){
    throw error;
   }
  }
+ function mirrorPhoneCamera(){
+  if(activeCameraMode.current!=='phone'||!phoneLandscapeRef.current)return;
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  liveFloorEngine.revoke('Cermin kamera berubah; ulangi kalibrasi Map.');
+  multiPoseRouter.reset();setLiveFloorApproval(null);
+  const mirrored=phoneLandscapeRef.current.toggleMirror();
+  notify(mirrored?'Gambar dicerminkan. Kalibrasi Map perlu diperiksa ulang.':
+   'Cermin gambar dimatikan. Kalibrasi Map perlu diperiksa ulang.');
+ }
  function rotatePhoneCamera(){
   if(activeCameraMode.current!=='phone'||!phoneLandscapeRef.current)return;
   requestStageBlackout(()=>projection.setTransport('blackout'));
@@ -504,7 +513,7 @@ export default function App(){
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>{void switchFootprintsSource('webcam');}}
      onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
-     onRotatePhone={rotatePhoneCamera}
+     onRotatePhone={rotatePhoneCamera} onMirrorCamera={mirrorPhoneCamera}
      onEnterOperator={()=>{
       requestStageBlackout(()=>projection.setTransport('blackout'));
       setFootprintsOperator(true);setClean(false);
