@@ -54,6 +54,34 @@ try{
   await page.waitForTimeout(230);
   const v=await pixels();
   result.phases[phase]=v;
+  if(v.colored<=25){
+   const diagnostic=await page.evaluate(()=>{
+    const a=document.querySelector('canvas[aria-label^="Visual preview composer"]');
+    const b=document.querySelector('canvas[aria-label="MAT-03 Liquid Imprint PixiJS preview only"]');
+    const check=(source)=>{
+     if(!source)return null;
+     const scratch=document.createElement('canvas');
+     scratch.width=source.width;scratch.height=source.height;
+     const c=scratch.getContext('2d',{willReadFrequently:true});
+     c.drawImage(source,0,0);
+     const pixels=c.getImageData(0,0,scratch.width,scratch.height).data;
+     let colored=0,brightest=0;
+     for(let i=0;i<pixels.length;i+=4){
+      const m=Math.max(pixels[i],pixels[i+1],pixels[i+2]);
+      if(m>35)colored++;
+      brightest=Math.max(brightest,m);
+     }
+     return {colored,brightest,width:source.width,height:source.height};
+    };
+    return {preview:check(a),pixi:check(b),
+     inspector:document.querySelector('.mat03-compose-controls')?.textContent,
+     selected:document.querySelector('.uxr3-compose-preview-bar')?.textContent};
+   });
+   result.diagnostic=diagnostic;
+   await page.screenshot({path:artifact+'/failure-page.png',fullPage:true});
+   await stage.screenshot({path:artifact+'/failure-stage.png'});
+   console.error('MAT03_DIAGNOSTIC',JSON.stringify(diagnostic));
+  }
   assert.ok(v.colored>25,'No colored footprint pixels in Compose '+phase+': '+JSON.stringify(v));
   const file=artifact+'/'+phase.toLowerCase()+'.png';
   await stage.screenshot({path:file});result.screenshots.push(file);
