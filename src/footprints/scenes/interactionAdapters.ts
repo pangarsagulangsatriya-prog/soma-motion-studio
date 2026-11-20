@@ -187,11 +187,29 @@ export function paintFloorInteractionOverlay(canvas:HTMLCanvasElement,
  if(canvas.height!==h)canvas.height=h;
  const ctx=canvas.getContext('2d');if(!ctx)return;
  ctx.clearRect(0,0,w,h);
+ // Hold exactly one evolving contact per actor/foot. Slide/pivot/release
+ // change the shape of that contact, never create a second imprint.
+ const current=new Map<string,{id:string;atMs:number}>();
+ const motionByStamp=new Map<string,FootVisualMotion>();
+ for(const event of engine.recent){
+  if(event.atMs>atMs||!event.foot)continue;
+  const key=event.actorId+':'+event.foot;
+  if((event.kind==='contact'||event.kind==='touch')&&event.verified){
+   current.set(key,{id:event.id,atMs:event.atMs});
+  }else if(event.kind==='slide'||event.kind==='pivot'||event.kind==='release'){
+   const active=current.get(key);
+   if(active&&event.atMs>=active.atMs){
+    motionByStamp.set(active.id,{kind:event.kind,atMs:event.atMs,
+     x:event.x,y:event.y,headingRad:event.headingRad});
+    if(event.kind==='release')current.delete(key);
+   }
+  }
+ }
  for(const e of engine.recent){
   const age=atMs-e.atMs;
   if(age<0||age>lifeMs)continue;
-  if(e.kind==='release')continue;
-  const stamp=e.kind==='contact'||e.kind==='touch';
+  if(e.kind==='release'||e.kind==='slide'||e.kind==='pivot')continue;
+  const stamp=(e.kind==='contact'||e.kind==='touch')&&e.verified;
   const expiry=stamp?lifeMs:650;
   if(age>expiry)continue;
   const alpha=Math.max(0,1-age/expiry);
@@ -203,8 +221,11 @@ export function paintFloorInteractionOverlay(canvas:HTMLCanvasElement,
   if(stamp){
    // Preview geometry reads the event's verified foot side. It never
    // estimates pressure, and it cannot authorize physical output.
+   const anchor:FootVisualAnchor={atMs:e.atMs,x:e.x,y:e.y,headingRad:e.headingRad};
    paintAuthenticFootprint(ctx,{
     x,y,side:e.foot??'left',widthPx:37,lengthPx:78,
+    headingRad:e.headingRad===undefined?0:Math.PI/2-e.headingRad,
+    deformation:deformationAt(anchor,atMs,motionByStamp.get(e.id)),
     alpha:1,color:'rgb('+rgb+')'
    });
   }else{
