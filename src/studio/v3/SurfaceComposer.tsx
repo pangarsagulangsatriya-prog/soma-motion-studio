@@ -15,7 +15,7 @@ import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timel
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './ux-r3-compose.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
-import {V5_COMPOSER_KEY,V5_PRESET_KEY,stripRetiredVisualLayers,resetOldVisualStorage} from './resetVisualMigration.ts';
+import {V5_COMPOSER_KEY,stripRetiredVisualLayers,resetOldVisualStorage} from './resetVisualMigration.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
 import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
@@ -31,7 +31,6 @@ type Composition=Record<Surface,Layer[]>;
 type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
 const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
 const key=V5_COMPOSER_KEY;
-const presetKey=V5_PRESET_KEY;
 const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]]});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
 const validFootprint=(v:unknown):v is FootprintConfig=>{
@@ -109,8 +108,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [loadingMedia,setLoadingMedia]=useState(0);
  const media=sharedAssets;
  const [selectedLayer,setSelectedLayer]=useState(0);
- const [presets,setPresets]=useState<{name:string;snapshot:Snapshot}[]>(()=>{try{const p=JSON.parse(localStorage.getItem(presetKey)||'[]');return Array.isArray(p)?p.filter(x=>x?.name&&valid(x.snapshot)).slice(0,30):[];}catch{return [];}});
- const [presetName,setPresetName]=useState('New composition');
  const [editMask,setEditMask]=useState(false);
  const [outputOpen,setOutputOpen]=useState(false);
  const [bodyStatus,setBodyStatus]=useState('Menunggu frame tubuh.');
@@ -145,7 +142,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  };
  const outputReadyRef=useRef({body:false,floor:false});
  
- const floorEventsRef=useRef(floorEvents);floorEventsRef.current=floorEvents;
  const motionEventsRef=useRef(motionEvents);motionEventsRef.current=motionEvents;
  const [timelineCapture,setTimelineCapture]=useState<TimelineCapture>(()=>emptyTimelineCapture());
  const timelineCaptureRef=useRef(timelineCapture);timelineCaptureRef.current=timelineCapture;
@@ -171,7 +167,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   return()=>window.clearInterval(timer);
  },[timelineMode,timelinePlaying]);
  const motionSessionRef=useRef(motionSession);motionSessionRef.current=motionSession;
- const [eventInfo,setEventInfo]=useState('Menunggu trigger layer.');
  
  const canvas=useRef<HTMLCanvasElement>(null);
  const frameRefLive=useRef(frameRef);frameRefLive.current=frameRef;
@@ -534,9 +529,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    setHint('Objek dipilih: '+layers[picked.layerIndex].name);
   }else setHint('Tidak ada objek terdeteksi pada titik ini.');
  };
- const savePreset=()=>{const name=presetName.trim().slice(0,60);if(!name)return;const next=[{name,snapshot:{version:1 as const,selected,composition:structuredClone(composition),...(footprint?{footprint:structuredClone(footprint)}:{})}},...presets.filter(p=>p.name!==name)].slice(0,30);setPresets(next);localStorage.setItem(presetKey,JSON.stringify(next));setHint('Preset tersimpan di perangkat ini.');};
- const exportConfig=()=>{const blob=new Blob([JSON.stringify({version:1,selected,composition,...(footprint?{footprint}: {})},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='soma-s64-composition.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
- const importConfig=async(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>200000)throw Error('File terlalu besar');const x=JSON.parse(await f.text());if(!valid(x))throw Error('Konfigurasi tidak sesuai');setComposition(x.composition);setSelected(x.selected);setSelectedLayer(0);if(x.footprint)updateFootprint?.(x.footprint);setHint('Komposisi dan parameter footprint dimuat. File media perlu dipilih lagi pada sesi baru.');}catch(err){setHint(String(err));}e.target.value='';};
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
@@ -565,7 +557,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    </div></div>
   <div className="s64-safety"><label><input type="checkbox" checked={!blackout} disabled={previewBlackout}
    onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
-   <span>Layer trigger · {eventInfo}</span>
+   <span>Visual V5 · Renderer belum dipasang</span>
    <details className="soma-ia-display-options"><summary>Display</summary>
     <label><input type="checkbox" checked={previewLive}
      onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
@@ -676,7 +668,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <input type="range" min="0" max="100" value={layer?.opacity??100}
     onChange={e=>patch({opacity:Number(e.target.value)})}/></label>
   <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label></>}
- {inspectorTab==='scene'&&<details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);if(p.snapshot.footprint)updateFootprint?.(structuredClone(p.snapshot.footprint));setHint('Preset dimuat: '+p.name);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details>}
  {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
   </div>
   <div className="s64-runtime" aria-hidden="true">
