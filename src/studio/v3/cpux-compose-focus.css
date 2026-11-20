@@ -229,3 +229,33 @@
   transition:none!important;animation:none!important;
  }
 }
+
+/* Override historical three-column Compose selectors with an explicit,
+   single-instance Composer root. BODY/FLOOR input canvases stay mounted. */
+#soma-compose-focus .s64-layout{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) minmax(265px,310px)!important;
+ align-items:start!important;gap:14px!important;
+}
+#soma-compose-focus .cp02-editor{
+ grid-column:1!important;grid-row:1!important;min-width:0!important;
+}
+#soma-compose-focus .cp02-inspector{
+ grid-column:2!important;grid-row:1!important;
+ max-height:none!important;overflow:visible!important;
+}
+#soma-compose-focus .cp02-library{
+ grid-column:2!important;grid-row:2!important;
+}
+#soma-compose-focus .s64-stage{display:block!important;}
+.fp-stage-workspace:has(#soma-compose-focus) .fp-stage-overview:not([hidden]){
+ display:none!important;
+}
+@media(max-width:960px){
+ #soma-compose-focus .s64-layout{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ #soma-compose-focus .cp02-editor{grid-column:1!important;grid-row:1!important;}
+ #soma-compose-focus .cp02-inspector{grid-column:1!important;grid-row:2!important;}
+ #soma-compose-focus .cp02-library{grid-column:1!important;grid-row:3!important;}
+}
