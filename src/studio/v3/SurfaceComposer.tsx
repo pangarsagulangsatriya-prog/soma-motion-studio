@@ -864,7 +864,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      onEffectAction={actOnEffect} onFlagshipApply={actOnFlagship}
      activeFlagship={activeFlagshipForSettings(hydraSettings)}
      hydraEnabled={!!hydraSettings?.enabled} hydraSettings={hydraSettings}
-     stageCanvas={visualFloorCanvas} stageStatus={hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
+     stageCanvas={visualFloorCanvas} stageStatus={visualWaitingForContact?'waiting-contact':hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
  <label className="visr4-archive-row">
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
