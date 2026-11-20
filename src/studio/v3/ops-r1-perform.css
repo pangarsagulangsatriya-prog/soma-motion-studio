@@ -313,3 +313,7 @@
  .fp-operator-mode .ops-r1-recovery{flex-direction:column;align-items:stretch}
  .fp-operator-mode .ops-r1-kbd{display:none}
 }
+/* TouchDesigner is a third transport choice in the same compact Perform card. */
+.fp-operator-mode .ops-r1-route-toggle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:auto;max-width:100%}
+.fp-operator-mode .ops-r1-route-toggle button{font-size:10px;padding:5px 7px;min-height:28px}
+@media(max-width:690px){.fp-operator-mode .ops-r1-route-toggle button{font-size:9px;padding:5px 4px}}

@@ -1,0 +1,24 @@
+.fp-operator-mode .ops-r1-route-toggle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;min-width:0}
+.fp-operator-mode .ops-r1-route-toggle button{white-space:nowrap;font-size:12px;padding:9px 10px}
+.soma-td-panel{display:grid;gap:12px;color:#d8e7d7;min-width:0}
+.soma-td-status{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.soma-td-status span{display:flex;gap:7px;align-items:center;font-weight:700}
+.soma-td-status strong{font-size:12px;font-weight:700;color:#a9b9ad}
+.soma-td-status strong[data-state="streaming"],.soma-td-status strong[data-state="connected"]{color:#c7e7a8}
+.soma-td-status strong[data-state="error"]{color:#ffab99}
+.soma-td-connection-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.soma-td-connection-fields label{display:grid;gap:5px;color:#aabcae;font-size:12px}
+.soma-td-connection-fields input{width:100%;min-width:0;box-sizing:border-box;padding:10px 11px;background:#0e1713;border:1px solid #335342;border-radius:9px;color:#e6f0e5;font:inherit;font-size:13px}
+.soma-td-connection-fields input:focus-visible{outline:2px solid #a2dab3;outline-offset:2px}
+.soma-td-actions{display:flex;gap:8px;align-items:center}
+.soma-td-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #597861;border-radius:9px;min-height:40px;padding:8px 12px;color:#e5f1de;font:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.soma-td-primary{background:#243f31;flex:1}.soma-td-secondary,.soma-td-disconnect{background:#111c16}
+.soma-td-actions button:disabled{opacity:.45;cursor:not-allowed}
+.soma-td-info{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap;color:#a2b9a7;font-size:11px}
+.soma-td-message{border:1px solid #32523c;background:#0b1911;border-radius:9px;padding:9px 11px;font-size:12px;margin:0}
+.soma-td-warning{display:flex;gap:7px;align-items:flex-start;color:#bac8ae;font-size:11px;margin:0;line-height:1.45}
+.soma-td-warning svg{flex-shrink:0;margin-top:1px}
+.soma-td-help{border-top:1px solid #31503b;padding-top:8px;font-size:11px;color:#b9cbbe}
+.soma-td-help summary{cursor:pointer;font-weight:600}.soma-td-help p{margin:9px 0 0;line-height:1.5}
+.soma-td-help code{font-size:10px;overflow-wrap:anywhere}
+@media(max-width:680px){.soma-td-connection-fields{grid-template-columns:1fr}.fp-operator-mode .ops-r1-route-toggle button{font-size:10px;padding:9px 5px}.soma-td-actions{flex-wrap:wrap}.soma-td-primary{flex-basis:100%}}

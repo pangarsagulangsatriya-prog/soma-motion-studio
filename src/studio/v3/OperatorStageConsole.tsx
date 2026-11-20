@@ -7,6 +7,8 @@ import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
+import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
+import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
  STAGE_HARDWARE_ENABLED,armDualSurfaceLiveFromPerform,blackoutAllDualSurfaces,
  closeDualSurfaceOutputWindow,getDualSurfaceFeedUrl,getDualSurfaceState,openDualSurfaceOutputWindow,
@@ -29,7 +31,7 @@ type Props={
  sourceKind?:'webcam'|'phone'|'video'|'simulator'|null;
  cameraOk?:boolean;identityOk?:boolean;floorOk?:boolean;
  floorQaOk?:boolean;bodyQaOk?:boolean;
- onGoTrack?:()=>void;onGoMap?:()=>void;
+ onGoTrack?:()=>void;onGoMap?:()=>void;getTouchDesignerSnapshot:()=>TdSnapshot;
 };
 
 export function OperatorStageConsole({index,onPrevious,onNext,onExit,
@@ -38,7 +40,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  onSaveCue,onResetCues,cueMessage,previewStatus,sourceLabel,
  unreadyReason,onRecovery,canResume,
  sourceKind=null,cameraOk=false,identityOk=false,floorOk=false,
- floorQaOk=false,bodyQaOk=false,onGoTrack,onGoMap}:Props){
+ floorQaOk=false,bodyQaOk=false,onGoTrack,onGoMap,getTouchDesignerSnapshot}:Props){
  const dualSession=useSyncExternalStore(subscribeDualSurface,getDualSurfaceState,getDualSurfaceState);
  const [outputRouteMode,setOutputRouteMode]=useState<PerformOutputRouteMode>('soma');
  const [outputNotice,setOutputNotice]=useState('');
@@ -68,11 +70,13 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  const visibleIndices=[windowStart,windowStart+1,windowStart+2,windowStart+3].filter(i=>i<cueGrid.slots.length);
 
  const isResolume=outputRouteMode==='resolume';
+ const isTouchDesigner=outputRouteMode==='touchdesigner';
 
  const handleBlackoutAll=()=>{
   blackoutAllDualSurfaces('BLACKOUT dari Perform. Periksa cahaya proyektor secara fisik.');
   onBlackout();
-  setOutputNotice('Blackout diperintahkan ke seluruh output (SOMA & Resolume feed).');
+  window.dispatchEvent(new Event('soma:td-blackout'));
+  setOutputNotice('BLACKOUT diperintahkan ke semua jalur SOMA; TouchDesigner memerlukan gate lokal tersendiri.');
  };
 
  const handleOpenSurface=(surface:StageSurface)=>{
@@ -152,14 +156,21 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-output-top">
      <strong>Output Proyektor</strong>
      <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
-      <button type="button" aria-pressed={!isResolume} onClick={()=>{setOutputRouteMode('soma');setOutputNotice('');}}>
+      <button type="button" aria-pressed={outputRouteMode==='soma'} onClick={()=>{setOutputRouteMode('soma');setOutputNotice('');}}>
        SOMA Direct
       </button>
       <button type="button" aria-pressed={isResolume} onClick={()=>{setOutputRouteMode('resolume');setOutputNotice('');}}>
        Feed Resolume
       </button>
+      <button type="button" aria-pressed={isTouchDesigner} onClick={()=>{setOutputRouteMode('touchdesigner');setOutputNotice('');}}>
+       TouchDesigner
+      </button>
      </div>
     </div>
+    {isTouchDesigner?
+     <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
+      activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
+     <>
     <button type="button"
      className="ops-r1-primary-cta"
      data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
@@ -215,6 +226,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      <span><ShieldAlert size={13}/> {unreadyReason}</span>
      <button type="button" onClick={onRecovery}>Map QA</button>
     </div>}
+     </>}
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}

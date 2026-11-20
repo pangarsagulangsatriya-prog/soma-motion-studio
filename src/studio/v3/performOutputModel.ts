@@ -17,7 +17,7 @@ export type PerformGlobalStatus={
  tone:'warn'|'preview'|'ready'|'live';
 };
 
-export type PerformOutputRouteMode='soma'|'resolume';
+export type PerformOutputRouteMode='soma'|'resolume'|'touchdesigner';
 
 export function buildResolumeFeedUrl(
  origin:string,

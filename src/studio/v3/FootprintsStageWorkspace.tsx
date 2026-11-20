@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
+import {poseFootObservations,type TdFootObservation} from './touchDesignerProtocol.ts';
 import {PERFORM_CUE_STORAGE_KEY,defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,evaluatePerformReadiness,type PerformCueGrid} from './performCueModel.ts';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
 import {QuickStageSetup} from './QuickStageSetup.tsx';
@@ -885,6 +886,49 @@ export function FootprintsStageWorkspace({
      setFlowStep(needsTrack?'process':'output');
     }}
     canResume={!performUnsafe}
+    getTouchDesignerSnapshot={()=>{
+     const engine=interactionEngineRef.current;
+     const source=engine.activeSource;
+     const clip=experimentFrameRef.current;
+     const live=source==='camera'||source==='phone';
+     const videoOk=source==='video'&&clip?.kind==='video'&&clip.ready&&!!clip.snapshot&&!clip.video?.seeking;
+     const simulatorOk=source==='simulator'&&clip?.kind==='simulator';
+     const cameraVideo=videoRef.current;
+     const landscape=!!cameraVideo&&cameraVideo.videoWidth>cameraVideo.videoHeight;
+     const ready=!footprint.hold&&!performBlackout&&(
+      live?sourceStatus.phase==='ready'&&cameraOn&&bodySelected&&frameFresh&&landscape:
+      videoOk||simulatorOk||source==='touch');
+     const floorSpace=source==='simulator'&&clip?.kind==='simulator'?clip.session.floor:
+      live&&floorStatus.confirmed?tracker.floor:null;
+     const observations:TdFootObservation[]=[];
+     if(ready&&live){
+      const frame=frameRef.current;
+      if(performerCount===1&&frame.pose.length>0)
+       observations.push(...poseFootObservations('performer-1',frame.pose,frame.time));
+      else if(!identityStatus.ambiguous&&identityStatus.observedFrameTime===frame.time){
+       for(const id of ['A','B'] as const){
+        const i=identityStatus.poseIndices[id];
+        if(i!==null&&frame.poses?.[i])observations.push(...poseFootObservations(id,frame.poses[i],frame.time));
+       }
+      }
+     }else if(ready&&source==='video'&&clip?.kind==='video'&&clip.snapshot&&!clip.snapshot.ambiguous){
+      for(const person of clip.snapshot.people.slice(0,2))
+       observations.push(...poseFootObservations(person.id,person.landmarks,clip.snapshot.atMs));
+     }else if(ready&&source==='simulator'&&clip?.kind==='simulator'){
+      const floor=clip.session.floor;
+      for(const actor of clip.performers.slice(0,2))for(const foot of ['left','right'] as const){
+       const position=actor[foot].positionM;
+       observations.push({actorId:actor.id,foot,x:position.xM/floor.widthM,
+        y:1-position.yM/floor.depthM,confidence:1,atMs:clip.timeMs,
+        coordinateBasis:'simulated',headingRad:actor[foot].headingRad});
+      }
+     }
+     return {source,sessionId:engine.currentSessionId,generation:engine.generation,
+      events:engine.canonicalRecent,observations,ready,
+      atMs:live||source==='touch'?performance.now():clip?.timeMs??0,
+      floor:floorSpace?{widthM:floorSpace.widthM,depthM:floorSpace.depthM,
+       calibrated:live&&floorStatus.confirmed}:null};
+    }}
     sourceKind={sourceStatus.selection}
     cameraOk={cameraOn&&bodySelected&&frameFresh}
     identityOk={performerCount===1?!identityStatus.ambiguous:identityStatus.visible.length>=2&&!identityStatus.ambiguous&&identityStatus.observedFrameTime===frameRef.current.time}
