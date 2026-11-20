@@ -1,6 +1,13 @@
 import {useEffect,useRef,useState,useSyncExternalStore,type RefObject} from 'react';
-import {Download,Monitor,ShieldAlert,Square,Target} from 'lucide-react';
+import {
+ ArrowDown,ArrowLeft,ArrowRight,ArrowUp,Crosshair,Download,Grid2x2,
+ Redo2,RotateCcw,ShieldAlert,SlidersHorizontal,Square,Target,Undo2
+} from 'lucide-react';
+import type {MotionFrame} from '../../engine/types.ts';
+import type {Quad} from '../../projection/geometry.ts';
 import type {Projection} from '../../projection/useProjection.ts';
+import type {LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
+import type {FootMotionEventV2} from '../scenes/FootMotionEventV2.ts';
 import {download} from '../../engine/recording.ts';
 import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {ProjectorWysiwygPreview} from './ProjectorWysiwygPreview.tsx';
@@ -10,7 +17,7 @@ import {startSetupBench,readSetupStart,finishSetupBench,FIRST_SETUP_TARGET_MS}
  from '../../studio/v3/safeProjectionBench.ts';
 import {loadStageOutputDrafts,saveStageOutputDraft,stableStageEquipmentKey,
  matchingStageOutputDraft,type StageOutputDraft} from '../../studio/v3/stageOutputDraftProfiles.ts';
-import {SURFACE_TARGETS,stageSurfaceSignature,stageSurfaceReport,
+import {SURFACE_TARGETS,defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceReport,
  assessSurfaceProof,emptySurfaceProof,recordSurfaceSample,validateStageSurfacePlan,
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext}
  from './DualSurfaceCalibration.ts';
@@ -23,6 +30,14 @@ import {
 } from './DualSurfaceSessionStore.ts';
 import './dual-surface-routing.css';
 import {MapFourCornerEditor} from '../../studio/v3/MapFourCornerEditor.tsx';
+import {MapStageMonitor,type MapMonitorView} from '../../studio/v3/MapStageMonitor.tsx';
+import {moveMapCorner,type MapCornerIndex} from '../../studio/v3/mapCornerModel.ts';
+import {
+ DEFAULT_STAGE_DIMENSIONS,STAGE_DIMENSION_PRESETS,clampStageDimensions,createDefaultMapSim,
+ deriveMapStageStatus,emptyQuadHistory,moveMapSimPerformer,pushQuadHistory,
+ redoQuadHistory,stepMapSimState,undoQuadHistory,
+ type MapQuadHistory,type MapSimState,type MapStageDimensions
+} from '../../studio/v3/mapStageModel.ts';
 import {diagnosticNinePointGrid} from './floorNinePointGrid.ts';
 
 export type {StageRouteInput};
@@ -34,10 +49,25 @@ type Props={
  frameRef:RefObject<StageRouteInput|null>;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;
  floorCanvas:RefObject<HTMLCanvasElement|null>;
- legacyProjection:Projection;experimentLocked?:boolean;
+ legacyProjection:Projection;
+ experimentLocked?:boolean;
+ liquidCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
+ videoRef?:RefObject<HTMLVideoElement|null>;
+ motionFrameRef?:RefObject<MotionFrame>;
+ floorTracker?:LiveFloorTrackingEngine;
+ motionEvents?:()=>readonly FootMotionEventV2[];
+ cameraOn?:boolean;
+ floorReady?:boolean;
+ performerCount?:1|2;
+ identitySafe?:boolean;
+ experimentSource?:'video'|'simulator'|null;
+ onOpenCameraCalibration?:()=>void;
+ onEnterPerform?:()=>void;
 };
 
 const labels:{[K in StageSurface]:string}={body:'BODY · proyeksi tubuh',floor:'FLOOR · proyeksi lantai'};
+const CORNER_TAGS=['1 TL','2 TR','3 BR','4 BL'] as const;
 
 function detectDisplayStatus():{extended:boolean|null;label:string}{
  if(typeof window==='undefined'||!('screen' in window))
@@ -51,7 +81,12 @@ function detectDisplayStatus():{extended:boolean|null;label:string}{
  return {extended:null,label:'Deteksi layar otomatis tidak didukung browser ini. Klik Buka output → pindahkan ke proyektor → tekan F.'};
 }
 
-export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false}:Props){
+export function DualSurfaceRoutingPanel({
+ frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
+ liquidCanvas,experimentInputCanvas,videoRef,motionFrameRef,floorTracker,motionEvents,
+ cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
+ onOpenCameraCalibration,onEnterPerform
+}:Props){
  // Keep shouldLatchProjectionBlackout referenced here and enforced in DualSurfaceSessionStore.
  void shouldLatchProjectionBlackout;
  const session=useSyncExternalStore(subscribeDualSurface,getDualSurfaceState,getDualSurfaceState);
@@ -102,6 +137,39 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
  const [benchResult,setBenchResult]=useState('');
  const [displayInfo,setDisplayInfo]=useState(detectDisplayStatus);
 
+ // Calibration-first state: handles ready immediately on Map open
+ const [monitorView,setMonitorView]=useState<MapMonitorView>('stage');
+ const [editingCorners,setEditingCorners]=useState(true);
+ const [activeCorner,setActiveCorner]=useState<MapCornerIndex>(0);
+ const [snapEnabled,setSnapEnabled]=useState(true);
+ const [resetArmed,setResetArmed]=useState(false);
+ const [stageDimensions,setStageDimensions]=useState<MapStageDimensions>(DEFAULT_STAGE_DIMENSIONS);
+ const [simState,setSimState]=useState<MapSimState>(createDefaultMapSim);
+ const [quadHistory,setQuadHistory]=useState<Record<StageSurface,MapQuadHistory>>({
+  body:emptyQuadHistory(),
+  floor:emptyQuadHistory()
+ });
+
+ const hasLiveSource=Boolean(cameraOn||experimentSource);
+ const sourceKind:'camera'|'video'|'simulator'|'demo-sim'|'none'=
+  experimentSource==='video'?'video'
+  :experimentSource==='simulator'?'simulator'
+  :cameraOn?'camera'
+  :simState.active?'demo-sim'
+  :'none';
+
+ useEffect(()=>{
+  if(!simState.active||!simState.playing||hasLiveSource)return;
+  let last=performance.now();
+  const timer=window.setInterval(()=>{
+   const now=performance.now();
+   const dt=now-last;
+   last=now;
+   setSimState(prev=>stepMapSimState(prev,dt));
+  },40);
+  return()=>window.clearInterval(timer);
+ },[simState.active,simState.playing,hasLiveSource]);
+
  useEffect(()=>{
   syncDualSurfaceRuntime({frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked});
  },[frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked]);
@@ -111,6 +179,8 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
   window.addEventListener('resize',refresh);
   return()=>window.removeEventListener('resize',refresh);
  },[]);
+
+ useEffect(()=>{setResetArmed(false);},[selected]);
 
  const context=(id:StageSurface,plan=plans[id],output=devices[id]):StageOutputContext=>{
   const stage=frameRef.current;
@@ -134,6 +204,54 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
    setMessage('Kalibrasi '+id.toUpperCase()+' diperbarui. Output kembali ke Blackout hingga uji fisik selesai.');
   }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi tidak valid.');}
  };
+
+ const commitMonitorQuad=(quad:Quad)=>{
+  const prevQuad=getDualSurfaceState().plans[selected].projectorQuad;
+  try{
+   validateStageSurfacePlan({...getDualSurfaceState().plans[selected],projectorQuad:quad});
+   setQuadHistory(prev=>({...prev,[selected]:pushQuadHistory(prev[selected],prevQuad)}));
+   setResetArmed(false);
+   editPlan(selected,p=>({...p,projectorQuad:quad}));
+  }catch(e){setMessage(e instanceof Error?e.message:'Quad tidak valid.');}
+ };
+
+ const nudgeActiveCorner=(dxStep:number,dyStep:number)=>{
+  const q=plans[selected].projectorQuad;
+  const p=q[activeCorner];
+  const next=moveMapCorner(q,activeCorner,{
+   x:Math.min(1,Math.max(0,Number((p.x+dxStep).toFixed(4)))),
+   y:Math.min(1,Math.max(0,Number((p.y+dyStep).toFixed(4))))
+  });
+  commitMonitorQuad(next);
+ };
+
+ const undoMonitorQuad=()=>{
+  const res=undoQuadHistory(quadHistory[selected],plans[selected].projectorQuad);
+  if(!res)return;
+  setQuadHistory(prev=>({...prev,[selected]:res.history}));
+  setResetArmed(false);
+  editPlan(selected,p=>({...p,projectorQuad:res.quad}));
+ };
+
+ const redoMonitorQuad=()=>{
+  const res=redoQuadHistory(quadHistory[selected],plans[selected].projectorQuad);
+  if(!res)return;
+  setQuadHistory(prev=>({...prev,[selected]:res.history}));
+  setResetArmed(false);
+  editPlan(selected,p=>({...p,projectorQuad:res.quad}));
+ };
+
+ const resetMonitorQuad=()=>{
+  if(!resetArmed){
+   setResetArmed(true);
+   return;
+  }
+  const prevQuad=plans[selected].projectorQuad;
+  setQuadHistory(prev=>({...prev,[selected]:pushQuadHistory(prev[selected],prevQuad)}));
+  setResetArmed(false);
+  editPlan(selected,p=>({...p,projectorQuad:defaultStageSurfacePlan(selected).projectorQuad}));
+ };
+
  const open=(id:StageSurface)=>{
   if(experimentLocked){
    urgentBlackout(id);
@@ -197,6 +315,14 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
    mode==='live'?'Live '+id.toUpperCase()+' diminta; engine tetap memeriksa frame dan QA pada setiap kiriman.':
     'Blackout '+id.toUpperCase()+' aktif.');
  };
+
+ const triggerProjectorTest=()=>{
+  const dev=devices[selected];
+  if(!dev.connected){open(selected);return;}
+  if(dev.mode==='test'){changeMode(selected,'blackout');return;}
+  changeMode(selected,'test');
+ };
+
  const ensureProof=():SurfaceProof|null=>{
   const sig=signature(selected);
   if(!sig){setMessage('Hubungkan output '+selected.toUpperCase()+' dan pastikan kamera/lantai terkalibrasi.');return null;}
@@ -301,251 +427,468 @@ export function DualSurfaceRoutingPanel({frameRef,bodyCanvas,floorCanvas,legacyP
    'SOMA-S5-7-4-dual-surface-calibration.json');
  };
 
+ const handleEnterPerform=()=>{
+  if(devices.floor.mode==='test'||requested.floor==='test')changeMode('floor','blackout');
+  if(devices.body.mode==='test'||requested.body==='test')changeMode('body','blackout');
+  onEnterPerform?.();
+ };
+
  const activePlan=plans[selected],proof=proofs[selected],qa=assessment(selected);
  const qaBadge=qa.status==='within-provisional-target'?'Lulus sementara ('+qa.count+'/5)':
   qa.status==='needs-adjustment'?'Perlu koreksi ('+qa.count+'/5)':'Belum lengkap ('+qa.count+'/5)';
+ const dominantStatus=deriveMapStageStatus({
+  source:sourceKind,
+  cameraOn,
+  floorCalibrated:floorReady,
+  hardwareEnabled:STAGE_HARDWARE_ENABLED,
+  experimentLocked,
+  operatorConfirm,
+  outputConnected:devices[selected].connected,
+  outputMode:devices[selected].mode,
+  qa,
+  selected
+ });
+ const activeHistory=quadHistory[selected];
+ const projectorTestDisabled=!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm;
+ const projectorTestLabel=
+  devices[selected].mode==='test'?'Hentikan uji':
+  devices[selected].connected?'Uji pola proyektor':'Uji proyektor';
+ const activeCornerPt=activePlan.projectorQuad[activeCorner];
 
- return <section className="stage-dual" aria-label="Kalibrasi dan Output Proyektor">
-  <div className="stage-dual-top">
-   <div className="live-floor-heading"><Monitor size={15}/> Kalibrasi &amp; Output Proyektor</div>
-   <div className="stage-dual-surface-tabs" role="group" aria-label="Pilih bidang kalibrasi">
-    <button type="button" aria-pressed={selected==='floor'} onClick={()=>{setSelected('floor');setDx('');setDy('');}}>FLOOR</button>
-    <button type="button" aria-pressed={selected==='body'} onClick={()=>{setSelected('body');setDx('');setDy('');}}>BODY</button>
-   </div>
-  </div>
-  {!STAGE_HARDWARE_ENABLED&&<p className="stage-dual-banner" role="status"><b>Output fisik terkunci di Production.</b> Preview lokal tetap aktif; aktifkan hardware hanya dengan <code>VITE_SOMA_STAGE_OUTPUTS=enabled</code> dan pengawasan operator.</p>}
-  {experimentLocked&&<p className="stage-dual-banner" role="status"><b>Mode Preview ({experimentLocked?'MP4 / Simulasi 3D':''})</b> · Kalibrasi 4 sudut dan WYSIWYG aktif untuk latihan lokal; output proyektor fisik terkunci hingga sumber kamera aktif.</p>}
-
-  <div className="stage-dual-workbench">
-   <div className="stage-dual-canvas-col">
-    <div className="stage-dual-calibration">
-     <div className="stage-dual-cal-controls">
-      <label>Bidang<select value={selected} onChange={e=>{setSelected(e.target.value as StageSurface);setDx('');setDy('');}}>
-       <option value="floor">FLOOR</option><option value="body">BODY</option>
-      </select></label>
-      <label>Kecerahan · {Math.round(activePlan.brightness*100)}%
-       <input type="range" min="0" max=".6" step=".02" value={activePlan.brightness}
-        onChange={e=>editPlan(selected,p=>({...p,brightness:Number(e.target.value)}))}/></label>
-      <label>Resolusi<select value={activePlan.resolution}
-       onChange={e=>editPlan(selected,p=>({...p,resolution:e.target.value as '720p'|'1080p'}))}>
-       <option value="720p">720p</option><option value="1080p">1080p</option>
-      </select></label>
-     </div>
-     <MapFourCornerEditor key={selected} sourceQuad={activePlan.sourceQuad}
-      projectorQuad={activePlan.projectorQuad}
-      onCommit={(group,quad)=>editPlan(selected,p=>({...p,[group]:quad}))}/>
-     <div className="stage-dual-advanced-row">
-      {selected==='floor'&&<details className="stage-dual-grid-qa">
-       <summary>Grid homografi 3 × 3 (9 titik)</summary>
-       {(()=>{const grid=diagnosticNinePointGrid(activePlan.sourceQuad,activePlan.projectorQuad);
-        return <div>
-         <p role="status">Model homografi: {grid.valid?'konsisten':'perlu diperbaiki'} · {grid.samples.length} titik.</p>
-         <div className="stage-dual-grid-points" aria-label="Grid kalibrasi model">
-          {grid.samples.map(s=><span key={s.id} title={'Projector U '+s.projector.x.toFixed(3)+' V '+s.projector.y.toFixed(3)}>
-           {s.id} · {s.projector.x.toFixed(2)}, {s.projector.y.toFixed(2)}
-          </span>)}
-         </div>
-         <small>{grid.reason} Data ini tidak menghitung selisih optik dalam sentimeter.</small>
-        </div>;
-       })()}
-      </details>}
-      <details>
-       <summary>Advanced · angka presisi empat titik</summary>
-       <p>Urutan: kiri atas, kanan atas, kanan bawah, kiri bawah (0–1). Ulangi uji fisik jika proyektor bergeser.</p>
-       <div className="stage-dual-quad">
-        {(['sourceQuad','projectorQuad'] as const).map(group=><div key={group}>
-         <b>{group==='sourceQuad'?'Sumber kamera/pad':'Target proyektor'}</b>
-         {activePlan[group].map((point,i)=><div key={i}>
-          <span>{i+1}</span>
-          {(['x','y'] as const).map(axis=><label key={axis}>{axis.toUpperCase()}
-           <input type="number" min="0" max="1" step=".01" value={point[axis]}
-            onChange={e=>editPlan(selected,p=>({
-             ...p,[group]:p[group].map((v,j)=>j===i?{...v,[axis]:Number(e.target.value)}:v) as typeof p[typeof group]
-            }))}/></label>)}
-         </div>)}
-        </div>)}
-       </div>
-      </details>
-     </div>
+ return <section className="stage-dual map-r2-shell" aria-label="Map — kalibrasi ruang dan uji proyektor">
+  {/* Track-matching single top header bar */}
+  <header className="map-r2-topbar">
+   <div className="map-r2-brand">
+    <h2>Map</h2>
+    <div className="map-r2-status-inline" data-status={dominantStatus.id} role="status">
+     <span>{dominantStatus.sourceLabel}</span>
+     <span aria-hidden="true">·</span>
+     <strong>{dominantStatus.label}</strong>
+     <span aria-hidden="true">·</span>
+     <span>Ruang {stageDimensions.widthM}×{stageDimensions.depthM} m</span>
     </div>
+   </div>
+   <div className="map-r2-top-right">
+    <div className="stage-dual-surface-tabs" role="group" aria-label="Pilih bidang kalibrasi">
+     <button type="button" aria-pressed={selected==='floor'} onClick={()=>{setSelected('floor');setDx('');setDy('');}}>Lantai</button>
+     <button type="button" aria-pressed={selected==='body'} onClick={()=>{setSelected('body');setDx('');setDy('');}}>Tubuh</button>
+    </div>
+    <button type="button" className="stage-dual-emergency map-r2-blackout" onClick={allBlackout}
+     title="Padamkan proyektor Lantai dan Tubuh segera">
+     <Square size={12}/> Blackout
+    </button>
+   </div>
+  </header>
 
-    <section className="stage-wysiwyg" aria-label="Preview proyektor WYSIWYG">
-     <div className="stage-wysiwyg-head">
-      <div><b>Preview Proyektor (WYSIWYG)</b>
-       <small>Transformasi kalibrasi sama dengan jendela output</small>
-      </div>
-      <div className="stage-wysiwyg-switch" role="group" aria-label="Mode preview proyektor">
-       <button type="button" aria-pressed={previewView==='draft'}
-        onClick={()=>setPreviewView('draft')}>Draf lokal</button>
-       <button type="button" aria-pressed={previewView==='sent'}
-        onClick={()=>setPreviewView('sent')}>Sinyal dikirim</button>
-      </div>
+  {/* Track-aligned center-centric 2-column layout: Left Calibration Rail + Right-Center Calibration Monitor */}
+  <div className="map-r2-workbench">
+   <aside className="map-r2-rail" aria-label="Alur 3 langkah kalibrasi Map">
+    <section className="map-r2-step">
+     <div className="map-r2-step-head">
+      <span className="map-r2-step-num">1</span>
+      <strong>Pilih bidang &amp; ukuran ruang</strong>
      </div>
-     <div className="stage-wysiwyg-grid">
-      {ids.map(id=><ProjectorWysiwygPreview key={id} surface={id}
-       plan={plans[id]} view={previewView} softwareMode={devices[id].mode}
-       connected={devices[id].connected} qa={assessment(id)}
-       liveCanvas={id==='body'?bodyCanvas:floorCanvas}
-       testCanvases={testCanvasesRef} viewport={devices[id].viewport}/>)}
+     <p className="map-r2-step-note">
+      {selected==='floor'
+       ?'Kalibrasi bidang proyeksi lantai sesuai ukuran ruang.'
+       :'Satu output BODY mencakup mask tubuh bawah Performer A dan B.'}
+     </p>
+     <div className="map-r2-presets" role="group" aria-label="Preset ukuran ruang panggung">
+      {STAGE_DIMENSION_PRESETS.map(preset=>{
+       const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
+       return <button type="button" key={preset.id} aria-pressed={isMatch}
+        onClick={()=>{
+         setStageDimensions({widthM:preset.widthM,depthM:preset.depthM});
+         setMessage(`Ukuran ruang kalibrasi diatur ke ${preset.label}.`);
+        }}>{preset.label}</button>;
+      })}
+     </div>
+     <div className="map-r2-dims" role="group" aria-label="Ukuran ruang kustom (meter)">
+      <label>Lebar (m)
+       <input type="number" min={1} max={20} step={0.5} value={stageDimensions.widthM}
+        onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,widthM:Number(e.target.value)}))}/>
+      </label>
+      <label>Dalam (m)
+       <input type="number" min={1} max={20} step={0.5} value={stageDimensions.depthM}
+        onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,depthM:Number(e.target.value)}))}/>
+      </label>
      </div>
     </section>
-   </div>
 
-   <div className="stage-dual-control-col">
-    <div className="stage-dual-display-hint" data-extended={String(displayInfo.extended)} role="status">
-     <span>{displayInfo.label}</span>
-    </div>
-
-    <label className="stage-dual-check">
-     <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked} checked={operatorConfirm}
-      onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
-     Operator mengawasi area proyeksi, menghindari sorot mata/wajah, dan siap mematikan proyektor fisik
-    </label>
-
-    <div className="stage-dual-perform-quick" role="group" aria-label="Keluaran FLOOR setelah QA">
-     <div>
-      <b>KELUARAN FLOOR</b>
-      <small>{!STAGE_HARDWARE_ENABLED?'Build Production: output fisik terkunci.':
-       experimentLocked?'Sumber eksperimen: preview software saja.':
-       !devices.floor.connected?'Buka output FLOOR dan pindahkan ke layar proyektor (tekan F).':
-       assessment('floor').status!=='within-provisional-target'?
-        'Lengkapi QA fisik 5 titik di bawah sebelum LIVE.':
-        devices.floor.mode==='live'?'Sinyal LIVE aktif; pantau cahaya fisik.':
-        'QA 5 titik tercatat; siap diaktifkan ke proyektor.'}</small>
+    <section className="map-r2-step">
+     <div className="map-r2-step-head">
+      <span className="map-r2-step-num">2</span>
+      <strong>Cocokkan sudut</strong>
      </div>
-     <div className="stage-dual-quick-actions">
-      <button type="button" className="stage-dual-perform-go"
-       disabled={devices.floor.mode!=='live'&&
-        (!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||
-         !devices.floor.connected||assessment('floor').status!=='within-provisional-target')}
-       onClick={()=>changeMode('floor',devices.floor.mode==='live'?'blackout':'live')}>
-       {devices.floor.mode==='live'?'Hentikan FLOOR':'Aktifkan FLOOR'}
+
+     {/* Direct corner selector + precision nudge micro-interaction */}
+     <div className="map-r2-corner-picks" role="group" aria-label="Pilih sudut aktif kalibrasi">
+      {CORNER_TAGS.map((tag,idx)=><button type="button" key={tag}
+       aria-pressed={activeCorner===idx}
+       onClick={()=>{setActiveCorner(idx as MapCornerIndex);setEditingCorners(true);}}>
+       {tag}
+      </button>)}
+     </div>
+
+     <div className="map-r2-nudge-row">
+      <div className="map-r2-nudge-pad" role="group" aria-label="Geser halus sudut aktif">
+       <button type="button" aria-label="Geser sudut ke kiri" onClick={()=>nudgeActiveCorner(-0.005,0)}><ArrowLeft size={12}/></button>
+       <button type="button" aria-label="Geser sudut ke atas" onClick={()=>nudgeActiveCorner(0,-0.005)}><ArrowUp size={12}/></button>
+       <button type="button" aria-label="Geser sudut ke bawah" onClick={()=>nudgeActiveCorner(0,0.005)}><ArrowDown size={12}/></button>
+       <button type="button" aria-label="Geser sudut ke kanan" onClick={()=>nudgeActiveCorner(0.005,0)}><ArrowRight size={12}/></button>
+      </div>
+      <span className="map-r2-corner-readout" aria-live="polite">
+       {(activeCornerPt.x*stageDimensions.widthM).toFixed(2)}m, {(activeCornerPt.y*stageDimensions.depthM).toFixed(2)}m
+      </span>
+     </div>
+
+     <div className="map-r2-corner-actions" role="group" aria-label="Kontrol sudut proyektor">
+      <button type="button" className="map-r2-primary-toggle" aria-pressed={editingCorners}
+       onClick={()=>{
+        const next=!editingCorners;
+        setEditingCorners(next);
+        if(next&&monitorView==='output')setMonitorView('stage');
+       }}>
+       <Crosshair size={12}/> {editingCorners?'Handle aktif':'Atur sudut'}
       </button>
-      <button type="button" className="stage-dual-emergency" onClick={allBlackout}
-       title="Kirim Blackout ke kedua output BODY dan FLOOR">
-       <Square size={14}/> Blackout Output
+      <button type="button" aria-pressed={snapEnabled} onClick={()=>setSnapEnabled(v=>!v)}
+       title="Tempel sudut ke grid 5%">
+       <Grid2x2 size={12}/> Snap
+      </button>
+      <button type="button" disabled={activeHistory.past.length===0} onClick={undoMonitorQuad}
+       aria-label="Batalkan perubahan sudut" title="Undo">
+       <Undo2 size={12}/>
+      </button>
+      <button type="button" disabled={activeHistory.future.length===0} onClick={redoMonitorQuad}
+       aria-label="Ulangi perubahan sudut" title="Redo">
+       <Redo2 size={12}/>
+      </button>
+      <button type="button" className={resetArmed?'map-r2-reset-armed':undefined} onClick={resetMonitorQuad}
+       title="Kembalikan 4 sudut ke posisi awal">
+       <RotateCcw size={12}/> {resetArmed?'Yakin?':'Reset'}
       </button>
      </div>
-    </div>
 
-    <div className="stage-dual-outputs">
-     {ids.map(id=>{
-      const s=devices[id],a=assessment(id);
-      return <div className="stage-dual-output" key={id} data-selected={selected===id}>
-       <div className="stage-dual-output-head">
-        <b>{labels[id]}</b>
-        <span className="stage-dual-output-mode" data-mode={s.mode}>{s.mode.toUpperCase()}</span>
+     {cameraOn&&!floorReady&&onOpenCameraCalibration&&
+      <button type="button" className="map-r2-link-action" onClick={onOpenCameraCalibration}>
+       Kalibrasi kamera ke lantai di Track →
+      </button>}
+    </section>
+
+    <section className="map-r2-step">
+     <div className="map-r2-step-head">
+      <span className="map-r2-step-num">3</span>
+      <strong>Uji proyektor &amp; QA</strong>
+     </div>
+     <label className="stage-dual-check">
+      <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked} checked={operatorConfirm}
+       onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
+      Area proyeksi aman, bebas sorot mata/wajah, dan operator siap Blackout fisik
+     </label>
+     <div className="map-r2-test-row">
+      <button type="button" className="map-r2-test-btn" disabled={projectorTestDisabled}
+       onClick={triggerProjectorTest}>
+       <Target size={12}/> {projectorTestLabel}
+      </button>
+      {devices[selected].connected&&
+       <button type="button" className="map-r2-live-btn"
+        disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||qa.status!=='within-provisional-target'}
+        onClick={()=>changeMode(selected,devices[selected].mode==='live'?'blackout':'live')}>
+        {devices[selected].mode==='live'?'Hentikan':'LIVE'}
+       </button>}
+     </div>
+     {(!STAGE_HARDWARE_ENABLED||experimentLocked)&&
+      <p className="map-r2-lock-note">
+       {experimentLocked
+        ?'Sumber latihan (MP4/3D): kalibrasi lokal aktif, output fisik terkunci.'
+        :'Build Production: kalibrasi lokal aktif, output proyektor fisik terkunci.'}
+      </p>}
+
+     <details className="stage-dual-qa-disclosure">
+      <summary><ShieldAlert size={13}/> QA Fisik 5 Titik · {selected==='floor'?'Lantai':'Tubuh'} <span>{qaBadge}</span></summary>
+      <div className="stage-dual-qa">
+       <p>Catat ΔX dan ΔY (cm) dari tanda fisik di panggung. Sistem tidak mengukur foton secara otomatis.</p>
+       <label>Titik uji ({selected.toUpperCase()})
+        <select value={target[selected]} onChange={e=>setTarget(prev=>({...prev,[selected]:e.target.value}))}>
+         {SURFACE_TARGETS[selected].map(t=><option key={t.id} value={t.id}>{t.id} · {t.label}</option>)}
+        </select></label>
+       <div className="stage-dual-measure">
+        <label>ΔX (cm)<input type="number" step=".1" value={dx} onChange={e=>setDx(e.target.value)} placeholder="0.0"/></label>
+        <label>ΔY (cm)<input type="number" step=".1" value={dy} onChange={e=>setDy(e.target.value)} placeholder="0.0"/></label>
+        <button type="button" onClick={addSample}>Simpan titik</button>
        </div>
-       <p>{s.opened?(s.connected?'Jendela terhubung':'Menunggu jendela output…'):'Jendela belum dibuka'} · QA {a.count}/5</p>
-       <div className="stage-dual-buttons">
-        <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.connected}
-          onClick={()=>open(id)}>{s.opened&&!s.connected?'Pulihkan output':'Buka output'}</button>
-        <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
-        <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm}
-         onClick={()=>changeMode(id,'test')}><Target size={13}/> Pola uji</button>
-        <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
-         onClick={()=>changeMode(id,'live')}>LIVE</button>
+       <div className="stage-dual-metrics">
+        <span>Sampel <b>{qa.count}/5</b></span>
+        <span>RMSE <b>{qa.rmseCm??'—'} cm</b></span>
+        <span>P95 <b>{qa.p95Cm??'—'} cm</b></span>
+        <span>Maks <b>{qa.maximumCm??'—'} cm</b></span>
        </div>
-       <small>{s.reason}</small>
-      </div>;
-     })}
-    </div>
+       <label>Nama pemeriksa
+        <input type="text" value={proof?.signature===signature(selected)?proof.reviewer:''}
+         onChange={e=>updateProof(p=>({...p,reviewer:e.target.value.slice(0,120),completedAt:null}))}
+         placeholder="nama pemeriksa fisik"/></label>
+       {([
+        ['fixedOptics','Posisi kamera, lensa dan rig tetap selama pengukuran'],
+        ['blackoutObserved','Blackout sungguh memadamkan cahaya pada perangkat'],
+        ['noUnsafeSpill','Cahaya tidak menyentuh wajah/mata/penonton; oklusi telah diperiksa']
+       ] as const).map(([field,label])=><label key={field} className="stage-dual-check">
+        <input type="checkbox" checked={proof?.signature===signature(selected)?proof.checklist[field]:false}
+         onChange={e=>updateProof(p=>({...p,checklist:{...p.checklist,[field]:e.target.checked},
+          completedAt:null}))}/>{label}</label>)}
+       <div className="stage-dual-qa-actions">
+        <button type="button" onClick={signOff}>Selesaikan QA manual</button>
+        <button type="button" onClick={exportReport}><Download size={13}/> Ekspor QA JSON</button>
+       </div>
+       <p>Status: <b>{qa.status}</b>. {qa.missing.join(' ')}</p>
+      </div>
+     </details>
 
-    <details className="stage-dual-qa-disclosure">
-     <summary><ShieldAlert size={14}/> QA Fisik 5 Titik · {selected.toUpperCase()} <span>{qaBadge}</span></summary>
-     <div className="stage-dual-qa">
-      <p>Catat ΔX dan ΔY (cm) dari tanda fisik di panggung. Sistem tidak mengukur foton secara otomatis.</p>
-      <label>Titik uji ({selected.toUpperCase()})
-       <select value={target[selected]} onChange={e=>setTarget(prev=>({...prev,[selected]:e.target.value}))}>
-        {SURFACE_TARGETS[selected].map(t=><option key={t.id} value={t.id}>{t.id} · {t.label}</option>)}
-       </select></label>
-      <div className="stage-dual-measure">
-       <label>ΔX (cm)<input type="number" step=".1" value={dx} onChange={e=>setDx(e.target.value)} placeholder="0.0"/></label>
-       <label>ΔY (cm)<input type="number" step=".1" value={dy} onChange={e=>setDy(e.target.value)} placeholder="0.0"/></label>
-       <button type="button" onClick={addSample}>Simpan titik</button>
+     <details className="stage-dual-profile">
+      <summary>Simpan profil ({savedDrafts.length})</summary>
+      <p>Menyimpan geometri BODY/FLOOR untuk kamera dan lantai yang sama. QA 5 titik dan izin LIVE selalu diulang.</p>
+      <label>Nama profil
+       <input value={draftName} maxLength={100} onChange={e=>setDraftName(e.target.value)}/>
+      </label>
+      <button type="button" onClick={saveOutputDraft}>Simpan draf output</button>
+      <label>Profil lokal
+       <select value={draftId} onChange={e=>{
+        setDraftId(e.target.value);
+        const p=savedDrafts.find(q=>q.id===e.target.value);
+        if(p)setDraftName(p.name);
+       }}>
+        <option value="">Pilih profil</option>
+        {savedDrafts.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+       </select>
+      </label>
+      <div className="stage-dual-buttons">
+       <button type="button" onClick={applyOutputDraft} disabled={!draftId}>Muat profil (QA ulang)</button>
+       <button type="button" onClick={removeOutputDraft} disabled={!draftId}>Hapus</button>
       </div>
-      <div className="stage-dual-metrics">
-       <span>Sampel <b>{qa.count}/5</b></span>
-       <span>RMSE <b>{qa.rmseCm??'—'} cm</b></span>
-       <span>P95 <b>{qa.p95Cm??'—'} cm</b></span>
-       <span>Maks <b>{qa.maximumCm??'—'} cm</b></span>
+     </details>
+    </section>
+
+    <details className="map-r2-advanced">
+     <summary><SlidersHorizontal size={12}/> Advanced · presisi UV, output ganda &amp; diagnostik</summary>
+     <div className="map-r2-advanced-body">
+      <div className="stage-dual-calibration">
+       <div className="stage-dual-cal-controls">
+        <label>Kecerahan {selected.toUpperCase()} · {Math.round(activePlan.brightness*100)}%
+         <input type="range" min="0" max=".6" step=".02" value={activePlan.brightness}
+          onChange={e=>editPlan(selected,p=>({...p,brightness:Number(e.target.value)}))}/></label>
+        <label>Resolusi Output<select value={activePlan.resolution}
+         onChange={e=>editPlan(selected,p=>({...p,resolution:e.target.value as '720p'|'1080p'}))}>
+         <option value="720p">720p</option><option value="1080p">1080p</option>
+        </select></label>
+       </div>
+       <MapFourCornerEditor key={selected} sourceQuad={activePlan.sourceQuad}
+        projectorQuad={activePlan.projectorQuad}
+        previewCanvas={selected==='body'?bodyCanvas:floorCanvas}
+        onReset={group=>editPlan(selected,p=>({...p,[group]:defaultStageSurfacePlan(selected)[group]}))}
+        onCommit={(group,quad)=>editPlan(selected,p=>({...p,[group]:quad}))}/>
+       <div className="stage-dual-advanced-row">
+        {selected==='floor'&&<details className="stage-dual-grid-qa">
+         <summary>Grid homografi 3 × 3 (9 titik)</summary>
+         {(()=>{const grid=diagnosticNinePointGrid(activePlan.sourceQuad,activePlan.projectorQuad);
+          return <div>
+           <p role="status">Model homografi: {grid.valid?'konsisten':'perlu diperbaiki'} · {grid.samples.length} titik.</p>
+           <div className="stage-dual-grid-points" aria-label="Grid kalibrasi model">
+            {grid.samples.map(s=><span key={s.id} title={'Projector U '+s.projector.x.toFixed(3)+' V '+s.projector.y.toFixed(3)}>
+             {s.id} · {s.projector.x.toFixed(2)}, {s.projector.y.toFixed(2)}
+            </span>)}
+           </div>
+           <small>{grid.reason} Data ini tidak menghitung selisih optik dalam sentimeter.</small>
+          </div>;
+         })()}
+        </details>}
+        <details>
+         <summary>Advanced · angka presisi empat titik</summary>
+         <p>Urutan: kiri atas, kanan atas, kanan bawah, kiri bawah (0–1). Ulangi uji fisik jika proyektor bergeser.</p>
+         <div className="stage-dual-quad">
+          {(['sourceQuad','projectorQuad'] as const).map(group=><div key={group}>
+           <b>{group==='sourceQuad'?'Sumber kamera/pad':'Target proyektor'}</b>
+           {activePlan[group].map((point,i)=><div key={i}>
+            <span>{i+1}</span>
+            {(['x','y'] as const).map(axis=><label key={axis}>{axis.toUpperCase()}
+             <input type="number" min="0" max="1" step=".01" value={point[axis]}
+              onChange={e=>editPlan(selected,p=>({
+               ...p,[group]:p[group].map((v,j)=>j===i?{...v,[axis]:Number(e.target.value)}:v) as typeof p[typeof group]
+              }))}/></label>)}
+           </div>)}
+          </div>)}
+         </div>
+        </details>
+       </div>
       </div>
-      <label>Nama pemeriksa
-       <input type="text" value={proof?.signature===signature(selected)?proof.reviewer:''}
-        onChange={e=>updateProof(p=>({...p,reviewer:e.target.value.slice(0,120),completedAt:null}))}
-        placeholder="nama pemeriksa fisik"/></label>
-      {([
-       ['fixedOptics','Posisi kamera, lensa dan rig tetap selama pengukuran'],
-       ['blackoutObserved','Blackout sungguh memadamkan cahaya pada perangkat'],
-       ['noUnsafeSpill','Cahaya tidak menyentuh wajah/mata/penonton; oklusi telah diperiksa']
-      ] as const).map(([field,label])=><label key={field} className="stage-dual-check">
-       <input type="checkbox" checked={proof?.signature===signature(selected)?proof.checklist[field]:false}
-        onChange={e=>updateProof(p=>({...p,checklist:{...p.checklist,[field]:e.target.checked},
-         completedAt:null}))}/>{label}</label>)}
-      <div className="stage-dual-qa-actions">
-       <button type="button" onClick={signOff}>Selesaikan QA manual</button>
-       <button type="button" onClick={exportReport}><Download size={14}/> Ekspor QA JSON</button>
+
+      <ol className="stage-dual-stepper" aria-label={'Alur kesiapan proyektor '+selected.toUpperCase()}>
+       {([
+        {id:'display',label:'1. Layar',done:displayInfo.extended===true},
+        {id:'safe',label:'2. Aman',done:operatorConfirm},
+        {id:'output',label:'3. Output',done:devices[selected].connected},
+        {id:'qa',label:'4. QA 5/5',done:qa.status==='within-provisional-target'},
+        {id:'live',label:'5. LIVE',done:devices[selected].mode==='live'}
+       ] as const).map((step,idx,arr)=>{
+        const isCurrent=!step.done&&arr.slice(0,idx).every(s=>s.done);
+        return <li key={step.id} data-done={step.done||undefined} data-current={isCurrent||undefined}>
+         {step.label}
+        </li>;
+       })}
+      </ol>
+      <div className="stage-dual-display-hint" data-extended={String(displayInfo.extended)} role="status">
+       <span>{displayInfo.label}</span>
       </div>
-      <p>Status: <b>{qa.status}</b>. {qa.missing.join(' ')}</p>
+
+      <div className="stage-dual-perform-quick" role="group" aria-label="Keluaran FLOOR setelah QA">
+       <div>
+        <b>KELUARAN FLOOR</b>
+        <small>{!STAGE_HARDWARE_ENABLED?'Build Production: output fisik terkunci.':
+         experimentLocked?'Sumber eksperimen: preview software saja.':
+         !devices.floor.connected?'Buka output FLOOR dan pindahkan ke layar proyektor (tekan F).':
+         assessment('floor').status!=='within-provisional-target'?
+          'Lengkapi QA fisik 5 titik di bawah sebelum LIVE.':
+          devices.floor.mode==='live'?'Sinyal LIVE aktif; pantau cahaya fisik.':
+          'QA 5 titik tercatat; siap diaktifkan ke proyektor.'}</small>
+       </div>
+       <div className="stage-dual-quick-actions">
+        <button type="button" className="stage-dual-perform-go"
+         disabled={devices.floor.mode!=='live'&&
+          (!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||
+           !devices.floor.connected||assessment('floor').status!=='within-provisional-target')}
+         onClick={()=>changeMode('floor',devices.floor.mode==='live'?'blackout':'live')}>
+         {devices.floor.mode==='live'?'Hentikan FLOOR':'Aktifkan FLOOR'}
+        </button>
+       </div>
+      </div>
+
+      <div className="stage-dual-outputs">
+       {ids.map(id=>{
+        const s=devices[id],a=assessment(id);
+        return <div className="stage-dual-output" key={id} data-selected={selected===id}>
+         <div className="stage-dual-output-head">
+          <b>{labels[id]}</b>
+          <span className="stage-dual-output-mode" data-mode={s.mode}>{s.mode.toUpperCase()}</span>
+         </div>
+         <p>{s.opened?(s.connected?'Jendela terhubung':'Menunggu jendela output…'):'Jendela belum dibuka'} · QA {a.count}/5</p>
+         <div className="stage-dual-buttons">
+          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.connected}
+            onClick={()=>open(id)}>{s.opened&&!s.connected?'Pulihkan output':'Buka output'}</button>
+          <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
+          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm}
+           onClick={()=>changeMode(id,'test')}><Target size={13}/> Pola uji</button>
+          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
+           onClick={()=>changeMode(id,'live')}>LIVE</button>
+         </div>
+         <small>{s.reason}</small>
+        </div>;
+       })}
+      </div>
+
+      <section className="stage-wysiwyg" aria-label="Preview proyektor ganda WYSIWYG">
+       <div className="stage-wysiwyg-head">
+        <div><b>Preview Ganda (BODY + FLOOR)</b>
+         <small>Transformasi kalibrasi sama dengan jendela output</small>
+        </div>
+        <div className="stage-wysiwyg-switch" role="group" aria-label="Mode preview proyektor">
+         <button type="button" aria-pressed={previewView==='draft'}
+          onClick={()=>setPreviewView('draft')}>Draf lokal</button>
+         <button type="button" aria-pressed={previewView==='sent'}
+          onClick={()=>setPreviewView('sent')}>Sinyal dikirim</button>
+        </div>
+       </div>
+       <div className="stage-wysiwyg-grid">
+        {ids.map(id=><ProjectorWysiwygPreview key={id} surface={id}
+         plan={plans[id]} view={previewView} softwareMode={devices[id].mode}
+         connected={devices[id].connected} qa={assessment(id)}
+         liveCanvas={id==='body'?bodyCanvas:floorCanvas}
+         testCanvases={testCanvasesRef} viewport={devices[id].viewport}/>)}
+       </div>
+      </section>
+
+      <details className="stage-dual-setup-uat">
+       <summary>Uji setup panggung (&lt;10 menit)</summary>
+       <p>Catat waktu setup hanya setelah operator melihat efek pada lantai fisik.</p>
+       <div className="stage-dual-setup-elapsed">
+        {(()=>{const started=readSetupStart(sessionStorage,Date.now());
+         if(started===null)return 'Timer belum dimulai';
+         const total=Math.floor((Date.now()-started)/1000);
+         return 'Waktu '+Math.floor(total/60).toString().padStart(2,'0')+':'+
+          (total%60).toString().padStart(2,'0')+' / target '+(FIRST_SETUP_TARGET_MS/60000)+' menit';
+        })()}
+       </div>
+       <button type="button" onClick={beginBench} disabled={devices.floor.mode==='live'}>
+        Mulai uji setup baru
+       </button>
+       <label className="stage-dual-setup-check">
+        <input type="checkbox" checked={benchObserved}
+         onChange={e=>setBenchObserved(e.target.checked)}/>
+        Efek FLOOR terlihat sesuai di lantai fisik dan Blackout nyata sudah diuji
+       </label>
+       <label>Catatan uji
+        <input maxLength={180} value={benchNotes} onChange={e=>setBenchNotes(e.target.value)}
+         placeholder="Kamera, proyektor, ruangan, hambatan"/>
+       </label>
+       <button type="button" disabled={!benchObserved||devices.floor.mode!=='live'||
+        assessment('floor').status!=='within-provisional-target'} onClick={recordBench}>
+        Catat hasil uji fisik
+       </button>
+       {benchResult&&<p role="status">{benchResult}</p>}
+      </details>
      </div>
     </details>
+   </aside>
 
-    <details className="stage-dual-profile">
-     <summary>Profil proyektor tersimpan ({savedDrafts.length})</summary>
-     <p>Menyimpan geometri BODY/FLOOR untuk kamera dan lantai yang sama. QA 5 titik dan izin LIVE selalu diulang.</p>
-     <label>Nama profil
-      <input value={draftName} maxLength={100} onChange={e=>setDraftName(e.target.value)}/>
-     </label>
-     <button type="button" onClick={saveOutputDraft}>Simpan draf output</button>
-     <label>Profil lokal
-      <select value={draftId} onChange={e=>{
-       setDraftId(e.target.value);
-       const p=savedDrafts.find(q=>q.id===e.target.value);
-       if(p)setDraftName(p.name);
-      }}>
-       <option value="">Pilih profil</option>
-       {savedDrafts.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
-     </label>
-     <div className="stage-dual-buttons">
-      <button type="button" onClick={applyOutputDraft} disabled={!draftId}>Muat profil (QA ulang)</button>
-      <button type="button" onClick={removeOutputDraft} disabled={!draftId}>Hapus</button>
-     </div>
-    </details>
-
-    <details className="stage-dual-setup-uat">
-     <summary>Uji setup panggung (&lt;10 menit)</summary>
-     <p>Catat waktu setup hanya setelah operator melihat efek pada lantai fisik.</p>
-     <div className="stage-dual-setup-elapsed">
-      {(()=>{const started=readSetupStart(sessionStorage,Date.now());
-       if(started===null)return 'Timer belum dimulai';
-       const total=Math.floor((Date.now()-started)/1000);
-       return 'Waktu '+Math.floor(total/60).toString().padStart(2,'0')+':'+
-        (total%60).toString().padStart(2,'0')+' / target '+(FIRST_SETUP_TARGET_MS/60000)+' menit';
-      })()}
-     </div>
-     <button type="button" onClick={beginBench} disabled={devices.floor.mode==='live'}>
-      Mulai uji setup baru
-     </button>
-     <label className="stage-dual-setup-check">
-      <input type="checkbox" checked={benchObserved}
-       onChange={e=>setBenchObserved(e.target.checked)}/>
-      Efek FLOOR terlihat sesuai di lantai fisik dan Blackout nyata sudah diuji
-     </label>
-     <label>Catatan uji
-      <input maxLength={180} value={benchNotes} onChange={e=>setBenchNotes(e.target.value)}
-       placeholder="Kamera, proyektor, ruangan, hambatan"/>
-     </label>
-     <button type="button" disabled={!benchObserved||devices.floor.mode!=='live'||
-      assessment('floor').status!=='within-provisional-target'} onClick={recordBench}>
-      Catat hasil uji fisik
-     </button>
-     {benchResult&&<p role="status">{benchResult}</p>}
-    </details>
-
-    <p className="stage-dual-status" role="status">{message}</p>
-    <p className="stage-dual-limit">Kalibrasi memakai homografi 2D. Periksa area cahaya dan blackout fisik secara langsung sebelum pertunjukan.</p>
+   <div className="map-r2-monitor-col">
+    <MapStageMonitor
+     view={monitorView}
+     onChangeView={setMonitorView}
+     selected={selected}
+     plan={activePlan}
+     editingCorners={editingCorners}
+     activeCorner={activeCorner}
+     onSelectCorner={setActiveCorner}
+     snapEnabled={snapEnabled}
+     stageDimensions={stageDimensions}
+     hasLiveSource={hasLiveSource}
+     sourceKind={sourceKind}
+     simState={simState}
+     onStartSim={()=>{
+      setSimState(prev=>({...prev,active:true,playing:true}));
+      setMessage('Simulasi uji aktif di atas grid kalibrasi (software lokal, output fisik terkunci).');
+     }}
+     onStopSim={()=>{
+      setSimState(prev=>({...prev,active:false}));
+      setMessage('Simulasi ditutup; kembali ke tampilan grid kalibrasi murni.');
+     }}
+     onToggleSimPlay={()=>setSimState(prev=>({...prev,playing:!prev.playing}))}
+     onMoveSimPerformer={(actorId,pos)=>setSimState(prev=>moveMapSimPerformer(prev,actorId,pos))}
+     onCommitProjectorQuad={commitMonitorQuad}
+     onOpenCameraCalibration={onOpenCameraCalibration}
+     previewView={previewView}
+     onChangePreviewView={setPreviewView}
+     softwareMode={devices[selected].mode}
+     connected={devices[selected].connected}
+     qa={qa}
+     viewport={devices[selected].viewport}
+     bodyCanvas={bodyCanvas}
+     floorCanvas={floorCanvas}
+     liquidCanvas={liquidCanvas}
+     experimentInputCanvas={experimentInputCanvas}
+     videoRef={videoRef}
+     frameRef={motionFrameRef}
+     floorTracker={floorTracker}
+     motionEvents={motionEvents}
+     testCanvases={testCanvasesRef}
+     performerCount={performerCount}
+     identitySafe={identitySafe}
+    />
    </div>
   </div>
+
+  <footer className="map-r2-footer">
+   <p className="map-r2-blocker" role="status">{message||dominantStatus.blocker}</p>
+   {onEnterPerform&&<button type="button" className="map-r2-perform-link" onClick={handleEnterPerform}>
+    Ke Perform <ArrowRight size={13}/>
+   </button>}
+  </footer>
  </section>;
 }

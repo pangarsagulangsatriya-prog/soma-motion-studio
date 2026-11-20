@@ -2,10 +2,11 @@ import {useEffect,useRef,useState} from 'react';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal} from './PhoneSignal.ts';
 import {parsePhoneInvite} from './PhonePairProtocol.ts';
 import {AutomaticPhoneSender} from './AutomaticPhoneSender.tsx';
+import {buildHorizontalCameraConstraints} from '../engine/cameraConstraints.ts';
 import './stage-setup.css';
 function ManualPhoneCameraSender(){
  const [offer,setOffer]=useState(''),[answer,setAnswer]=useState('');
- const [status,setStatus]=useState('Buka kode sambungan dari SOMA laptop.');
+ const [status,setStatus]=useState('Buka kode sambungan dari SOMA laptop. Posisikan HP horizontal (landscape) untuk wide view.');
  const [facing,setFacing]=useState<'environment'|'user'>('environment');
  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false);
  const video=useRef<HTMLVideoElement>(null),pc=useRef<RTCPeerConnection|null>(null);
@@ -24,9 +25,10 @@ function ManualPhoneCameraSender(){
   try{
    if(!window.isSecureContext)throw new Error('Halaman kamera HP harus HTTPS.');
    const remote=parsePhoneSignal(offer,'offer');
+   try{await (screen.orientation as ScreenOrientation&{lock?:(o:string)=>Promise<void>})?.lock?.('landscape');}catch{}
    const stream=await navigator.mediaDevices.getUserMedia({
-    audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720},
-     frameRate:{ideal:24,max:30}}
+    audio:false,
+    video:buildHorizontalCameraConstraints({captureSize:'720p',facingMode:facing,frameRateIdeal:24,frameRateMax:30})
    });
    camera.current=stream;
    if(video.current){video.current.srcObject=stream;void video.current.play().catch(()=>{});}

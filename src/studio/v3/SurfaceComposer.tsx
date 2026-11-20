@@ -27,16 +27,30 @@ import {normalizedCanvasPoint,pickTopmostObject,nudgeLayer} from './composerObje
 import {composerLiquidTrackEvents,composerLiquidDemoEvents,COMPOSER_LIQUID_PHASES,
  type ComposerLiquidPhase,type ComposerLiquidMode} from './composerLiquidAdapter.ts';
 import type {PixiLiquidImprintCompositor} from '../../footprints/materials/PixiLiquidImprintCompositor.ts';
+import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
+import {
+ COMPOSE_STEER_MACROS,COMPOSE_VISUAL_STYLES,DEFAULT_COMPOSE_STEERING,
+ deriveComposeProvenance,footprintSpriteDimensions,getComposeVisualStyle,
+ sanitizeSteeringState,type ComposeSteeringState,type ComposeVisualStyleId
+} from '../../footprints/materials/composeVisualStyles.ts';
+import {
+ COMPOSE_VIEW_TABS,LOWER_BODY_SIM_ACTIONS,
+ buildSimulatedLowerBodyFrame,defaultLowerBodyState,extractLiveLowerBodyPose,
+ loadSavedLowerBodyPresets,saveCustomLowerBodyPreset,
+ type ComposeMonitorView,type LowerBodyComposerState,type LowerBodySimAction,type SavedLowerBodyPreset
+} from './composeLowerBodyModel.ts';
+import {renderLowerBodyStageMonitor} from './composeLowerBodyRenderer.ts';
+import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 
-type Surface='BODY A'|'BODY B'|'FLOOR';
+type Surface='FLOOR'|'BODY A'|'BODY B';
 type Mask='silhouette'|'polygon'|'none';
 type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][]};
 type Composition=Record<Surface,Layer[]>;
 type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
-const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
+const surfaces:Surface[]=['FLOOR','BODY A','BODY B'];
 const key=V5_COMPOSER_KEY;
 const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]]});
-const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
+const initial=():Composition=>({FLOOR:[makeLayer('', 'Floor path')],'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')]});
 const validFootprint=(v:unknown):v is FootprintConfig=>{
  if(!v||typeof v!=='object')return false;
  const x=v as Partial<FootprintConfig>;
@@ -81,16 +95,41 @@ type Props={
  motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
+ onOpenCameraCalibration?:()=>void;
+ onEnterPerform?:()=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenCameraCalibration,onEnterPerform}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const workspaceHiddenRef=useRef(workspaceHidden);workspaceHiddenRef.current=workspaceHidden;
  const mapModeRef=useRef(mapMode);mapModeRef.current=mapMode;
  const [selected,setSelected]=useState<Surface>('FLOOR');
+ const [monitorView,setMonitorView]=useState<ComposeMonitorView>('FLOOR');
+ const monitorViewRef=useRef(monitorView);monitorViewRef.current=monitorView;
+ const [lowerBody,setLowerBody]=useState<LowerBodyComposerState>(()=>defaultLowerBodyState());
+ const lowerBodyRef=useRef(lowerBody);lowerBodyRef.current=lowerBody;
+ const [savedLowerBodyPresets,setSavedLowerBodyPresets]=useState<SavedLowerBodyPreset[]>(()=>
+  loadSavedLowerBodyPresets(typeof localStorage!=='undefined'?localStorage:undefined)
+ );
+ const [simAction,setSimAction]=useState<LowerBodySimAction>('idle');
+ const simActionRef=useRef(simAction);simActionRef.current=simAction;
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
  useEffect(()=>{setPreviewArrangement('surface');},[experimentSource]);
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
+ const selectMonitorView=(view:ComposeMonitorView)=>{
+  setMonitorView(view);
+  if(view==='FLOOR'){
+   setSelected('FLOOR');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');
+  }else if(view==='LEG A'){
+   setSelected('BODY A');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');
+  }else if(view==='LEG B'){
+   setSelected('BODY B');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');
+  }else if(view==='SPLIT'){
+   setSelected('BODY A');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('split');
+  }else{
+   setSelected('BODY A');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');
+  }
+ };
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
  const history=useCompositionHistory<Composition>(()=>{
   try{
@@ -126,16 +165,23 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [liquidEnabled,setLiquidEnabled]=useState(true);
  const [liquidMode,setLiquidMode]=useState<ComposerLiquidMode>('track');
  const [liquidPhase,setLiquidPhase]=useState<ComposerLiquidPhase>('contact');
- const [liquidFlow,setLiquidFlow]=useState(.76);
- const [liquidStatus,setLiquidStatus]=useState('PixiJS memuat…');
+ const [steering,setSteering]=useState<ComposeSteeringState>(DEFAULT_COMPOSE_STEERING);
+ const [liquidStatus,setLiquidStatus]=useState('Renderer visual memuat…');
  const liquidCanvas=useRef<HTMLCanvasElement>(null);
  const liquidRenderer=useRef<PixiLiquidImprintCompositor|null>(null);
  const liquidEnabledRef=useRef(liquidEnabled);liquidEnabledRef.current=liquidEnabled;
  const liquidModeRef=useRef(liquidMode);liquidModeRef.current=liquidMode;
  const liquidPhaseRef=useRef(liquidPhase);liquidPhaseRef.current=liquidPhase;
- const liquidFlowRef=useRef(liquidFlow);liquidFlowRef.current=liquidFlow;
+ const steeringRef=useRef(steering);steeringRef.current=steering;
+ const footprintRef=useRef(footprint);footprintRef.current=footprint;
  const liquidDemoStart=useRef(0);
  const liquidPaintErrorRef=useRef('');
+ const updateSteering=(patch:Partial<ComposeSteeringState>)=>
+  setSteering(prev=>sanitizeSteeringState({...prev,...patch}));
+ const selectVisualStyle=(styleId:ComposeVisualStyleId)=>{
+  const meta=getComposeVisualStyle(styleId);
+  setSteering(prev=>sanitizeSteeringState({...prev,styleId,...meta.defaults}));
+ };
  useEffect(()=>{liquidDemoStart.current=performance.now();},[liquidMode,liquidPhase]);
  useEffect(()=>{
   if(!liquidEnabled)return;
@@ -396,9 +442,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   if(experiment&&physical)return;
   if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
+  const demoFloor=!physical&&!overlayOnly&&s==='FLOOR'&&liquidEnabledRef.current&&liquidModeRef.current==='demo';
+  if(demoFloor){
+   ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+   for(let i=1;i<8;i++){const x=(w/8)*i;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+   for(let j=1;j<6;j++){const y=(h/6)*j;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+   ctx.restore();
+  }
   const now=performance.now();
   for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
    if(overlayOnly&&kind!=='media')continue;
+   if(demoFloor&&kind==='floor')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
     kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
@@ -473,18 +527,24 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     const demo=liquidModeRef.current==='demo'&&!mapModeRef.current&&!workspaceHiddenRef.current;
     const artTime=demo?now:timelineModeRef.current==='replay'
      ?timelinePositionRef.current:now;
+    const fp=footprintRef.current;
+    const lifeMs=Math.min(60000,Math.max(1000,(fp?.life??9)*1000));
+    const dims=footprintSpriteDimensions(fp?.size??32);
+    const st=steeringRef.current;
     const events=demo?
      composerLiquidDemoEvents(liquidPhaseRef.current,now,liquidDemoStart.current):
      composerLiquidTrackEvents(timelineCaptureRef.current,artTime,
-      timelineModeRef.current==='replay'?'replay':'live');
+      timelineModeRef.current==='replay'?'replay':'live',lifeMs);
     try{
      liquidRenderer.current.render(events,artTime,{
-      widthPx:118,lengthPx:190,flow:liquidFlowRef.current,lifeMs:9000
+      styleId:st.styleId,flow:st.flow,turbulence:st.turbulence,
+      glow:st.glow,hueShift:st.hueShift,pulseRate:st.pulseRate,
+      widthPx:dims.widthPx,lengthPx:dims.lengthPx,lifeMs
      });
      liquidFrame=true;
     }catch(err){
      liquidFrame=false;
-     const message='Liquid Imprint render gagal: '+String(err);
+     const message='Visual lantai gagal merender: '+String(err);
      if(liquidPaintErrorRef.current!==message){
       liquidPaintErrorRef.current=message;
       setLiquidStatus(message);
@@ -524,11 +584,34 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     preview.dataset.mat03Blackout=String(blackoutRef.current);
    }
    if(preview){const ctx=preview.getContext('2d');if(ctx){
+    const activeView=monitorViewRef.current;
     if(previewArrangementRef.current==='input'&&experimentSource){
      ctx.setTransform(1,0,0,1,0,0);
      ctx.fillStyle='#000';ctx.fillRect(0,0,preview.width,preview.height);
      const input=experimentInputCanvas?.current;
      if(input&&input.width&&input.height)ctx.drawImage(input,0,0,preview.width,preview.height);
+    }else if(activeView!=='FLOOR'){
+     const livePoseA=cameraOnRef.current&&bodySelectedRef.current?extractLiveLowerBodyPose(frameRefLive.current.current?.pose,'A'):null;
+     const simPerformers:1|2=activeView==='SPLIT'||activeView==='LEG B'||performerRef.current===2?2:2;
+     const simFrame=buildSimulatedLowerBodyFrame(now,simActionRef.current,simPerformers);
+     const frame=livePoseA
+      ?{
+        performers:performerRef.current===2&&simFrame.performers[1]?[livePoseA,simFrame.performers[1]]:[livePoseA],
+        crossing:!identitySafeRef.current,
+        ambiguous:!identitySafeRef.current,
+        source:'live' as const,
+        actionLabel:'LIVE TRACKING · LOWER BODY'
+       }
+      :simFrame;
+     const lb=lowerBodyRef.current;
+     renderLowerBodyStageMonitor(ctx,preview.width,preview.height,{
+      view:activeView,
+      state:lb,
+      frame,
+      mediaA:lb.styleA.mediaId?mediaEls.current.get(lb.styleA.mediaId)??null:null,
+      mediaB:lb.styleB.mediaId?mediaEls.current.get(lb.styleB.mediaId)??null:null,
+      blackout:blackoutRef.current||!previewLiveRef.current
+     });
     }else if(previewArrangementRef.current==='split'){
      if(!splitScratch.current)splitScratch.current={body:document.createElement('canvas'),floor:document.createElement('canvas')};
      const pair=splitScratch.current;
@@ -543,25 +626,28 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     }else render(ctx,selectedRef.current,preview.width,preview.height);
    }}
    if(preview&&liquidFrame&&liquidCanvas.current&&
-    previewArrangementRef.current==='surface'&&selectedRef.current==='FLOOR'){
+    previewArrangementRef.current==='surface'&&monitorViewRef.current==='FLOOR'&&selectedRef.current==='FLOOR'){
     const g=preview.getContext('2d');
     if(g){g.save();g.globalCompositeOperation='source-over';
      g.globalAlpha=1;g.drawImage(liquidCanvas.current,0,0,preview.width,preview.height);
      g.restore();}
    }
    if(preview&&timelineModeRef.current==='replay'&&selectedRef.current==='FLOOR'&&
-    previewArrangementRef.current==='surface'&&!blackoutRef.current&&previewLiveRef.current){
+    previewArrangementRef.current==='surface'&&!blackoutRef.current&&previewLiveRef.current&&!liquidFrame){
     const g=preview.getContext('2d');
     if(g){
+     const fp=footprintRef.current;
+     const dims=footprintSpriteDimensions(fp?.size??32);
      const marks=timelineFootprintVisibility(timelineCaptureRef.current,timelinePositionRef.current,
-      (footprint?.life??8)*1000);
+      (fp?.life??8)*1000);
      g.save();g.globalCompositeOperation='screen';
      for(const mark of marks){
-      g.save();g.globalAlpha=mark.opacity*.9;
-      g.translate(mark.x*preview.width,mark.y*preview.height);
-      g.fillStyle=footprint?.colors?.[mark.foot]??'#dce7df';
-      g.beginPath();g.ellipse(0,0,Math.max(3,(footprint?.size??30)*.22),
-       Math.max(7,(footprint?.size??30)*.5),0,0,Math.PI*2);g.fill();g.restore();
+      paintAuthenticFootprint(g,{
+       x:mark.x*preview.width,y:mark.y*preview.height,
+       side:mark.foot,headingRad:Math.PI/2-(mark.headingDeg*Math.PI/180),
+       widthPx:dims.widthPx*.58,lengthPx:dims.lengthPx*.58,
+       alpha:mark.opacity*.9,color:fp?.colors?.[mark.foot]??'#dce7df'
+      });
      }
      g.restore();
     }
@@ -642,18 +728,37 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
-  <header><div><h2>Map</h2></div></header>
-  <p role="status">{bodyStatus} · FLOOR {floorReady?'terkonfirmasi':'belum terkalibrasi'} · Status cahaya wajib diperiksa fisik</p>
   <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="Map BODY output raster"/>
   <canvas ref={floorOutput} width={640} height={360} hidden aria-label="Map FLOOR output raster"/>
   <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden aria-label="MAT-03 Liquid Imprint PixiJS raster"/>
   <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
-   floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
+   floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}
+   liquidCanvas={liquidCanvas} experimentInputCanvas={experimentInputCanvas}
+   videoRef={videoRef} motionFrameRef={frameRef} floorTracker={floorTracker}
+   motionEvents={motionEvents} cameraOn={cameraOn} floorReady={floorReady}
+   performerCount={performerCount} identitySafe={identitySafe}
+   experimentSource={experimentSource}
+   onOpenCameraCalibration={onOpenCameraCalibration}
+   onEnterPerform={onEnterPerform}/>
  </section>;
  return <div id="soma-compose-focus" className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
   <div className="s64-heading">
-   <div className="cpux-heading-label"><h2>Compose</h2><span>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</span></div>
+   <div className="cpux-heading-label">
+    <h2>Compose</h2>
+    <span>{monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='FOOT'?'Foot · Sole Contact':monitorView==='SKELETON'?'Skeleton Only · Orthographic':'Lower-Body · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
+   </div>
+   <div className="s64-safety">
+    <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
+     disabled={previewBlackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
+    <span className="cpux-preview-status" role="status">{blackout||previewBlackout?'Padam':'Aktif'}</span>
+    <details className="soma-ia-display-options"><summary>Display</summary>
+     <label><input type="checkbox" checked={previewLive}
+      onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
+     <button type="button" onClick={openPreview}>Buka preview terpisah</button>
+     <button type="button" onClick={()=>setBlackout(true)}>Padam preview</button>
+    </details>
+   </div>
    <details className="cp04-command-menu">
     <summary aria-label="Opsi komposisi" title="Undo, redo, reset">Opsi</summary>
     <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">
@@ -669,22 +774,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     </div>
    </details>
   </div>
-  <div className="s64-safety">
-   <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
-    disabled={previewBlackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
-   <span className="cpux-preview-status" role="status">{blackout||previewBlackout?'Padam':'Preview software'}</span>
-   <details className="soma-ia-display-options"><summary>Display</summary>
-    <label><input type="checkbox" checked={previewLive}
-     onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
-    <button type="button" onClick={openPreview}>Buka preview terpisah</button>
-    <button type="button" onClick={()=>setBlackout(true)}>Padam preview</button>
-   </details>
-  </div>
-  <div className="s64-runtime-status" role="status">{bodyStatus} · FLOOR {floorReady?'siap':'preview saja'}</div>
-  {experimentSource&&<p className="msv4-experiment-source-status" role="status">
-   {composeExperimentStatus(experimentSource,experimentReady,selected)}
-   {experimentReady?' · Pilih FLOOR atau BODY untuk hasil olahan.':' · Frame sumber belum siap.'}
-  </p>}
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
    <aside className="s64-column cp02-library">
     <details className="soma-ia-media"><summary>Media <span>{media.length}</span></summary><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
@@ -699,21 +788,39 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  {media.some(m=>m.origin==='track')&&<small>MP4 Track dipakai langsung dari decoder Track. Tidak perlu unggah ulang.</small>}
  {assetNotice&&<small role="status">{assetNotice}</small>}
  </details></aside>
-   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar"><strong>Stage Monitor</strong><div role="group" aria-label="Pilih bidang preview">
-     {surfaces.map(surface=><button key={surface} type="button" aria-pressed={previewArrangement==="surface"&&selected===surface} onClick={()=>{setSelected(surface);setSelectedLayer(0);setInspectorTab(surface==='FLOOR'?'scene':'layer');setPreviewArrangement("surface");}}>{surface}</button>)}
-     <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
+   <section className="s64-center cp02-editor"><div className="uxr3-compose-preview-bar">
+     <div className="cpux-monitor-title">
+      <strong>Stage Monitor</strong>
+      {(()=>{
+       const prov=deriveComposeProvenance({liquidMode,experimentSource,cameraOn,floorReady});
+       return <span className="cpux-provenance-tag" data-kind={prov.kind} title={prov.detail}>{prov.label}</span>;
+      })()}
+     </div>
+     <div className="lb-view-tabs" role="group" aria-label="Pilih bidang preview">
+     {COMPOSE_VIEW_TABS.map(tab=><button key={tab.id} type="button"
+      title={tab.title}
+      aria-pressed={previewArrangement!=='input'&&monitorView===tab.id}
+      onClick={()=>selectMonitorView(tab.id)}>{tab.label}</button>)}
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
-       onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
+       onClick={()=>setPreviewArrangement("input")}>CAM · {experimentSource==='video'?'MP4':'3D'}</button>}
      </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
- {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
+ {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
   {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div>
+   {monitorView!=='FLOOR'&&<div className="lb-event-test-bar" role="group" aria-label="Simulasi gerak lower body">
+    <span className="lb-event-test-label">EVENT TEST</span>
+    {LOWER_BODY_SIM_ACTIONS.map(act=><button key={act.id} type="button"
+     aria-pressed={act.id!=='reset'&&simAction===act.id}
+     onClick={()=>setSimAction(act.id==='reset'?'idle':act.id)}>
+     {act.label}
+    </button>)}
+   </div>}
    <div className="s64-bar">
-    {liquidMode==='track'&&selected==='FLOOR'&&timelineCapture.events.length===0&&
+    {monitorView==='FLOOR'&&liquidMode==='track'&&timelineCapture.events.length===0&&
      <span role="status">Belum ada jejak dari Track</span>}
-    {selected!=='FLOOR'&&<span>{bodyStatus}</span>}
+    {monitorView!=='FLOOR'&&<span>{cameraOn&&bodySelected?bodyStatus:'Simulasi aktif · uji mask paha, warna, tekstur, atau crossing'}</span>}
     {inspectorTab==='object'&&
      <button type="button" onClick={()=>{setEditMask(!editMask);setInspectorTab('object');}}>
       {editMask?'Selesai edit mask':'Edit mask'}</button>}
@@ -756,46 +863,150 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
-  <h3>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</h3>
-  {layer&&inspectorTab!=='scene'&&<div className="cp07-selection-bar" role="status">
-   <strong>{layer.name}</strong><small>Objek {selectedLayer+1} / {layers.length} · {selected}</small>
-  </div>}
-  {selected!=='FLOOR'&&<LegPreviewInspector value={legTuning}
-   onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>}
-  
-  <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
-   {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
-    aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
-    {tab==='scene'?(selected==='FLOOR'?'Material':'Sumber'):tab==='layer'?'Layer':'Objek'}</button>)}
-  </div>
+  <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:monitorView==='SKELETON'?'Skeleton Only':monitorView==='FOOT'?'Foot Contact':'Lower-Body · '+monitorView}</h3>
+  {monitorView!=='FLOOR'&&<LowerBodyQuickInspector
+   view={monitorView}
+   state={lowerBody}
+   onChange={setLowerBody}
+   savedPresets={savedLowerBodyPresets}
+   onSavePreset={name=>setSavedLowerBodyPresets(prev=>saveCustomLowerBodyPreset(prev,name,lowerBody,typeof localStorage!=='undefined'?localStorage:undefined))}
+   onApplySaved={preset=>setLowerBody(preset.state)}
+   sharedAssets={media}/>}
+  {monitorView==='FLOOR'&&<>
+   {layer&&inspectorTab!=='scene'&&<div className="cp07-selection-bar" role="status">
+    <strong>{layer.name}</strong><small>Objek {selectedLayer+1} / {layers.length} · {selected}</small>
+   </div>}
+   <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
+    {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
+     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
+     {tab==='scene'?'Material':tab==='layer'?'Layer':'Objek'}</button>)}
+   </div>
+  </>}
+  {monitorView!=='FLOOR'&&<details className="lb-advanced-drawer">
+   <summary>Advanced · Mask kalibrasi &amp; layer teknis</summary>
+   <LegPreviewInspector value={legTuning}
+    onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>
+   <div className="cp04-inspector-tabs" role="group" aria-label="Pengaturan lanjutan">
+    {(['layer','object'] as const).map(tab=><button type="button" key={tab}
+     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
+     {tab==='layer'?'Layer':'Objek'}</button>)}
+   </div>
+  </details>}
   {inspectorTab==='scene'&&selected==='FLOOR'&&
-   <section className="mat03-compose-controls" aria-label="Material MAT-03 Liquid Imprint">
-    <label className="mat03-active-label"><span>Aktif</span>
-     <input type="checkbox" aria-label="Tampilkan di Stage Monitor" checked={liquidEnabled}
+   <section className="mat03-compose-controls" aria-label="Pustaka gaya dan kontrol live visual lantai">
+    <label className="mat03-active-label"><span>Visual Lantai Aktif</span>
+     <input type="checkbox" aria-label="Tampilkan visual lantai di Stage Monitor" checked={liquidEnabled}
       onChange={event=>setLiquidEnabled(event.target.checked)}/>
     </label>
     {liquidEnabled&&<>
-     <div role="group" aria-label="Sumber Liquid Imprint">
-      <button type="button" aria-pressed={liquidMode==='demo'}
-       onClick={()=>setLiquidMode('demo')}>Demo</button>
+     <div role="group" aria-label="Sumber event visual lantai">
       <button type="button" aria-pressed={liquidMode==='track'}
-       onClick={()=>setLiquidMode('track')}>Track</button>
+       onClick={()=>setLiquidMode('track')}>Track (Aktif)</button>
+      <button type="button" aria-pressed={liquidMode==='demo'}
+       onClick={()=>setLiquidMode('demo')}>Demo (Uji)</button>
      </div>
      {liquidMode==='demo'&&
-      <div role="group" aria-label="Respons cairan">
+      <div role="group" aria-label="Fase uji jejak sintetik">
        {COMPOSER_LIQUID_PHASES.map(phase=><button type="button" key={phase}
         aria-pressed={liquidPhase===phase} onClick={()=>setLiquidPhase(phase)}>
         {phase[0].toUpperCase()+phase.slice(1)}</button>)}
       </div>}
-     <label>Aliran · {Math.round(liquidFlow*100)}%
-      <input aria-label="Aliran Liquid Imprint" type="range" min="0" max="1"
-       step=".05" value={liquidFlow} onChange={event=>setLiquidFlow(+event.target.value)}/>
-     </label>
+
+     <div className="cpux-style-library">
+      <div className="cpux-sculpt-head">
+       <strong>Style Library</strong>
+       <span>{getComposeVisualStyle(steering.styleId).tag}</span>
+      </div>
+      <div className="cpux-style-grid" role="group" aria-label="Pilih gaya animasi visual lantai">
+       {COMPOSE_VISUAL_STYLES.map(item=><button type="button" key={item.id}
+        className="cpux-style-card"
+        aria-pressed={steering.styleId===item.id}
+        title={item.description}
+        onClick={()=>selectVisualStyle(item.id)}>
+        <span className="cpux-style-swatch" style={{background:item.swatch}} aria-hidden="true"/>
+        <b>{item.name}</b>
+        <small>{item.tag}</small>
+       </button>)}
+      </div>
+     </div>
+
+     <div className="cpux-steer-section">
+      <div className="cpux-sculpt-head">
+       <strong>Live Steer Pad</strong>
+       <span>Flow {Math.round(steering.flow*100)}% · Turb {Math.round(steering.turbulence*100)}%</span>
+      </div>
+      <div className="cpux-xy-pad" role="slider" tabIndex={0}
+       aria-label="Live Steer XY Pad: seret horizontal untuk Flow, vertikal untuk Turbulence"
+       aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(steering.flow*100)}
+       onPointerDown={e=>{
+        e.currentTarget.setPointerCapture(e.pointerId);
+        const r=e.currentTarget.getBoundingClientRect();
+        updateSteering({
+         flow:(e.clientX-r.left)/r.width,
+         turbulence:1-(e.clientY-r.top)/r.height
+        });
+       }}
+       onPointerMove={e=>{
+        if(!e.currentTarget.hasPointerCapture(e.pointerId))return;
+        const r=e.currentTarget.getBoundingClientRect();
+        updateSteering({
+         flow:(e.clientX-r.left)/r.width,
+         turbulence:1-(e.clientY-r.top)/r.height
+        });
+       }}
+       onKeyDown={e=>{
+        const d=e.shiftKey?.12:.04;
+        if(e.key==='ArrowRight'){e.preventDefault();updateSteering({flow:steering.flow+d});}
+        else if(e.key==='ArrowLeft'){e.preventDefault();updateSteering({flow:steering.flow-d});}
+        else if(e.key==='ArrowUp'){e.preventDefault();updateSteering({turbulence:steering.turbulence+d});}
+        else if(e.key==='ArrowDown'){e.preventDefault();updateSteering({turbulence:steering.turbulence-d});}
+       }}>
+       <span className="cpux-xy-axis-y" aria-hidden="true">TURB</span>
+       <span className="cpux-xy-axis-x" aria-hidden="true">FLOW</span>
+       <span className="cpux-xy-crosshair-v" style={{left:(steering.flow*100)+'%'}} aria-hidden="true"/>
+       <span className="cpux-xy-crosshair-h" style={{top:((1-steering.turbulence)*100)+'%'}} aria-hidden="true"/>
+       <span className="cpux-xy-puck" style={{left:(steering.flow*100)+'%',top:((1-steering.turbulence)*100)+'%'}} aria-hidden="true"/>
+      </div>
+      <div className="cpux-macro-row" role="group" aria-label="Preset modulasi cepat">
+       {COMPOSE_STEER_MACROS.map(m=><button type="button" key={m.id}
+        onClick={()=>updateSteering(m.patch)}>{m.label}</button>)}
+      </div>
+      <label>Glow · {Math.round(steering.glow*100)}%
+       <input aria-label="Intensitas Glow" type="range" min="0" max="1" step=".04"
+        value={steering.glow} onChange={e=>updateSteering({glow:Number(e.target.value)})}/>
+      </label>
+      <label>Warna (Hue) · {Math.round(steering.hueShift*360)}°
+       <input aria-label="Pergeseran warna Hue" type="range" min="-.5" max=".5" step=".02"
+        value={steering.hueShift} onChange={e=>updateSteering({hueShift:Number(e.target.value)})}/>
+      </label>
+      <label>Pulse · {Math.round(steering.pulseRate*100)}%
+       <input aria-label="Kecepatan denyut Pulse" type="range" min="0" max="1" step=".04"
+        value={steering.pulseRate} onChange={e=>updateSteering({pulseRate:Number(e.target.value)})}/>
+      </label>
+     </div>
+
      <small role="status" className="mat03-engine-status" title={liquidStatus}>
       {liquidStatus.includes('gagal')?liquidStatus:''}</small>
      {liquidMode==='track'&&timelineCapture.events.length===0&&
-      <small role="status">Buka Track untuk merekam langkah.</small>}
+      <small role="status">Belum ada kontak dari Track — pilih Demo (Uji) untuk menyetir gaya secara langsung.</small>}
     </>}
+    {footprint&&updateFootprint&&<div className="cpux-footprint-sculpt">
+     <div className="cpux-sculpt-head"><strong>Bentuk Jejak</strong><span>{footprint.style}</span></div>
+     <div className="cpux-style-group" role="group" aria-label="Gaya jejak lantai">
+      {(['Tapak','Campuran','Garis','Titik'] as const).map(style=><button type="button" key={style}
+       aria-pressed={footprint.style===style} onClick={()=>updateFootprint({style})}>{style}</button>)}
+     </div>
+     <label>Ukuran · {footprint.size} px
+      <input type="range" min="12" max="90" step="2" value={footprint.size}
+       aria-label="Ukuran jejak lantai"
+       onChange={e=>updateFootprint({size:Number(e.target.value)})}/>
+     </label>
+     <label>Durasi jejak · {footprint.life} dtk
+      <input type="range" min="1" max="60" step="1" value={footprint.life}
+       aria-label="Durasi jejak lantai"
+       onChange={e=>updateFootprint({life:Number(e.target.value)})}/>
+     </label>
+    </div>}
    </section>}
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>

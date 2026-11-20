@@ -4,10 +4,13 @@ import {projectionDefaults,validateProjection,type ProjectionState} from './mode
 import {OUTPUT_TIMEOUT} from './channel';
 import {artworkTransform} from './artwork';
 import './projection.css';
-export default function ProjectionOutput({session,surface}:{session:string;surface?:'body'|'floor'}){
+ export default function ProjectionOutput({session,surface}:{session:string;surface?:'body'|'floor'}){
  const canvas=useRef<HTMLCanvasElement>(null),artwork=useRef<HTMLCanvasElement>(null);
+ const resolumeFeed=typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('feed')==='resolume';
  useEffect(()=>{
-  document.title=surface?'SOMA / STAGE · '+surface.toUpperCase():'SOMA / PROJECTION · Output';const element=canvas.current!,color=artwork.current!,colorCtx=color.getContext('2d')!;const renderer=new ProjectionRenderer(element);let lastControl=0,lastMask=0,seq=-1,raf=0,usingArtwork=false;let state:ProjectionState={config:projectionDefaults(),transport:'blackout',pattern:false,blank:true,tracking:false,quality:0,sampleAge:0,reason:'',opacity:1,image:null};
+  document.title=resolumeFeed
+   ?`SOMA / RESOLUME FEED · ${(surface??'body').toUpperCase()}`
+   :surface?'SOMA / STAGE · '+surface.toUpperCase():'SOMA / PROJECTION · Output';const element=canvas.current!,color=artwork.current!,colorCtx=color.getContext('2d')!;const renderer=new ProjectionRenderer(element);let lastControl=0,lastMask=0,seq=-1,raf=0,usingArtwork=false;let state:ProjectionState={config:projectionDefaults(),transport:'blackout',pattern:false,blank:true,tracking:false,quality:0,sampleAge:0,reason:'',opacity:1,image:null};
   const channel=new BroadcastChannel(`soma-body-projection-${session}`);const send=(type:string)=>channel.postMessage({type,session,renderer:renderer.healthy?renderer.mode:'Konteks GPU hilang · buka ulang output',info:{width:element.width,height:element.height,viewportWidth:innerWidth,viewportHeight:innerHeight,dpr:devicePixelRatio,...renderer.metrics.snapshot()}});
   channel.onmessage=e=>{const m=e.data;if(m?.session!==session)return;if(m.type==='shutdown'){state={...state,blank:true};lastControl=0;color.style.display='none';renderer.render(null,true);}if(m.type==='control'){try{const c=m.control;if(!['live','hold','blackout'].includes(c.transport))return;const config=validateProjection({version:2,config:c.config});if(!Number.isFinite(c.opacity)||c.opacity<0||c.opacity>1)return;state={...state,...c,config,image:state.image};lastControl=performance.now();}catch{}}};
   const message=(e:MessageEvent)=>{

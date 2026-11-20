@@ -7,17 +7,24 @@
   --trk-highlight:#cbe9a7;
 }
 .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-ia-track-head {
-  margin-bottom:10px;
-  padding-bottom:8px;
+  max-width:1252px;
+  width:100%;
+  margin:0 auto 10px;
+  padding:0 0 8px;
+  min-height:36px;
+  box-sizing:border-box;
   border-bottom:1px solid #2c3d31;
 }
 .fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .soma-ia-track-title h1 {
   margin:0;
-  font-size:clamp(18px,1.6vw,23px);
-  line-height:1.25;
+  font-size:clamp(18px,1.55vw,22px);
+  line-height:1.2;
   letter-spacing:-.025em;
 }
-.fp-stage-workspace.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-overview {
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace="track"] .fp-stage-overview:not([hidden]) {
+  max-width:1252px!important;
+  width:100%!important;
+  margin-inline:auto!important;
   min-width:0;
   align-items:start;
 }

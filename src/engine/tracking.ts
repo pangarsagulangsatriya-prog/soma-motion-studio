@@ -3,13 +3,14 @@ import {unionMasks} from '../studio/bodyField.ts';
 import type {HandLandmarker,PoseLandmarker,FaceLandmarker} from '@mediapipe/tasks-vision';
 import {MotionProcessor} from './motion.ts';
 import type {MotionFrame,Settings,InputKind} from './types.ts';
+import {buildHorizontalCameraConstraints,DEFAULT_CAMERA_CAPTURE_SIZE} from './cameraConstraints.ts';
 export class CameraTracker {
  private hand:HandLandmarker|null=null;private pose:PoseLandmarker|null=null;private face:FaceLandmarker|null=null;
  private stream:MediaStream|null=null;private device='';private processor=new MotionProcessor();private raf=0;private token=0;
  private poseWorker:PoseWorkerClient|null=null;private inFlight=false;private skippedFrames=0;private observedVideoTime=-1;
- private projectionEnabled=false;private captureSize:'480p'|'720p'='480p';
+ private projectionEnabled=false;private captureSize:'480p'|'720p'=DEFAULT_CAMERA_CAPTURE_SIZE;
  setProjection(value:boolean){this.projectionEnabled=value;}
- async setCaptureSize(value:'480p'|'720p'){this.captureSize=value;const track=this.stream?.getVideoTracks()[0];if(track)await track.applyConstraints({width:{ideal:value==='720p'?1280:640},height:{ideal:value==='720p'?720:480},frameRate:{ideal:30,max:30}});}
+ async setCaptureSize(value:'480p'|'720p'){this.captureSize=value;const track=this.stream?.getVideoTracks()[0];if(track)await track.applyConstraints(buildHorizontalCameraConstraints({captureSize:value}));}
  private previousVideoTime=-1;private previousTime=0;private average=24;private interval=33;private lastTick=0;private staleSent=false;running=false;
  async start(video:HTMLVideoElement,settings:()=>Settings,onFrame:(f:MotionFrame)=>void,onStatus:(s:string)=>void,onError:(s:string)=>void,deviceId?:string,externalStream?:MediaStream){
   const deviceKey=externalStream?'phone-webrtc':(deviceId??'');
@@ -20,8 +21,8 @@ export class CameraTracker {
    if(!externalStream&&!navigator.mediaDevices?.getUserMedia)throw new Error('Browser ini belum mendukung akses kamera.');
    const canvas=document.createElement('canvas');const gl=canvas.getContext('webgl2')||canvas.getContext('webgl');if(!gl)throw new Error('Pelacak memerlukan WebGL. Aktifkan akselerasi grafis browser atau gunakan Mouse.');gl.getExtension('WEBGL_lose_context')?.loseContext();
    if(!reuse){
-    onStatus(externalStream?'Menghubungkan video HP…':'Meminta akses kamera…');
-    const stream=externalStream??await navigator.mediaDevices.getUserMedia({video:{width:{ideal:this.captureSize==='720p'?1280:640},height:{ideal:this.captureSize==='720p'?720:480},frameRate:{ideal:30,max:30},...(deviceId?{deviceId:{exact:deviceId}}:{facingMode:'user'})},audio:false});
+    onStatus(externalStream?'Menghubungkan video HP…':'Meminta akses kamera wide horizontal…');
+    const stream=externalStream??await navigator.mediaDevices.getUserMedia({video:buildHorizontalCameraConstraints({captureSize:this.captureSize,deviceId}),audio:false});
     if(token!==this.token){if(!externalStream)stream.getTracks().forEach(t=>t.stop());return;}
     if(!stream.getVideoTracks().length)throw new Error('Sumber HP tidak mengirim track video.');
     this.stream=stream;this.device=deviceKey;

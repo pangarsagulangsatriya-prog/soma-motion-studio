@@ -5,7 +5,7 @@
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import {applyFootprintEvent,emptyFootprintState,footprintOpacity,type FootprintState} from './footprintEventStore.ts';
 export type TimelineKind='contact'|'slide'|'pivot'|'release'|'movement'|'presence'|'lift';
-export type TimelineEvent={id:string;atMs:number;kind:TimelineKind;actorId:string;foot:'left'|'right'|'unknown';x:number;y:number;verified:boolean;event:FootMotionEventV2};
+export type TimelineEvent={id:string;atMs:number;kind:TimelineKind;actorId:string;foot:'left'|'right'|'unknown';x:number;y:number;verified:boolean;headingRad?:number;event:FootMotionEventV2};
 export type TimelineCapture={session:string;originAtMs:number;events:TimelineEvent[]};
 export const MAX_TIMELINE_EVENTS=800;
 export const MAX_TIMELINE_MS=10*60*1000;
@@ -19,8 +19,9 @@ export function collectTimelineEvents(previous:TimelineCapture,input:readonly Fo
   if(!Number.isFinite(nowMs))continue;
   if(next.originAtMs<0)next={...next,originAtMs:nowMs};
   const atMs=Math.max(0,Math.min(MAX_TIMELINE_MS,nowMs-next.originAtMs));
+  const heading=typeof e.headingRad==='number'&&Number.isFinite(e.headingRad)?e.headingRad:undefined;
   const newItem:TimelineEvent={id:e.eventId,atMs,kind:e.kind,actorId:e.actorId,
-   foot:e.foot,x:e.x,y:e.y,verified:e.verified,event:e};
+   foot:e.foot,x:e.x,y:e.y,verified:e.verified,...(heading!==undefined?{headingRad:heading}:{}),event:e};
   if(!appended){next={...next,events:[...next.events]};appended=true;}
   next.events.push(newItem);seen.add(e.eventId);
  }
@@ -46,8 +47,11 @@ export function reconstructTimelineFootprints(capture:TimelineCapture,positionMs
   if(item.foot==='unknown'||!['contact','slide','pivot','release'].includes(item.kind))continue;
   if(event.actorId!=='A'&&event.actorId!=='B'&&event.actorId!=='performer-1'&&event.actorId!=='performer-2')continue;
   const performerId=(event.actorId==='B'||event.actorId==='performer-2')?'B':'A';
+  const headingRad=typeof item.headingRad==='number'&&Number.isFinite(item.headingRad)?item.headingRad:
+   typeof event.headingRad==='number'&&Number.isFinite(event.headingRad)?event.headingRad:0;
   state=applyFootprintEvent(state,{id:item.id,kind:item.kind as 'contact'|'slide'|'pivot'|'release',
-   performerId,foot:item.foot,atMs:item.atMs,x:item.x,y:item.y,headingDeg:0,confidence:event.confidence,
+   performerId,foot:item.foot,atMs:item.atMs,x:item.x,y:item.y,
+   headingDeg:headingRad*180/Math.PI,confidence:event.confidence,
    trackingState:event.verified||item.kind!=='contact'?'tracked':'estimated'});
  }
  return state;

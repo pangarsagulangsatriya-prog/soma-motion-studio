@@ -185,6 +185,112 @@ export function blackoutAllDualSurfaces(customMessage?:string){
  emit();
 }
 
+export type OpenOutputResult={
+ ok:boolean;
+ alreadyOpen:boolean;
+ popupBlocked:boolean;
+ message:string;
+};
+
+export function getDualSurfaceFeedUrl(id:StageSurface,feedMode:'soma'|'resolume'='resolume'):string{
+ const links=ensurePorts();
+ return links[id].buildOutputUrl(id,feedMode);
+}
+
+/** Single shared output-window open/focus action used by both Map and Perform.
+ * Always opens in explicit BLACKOUT; never duplicates an already open window. */
+export function openDualSurfaceOutputWindow(id:StageSurface,feedMode:'soma'|'resolume'='soma'):OpenOutputResult{
+ const surfaceLabel=id==='floor'?'FLOOR':'BODY';
+ if(!STAGE_HARDWARE_ENABLED&&feedMode==='soma'){
+  const msg='Output fisik dinonaktifkan pada build ini. Gunakan preview lokal atau mode Feed ke Resolume.';
+  patchDualSurfaceState({message:msg});
+  return {ok:false,alreadyOpen:false,popupBlocked:false,message:msg};
+ }
+ const links=ensurePorts();
+ if(links[id].opened){
+  links[id].focusOutput();
+  const msg=feedMode==='resolume'
+   ?`Feed Resolume ${surfaceLabel} sudah terbuka. Pilih jendela ini di Resolume Arena (Window/Screen Capture · Blend: Add/Luma Key).`
+   :`Output ${surfaceLabel} sudah terbuka (${links[id].connected?'terkoneksi':'menunggu koneksi'}). Pindahkan ke layar proyektor lalu tekan F.`;
+  patchDualSurfaceState({message:msg});
+  return {ok:true,alreadyOpen:true,popupBlocked:false,message:msg};
+ }
+ const ok=links[id].open(id,feedMode);
+ if(!ok){
+  const msg=links[id].error||'Pop-up diblokir browser. Izinkan pop-up lalu klik Buka lagi.';
+  patchDualSurfaceState({message:msg});
+  return {ok:false,alreadyOpen:false,popupBlocked:true,message:msg};
+ }
+ state={
+  ...state,
+  requested:{...state.requested,[id]:'blackout'},
+  armed:{...state.armed,[id]:false},
+  epoch:{...state.epoch,[id]:state.epoch[id]+1},
+  message:feedMode==='resolume'
+   ?`Feed Resolume ${surfaceLabel} dibuka (16:9 Clean Blackout). Tangkap jendela ini di Resolume Arena atau OBS/Spout/Syphon.`
+   :`Output ${surfaceLabel} dibuka (Blackout). Pindahkan ke layar proyektor lalu tekan F.`
+ };
+ urgentBlackoutDualSurface(id);
+ return {ok:true,alreadyOpen:false,popupBlocked:false,message:state.message};
+}
+
+export function closeDualSurfaceOutputWindow(id:StageSurface){
+ const links=ensurePorts();
+ urgentBlackoutDualSurface(id);
+ links[id].closeOutput();
+ const surfaceLabel=id==='floor'?'FLOOR':'BODY';
+ patchDualSurfaceState({message:`Output ${surfaceLabel} ditutup.`});
+}
+
+/** Explicit LIVE authorization from Perform; enforces every single hardware/safety/QA gate fail-closed. */
+export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;message:string}{
+ const surfaceLabel=id==='floor'?'FLOOR':'BODY';
+ if(!STAGE_HARDWARE_ENABLED){
+  return {ok:false,message:'Output fisik dinonaktifkan pada build ini.'};
+ }
+ if(sources.experimentLocked){
+  urgentBlackoutDualSurface(id);
+  return {ok:false,message:'Sumber simulasi/MP4 tidak dapat mengaktifkan proyektor fisik.'};
+ }
+ const links=ensurePorts();
+ const link=links[id];
+ if(!link.connected){
+  urgentBlackoutDualSurface(id);
+  return {ok:false,message:`Output ${surfaceLabel} belum terkoneksi. Klik Buka Output terlebih dahulu.`};
+ }
+ const stage=sources.frameRef?.current??null;
+ const now=performance.now();
+ const fresh=!!stage&&stage.mode==='live'&&stage.frameAtMs>0&&
+  stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
+  now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
+ if(!stage||!stage.cameraSafe||!fresh){
+  urgentBlackoutDualSurface(id);
+  return {ok:false,message:'Sumber kamera live belum valid atau frame kedaluwarsa. Output tetap Blackout.'};
+ }
+ const output=link.outputInfo;
+ const viewport=output?{width:output.viewportWidth,height:output.viewportHeight,dpr:output.dpr}:null;
+ const key=stageSurfaceSignature(state.plans[id],{
+  cameraBinding:stage.cameraKey??null,
+  floorContext:stage.floorKey??null,
+  windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]:'',
+  viewport
+ });
+ const qa=assessSurfaceProof(state.plans[id],key,state.proofs[id]);
+ if(qa.status!=='within-provisional-target'){
+  urgentBlackoutDualSurface(id);
+  return {ok:false,message:`QA fisik 5 titik ${surfaceLabel} belum lulus atau perlu diulang di Map.`};
+ }
+ state={
+  ...state,
+  operatorConfirm:true,
+  requested:{...state.requested,[id]:'live'},
+  armed:{...state.armed,[id]:true},
+  message:`Output ${surfaceLabel} diperintah LIVE. Pantau cahaya di panggung; tekan B / Esc untuk Blackout.`
+ };
+ emit();
+ return {ok:true,message:state.message};
+}
+
 function sendTick(now:number){
  if(!ports)return;
  const stage=sources.frameRef?.current??null;

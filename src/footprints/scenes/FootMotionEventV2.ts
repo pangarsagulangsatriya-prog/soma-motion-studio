@@ -16,6 +16,8 @@ export type FootMotionEventV2={
  source:FootMotionSource;x:number;y:number;atMs:number;
  speed:number;confidence:number;verified:boolean;
  verification:FootMotionVerification;coordinateBasis:FloorInteractionEvent['basis'];
+ /** Optional real heel-to-toe or simulator heading in radians; omitted when uncertain. */
+ headingRad?:number;
 };
 /** Legacy source uses 'touch' as a verified virtual contact, not real footwear. */
 export function toFootMotionEvent(event:FloorInteractionEvent,sessionId:string,generation:number):FootMotionEventV2{
@@ -25,14 +27,16 @@ export function toFootMotionEvent(event:FloorInteractionEvent,sessionId:string,g
   event.source==='touch'||event.source==='simulator'?'simulated':
   event.source==='video'?'video-estimate':'detected-estimate';
  const originEventId=event.originEventId??event.id;
+ const hasHeading=typeof event.headingRad==='number'&&Number.isFinite(event.headingRad);
  return {
   schema:FOOT_MOTION_SCHEMA,version:FOOT_MOTION_VERSION,
-  eventId:`${sessionId}:${generation}:${event.source}:${event.actorId}:${event.foot??'unknown'}:${originEventId}`,
+  eventId:`${sessionId}:${generation}:${event.source}:${event.actorId}:${event.foot??'unknown'}:${kind}:${originEventId}`,
   originEventId,sessionId,generation,
   actorId:event.actorId,foot:event.foot??'unknown',kind,
   source:event.source,x:event.x,y:event.y,atMs:event.atMs,
   speed:event.speed,confidence:event.confidence,
-  verified,verification,coordinateBasis:event.basis
+  verified,verification,coordinateBasis:event.basis,
+  ...(hasHeading?{headingRad:event.headingRad}:{})
  };
 }
 export function footMotionCanStamp(event:FootMotionEventV2):boolean{
@@ -59,6 +63,7 @@ export function validFootMotionEvent(value:unknown):value is FootMotionEventV2{
   ['detected-estimate','video-estimate','simulated','unverified'].includes(e.verification??'')&&
   ['calibrated-estimate','image-2d','simulated','presence-only'].includes(e.coordinateBasis??'')&&
   bounded(e.x)&&bounded(e.y)&&bounded(e.confidence)&&bounded(e.speed)&&
+  (e.headingRad===undefined||(typeof e.headingRad==='number'&&Number.isFinite(e.headingRad)))&&
   typeof e.atMs==='number'&&Number.isFinite(e.atMs)&&e.atMs>=0&&
   typeof e.verified==='boolean'&&
   (e.kind==='contact'||!e.verified)&&

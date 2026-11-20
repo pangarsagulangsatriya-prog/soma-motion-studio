@@ -52,3 +52,37 @@ test('AUDIT-RECOVERY F-04/F-07/F-09/F-10: Perform 2-column layout, humanized sou
  assert.match(nav,/Sumber: \{sourceLabel\}/);
  assert.match(performCss,/grid-template-columns:minmax\(0,1\.35fr\) minmax\(360px,450px\)/);
 });
+
+test('UX-BENCHMARK: Sequential pipeline CTA, Track Motion HUD, and Compose direct Jejak Lantai sculpting',()=>{
+ const nav=read('../src/studio/v3/StageModuleNav.tsx');
+ const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ const composer=read('../src/studio/v3/SurfaceComposer.tsx');
+ const composeCss=read('../src/studio/v3/cpux-compose-focus.css');
+ assert.match(nav,/soma-stage-next-cta/);
+ assert.match(nav,/Lanjut Compose/);
+ assert.match(nav,/Lanjut Map/);
+ assert.match(nav,/Masuk Perform/);
+ assert.match(stage,/soma-track-motion-hud/);
+ assert.match(stage,/onPerformerCount\(n\)/);
+ assert.match(stage,/Kalibrasi Lantai 4 Sudut/);
+ assert.match(composer,/cpux-footprint-sculpt/);
+ assert.match(composer,/Gaya jejak lantai/);
+ assert.match(composeCss,/\.cp04-inspector-tabs\{\s*order:0;/);
+});
+
+test('UX-BENCHMARK: MadMapper-class 4-corner warp editor (live backdrop, patterns, arrow nudge, reset), 5-step Map stepper, and Perform Active->Next strip',()=>{
+ const editor=read('../src/studio/v3/MapFourCornerEditor.tsx');
+ const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
+ const consoleSrc=read('../src/studio/v3/OperatorStageConsole.tsx');
+ assert.match(editor,/AlignmentOverlay='grid'\|'crosshair'\|'checker'\|'off'/);
+ assert.match(editor,/ArrowLeft/);
+ assert.match(editor,/Reset Quad/);
+ assert.match(editor,/map-r1-backdrop/);
+ assert.match(panel,/stage-dual-stepper/);
+ assert.match(panel,/previewCanvas=\{selected==='body'\?bodyCanvas:floorCanvas\}/);
+ assert.match(panel,/onReset=\{group=>editPlan\(selected/);
+ assert.match(consoleSrc,/ops-r1-next-cue/);
+ assert.match(consoleSrc,/BERIKUTNYA/);
+ assert.match(consoleSrc,/ops-r1-kbd/);
+});
+

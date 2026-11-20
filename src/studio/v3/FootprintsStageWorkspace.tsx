@@ -846,9 +846,18 @@ export function FootprintsStageWorkspace({
   data-flow={flowStep} data-utility={videoLabOpen?'video':rehearsalOpen?'rehearsal':composerOpen?'composer':'none'}
   aria-label="Stage 1 — Motion Projection">
   <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
-   onNavigate={onNavigateStageWorkspace}/>
+   onNavigate={onNavigateStageWorkspace}
+   status={{
+    trackReady:!!sourceStatus.selection&&(!!experimentalKind||frameFresh),
+    composeReady:!!sourceStatus.selection&&(mappingOpen||operatorMode),
+    mapReady:dual.floor.connected||dual.body.connected,
+    outputLive:dual.floor.mode==='live'||dual.body.mode==='live'
+   }}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<header className="soma-ia-track-head">
-   <div className="soma-ia-track-title"><h1>Track</h1></div>
+   <div className="soma-ia-track-title">
+    <h1>Track</h1>
+    <span>{performerCount}P · {experimentalKind?floorInteractionStats.contacts:floorStatus.contacts} kontak · {floorStatus.confirmed?'Lantai terkalibrasi':experimentalKind?'Mode latihan':'Lantai belum dikalibrasi'}</span>
+   </div>
   </header>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
@@ -875,7 +884,18 @@ export function FootprintsStageWorkspace({
      setInspectorOpen(needsTrack);
      setFlowStep(needsTrack?'process':'output');
     }}
-    canResume={!performUnsafe}/>
+    canResume={!performUnsafe}
+    sourceKind={sourceStatus.selection}
+    cameraOk={cameraOn&&bodySelected&&frameFresh}
+    identityOk={performerCount===1?!identityStatus.ambiguous:identityStatus.visible.length>=2&&!identityStatus.ambiguous&&identityStatus.observedFrameTime===frameRef.current.time}
+    floorOk={floorStatus.confirmed&&cameraMatched}
+    floorQaOk={dual.floor.qa==='within-provisional-target'}
+    bodyQaOk={dual.body.qa==='within-provisional-target'}
+    onGoTrack={()=>onNavigateStageWorkspace('track')}
+    onGoMap={()=>{
+     operatorBlackout();onExitOperator();setView('stage');
+     setMappingOpen(true);setComposerStartQA(true);setComposerOpen(true);
+    }}/>
    :null}
   {videoLabOpen&&!operatorMode&&view==='stage'&&<VideoMotionLab initialFile={experimentClip}
    onClose={()=>{onBlackout();setVideoLabOpen(false);}}
@@ -918,6 +938,11 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
+     onOpenCameraCalibration={()=>{
+      setMappingOpen(false);setComposerOpen(false);setView('stage');
+      setFlowStep('process');setInspectorOpen(true);setCalibrationOpen(true);
+     }}
+     onEnterPerform={()=>onNavigateStageWorkspace('perform')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
@@ -997,6 +1022,23 @@ export function FootprintsStageWorkspace({
        onClick={()=>router.reset()} title="Setel ulang kunci identitas Performer A/B setelah persilangan">
        Reset Identitas A/B
       </button>}
+      <section className="soma-track-motion-hud" aria-label="Deteksi gerak dan lantai">
+       <div className="soma-track-hud-row">
+        <span>Performer</span>
+        <div className="soma-track-segmented" role="group" aria-label="Jumlah performer">
+         {([1,2] as const).map(n=><button key={n} type="button" aria-pressed={performerCount===n}
+          onClick={()=>onPerformerCount(n)}>{n}P</button>)}
+        </div>
+       </div>
+       <div className="soma-track-hud-metrics">
+        <div><small>KONTAK</small><strong>{experimentalKind?floorInteractionStats.contacts:floorStatus.contacts}</strong></div>
+        <div><small>LANTAI</small><strong>{floorStatus.confirmed?'Terkalibrasi':experimentalKind?'Simulasi':'Belum'}</strong></div>
+       </div>
+       {!experimentalKind&&cameraOn&&!floorStatus.confirmed&&
+        <button type="button" className="soma-track-calibrate-btn" onClick={openCalibration}>
+         Kalibrasi Lantai 4 Sudut
+        </button>}
+      </section>
       <div className="soma-track-source-utilities">
        {sourceStatus.selection!==null&&!experimentalKind&&cameraOn&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
      cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}

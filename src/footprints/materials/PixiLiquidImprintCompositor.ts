@@ -1,7 +1,6 @@
-/** ENGINE-02 — PixiJS v8 integration spike (lab only).
- * ONE Pixi Application / WebGL2 renderer owns every sole and filter.
- * The native GPU-02 shader engine is NOT constructed alongside this engine.
- * Track / Map / Perform / projector safety are not imported or modified.
+/** ENGINE-02 — Single PixiJS v8 WebGL2 footprint shader compositor.
+ * ONE Pixi Application / WebGL2 renderer owns every sole mask and steerable
+ * visual style filter. Track / Map / Perform / projector safety are never modified.
  */
 import {Application,CanvasSource,Filter,Sprite,Texture} from 'pixi.js';
 import {paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
@@ -9,6 +8,8 @@ import {liquidMaterialResponse} from './liquidMaterialResponse.ts';
 import {MATERIAL03_GLSL} from './liquidMaterialShader.ts';
 import {collectLiquidImprints,LIQUID_LIMIT,type LiquidImprint,type LiquidTimelineOptions,type LiquidInputEvent}
  from './liquidImprintTimeline.ts';
+import {DEFAULT_COMPOSE_STEERING,getComposeVisualStyle,type ComposeVisualStyleId}
+ from './composeVisualStyles.ts';
 
 const WIDTH=160,HEIGHT=320;
 const clamp=(v:number,min:number,max:number)=>Math.min(max,Math.max(min,v));
@@ -20,6 +21,11 @@ uniform sampler2D uTexture;
 uniform float uAge;
 uniform float uSeed;
 uniform float uFlow;
+uniform float uTurbulence;
+uniform float uGlow;
+uniform float uHueShift;
+uniform float uPulseRate;
+uniform float uStyle;
 uniform float uContactFill;
 uniform float uSlideStrength;
 uniform float uPivotStrength;
@@ -31,8 +37,9 @@ ${MATERIAL03_GLSL}
 void main(){
  float coverage=texture(uTexture,vTextureCoord).a;
  if(coverage<.015)discard;
- vec3 pigment=mat03Pigment(
+ vec3 pigment=composeStylePigment(
   vTextureCoord,uAge,uSeed,uFlow,
+  uTurbulence,uGlow,uHueShift,uPulseRate,uStyle,
   uContactFill,uSlide,uSlideStrength,uTwist,
   uPivotStrength,uReleaseProgress,uTint
  );
@@ -45,7 +52,7 @@ type RecordEntry={
 };
 export type PixiLiquidStats={
  renderer:'PixiJS v8 WebGL2';contexts:1;activeImprints:number;
- material:'Liquid Imprint (research)';orientationUncertain:number;
+ material:string;orientationUncertain:number;
  allocatedTextures:number;maxTextures:number;
 };
 function createFilter():Filter{
@@ -71,11 +78,14 @@ void main(void){
   resources:{
    liquidUniforms:{
     uAge:{value:0,type:'f32'},uSeed:{value:0,type:'f32'},
-    uFlow:{value:.7,type:'f32'},uContactFill:{value:0,type:'f32'},
+    uFlow:{value:.68,type:'f32'},uTurbulence:{value:.45,type:'f32'},
+    uGlow:{value:.48,type:'f32'},uHueShift:{value:0,type:'f32'},
+    uPulseRate:{value:.24,type:'f32'},uStyle:{value:0,type:'f32'},
+    uContactFill:{value:0,type:'f32'},
     uSlideStrength:{value:0,type:'f32'},uPivotStrength:{value:0,type:'f32'},
     uReleaseProgress:{value:0,type:'f32'},uTwist:{value:0,type:'f32'},
     uSlide:{value:new Float32Array([0,0]),type:'vec2<f32>'},
-    uTint:{value:new Float32Array([.86,.88,.74]),type:'vec3<f32>'}
+    uTint:{value:new Float32Array([.84,.90,.74]),type:'vec3<f32>'}
    }
   },
   padding:0
@@ -88,7 +98,7 @@ export class PixiLiquidImprintCompositor{
  private destroyed=false;
  private lastStats:PixiLiquidStats={
   renderer:'PixiJS v8 WebGL2',contexts:1,activeImprints:0,
-  material:'Liquid Imprint (research)',orientationUncertain:0,
+  material:'Mineral Ink',orientationUncertain:0,
   allocatedTextures:0,maxTextures:LIQUID_LIMIT
  };
  private constructor(canvas:HTMLCanvasElement,app:Application){
@@ -103,7 +113,7 @@ export class PixiLiquidImprintCompositor{
    resolution:1,autoDensity:false
   });
   app.ticker.stop();
-  if(app.renderer.type!==1) {
+  if(app.renderer.type!==1){
    app.destroy(false);
    throw Error('ENGINE-02 WebGL renderer unavailable');
   }
@@ -137,7 +147,9 @@ export class PixiLiquidImprintCompositor{
   this.masks.delete(id);
  }
  render(events:readonly LiquidInputEvent[],timeMs:number,options:LiquidTimelineOptions&{
-  flow?:number;widthPx?:number;lengthPx?:number;
+  styleId?:ComposeVisualStyleId;
+  flow?:number;turbulence?:number;glow?:number;hueShift?:number;pulseRate?:number;
+  widthPx?:number;lengthPx?:number;
   /** QA only: freeze anatomy to compare shader material at one identical mask. */
   materialOnlyQA?:boolean
  }={}):PixiLiquidStats{
@@ -145,9 +157,14 @@ export class PixiLiquidImprintCompositor{
   const items=collectLiquidImprints(events,timeMs,options);
   const ids=new Set(items.map(x=>x.id));
   for(const id of this.masks.keys())if(!ids.has(id))this.dispose(id);
+  const style=getComposeVisualStyle(options.styleId??DEFAULT_COMPOSE_STEERING.styleId);
   const width=clamp(safe(options.widthPx??72,72),25,220);
   const height=clamp(safe(options.lengthPx??116,116),55,440);
-  const flow=clamp(safe(options.flow??.7,.7),0,1);
+  const flow=clamp(safe(options.flow??style.defaults.flow,style.defaults.flow),0,1);
+  const turbulence=clamp(safe(options.turbulence??style.defaults.turbulence,style.defaults.turbulence),0,1);
+  const glow=clamp(safe(options.glow??style.defaults.glow,style.defaults.glow),0,1);
+  const hueShift=clamp(safe(options.hueShift??0,0),-.5,.5);
+  const pulseRate=clamp(safe(options.pulseRate??style.defaults.pulseRate,style.defaults.pulseRate),0,1);
   for(const imprint of items){
    const entry=this.masks.get(imprint.id)??this.createMask(imprint);
    const d=options.materialOnlyQA?
@@ -169,11 +186,16 @@ export class PixiLiquidImprintCompositor{
    sprite.position.set(imprint.x*this.canvas.width,imprint.y*this.canvas.height);
    sprite.width=width;sprite.height=height;
    sprite.rotation=imprint.orientationKnown?Math.PI/2-imprint.headingRad:0;
-   sprite.alpha=response.opacity*.94;
+   sprite.alpha=response.opacity*.95;
    const uniforms=entry.filter.resources.liquidUniforms.uniforms;
    uniforms.uAge=imprint.ageMs/1000;
    uniforms.uSeed=imprint.seed;
    uniforms.uFlow=flow;
+   uniforms.uTurbulence=turbulence;
+   uniforms.uGlow=glow;
+   uniforms.uHueShift=hueShift;
+   uniforms.uPulseRate=pulseRate;
+   uniforms.uStyle=style.index;
    uniforms.uContactFill=response.contactFill;
    uniforms.uSlideStrength=response.slideStrength;
    uniforms.uPivotStrength=response.pivotStrength;
@@ -181,12 +203,13 @@ export class PixiLiquidImprintCompositor{
    uniforms.uTwist=response.pivotTwist*response.pivotStrength;
    uniforms.uSlide=new Float32Array([response.slideX,response.slideY]);
    const b=imprint.actorId==='B'||imprint.actorId.includes('2');
-   uniforms.uTint=new Float32Array(b?[.49,.80,.90]:[.86,.88,.74]);
+   const tint=b?style.tintB:style.tintA;
+   uniforms.uTint=new Float32Array([tint[0],tint[1],tint[2]]);
   }
   this.app.render();
   this.lastStats={
    renderer:'PixiJS v8 WebGL2',contexts:1,activeImprints:items.length,
-   material:'Liquid Imprint (research)',
+   material:style.name,
    orientationUncertain:items.filter(i=>!i.orientationKnown).length,
    allocatedTextures:this.masks.size,maxTextures:LIQUID_LIMIT
   };

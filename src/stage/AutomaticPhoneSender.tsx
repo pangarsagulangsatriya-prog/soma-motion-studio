@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {collectPhoneIce,ICE_SERVERS} from './PhoneSignal.ts';
 import {phonePairRequest,PHONE_PAIR_POLL_MS,type PhoneJoin} from './PhonePairProtocol.ts';
+import {buildHorizontalCameraConstraints} from '../engine/cameraConstraints.ts';
 
 const pause=(ms:number,signal:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  if(signal.aborted){reject(Error('Pairing dibatalkan.'));return;}
@@ -9,7 +10,7 @@ const pause=(ms:number,signal:AbortSignal)=>new Promise<void>((resolve,reject)=>
  signal.addEventListener('abort',cancel,{once:true});
 });
 export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
- const [status,setStatus]=useState('QR terbaca. Pilih kamera dan izinkan akses untuk terhubung.');
+ const [status,setStatus]=useState('QR terbaca. Posisikan HP horizontal (landscape) untuk wide view lalu izinkan kamera.');
  const [facing,setFacing]=useState<'environment'|'user'>('environment');
  const [phase,setPhase]=useState<'idle'|'connecting'|'connected'|'error'>('idle');
  const video=useRef<HTMLVideoElement>(null),pc=useRef<RTCPeerConnection|null>(null);
@@ -32,12 +33,13 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
   terminate(false);
   const version=++generation.current;
   const controller=new AbortController();ctrl.current=controller;
-  setPhase('connecting');setStatus('Meminta izin kamera belakang…');
+  setPhase('connecting');setStatus('Meminta izin kamera wide horizontal…');
   try{
    if(!window.isSecureContext)throw Error('Halaman HP harus HTTPS.');
+   try{await (screen.orientation as ScreenOrientation&{lock?:(o:string)=>Promise<void>})?.lock?.('landscape');}catch{}
    const media=await navigator.mediaDevices.getUserMedia({
-    audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},
-     height:{ideal:720},frameRate:{ideal:24,max:30}}
+    audio:false,
+    video:buildHorizontalCameraConstraints({captureSize:'720p',facingMode:facing,frameRateIdeal:24,frameRateMax:30})
    });
    if(version!==generation.current){media.getTracks().forEach(t=>t.stop());return;}
    stream.current=media;

@@ -17,10 +17,10 @@
 .soma-v3 .soma-primary-header{background:#101813}
 
 /* Track — clear input monitor and deliberately small setup area. */
-.soma-ia-four-workspaces .soma-ia-track-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;margin:0 0 12px;padding:0 2px 10px;border-bottom:1px solid #344b39}
-.soma-ia-four-workspaces .soma-ia-track-title{display:flex;align-items:baseline;gap:13px;min-width:0}
-.soma-ia-four-workspaces .soma-ia-track-title h1{margin:0;color:#ebf1e9;font-weight:620;letter-spacing:-.035em;font-size:22px}
-.soma-ia-four-workspaces .soma-ia-track-title span{font-size:11px;color:#a5b9aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.soma-ia-four-workspaces .soma-ia-track-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin:0 0 10px;padding:0 2px 8px;border-bottom:1px solid #2d4034}
+.soma-ia-four-workspaces .soma-ia-track-title{display:flex;align-items:baseline;gap:12px;min-width:0;flex-wrap:wrap}
+.soma-ia-four-workspaces .soma-ia-track-title h1{margin:0;color:#ebf1e9;font-weight:650;letter-spacing:-.03em;font-size:20px}
+.soma-ia-four-workspaces .soma-ia-track-title span{font-size:11px;color:#96ab9a;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .soma-ia-four-workspaces .soma-ia-track-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .soma-ia-four-workspaces .soma-ia-advanced-button{border:1px solid #485e4b;border-radius:7px;min-height:36px;padding:7px 12px;background:#1d2c21;color:#d7e8d3;font-size:11px;font-weight:600}
 .soma-ia-four-workspaces .soma-ia-advanced-button[aria-expanded=true]{background:#304c36;border-color:#9bb98b}
@@ -114,39 +114,77 @@
 .soma-v3 .soma-primary-nav-list{padding-top:12px}
 .soma-v3 .soma-stage-module-launch{min-height:52px}
 .soma-ia-four-workspaces .soma-stage-module-nav{
- display:flex;align-items:center;gap:14px;flex-wrap:wrap;
- min-height:55px;padding:7px 10px;margin-bottom:12px;
- border:1px solid #354a3a;border-radius:10px;background:#17231b;
+ display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+ max-width:1252px;width:100%;margin:0 auto 10px;box-sizing:border-box;
+ min-height:46px;padding:5px 9px;
+ border:1px solid #2e4236;border-radius:10px;background:#101914;
 }
 .soma-ia-four-workspaces .soma-stage-module-name{
  font-size:10px;font-weight:700;letter-spacing:.10em;
- white-space:nowrap;color:#a4baa5;padding:7px 5px;
+ white-space:nowrap;color:#96ab9a;padding:6px 4px;
 }
 .soma-ia-four-workspaces .soma-stage-module-tabs{
- display:flex;align-items:center;gap:4px;flex:1;min-width:0;
+ display:flex;align-items:center;gap:2px;flex:1;min-width:0;
+}
+.soma-ia-four-workspaces .soma-stage-step-wrap{
+ display:inline-flex;align-items:center;gap:2px;min-width:0;
+}
+.soma-ia-four-workspaces .soma-stage-step-sep{
+ color:#4c6554;font-size:13px;padding:0 3px;user-select:none;
 }
 .soma-ia-four-workspaces .soma-stage-module-tab{
- display:inline-flex;align-items:center;justify-content:center;flex:0 1 auto;
- min-width:74px;min-height:38px;padding:8px 12px;
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 1 auto;
+ min-width:74px;min-height:36px;padding:6px 11px;
  border:1px solid transparent;border-radius:7px;
- background:transparent;color:#b5c5b6;
+ background:transparent;color:#a6b9a8;
  font-size:12px;font-weight:580;cursor:pointer;
+ transition:background .14s,border-color .14s,color .14s;
+}
+.soma-ia-four-workspaces .soma-stage-step-num{
+ display:inline-flex;align-items:center;justify-content:center;
+ font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;
+ color:#7c9783;min-width:15px;
+}
+.soma-ia-four-workspaces .soma-stage-module-tab[data-done=true] .soma-stage-step-num{
+ color:#b8dc98;
 }
 .soma-ia-four-workspaces .soma-stage-module-tab:hover{
- background:#283b2d;color:#e3efdd;
+ background:#1b2b21;color:#e3efdd;
 }
 .soma-ia-four-workspaces .soma-stage-module-tab[aria-current=page]{
- background:#324b37;border-color:#6b8b66;color:#f1f7e8;
+ background:#253d2d;border-color:#688b67;color:#f1f7e8;
  font-weight:700;
 }
-.soma-ia-four-workspaces .soma-stage-module-tab:focus-visible{
+.soma-ia-four-workspaces .soma-stage-module-tab[aria-current=page] .soma-stage-step-num{
+ color:#cde3a5;
+}
+.soma-ia-four-workspaces .soma-stage-module-tab:focus-visible,
+.soma-ia-four-workspaces .soma-stage-next-cta:focus-visible{
  outline:2px solid #d8edb7;outline-offset:2px;
 }
+.soma-ia-four-workspaces .soma-stage-next-cta{
+ display:inline-flex;align-items:center;gap:6px;flex:none;
+ min-height:34px;padding:6px 12px;
+ border:1px solid #445e4b;border-radius:7px;
+ background:#18271e;color:#d8e9d6;
+ font-size:11px;font-weight:650;white-space:nowrap;cursor:pointer;
+ transition:background .14s,border-color .14s,color .14s;
+}
+.soma-ia-four-workspaces .soma-stage-next-cta[data-primary=true]{
+ background:#2a4834;border-color:#8eb582;color:#f2fae9;
+}
+.soma-ia-four-workspaces .soma-stage-next-cta:hover{
+ background:#33583f;border-color:#b8d7a4;color:#f6fcf0;
+}
 @media(max-width:760px){
- .soma-ia-four-workspaces .soma-stage-module-nav{gap:5px;padding:6px}
+ .soma-ia-four-workspaces .soma-stage-module-nav{gap:6px;padding:6px}
  .soma-ia-four-workspaces .soma-stage-module-name{display:none}
  .soma-ia-four-workspaces .soma-stage-module-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;width:100%}
- .soma-ia-four-workspaces .soma-stage-module-tab{min-width:0;min-height:44px;padding:7px 3px;font-size:11px}
+ .soma-ia-four-workspaces .soma-stage-step-wrap{display:flex;width:100%}
+ .soma-ia-four-workspaces .soma-stage-step-sep{display:none}
+ .soma-ia-four-workspaces .soma-stage-module-tab{width:100%;min-width:0;min-height:42px;padding:6px 3px;font-size:11px;gap:3px}
+ .soma-ia-four-workspaces .soma-stage-step-num{display:none}
+ .soma-ia-four-workspaces .soma-stage-next-cta{display:none}
 }
 
 /* Stage 1 recovery — no-source state is a usable selector, not three black panes. */
@@ -337,10 +375,21 @@
 .soma-ia-four-workspaces .soma-track-source-status p{margin:8px 0 10px;font-size:12px;line-height:1.5;color:#b9cbba}
 .soma-ia-four-workspaces .soma-track-source-status small{display:block;padding-top:8px;border-top:1px solid #34493a;font-size:11px;line-height:1.45;color:#9fb49f}
 .soma-ia-four-workspaces .soma-track-side-action{min-height:44px;width:100%;padding:9px;border:1px solid #71946e;border-radius:8px;background:#2b4933;color:#eaf4df;font-weight:650;cursor:pointer}
+.soma-ia-four-workspaces .soma-track-motion-hud{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #2e4236;border-radius:8px;background:#0e1812;min-width:0}
+.soma-ia-four-workspaces .soma-track-hud-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#c7d8c8}
+.soma-ia-four-workspaces .soma-track-segmented{display:inline-flex;gap:2px;padding:2px;border:1px solid #354b3d;border-radius:6px;background:#09110c}
+.soma-ia-four-workspaces .soma-track-segmented button{min-width:36px;min-height:26px;padding:2px 8px;border:none;border-radius:4px;background:transparent;color:#9eb3a2;font-size:11px;font-weight:700;cursor:pointer;transition:background .14s,color .14s}
+.soma-ia-four-workspaces .soma-track-segmented button[aria-pressed=true]{background:#2b4834;color:#f1f9ea}
+.soma-ia-four-workspaces .soma-track-hud-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:6px;border-top:1px solid #24362b}
+.soma-ia-four-workspaces .soma-track-hud-metrics>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.soma-ia-four-workspaces .soma-track-hud-metrics small{font-size:9px;letter-spacing:.08em;color:#8ea493}
+.soma-ia-four-workspaces .soma-track-hud-metrics strong{font-size:12px;color:#e6f1e2;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.soma-ia-four-workspaces .soma-track-calibrate-btn{width:100%;min-height:34px;padding:6px 10px;border:1px solid #6b8e6b;border-radius:6px;background:#223a29;color:#ecf6e5;font-size:11px;font-weight:650;cursor:pointer;transition:background .14s,border-color .14s}
+.soma-ia-four-workspaces .soma-track-calibrate-btn:hover{background:#2d4d37;border-color:#9fc495}
 .soma-ia-four-workspaces .soma-track-source-utilities{display:flex;flex-direction:column;gap:8px;min-width:0;padding-top:8px;border-top:1px solid #35513b}
 .soma-ia-four-workspaces .soma-track-source-utilities>.fp-quick-setup,
 .soma-ia-four-workspaces .soma-track-source-utilities>.soma-ia-advanced-button{width:100%;max-width:none;min-width:0;box-sizing:border-box}
-.soma-ia-four-workspaces :is(.soma-track-source-select>summary,.soma-track-source-select button,.soma-track-side-action):focus-visible{outline:2px solid #d6edb2;outline-offset:2px}
+.soma-ia-four-workspaces :is(.soma-track-source-select>summary,.soma-track-source-select button,.soma-track-side-action,.soma-track-calibrate-btn,.soma-track-segmented button):focus-visible{outline:2px solid #d6edb2;outline-offset:2px}
 
 /* Camera canvas stays the only Track visual, with contextual empty states. */
 .soma-ia-four-workspaces .soma-track-input-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;box-sizing:border-box;text-align:center;background:rgba(0,0,0,.74);color:#e5eddf;pointer-events:none;z-index:3}

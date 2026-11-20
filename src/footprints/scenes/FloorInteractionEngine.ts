@@ -3,13 +3,15 @@ import {toFootMotionEvent,type FootMotionEventV2} from './FootMotionEventV2.ts';
  * Existing camera gait engine owns metric contact; this engine NEVER estimates
  * foot pressure, grants projector output, or modifies FootstepEvent v3. */
 export type FloorInteractionSource='camera'|'phone'|'video'|'simulator'|'touch';
-export type FloorInteractionKind='presence'|'movement'|'contact'|'touch'|'release';
+export type FloorInteractionKind='presence'|'movement'|'contact'|'touch'|'slide'|'pivot'|'release';
 export type FloorInteractionBasis='calibrated-estimate'|'image-2d'|'simulated'|'presence-only';
 export type FloorInteractionEvent={
  id:string;originEventId?:string;source:FloorInteractionSource;kind:FloorInteractionKind;
  actorId:string;foot?:'left'|'right';
  x:number;y:number;radius:number;speed:number;confidence:number;
  atMs:number;basis:FloorInteractionBasis;
+ /** Real heel-to-toe or simulator foot orientation in radians when available; never fabricated. */
+ headingRad?:number;
  /** Truthful provenance. Even verified camera contacts are only estimated, not force readings. */
  verified:boolean;
 };
@@ -17,18 +19,22 @@ export type FloorObservation=Pick<FloorInteractionEvent,
  'source'|'actorId'|'x'|'y'|'confidence'|'atMs'|'basis'>;
 export type FloorContactInput=FloorObservation&{
  eventId:string;foot:'left'|'right';verified:boolean;kind?:'contact'|'touch';
+ headingRad?:number;
+};
+export type FloorMotionPhaseInput=FloorObservation&{
+ eventId:string;foot:'left'|'right';kind:'slide'|'pivot'|'release';
+ headingRad?:number;
 };
 export type FloorInteractionSnapshot={
  source:FloorInteractionSource|null;events:FloorInteractionEvent[];
  actors:string[];counts:Record<FloorInteractionKind,number>;
 };
-const kinds=['presence','movement','contact','touch','release'] as const;
 let engineInstanceSerial=0;
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 const unit=(n:unknown)=>finite(n)&&n>=0&&n<=1;
 const valid=(o:FloorObservation)=>unit(o.x)&&unit(o.y)&&unit(o.confidence)&&
  finite(o.atMs)&&o.atMs>=0&&typeof o.actorId==='string'&&o.actorId.length>0&&o.actorId.length<=64;
-const emptyCounts=()=>({presence:0,movement:0,contact:0,touch:0,release:0});
+const emptyCounts=():Record<FloorInteractionKind,number>=>({presence:0,movement:0,contact:0,touch:0,slide:0,pivot:0,release:0});
 type Last={x:number;y:number;atMs:number};
 export class FloorInteractionEngine{
  private source:FloorInteractionSource|null=null;
@@ -37,6 +43,8 @@ export class FloorInteractionEngine{
  private lastPresenceEmit=new Map<string,number>();
  private seenContacts=new Set<string>();
  private seenOrder:string[]=[];
+ private seenPhases=new Set<string>();
+ private seenPhaseOrder:string[]=[];
  private serial=0;
  private epoch=0;
  private readonly instanceId=++engineInstanceSerial;
@@ -51,7 +59,9 @@ export class FloorInteractionEngine{
   this.epoch++;
   this.sessionId='floor-session-'+this.instanceId+'-'+this.epoch;
   this.source=source;this.events=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
-  this.seenContacts.clear();this.seenOrder=[];this.serial=0;
+  this.seenContacts.clear();this.seenOrder=[];
+  this.seenPhases.clear();this.seenPhaseOrder=[];
+  this.serial=0;
  }
  private push(part:Omit<FloorInteractionEvent,'id'>){
   const event={...part,id:'interaction-'+(++this.serial)} as FloorInteractionEvent;
@@ -70,7 +80,7 @@ export class FloorInteractionEngine{
   const delta=previous?o.atMs-previous.atMs:0;
   this.actorPositions.set(key,{x:o.x,y:o.y,atMs:o.atMs});
   const still=!!previous&&delta<=550&&distance<.006;
-  // Stationary presence must still drive fog/swarm/firefly scenes while a
+  // Stationary presence must still drive ambient awareness while a
   // person stays in place. Heartbeats do NOT create footprint contacts.
   if(still&&o.atMs-(this.lastPresenceEmit.get(key)??0)<420)return null;
   const kind:FloorInteractionKind=!previous||delta>550||still?'presence':'movement';
@@ -92,7 +102,25 @@ export class FloorInteractionEngine{
   if(this.seenOrder.length>6000)this.seenContacts.delete(this.seenOrder.shift()!);
   return this.push({source:o.source,actorId:o.actorId,originEventId:o.eventId,
    x:o.x,y:o.y,confidence:o.confidence,atMs:o.atMs,basis:o.basis,
-   kind:o.kind??'contact',foot:o.foot,radius:.03,speed:0,verified:o.verified});
+   kind:o.kind??'contact',foot:o.foot,radius:.03,speed:0,verified:o.verified,
+   ...(finite(o.headingRad)?{headingRad:o.headingRad}:{})});
+ }
+ /** Per-foot post-contact gait evolution (slide, pivot, release).
+  * Never mints a new verified contact stamp. */
+ motionPhase(o:FloorMotionPhaseInput):FloorInteractionEvent|null{
+  if(!this.accepts(o)||!o.eventId||o.eventId.length>180||
+   !['left','right'].includes(o.foot)||
+   !['slide','pivot','release'].includes(o.kind)||
+   o.actorId.startsWith('unassigned-'))return null;
+  if(o.source!=='touch'&&o.basis==='presence-only')return null;
+  const key=o.source+':'+o.actorId+':'+o.foot+':'+o.kind+':'+o.eventId;
+  if(this.seenPhases.has(key))return null;
+  this.seenPhases.add(key);this.seenPhaseOrder.push(key);
+  if(this.seenPhaseOrder.length>6000)this.seenPhases.delete(this.seenPhaseOrder.shift()!);
+  return this.push({source:o.source,actorId:o.actorId,originEventId:o.eventId,
+   x:o.x,y:o.y,confidence:o.confidence,atMs:o.atMs,basis:o.basis,
+   kind:o.kind,foot:o.foot,radius:.025,speed:0,verified:false,
+   ...(finite(o.headingRad)?{headingRad:o.headingRad}:{})});
  }
  release(o:FloorObservation):FloorInteractionEvent|null{
   if(!this.accepts(o))return null;

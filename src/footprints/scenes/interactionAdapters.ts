@@ -1,11 +1,10 @@
-import type {Landmark,MotionFrame} from '../../engine/types.ts';
+import type {MotionFrame} from '../../engine/types.ts';
 import type {MultiPoseStatus} from '../live/MultiPoseGaitRouter.ts';
 import type {LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
 import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type FloorSpace}
  from '../spatial/coordinates.ts';
-import type {FootstepEvent} from '../spatial/events.ts';
 import type {ExperimentalFrame} from '../../studio/v3/experimentSourceModel.ts';
-import type {ReplayGaitEvent} from '../../stage/videoGaitAnalysis.ts';
+import {paintAuthenticFootprint} from './authenticFootGeometry.ts';
 import {FloorInteractionEngine,type FloorInteractionSource,type FloorObservation}
  from './FloorInteractionEngine.ts';
 
@@ -78,13 +77,20 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  const visibleActors:Set<string>=performerCount===1?new Set(['performer-1']):
   new Set(identity.visible.filter(id=>identity.poseIndices[id]!==null));
  for(const e of tracker.session?.events??[]){
-  if(e.kind!=='contact'||e.source!=='camera'||e.confidence<.55||
+  if(e.source!=='camera'||e.confidence<.55||
    !visibleActors.has(e.performerId)||
    e.timestampMs>frame.time+70)continue;
   const uv=floorToUV(tracker.floor!,e.positionM);
-  engine.contact({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
-   x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
-   basis:'calibrated-estimate',verified:true});
+  if(e.kind==='contact'){
+   engine.contact({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
+    x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
+    basis:'calibrated-estimate',verified:true,headingRad:e.headingRad});
+  }else if(e.kind==='move'||e.kind==='release'){
+   engine.motionPhase({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
+    kind:e.kind==='move'?'slide':'release',
+    x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
+    basis:'calibrated-estimate',headingRad:e.headingRad});
+  }
  }
 }
 export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
@@ -107,12 +113,18 @@ export function feedVideoFloorInteractions(engine:FloorInteractionEngine,
  if(s.ambiguous)return;
  const visibleActors=new Set(s.people.slice(0,2).map(person=>person.id));
  for(const e of s.events){
-  if(e.kind!=='contact'||e.confidence<.55||
-   !visibleActors.has(e.performer)||e.atMs>at+70||
-   e.atMs<s.atMs-1500)continue;
-  engine.contact({source:'video',eventId:e.id,actorId:e.performer,
-   foot:e.foot,x:clamp(e.x),y:clamp(e.y),atMs:e.atMs,
-   confidence:e.confidence,basis:'image-2d',verified:true});
+  if(e.confidence<.55||!visibleActors.has(e.performer)||
+   e.atMs>at+70||e.atMs<s.atMs-1500)continue;
+  if(e.kind==='contact'){
+   engine.contact({source:'video',eventId:e.id,actorId:e.performer,
+    foot:e.foot,x:clamp(e.x),y:clamp(e.y),atMs:e.atMs,
+    confidence:e.confidence,basis:'image-2d',verified:true,headingRad:e.headingRad});
+  }else if(e.kind==='slide'||e.kind==='pivot'||e.kind==='swing'){
+   engine.motionPhase({source:'video',eventId:e.id,actorId:e.performer,
+    foot:e.foot,kind:e.kind==='swing'?'release':e.kind,
+    x:clamp(e.x),y:clamp(e.y),atMs:e.atMs,
+    confidence:e.confidence,basis:'image-2d',headingRad:e.headingRad});
+  }
  }
 }
 export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
@@ -128,11 +140,18 @@ export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
    x:uv.x,y:uv.y,confidence:1,atMs:frame.timeMs,basis:'simulated'});
  }
  for(const e of frame.session.events){
-  if(e.kind!=='contact'||e.timestampMs>frame.timeMs)continue;
+  if(e.timestampMs>frame.timeMs)continue;
   const uv=floorToUV(floor,e.positionM);
-  engine.contact({source:'simulator',eventId:e.id,actorId:e.performerId,
-   foot:e.foot,x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
-   basis:'simulated',verified:true});
+  if(e.kind==='contact'){
+   engine.contact({source:'simulator',eventId:e.id,actorId:e.performerId,
+    foot:e.foot,x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
+    basis:'simulated',verified:true,headingRad:e.headingRad});
+  }else if(e.kind==='move'||e.kind==='release'){
+   engine.motionPhase({source:'simulator',eventId:e.id,actorId:e.performerId,
+    foot:e.foot,kind:e.kind==='move'?'slide':'release',
+    x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
+    basis:'simulated',headingRad:e.headingRad});
+  }
  }
 }
 export function feedTouchFloorInteraction(engine:FloorInteractionEngine,input:{
@@ -152,6 +171,7 @@ export function feedTouchFloorInteraction(engine:FloorInteractionEngine,input:{
  else engine.release(base);
 }
 /** Software overlay only: every input source draws through the same preview.
+ * Uses authentic left/right 5-toe foot geometry and real heading when known.
  * Original FloorSession canvas and all hardware output remain unchanged. */
 export function paintFloorInteractionOverlay(canvas:HTMLCanvasElement,
  engine:FloorInteractionEngine,atMs:number,lifeMs=8000){
@@ -163,7 +183,7 @@ export function paintFloorInteractionOverlay(canvas:HTMLCanvasElement,
  for(const e of engine.recent){
   const age=atMs-e.atMs;
   if(age<0||age>lifeMs)continue;
-  if(e.kind==='release')continue;
+  if(e.kind==='release'||e.kind==='slide'||e.kind==='pivot')continue;
   const stamp=e.kind==='contact'||e.kind==='touch';
   const expiry=stamp?lifeMs:650;
   if(age>expiry)continue;
@@ -171,17 +191,16 @@ export function paintFloorInteractionOverlay(canvas:HTMLCanvasElement,
   const x=e.x*w,y=e.y*h;
   const rgb=e.actorId==='B'||e.actorId.includes('2')?'133,218,228':
    e.actorId.startsWith('unassigned')?'186,190,189':'203,229,175';
-  ctx.save();ctx.globalAlpha=(stamp?.65:.32)*alpha;
+  ctx.save();
   ctx.strokeStyle='rgb('+rgb+')';ctx.fillStyle='rgb('+rgb+')';
   if(stamp){
-   ctx.translate(x,y);
-   ctx.rotate(Math.PI/9);
-   ctx.beginPath();ctx.ellipse(0,0,15,32,0,0,Math.PI*2);
-   ctx.fill();
-   ctx.lineWidth=3;
-   ctx.beginPath();ctx.ellipse(0,0,26+age/230,40+age/230,0,0,Math.PI*2);
-   ctx.stroke();
+   const heading=typeof e.headingRad==='number'&&Number.isFinite(e.headingRad)?Math.PI/2-e.headingRad:0;
+   paintAuthenticFootprint(ctx,{
+    x,y,side:e.foot??'left',headingRad:heading,
+    widthPx:36,lengthPx:82,alpha:.72*alpha,color:'rgb('+rgb+')'
+   });
   }else{
+   ctx.globalAlpha=.32*alpha;
    const radius=e.kind==='movement'?26:37;
    ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,radius+age/45,0,Math.PI*2);ctx.stroke();
    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();
