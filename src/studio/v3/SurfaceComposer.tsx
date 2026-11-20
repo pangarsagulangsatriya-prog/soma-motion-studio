@@ -486,6 +486,13 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     }
    }
    const preview=canvas.current;
+   if(preview){
+    preview.dataset.mat03Active=liquidFrame?'drawn':liquidRenderer.current?'gated':'loading';
+    preview.dataset.mat03Selected=selectedRef.current;
+    preview.dataset.mat03Enabled=String(liquidEnabledRef.current);
+    preview.dataset.mat03PreviewLive=String(previewLiveRef.current);
+    preview.dataset.mat03Blackout=String(blackoutRef.current);
+   }
    if(preview){const ctx=preview.getContext('2d');if(ctx){
     if(previewArrangementRef.current==='input'&&experimentSource){
      ctx.setTransform(1,0,0,1,0,0);
@@ -774,7 +781,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-runtime" aria-hidden="true">
    <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="BODY compositor raster"/>
    <canvas ref={floorOutput} width={640} height={360} hidden aria-label="FLOOR compositor raster"/>
-    <canvas ref={liquidCanvas} width={960} height={540} hidden
+    <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden
      aria-label="MAT-03 Liquid Imprint PixiJS preview only"/>
   </div>
  </div>;
