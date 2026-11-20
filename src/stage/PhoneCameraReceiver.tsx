@@ -1,5 +1,5 @@
 import {useEffect,useId,useRef,useState} from 'react';
-import {CircleHelp,Copy,Link2,X} from 'lucide-react';
+import {Cable,CircleHelp,Copy,KeyRound,Link2,QrCode,X} from 'lucide-react';
 import {AutomaticPhoneReceiver} from './AutomaticPhoneReceiver.tsx';
 import {UsbPhoneCameraReceiver} from './UsbPhoneCameraReceiver.tsx';
 import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
@@ -180,17 +180,25 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
   return()=>{document.removeEventListener('keydown',key);document.removeEventListener('pointerdown',outside);};
  },[helpOpen]);
  return <div className="soma-setup-phone-choices soma-camera-pairing-compact">
-  <div className="soma-setup-pair-tabs" role="group" aria-label="Metode sambungan kamera">
-   <button type="button" aria-pressed={mode==='usb'}
-    onClick={()=>{setMode('usb');setHelpOpen(false);}} aria-label="Kamera USB, HDMI, atau virtual">Perangkat</button>
-   <button type="button" aria-pressed={mode==='qr'}
-    onClick={()=>{setMode('qr');setHelpOpen(false);}} aria-label="HP melalui kode QR">QR HP</button>
-   <button type="button" aria-pressed={mode==='manual'}
-    onClick={()=>{setMode('manual');setHelpOpen(false);}} aria-label="Pairing kode manual">Kode</button>
+  <div className="soma-camera-method-row">
+   <div className="soma-setup-pair-tabs" role="group" aria-label="Metode sambungan kamera">
+    <button type="button" aria-pressed={mode==='usb'}
+     onClick={()=>{setMode('usb');setHelpOpen(false);}} aria-label="Kamera USB, HDMI, atau virtual" title="Kamera perangkat">
+     <Cable size={15} aria-hidden="true"/><span>USB</span>
+    </button>
+    <button type="button" aria-pressed={mode==='qr'}
+     onClick={()=>{setMode('qr');setHelpOpen(false);}} aria-label="HP melalui kode QR" title="Kamera HP lewat QR">
+     <QrCode size={15} aria-hidden="true"/><span>QR</span>
+    </button>
+    <button type="button" aria-pressed={mode==='manual'}
+     onClick={()=>{setMode('manual');setHelpOpen(false);}} aria-label="Pairing kode manual" title="Koneksi kode manual">
+     <KeyRound size={15} aria-hidden="true"/><span>Kode</span>
+    </button>
+   </div>
    <button type="button" ref={helpButton} className="soma-camera-help-button"
-    title="Lihat petunjuk" aria-label="Petunjuk koneksi kamera" aria-expanded={helpOpen}
+    title="Cara menghubungkan kamera" aria-label="Petunjuk koneksi kamera" aria-expanded={helpOpen}
     aria-controls={helpId} onClick={()=>setHelpOpen(value=>!value)}>
-    <CircleHelp size={17} aria-hidden="true"/>
+    <CircleHelp size={18} aria-hidden="true"/>
    </button>
   </div>
   {helpOpen&&<section ref={helpPanel} id={helpId} className="soma-camera-help-pop"

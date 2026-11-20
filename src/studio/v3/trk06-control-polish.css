@@ -654,3 +654,112 @@
   animation:none!important;transition:none!important;transform:none!important;
  }
 }
+
+
+/* TRK-CAM-ICON-GRID — three stable tabs + help outside the segmented control. */
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-panel[data-camera-setup=open]>.soma-track-source-heading{
+ display:none!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-panel[data-camera-setup=open]>.soma-track-phone-pairing:not([hidden]){
+ padding:5px 0 0!important;
+ border:0!important;box-shadow:none!important;background:transparent!important;
+ gap:8px!important;animation:soma-help-reveal .16s ease both;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-panel[data-camera-setup=open] .soma-track-phone-heading{
+ min-height:27px!important;padding:0 1px 1px;gap:6px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-panel[data-camera-setup=open] .soma-track-phone-heading strong{
+ color:#a9c3ae!important;font-size:11px!important;font-weight:600!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-source-panel[data-camera-setup=open] .soma-track-phone-heading button{
+ width:29px;height:29px;min-height:29px;font-size:16px;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-pairing-compact>.soma-camera-method-row{
+ display:grid!important;grid-template-columns:minmax(0,1fr) 37px!important;
+ align-items:stretch;gap:7px!important;width:100%;min-width:0;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-setup-pair-tabs{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ min-width:0!important;width:100%!important;max-width:100%!important;
+ align-items:stretch;gap:3px!important;margin:0!important;
+ border-radius:10px!important;padding:3px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-setup-pair-tabs>button{
+ display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ height:37px!important;min-height:37px!important;
+ padding:6px 4px!important;
+ overflow:hidden;text-overflow:clip;white-space:nowrap;
+ font-size:11px!important;font-weight:650!important;
+ border-radius:7px!important;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-setup-pair-tabs>button svg{
+ width:15px;height:15px;min-width:15px;flex:0 0 15px;pointer-events:none;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-setup-pair-tabs>button span{
+ flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-camera-help-button{
+ display:grid!important;place-items:center!important;
+ width:37px!important;min-width:37px!important;max-width:37px!important;
+ height:43px!important;min-height:43px!important;
+ align-self:stretch;
+ padding:0!important;margin:0!important;border:1px solid #3f5943!important;
+ border-radius:9px!important;background:#13231a!important;
+ color:#c6dfc6!important;cursor:pointer;
+ box-sizing:border-box!important;
+ transition:background-color .16s ease,border-color .16s ease,transform .16s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-camera-help-button:hover{
+ background:#263e2c!important;border-color:#759775!important;transform:translateY(-1px);
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-camera-method-row>.soma-camera-help-button[aria-expanded=true]{
+ background:#344d36!important;border-color:#b4d49b!important;
+}
+.soma-camera-pairing-compact .soma-camera-help-pop{top:49px}
+.soma-camera-pairing-compact .soma-camera-quick-connect{
+ gap:8px!important;animation:soma-help-reveal .16s ease both;
+}
+.soma-camera-pairing-compact .soma-camera-quick-connect .soma-usb-head{
+ min-height:24px;gap:5px;
+}
+.soma-camera-pairing-compact .soma-camera-quick-connect .soma-usb-head label{
+ font-size:11px!important;font-weight:650;
+}
+.soma-camera-pairing-compact .soma-camera-quick-connect .soma-usb-count{
+ font-size:10px;color:#95b09a;font-weight:450;
+}
+.soma-camera-pairing-compact .soma-camera-quick-connect select{
+ height:42px!important;min-height:42px!important;
+ font-size:12px!important;text-overflow:ellipsis;white-space:nowrap;
+}
+.soma-camera-pairing-compact .soma-camera-quick-connect .soma-usb-primary{
+ min-height:42px!important;height:42px!important;font-size:12px!important;
+ box-shadow:none!important;
+}
+.soma-camera-pairing-compact .soma-camera-quick-connect .soma-usb-help{margin:0!important}
+.soma-camera-pairing-compact .soma-camera-quick-connect .soma-usb-help summary{
+ font-size:10px!important;min-height:25px;
+}
+@media(max-width:410px){
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  .soma-camera-method-row>.soma-setup-pair-tabs>button{gap:3px!important;font-size:10px!important}
+ .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+  .soma-camera-method-row>.soma-setup-pair-tabs>button svg{width:13px;height:13px;min-width:13px;flex-basis:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-camera-method-row :is(button,svg){transition:none!important;transform:none!important}
+}

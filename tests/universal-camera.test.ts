@@ -77,9 +77,12 @@ test('CAM-UX: picker auto-selects one device but never auto-starts camera',async
 test('CAM-UX: QR/manual preserved and tabs use compact labels',async()=>{
  const {readFileSync}=await import('node:fs');
  const source=readFileSync(new URL('../src/stage/PhoneCameraReceiver.tsx',import.meta.url),'utf8');
- assert.match(source,/>Perangkat<\/button>/);
- assert.match(source,/QR HP<\/button>/);
- assert.match(source,/Kode<\/button>/);
+ assert.match(source,/<Cable size=\{15\}/);
+ assert.match(source,/<QrCode size=\{15\}/);
+ assert.match(source,/<KeyRound size=\{15\}/);
+ assert.match(source,/<span>USB<\/span>/);
+ assert.match(source,/<span>QR<\/span>/);
+ assert.match(source,/<span>Kode<\/span>/);
  assert.match(source,/<AutomaticPhoneReceiver/);
  assert.match(source,/<ManualPhoneCameraReceiver/);
 });
@@ -115,4 +118,21 @@ test('CAM-UX static QR sends user into code step without promising an automatic 
  assert.match(qr,/>Lanjut ke Kode<\/button>/);
  assert.match(qr,/if\(staticPages\)/);
  assert.match(qr,/onUseManual&&<button/);
+});
+
+test('CAM-UI-02: help control is outside three-cell segmented camera tabs',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const get=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8');
+ const phone=get('../src/stage/PhoneCameraReceiver.tsx');
+ const css=get('../src/studio/v3/trk06-control-polish.css');
+ const stage=get('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ assert.match(phone,/className="soma-camera-method-row"/);
+ assert.match(phone,/className="soma-camera-help-button"/);
+ assert.match(phone,/<Cable size=\{15\}/);
+ assert.match(phone,/<QrCode size=\{15\}/);
+ assert.match(phone,/<KeyRound size=\{15\}/);
+ assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
+ assert.match(css,/grid-template-columns:minmax\(0,1fr\) 37px!important/);
+ assert.match(stage,/data-camera-setup=\{sourceStatus.selection==='phone'&&phonePanelOpen\?'open':'closed'\}/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
 });
