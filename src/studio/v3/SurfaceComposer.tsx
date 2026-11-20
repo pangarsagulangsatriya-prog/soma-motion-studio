@@ -629,7 +629,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
  </section>;
- return <div className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
+ return <div id="soma-compose-focus" className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
   <div className="s64-heading">
    <div className="cpux-heading-label"><h2>Composer</h2><span>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</span></div>
