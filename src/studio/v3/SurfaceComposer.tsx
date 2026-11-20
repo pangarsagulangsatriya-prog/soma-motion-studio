@@ -13,13 +13,9 @@ import {canRenderComposeSurface} from './composePreviewGate.ts';
 import {ComposerEventTimeline,type TimelineMode} from './ComposerEventTimeline.tsx';
 import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timelineFootprintVisibility,type TimelineCapture} from './composerEventTimelineModel.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
-import {MOTION_RECIPE_TRIGGERS,MOTION_RECIPE_TREATMENTS,normalizeMotionRecipeRule,
- resolveMotionRecipeCue,motionRecipeEnvelope,type MotionRecipeRule,type MotionRecipeCue} from '../../footprints/scenes/motionRecipeModel.ts';
-import './vis-r4-recipe.css';
 import './ux-r3-compose.css';
 import {useCompositionHistory} from './useCompositionHistory.ts';
 import {V5_COMPOSER_KEY,V5_PRESET_KEY,stripRetiredVisualLayers,resetOldVisualStorage} from './resetVisualMigration.ts';
-import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
 import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
@@ -30,13 +26,13 @@ import {normalizedCanvasPoint,pickTopmostObject,nudgeLayer} from './composerObje
 
 type Surface='BODY A'|'BODY B'|'FLOOR';
 type Mask='silhouette'|'polygon'|'none';
-type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][];recipe:string;motionRecipe?:MotionRecipeRule};
+type Layer={id:string;name:string;mediaId:string;visible:boolean;opacity:number;scale:number;x:number;y:number;rotation:number;blend:GlobalCompositeOperation;mask:Mask;feather:number;points:[number,number][]};
 type Composition=Record<Surface,Layer[]>;
 type Snapshot={version:1;composition:Composition;selected:Surface;footprint?:FootprintConfig};
 const surfaces:Surface[]=['BODY A','BODY B','FLOOR'];
 const key=V5_COMPOSER_KEY;
 const presetKey=V5_PRESET_KEY;
-const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]],recipe:'none'});
+const makeLayer=(mediaId='',name='Layer'):Layer=>({id:crypto.randomUUID(),name,mediaId,visible:true,opacity:100,scale:100,x:0,y:0,rotation:0,blend:'source-over',mask:'none',feather:0,points:[[.2,.2],[.8,.2],[.8,.8],[.2,.8]]});
 const initial=():Composition=>({'BODY A':[makeLayer('', 'Body A archive')],'BODY B':[makeLayer('', 'Body B archive')],FLOOR:[makeLayer('', 'Floor path')]});
 const validFootprint=(v:unknown):v is FootprintConfig=>{
  if(!v||typeof v!=='object')return false;
@@ -129,38 +125,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  },[]);
  useEffect(()=>{if(previewBlackout)setBlackout(true);},[previewBlackout]);
  useEffect(()=>{if(previewResumeRevision>0&&!previewBlackout){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision,previewBlackout]);
- const [testEvent,setTestEvent]=useState<'contact'|'move'|'release'|null>(null);
- const [demoFootprints,setDemoFootprints]=useState<FootprintState>(emptyFootprintState);
- const [demoNowMs,setDemoNowMs]=useState(()=>performance.now());
- const [demoFoot,setDemoFoot]=useState<FootSide>('left');
- const rehearsalEvent=(kind:FootEventKind,foot:FootSide=demoFoot)=>{
-  const atMs=performance.now();
-  setDemoFootprints(previous=>{
-   const active=previous.active[('A:'+foot) as 'A:left'|'A:right'];
-   let next=previous;
-   // The operator's Step button advances a distinct contact: release the previous stamp.
-   if(kind==='contact'&&active){
-    next=applyFootprintEvent(next,makeDemoFootEvent(next,'release',foot,atMs-.01));
-   }
-   return applyFootprintEvent(next,makeDemoFootEvent(next,kind,foot,atMs));
-  });
-  setDemoFoot(foot);
-  triggerTest(kind==='slide'?'move':kind==='pivot'?'release':'contact');
- };
- useEffect(()=>{
-  if(cameraOn||blackout||previewBlackout||!previewLive)return;
-  const timer=window.setInterval(()=>{
-   const now=performance.now();
-   setDemoNowMs(now);
-   setDemoFootprints(previous=>pruneFootprints(previous,now,{holdMs:0,decayMs:(footprint?.life??8)*1000}));
-  },120);
-  return()=>window.clearInterval(timer);
- },[cameraOn,blackout,previewBlackout,previewLive,footprint?.life]);
- const effectClock=useRef(new Map<string,{started:number;kind:string}>());
- const motionClocks=useRef(new Map<string,MotionRecipeCue>());
- const seenMotionEvents=useRef(new Set<string>());
  const activeMotionSession=useRef<string|null>(null);
- const seenEvents=useRef(new Set<string>());
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
  const previewLayerAlpha=useRef(new Map<string,number>());
  const bodyOutput=useRef<HTMLCanvasElement>(null);
@@ -426,28 +391,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     if(body&&currentMask){g.globalCompositeOperation='destination-in';g.drawImage(currentMask,0,0,w,h);}
     g.globalCompositeOperation='source-over';
    }
-   let envelope=1;
-   const rawCue=effectClock.current.get(layer.id);
-   const cue=physical&&rawCue?.kind.startsWith('simulation:')?undefined:rawCue;
-   if(layer.recipe==='motion-v2'){
-    envelope=physical||!identitySafeRef.current?0:motionRecipeEnvelope(motionClocks.current.get(layer.id)??null,now);
-   }else if(layer.recipe!=='none'){
-    if(!cue)envelope=0;
-    else{const age=now-cue.started;
-     if(layer.recipe==='contact-reveal')envelope=Math.min(1,age/250)*Math.max(0,1-age/3000);
-     if(layer.recipe==='slide-hold')envelope=age<1500?1:Math.max(0,1-(age-1500)/750);
-     if(layer.recipe==='pivot-decay')envelope=Math.max(0,1-age/2200);
-    }
-   }
-   if(!physical&&!overlayOnly&&s===selectedRef.current)
-    previewLayerAlpha.current.set(key,Math.min(1,Math.max(0,envelope)));
-   ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100*envelope));
+   if(!physical&&!overlayOnly&&s===selectedRef.current)previewLayerAlpha.current.set(key,1);
+   ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,layer.opacity/100));
    ctx.globalCompositeOperation=layer.blend;
-   const motionCue=layer.recipe==='motion-v2'?motionClocks.current.get(layer.id):undefined;
-   if(!physical&&motionCue?.treatment==='distort'&&envelope>0){
-    const wobble=4*envelope*Math.sin((now-motionCue.started)/90);
-    ctx.translate(wobble,-wobble*.6);ctx.drawImage(off,0,0);
-   }else ctx.drawImage(off,0,0);
+   ctx.drawImage(off,0,0);
    ctx.restore();
   }
  };
@@ -536,83 +483,24 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   };raf=requestAnimationFrame(tick);
   return()=>{cancelAnimationFrame(raf);stageRoute.current=null;};
  },[]);
+ // Keep Track events exclusively for the Event Timeline after RESET-00.
  useEffect(()=>{
   if(!previewLive||blackout||!motionEvents)return;
-  let timeout=0;
+  let id=0;
   const consume=()=>{
    const events=motionEventsRef.current?.()??[];
    const session=motionSessionRef.current?.()??'unknown';
    if(activeMotionSession.current!==session){
-    activeMotionSession.current=session;motionClocks.current.clear();seenMotionEvents.current.clear();
+    activeMotionSession.current=session;
     setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);
-    // Do not re-trigger historical contacts when opening Compose or switching source.
-    for(const old of events)seenMotionEvents.current.add(old.eventId);
     setTimelineCapture(emptyTimelineCapture(session));
-    timeout=window.setTimeout(consume,85);return;
-   }
-   if(timelineModeRef.current==='live'&&events.length)
+   }else if(timelineModeRef.current==='live'&&events.length){
     setTimelineCapture(previous=>collectTimelineEvents(previous,events,session,performance.now()));
-   for(const event of events.slice(-120)){
-    if(seenMotionEvents.current.has(event.eventId))continue;
-    seenMotionEvents.current.add(event.eventId);
-    if(seenMotionEvents.current.size>1500){
-     const recent=new Set(events.map(x=>x.eventId));
-     seenMotionEvents.current=new Set([...seenMotionEvents.current].filter(id=>recent.has(id)));
-    }
-    const now=performance.now();
-    // CP-03: the unified F0 event bus also drives existing preview-only
-    // Contact/Slide/Pivot recipes for MP4 and synthetic rehearsal sources.
-    // This never enters the physical FloorSession or projector route.
-    if(event.source==='video'||event.source==='simulator'||event.source==='touch'){
-     const legacyRecipe=event.kind==='contact'&&event.verified?'contact-reveal':
-      event.kind==='slide'?'slide-hold':
-      event.kind==='pivot'||event.kind==='release'?'pivot-decay':null;
-     if(legacyRecipe){
-      for(const item of compositionRef.current.FLOOR){
-       if(item.recipe===legacyRecipe)
-        effectClock.current.set(item.id,{started:now,kind:'simulation:'+event.kind});
-      }
-      setEventInfo(event.kind+' · '+event.actorId+' · preview only');
-     }
-    }
-    for(const surface of surfaces)for(const item of compositionRef.current[surface]){
-     if(item.recipe!=='motion-v2')continue;
-     const cue=resolveMotionRecipeCue(event,normalizeMotionRecipeRule(item.motionRecipe),surface,now,identitySafeRef.current);
-     if(!cue)continue;
-     motionClocks.current.set(item.id,cue);
-     setEventInfo(cue.kind+' · '+cue.actorId+' · '+cue.surface+(cue.verified?' · verified':' · unverified'));
-    }
    }
-   timeout=window.setTimeout(consume,85);
+   id=window.setTimeout(consume,85);
   };
-  consume();return()=>clearTimeout(timeout);
+  consume();return()=>clearTimeout(id);
  },[previewLive,blackout,!!motionEvents]);
- useEffect(()=>{
-  if(!previewLive||blackout)return;
-  let id=0;
-  const tick=()=>{
-   const events=floorEventsRef.current();
-   for(const event of events.slice(-80)){
-    if(seenEvents.current.has(event.id))continue;
-    seenEvents.current.add(event.id);
-    if(seenEvents.current.size>1000)seenEvents.current.clear();
-    const match=event.kind==='contact'?'contact-reveal':event.kind==='move'?'slide-hold':event.kind==='release'?'pivot-decay':null;
-    if(match){
-     for(const surface of surfaces)for(const layer of compositionRef.current[surface])
-      if(layer.recipe===match&&(surface==='FLOOR'||(surface==='BODY A'&&(event.performerId==='performer-1'||event.performerId==='A'))||(surface==='BODY B'&&event.performerId==='B')))
-       effectClock.current.set(layer.id,{started:performance.now(),kind:event.kind});
-     setEventInfo(event.kind+' · '+event.performerId+' · '+event.id.slice(0,8));
-    }
-   }
-   id=window.setTimeout(tick,85);
-  };tick();return()=>clearTimeout(id);
- },[previewLive,blackout]);
- const triggerTest=(kind:'contact'|'move'|'release')=>{
-  const recipe=kind==='contact'?'contact-reveal':kind==='move'?'slide-hold':'pivot-decay';
-  for(const surface of surfaces)for(const item of compositionRef.current[surface])
-   if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind:'simulation:'+kind});
-  setTestEvent(kind);setEventInfo('SIMULASI '+kind+' (tidak dikirim ke tracking)');
- };
  const points=(e:PointerEvent<HTMLCanvasElement>)=>{
   const rect=e.currentTarget.getBoundingClientRect();
   if(editMask&&layer){
@@ -724,7 +612,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     speed={timelineSpeed} onSpeedChange={setTimelineSpeed}
     onClear={()=>{setTimelineCapture(emptyTimelineCapture(motionSessionRef.current?.()??'unknown'));
      setTimelineMode('live');setTimelinePlaying(false);setTimelinePosition(0);}}/>
-   <div className='s64-test-events'><span className="msv4-event-label">EVENT TEST</span><button type="button" onClick={()=>rehearsalEvent('contact','left')}>Step L</button><button type="button" onClick={()=>rehearsalEvent('contact','right')}>Step R</button><button onClick={()=>triggerTest('contact')}>Test Contact</button><button onClick={()=>rehearsalEvent('slide')}>Test Slide</button><button onClick={()=>rehearsalEvent('pivot')}>Test Pivot</button><button type="button" onClick={()=>rehearsalEvent('release')}>Release</button><button type="button" onClick={()=>{setDemoFootprints(emptyFootprintState());setTestEvent(null);}}>Reset demo</button><small>{testEvent?'Simulasi terakhir: '+testEvent:''}</small></div><details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
+   <details className="soma-ia-layers" open><summary>Layers · {layers.length} · bawah → atas</summary>{layers.map((l,i)=><div className={'s64-layer '+(i===selectedLayer?'active':'')} key={l.id}
   draggable={layers.length>1} data-dragging={dragLayer===i} data-drop-target={dropLayer===i&&dragLayer!==i}
   onDragStart={event=>{setDragLayer(i);setDropLayer(null);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',String(i));}}
   onDragOver={event=>{if(dragLayer===null)return;event.preventDefault();event.dataTransfer.dropEffect='move';setDropLayer(i);}}
@@ -787,32 +675,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <label>Opacity · {layer?.opacity??100}%
    <input type="range" min="0" max="100" value={layer?.opacity??100}
     onChange={e=>patch({opacity:Number(e.target.value)})}/></label>
-  <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label><label>Effect Recipe<select value={layer?.recipe} onChange={e=>patch({recipe:e.target.value})}><option value="none">None</option><option value="contact-reveal">Contact → Reveal</option><option value="slide-hold">Slide → Hold</option><option value="pivot-decay">Legacy release → Decay</option><option value="motion-v2">Motion Recipe V2 → Media</option></select></label>
- {layer?.recipe==='motion-v2'&&<section className="visr4-recipe-editor" aria-label="Editor Motion Recipe">
-  <strong>EVENT → MEDIA TREATMENT</strong>
-  <label>Input event<select value={normalizeMotionRecipeRule(layer.motionRecipe).trigger}
-   onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),
-    trigger:e.target.value as MotionRecipeRule['trigger'],verifiedOnly:e.target.value==='contact'}})}>
-   {MOTION_RECIPE_TRIGGERS.map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}
-  </select></label>
-  <label>Visual treatment<select value={normalizeMotionRecipeRule(layer.motionRecipe).treatment}
-   onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),
-    treatment:e.target.value as MotionRecipeRule['treatment']}})}>
-   {MOTION_RECIPE_TREATMENTS.map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}
-  </select></label>
-  <label>Duration · {normalizeMotionRecipeRule(layer.motionRecipe).durationMs}ms
-   <input type="range" min="100" max="12000" step="100"
-    value={normalizeMotionRecipeRule(layer.motionRecipe).durationMs}
-    onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),durationMs:Number(e.target.value)}})}/></label>
-  <label>Strength · {Math.round(normalizeMotionRecipeRule(layer.motionRecipe).strength*100)}%
-   <input type="range" min="0" max="1" step=".05"
-    value={normalizeMotionRecipeRule(layer.motionRecipe).strength}
-    onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),strength:Number(e.target.value)}})}/></label>
-  <label className="visr4-check"><input type="checkbox" checked={normalizeMotionRecipeRule(layer.motionRecipe).verifiedOnly}
-   onChange={e=>patch({motionRecipe:{...normalizeMotionRecipeRule(layer.motionRecipe),verifiedOnly:e.target.checked}})}/>
-   Verified only</label>
-  <small>Kontak kaki wajib terverifikasi. Slide dan Pivot belum didukung klasifikasi terverifikasi. Mode eksperimen hanya muncul di preview software.</small>
- </section>}</>}
+  <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label></>}
  {inspectorTab==='scene'&&<details className="soma-ia-presets"><summary>Presets</summary><input value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Nama preset"/><button onClick={savePreset}>Simpan preset</button><select defaultValue="" onChange={e=>{const p=presets.find(p=>p.name===e.target.value);if(p){setComposition(structuredClone(p.snapshot.composition));setSelected(p.snapshot.selected);setSelectedLayer(0);if(p.snapshot.footprint)updateFootprint?.(structuredClone(p.snapshot.footprint));setHint('Preset dimuat: '+p.name);}}}><option value="">Pilih preset</option>{presets.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={exportConfig}>Ekspor JSON</button><label className="s64-upload">Impor JSON<input type="file" accept=".json,application/json" onChange={importConfig}/></label>{hint&&<p role="status">{hint}</p>}</details>}
  {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
   </div>
