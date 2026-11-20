@@ -989,7 +989,7 @@ export function FootprintsStageWorkspace({
      onEnterPerform={()=>onNavigateStageWorkspace('perform')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
-     <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
+     <aside className="soma-track-source-panel" data-camera-setup={sourceStatus.selection==='phone'&&phonePanelOpen?'open':'closed'} hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
       <div className="soma-track-source-heading"><strong>Sumber</strong></div>
       <details className="soma-ux01-source-switch soma-track-source-select"

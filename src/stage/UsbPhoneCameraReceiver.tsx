@@ -120,7 +120,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
  const showFeedback=phase==='error'||phase==='searching'||phase==='connecting'||connected||devices.length===0;
  return <section className="soma-usb-phone soma-camera-quick-connect" aria-label="Pilih kamera" data-phase={phase}>
   <div className="soma-usb-head">
-   <label htmlFor="soma-usb-phone-device">Perangkat <span className="soma-usb-count">{devices.length} terdeteksi</span></label>
+   <label htmlFor="soma-usb-phone-device">Kamera <span className="soma-usb-count">{devices.length} tersedia</span></label>
    <button type="button" className="soma-usb-refresh" onClick={()=>void refresh()}
     title="Muat ulang daftar kamera" aria-label="Muat ulang daftar kamera" disabled={busy}>
     <RefreshCw size={15} aria-hidden="true"/>
@@ -128,6 +128,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect}:{
   </div>
   <div className="soma-usb-select-wrap">
    <select id="soma-usb-phone-device" value={deviceId} disabled={busy}
+    title={devices.find(device=>device.deviceId===deviceId)?.label||'Pilih kamera'}
     onChange={e=>{if(active.current)stop(true);setDeviceId(e.target.value);setPhase('idle');setMessage('Pilih perangkat, lalu sambungkan.');}}>
     <option value="">{devices.length?'Pilih kamera…':'Belum ada kamera'}</option>
     {devices.map((device,i)=><option key={device.deviceId} value={device.deviceId}>{cameraDeviceLabel(device,i)}</option>)}
