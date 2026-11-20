@@ -45,7 +45,6 @@ try{
    canvasExists:!!document.querySelector('canvas[aria-label="MAT-03 Liquid Imprint PixiJS preview only"]')
   }));
   result.diagnostic=diagnostic;
-  await page.screenshot({path:artifact+'/failure-init.png',fullPage:true});
   console.error('MAT03_INIT_DIAGNOSTIC',JSON.stringify(diagnostic));
   throw err;
  }
@@ -90,8 +89,6 @@ try{
      selected:document.querySelector('.uxr3-compose-preview-bar')?.textContent};
    });
    result.diagnostic=diagnostic;
-   await page.screenshot({path:artifact+'/failure-page.png',fullPage:true});
-   await stage.screenshot({path:artifact+'/failure-stage.png'});
    console.error('MAT03_DIAGNOSTIC',JSON.stringify(diagnostic));
   }
   assert.ok(v.colored>25,'No colored footprint pixels in Compose '+phase+': '+JSON.stringify(v));
