@@ -138,15 +138,25 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   const surface=liquidCanvas.current;
   if(!surface)return;
   let canceled=false;
-  void import('../../footprints/materials/PixiLiquidImprintCompositor.ts')
-   .then(({PixiLiquidImprintCompositor})=>PixiLiquidImprintCompositor.create(surface))
-   .then(renderer=>{
-    if(canceled){renderer.destroy();return;}
-    liquidRenderer.current=renderer;setLiquidStatus('Liquid Imprint · PixiJS v8 siap');
-   })
-   .catch(err=>{if(!canceled)setLiquidStatus('Liquid Imprint gagal: '+String(err));});
+  // React StrictMode replays mount effects. Defer creation one browser frame
+  // so the canceled first mount cannot initialize/destroy the shared canvas.
+  const start=requestAnimationFrame(()=>{
+   if(canceled)return;
+   void import('../../footprints/materials/PixiLiquidImprintCompositor.ts')
+    .then(({PixiLiquidImprintCompositor})=>{
+     if(canceled)return null;
+     return PixiLiquidImprintCompositor.create(surface);
+    })
+    .then(renderer=>{
+     if(!renderer)return;
+     if(canceled){renderer.destroy();return;}
+     liquidRenderer.current=renderer;
+     setLiquidStatus('Liquid Imprint · PixiJS v8 siap');
+    })
+    .catch(err=>{if(!canceled)setLiquidStatus('Liquid Imprint gagal: '+String(err));});
+  });
   return()=>{
-   canceled=true;
+   canceled=true;cancelAnimationFrame(start);
    const active=liquidRenderer.current;
    liquidRenderer.current=null;
    active?.destroy();
