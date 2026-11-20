@@ -83,3 +83,36 @@ test('CAM-UX: QR/manual preserved and tabs use compact labels',async()=>{
  assert.match(source,/<AutomaticPhoneReceiver/);
  assert.match(source,/<ManualPhoneCameraReceiver/);
 });
+
+
+test('CAM-UX help: modal tutorial is contextual, hidden until clicked and dismissible',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const r=(p:string)=>readFileSync(new URL(p,import.meta.url),'utf8');
+ const phone=r('../src/stage/PhoneCameraReceiver.tsx');
+ const css=r('../src/studio/v3/trk06-control-polish.css');
+ assert.match(phone,/const \[helpOpen,setHelpOpen\]=useState\(false\)/);
+ assert.match(phone,/aria-label="Petunjuk koneksi kamera"/);
+ assert.match(phone,/role="dialog" aria-label="Panduan sambungan kamera"/);
+ assert.match(phone,/helpOpen&&<section/);
+ assert.match(phone,/e\.key==='Escape'/);
+ assert.match(css,/\.soma-camera-help-pop/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+});
+test('CAM-UX manual pairing: long URL and offer are hidden until requested',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const phone=readFileSync(new URL('../src/stage/PhoneCameraReceiver.tsx',import.meta.url),'utf8');
+ assert.match(phone,/<details className="soma-manual-reveal">/);
+ assert.match(phone,/<summary>Lihat tautan HP<\/summary>/);
+ assert.match(phone,/<summary>Lihat kode laptop<\/summary>/);
+ assert.match(phone,/>Buat kode laptop/);
+ assert.match(phone,/placeholder="Tempel kode dari HP…"/);
+ assert.match(phone,/disabled=\{!answer\.trim\(\)\|\|busy\}/);
+ assert.match(phone,/pc\.current\?\.close\(\)/);
+});
+test('CAM-UX static QR sends user into code step without promising an automatic server',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const qr=readFileSync(new URL('../src/stage/AutomaticPhoneReceiver.tsx',import.meta.url),'utf8');
+ assert.match(qr,/>Lanjut ke Kode<\/button>/);
+ assert.match(qr,/if\(staticPages\)/);
+ assert.match(qr,/onUseManual&&<button/);
+});
