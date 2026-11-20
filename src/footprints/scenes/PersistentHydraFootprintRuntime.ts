@@ -153,10 +153,15 @@ export class PersistentHydraFootprintRuntime {
     this.settings.artwork!=='off'?'flagship:'+artwork:
     recipe?'catalog:'+recipe.id:'off';
    if(sceneKey!==this.lastArtwork){
-    if(this.lastArtwork==='off')this.art.reset(generation);
-    else this.art.skipExisting(events,generation);
+    // A switch from another flagship used to discard all buffered contacts.
+    // With prerecorded MP4 this could leave a BLACK canvas for the entire clip
+    // if the detector does not confirm another contact. Seed a bounded snapshot
+    // of already verified steps at the current display clock.
+    this.art.reset(generation);
+    const recent=events.filter(event=>event.kind==='contact'&&event.verified).slice(-12);
+    if(recent.length)this.art.ingest(recent,generation,nowMs);
     this.lastArtwork=sceneKey;this.resetFeedback();
-    // New visual should respond to future motion, not restamp buffered events.
+    // Prevent duplicate GPU impulses from old source events.
     for(const e of events)this.materialSeen.add(e.eventId);
    }
    this.sourceContext.fillStyle='#000';
