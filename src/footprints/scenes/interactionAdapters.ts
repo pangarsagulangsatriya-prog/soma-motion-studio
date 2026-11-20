@@ -8,6 +8,7 @@ import type {ExperimentalFrame} from '../../studio/v3/experimentSourceModel.ts';
 import type {ReplayGaitEvent} from '../../stage/videoGaitAnalysis.ts';
 import {FloorInteractionEngine,type FloorInteractionSource,type FloorObservation}
  from './FloorInteractionEngine.ts';
+import {paintAuthenticFootprint} from './authenticFootGeometry.ts';
 
 type PosePoint={x:number;y:number;visibility?:number};
 const validPoint=(p:PosePoint|undefined)=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
@@ -174,13 +175,12 @@ export function paintFloorInteractionOverlay(canvas:HTMLCanvasElement,
   ctx.save();ctx.globalAlpha=(stamp?.65:.32)*alpha;
   ctx.strokeStyle='rgb('+rgb+')';ctx.fillStyle='rgb('+rgb+')';
   if(stamp){
-   ctx.translate(x,y);
-   ctx.rotate(Math.PI/9);
-   ctx.beginPath();ctx.ellipse(0,0,15,32,0,0,Math.PI*2);
-   ctx.fill();
-   ctx.lineWidth=3;
-   ctx.beginPath();ctx.ellipse(0,0,26+age/230,40+age/230,0,0,Math.PI*2);
-   ctx.stroke();
+   // Preview geometry reads the event's verified foot side. It never
+   // estimates pressure, and it cannot authorize physical output.
+   paintAuthenticFootprint(ctx,{
+    x,y,side:e.foot??'left',widthPx:37,lengthPx:78,
+    alpha:1,color:'rgb('+rgb+')'
+   });
   }else{
    const radius=e.kind==='movement'?26:37;
    ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,radius+age/45,0,Math.PI*2);ctx.stroke();
