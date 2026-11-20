@@ -62,3 +62,24 @@ test('CAM-03–05: static frontend retains QR/manual and explains USB, HDMI, IP/
  assert.match(landscape,/requestVideoFrameCallback/);
  assert.match(landscape,/track\.addEventListener\('ended',onEnded\)/);
 });
+
+
+test('CAM-UX: picker auto-selects one device but never auto-starts camera',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../src/stage/UsbPhoneCameraReceiver.tsx',import.meta.url),'utf8');
+ assert.match(source,/list\.length===1\?list\[0\]\.deviceId:''/);
+ assert.match(source,/onClick=\{\(\)=>void connect\(\)\}/);
+ assert.match(source,/aria-label="Muat ulang daftar kamera"/);
+ assert.doesNotMatch(source,/soma-usb-intro/);
+ assert.match(source,/soma-usb-help/);
+ assert.match(source,/soma-usb-connected/);
+});
+test('CAM-UX: QR/manual preserved and tabs use compact labels',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../src/stage/PhoneCameraReceiver.tsx',import.meta.url),'utf8');
+ assert.match(source,/>Perangkat<\/button>/);
+ assert.match(source,/QR HP<\/button>/);
+ assert.match(source,/Kode<\/button>/);
+ assert.match(source,/<AutomaticPhoneReceiver/);
+ assert.match(source,/<ManualPhoneCameraReceiver/);
+});

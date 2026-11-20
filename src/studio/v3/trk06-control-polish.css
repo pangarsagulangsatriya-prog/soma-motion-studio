@@ -348,3 +348,168 @@
  .soma-track-static-qr>.soma-track-create-qr{
  margin-top:2px!important;
 }
+
+
+/* TRK-CAM-UX — compact camera picker: one device, one CTA, contextual help. */
+.soma-setup-phone-choices:has(.soma-camera-quick-connect){gap:8px}
+.soma-setup-phone-choices .soma-setup-pair-tabs:has(+ .soma-camera-quick-connect) {margin:0}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-track-phone-pairing:not([hidden]){padding:12px!important;gap:8px!important;border-radius:11px!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-setup-phone-choices{gap:9px!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-setup-pair-tabs{border-radius:9px;gap:3px!important;padding:3px!important}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-setup-pair-tabs>button{
+ white-space:nowrap;min-width:0;height:36px;min-height:36px!important;
+ font-size:12px!important;letter-spacing:0;cursor:pointer;
+ transition:background-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
+ .soma-setup-pair-tabs>button:active{transform:scale(.975)}
+.soma-setup-phone-choices .soma-camera-quick-connect{
+ display:flex!important;flex-direction:column!important;gap:9px!important;
+ width:100%;min-width:0;min-height:0;
+ animation:soma-camera-picker-enter .18s ease-out both;
+}
+.soma-camera-quick-connect .soma-usb-head{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px;
+}
+.soma-camera-quick-connect .soma-usb-head label{
+ display:flex;align-items:center;gap:8px;min-width:0;
+ color:#e0edda;font-size:12px;font-weight:680;line-height:1.2;margin:0;
+}
+.soma-camera-quick-connect .soma-usb-count{
+ font-size:11px;color:#92ad97;font-weight:500;white-space:nowrap;
+}
+.soma-camera-quick-connect .soma-usb-refresh{
+ display:grid;place-items:center;flex:0 0 30px;width:30px;min-height:30px;height:30px;
+ background:transparent;color:#b7ceb4;border:1px solid transparent;border-radius:7px;
+ cursor:pointer;transition:background-color .16s ease,color .16s ease,transform .16s ease;
+}
+.soma-camera-quick-connect .soma-usb-refresh:hover:not(:disabled){
+ background:#284333;color:#e2f2d3;transform:rotate(30deg);
+}
+.soma-camera-quick-connect .soma-usb-refresh:active:not(:disabled){transform:rotate(80deg)}
+.soma-camera-quick-connect .soma-usb-select-wrap{position:relative;min-width:0}
+.soma-setup-phone-choices .soma-camera-quick-connect select{
+ width:100%;min-width:0;height:43px;min-height:43px!important;
+ appearance:none;-webkit-appearance:none;
+ padding:8px 37px 8px 12px!important;box-sizing:border-box;
+ background:#102017!important;color:#eaf4e6!important;
+ border:1px solid #57765b!important;border-radius:9px!important;
+ font-size:13px!important;font-weight:560;
+ transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect select:hover:not(:disabled){
+ border-color:#90b18b!important;background:#15281c!important;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect select:focus-visible{
+ outline:none!important;border-color:#c8e4a3!important;box-shadow:0 0 0 3px #cceea022;
+}
+.soma-camera-quick-connect .soma-usb-chevron{
+ position:absolute;right:12px;top:50%;transform:translateY(-50%);
+ pointer-events:none;color:#c1d2bd;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect .soma-usb-actions{
+ display:flex;align-items:stretch;flex-wrap:nowrap;gap:7px;min-height:42px;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect .soma-usb-primary{
+ display:flex;align-items:center;justify-content:center;gap:9px;flex:1 1 auto;
+ width:auto;min-width:0;min-height:42px;height:42px;
+ padding:9px 12px!important;border-radius:9px!important;
+ border:1px solid #dcf1b3!important;background:#d5e9b0!important;
+ color:#1a2a1c!important;font-size:13px!important;font-weight:760!important;
+ cursor:pointer;box-shadow:0 2px 0 #55744f77;
+ transition:background-color .15s ease,box-shadow .15s ease,transform .15s ease;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect .soma-usb-primary:hover:not(:disabled){
+ background:#e8f6c7!important;box-shadow:0 3px 10px #0003;transform:translateY(-1px);
+}
+.soma-setup-phone-choices .soma-camera-quick-connect .soma-usb-primary:active:not(:disabled){
+ transform:translateY(1px);box-shadow:0 1px 0 #55744f77;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect .soma-usb-primary:disabled{
+ background:#344438!important;border-color:#485b4b!important;color:#8fa594!important;
+ cursor:not-allowed;box-shadow:none;opacity:1;
+}
+.soma-camera-quick-connect .soma-usb-permission,
+.soma-camera-quick-connect .soma-usb-disconnect{
+ display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+ min-height:42px;height:42px;padding:8px 10px;
+ background:#263d2d!important;border:1px solid #4b654e!important;border-radius:9px!important;
+ color:#dcebd4!important;font-size:11px!important;font-weight:600;cursor:pointer;
+ transition:background-color .15s ease,transform .15s ease;
+}
+.soma-camera-quick-connect .soma-usb-permission:hover:not(:disabled),
+.soma-camera-quick-connect .soma-usb-disconnect:hover:not(:disabled){background:#3a5940!important}
+.soma-camera-quick-connect .soma-usb-permission:active:not(:disabled),
+.soma-camera-quick-connect .soma-usb-disconnect:active:not(:disabled){transform:scale(.97)}
+.soma-camera-quick-connect .soma-usb-permission:disabled,
+.soma-camera-quick-connect .soma-usb-refresh:disabled{opacity:.45;cursor:not-allowed}
+.soma-camera-quick-connect .soma-usb-connected{
+ display:flex;align-items:center;gap:7px;flex:1;min-width:0;min-height:42px;
+ padding:7px 10px;border:1px solid #587d53;border-radius:9px;
+ background:#203a27;color:#dff5cf;font-size:12px;font-weight:700;box-sizing:border-box;
+ animation:soma-camera-picker-enter .15s ease both;
+}
+.soma-camera-quick-connect .soma-usb-connected small{
+ margin-left:auto;color:#bdd5b5;font-size:10px;font-weight:500;white-space:nowrap;
+}
+.soma-setup-phone-choices .soma-camera-quick-connect>.soma-usb-status{
+ display:flex;align-items:flex-start;gap:8px;
+ width:100%;box-sizing:border-box;margin:0!important;padding:8px 10px!important;
+ border-radius:8px!important;background:#213a29!important;
+ color:#c9e0c3!important;font-size:11px!important;line-height:1.45;
+ animation:soma-camera-picker-enter .15s ease both;
+}
+.soma-camera-quick-connect .soma-usb-status[data-phase=error]{
+ color:#ffcabd!important;background:#412c27!important;
+}
+.soma-camera-quick-connect .soma-usb-status-dot{
+ flex:0 0 7px;width:7px;height:7px;margin-top:4px;border-radius:50%;
+ background:#a1bd98;
+}
+.soma-camera-quick-connect .soma-usb-status[data-phase=error] .soma-usb-status-dot{background:#e6a18d}
+.soma-camera-quick-connect .soma-usb-status[data-phase=connecting] .soma-usb-status-dot{
+ animation:soma-camera-status-pulse 1s ease-in-out infinite;
+}
+.soma-camera-quick-connect .soma-usb-help{margin:1px 0 0;min-width:0;border:0;background:transparent}
+.soma-camera-quick-connect .soma-usb-help summary{
+ display:flex;align-items:center;gap:6px;list-style:none;
+ width:fit-content;color:#adc5ac;font-size:11px;cursor:pointer;
+ padding:5px 0;border-radius:4px;transition:color .15s ease;
+}
+.soma-camera-quick-connect .soma-usb-help summary::-webkit-details-marker{display:none}
+.soma-camera-quick-connect .soma-usb-help summary:hover{color:#e4f1d6}
+.soma-camera-quick-connect .soma-usb-help-body{
+ border-top:1px solid #38513a;margin-top:6px;padding-top:7px;
+ color:#bdd0b8;font-size:11px;line-height:1.5;
+ animation:soma-camera-picker-enter .16s ease both;
+}
+.soma-camera-quick-connect .soma-usb-help-body p{margin:3px 0 6px}
+.soma-camera-quick-connect .soma-usb-help-body b{color:#d8ecd1;font-weight:650}
+.soma-camera-quick-connect :is(button,select,summary):focus-visible{
+ outline:2px solid #d5f2aa!important;outline-offset:2px;
+}
+.soma-camera-quick-connect .soma-usb-spin{animation:soma-camera-spin .8s linear infinite}
+@keyframes soma-camera-picker-enter{
+ from{opacity:.45;transform:translateY(4px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@keyframes soma-camera-status-pulse{
+ 0%,100%{opacity:.5;transform:scale(.8)}
+ 50%{opacity:1;transform:scale(1.1)}
+}
+@keyframes soma-camera-spin{to{transform:rotate(360deg)}}
+@media(max-width:550px){
+ .soma-setup-phone-choices .soma-camera-quick-connect .soma-usb-actions{flex-wrap:wrap}
+ .soma-camera-quick-connect .soma-usb-permission{flex:1 1 auto}
+ .soma-camera-quick-connect .soma-usb-connected small{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-camera-quick-connect, .soma-camera-quick-connect :is(button,select,.soma-usb-connected,.soma-usb-help-body,.soma-usb-status){
+  animation:none!important;transition:none!important;transform:none!important;
+ }
+ .soma-camera-quick-connect .soma-usb-chevron{transform:translateY(-50%)!important}
+}
