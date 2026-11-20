@@ -345,3 +345,32 @@
 .fp-stage-workspace[data-workspace="compose"] .msv4-root .soma-ia-media small[role="status"]{
  display:block;color:#bcded5;line-height:1.5;margin:6px 0;
 }
+
+/* CP-07 — unified selected-object hierarchy between canvas, layer stack and Inspector. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp07-selection-bar{
+ display:flex;flex-direction:column;gap:3px;padding:10px 11px;margin:7px 0 13px;
+ background:#212e34;border:1px solid #578e89;border-radius:7px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp07-selection-bar strong{
+ color:#dcefeb;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp07-selection-bar small{
+ color:#a7b8bd;font-size:10px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp07-object-help{
+ margin:6px 0;color:#9dabb5;font-size:11px;line-height:1.55;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp07-stage-selected{
+ position:absolute;z-index:4;top:13px;right:12px;pointer-events:none;
+ max-width:60%;color:#b9e8dd;font:10px Inter,system-ui,sans-serif;letter-spacing:.04em;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .cp07-stage-selected span{
+ display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ padding:6px 9px;border:1px solid #4b8883;border-radius:5px;background:#122327df;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-stage>canvas{
+ cursor:crosshair;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .s64-layer button[aria-pressed="true"]{
+ border-color:#94d3ca!important;color:#e2fbf6!important;
+}
