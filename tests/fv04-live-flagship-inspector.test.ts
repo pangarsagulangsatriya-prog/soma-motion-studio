@@ -44,7 +44,7 @@ test('FV04: Inspector controls edit real Hydra settings and reset the selected f
  assert.match(inspector,/HydraEffectInspector value=\{value\}/);
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(composer,/FlagshipInspector id=\{activeFlagshipForSettings\(hydraSettings\)!\}/);
- assert.match(composer,/stageCanvas=\{visualFloorCanvas\} stageStatus=\{hydraStatus\}/);
+ assert.match(composer,/stageCanvas=\{visualFloorCanvas\} stageStatus=\{visualWaitingForContact\?'waiting-contact':hydraStatus\}/);
 });
 test('FV04: no bypass of physical QA for Hydra or experimental source',()=>{
  const plan=read('../src/studio/v3/composeLayerPlan.ts');
