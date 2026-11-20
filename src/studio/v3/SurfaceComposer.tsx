@@ -15,7 +15,7 @@ import {canRenderComposeSurface} from './composePreviewGate.ts';
 import {ARTISTIC_CATALOG,catalogRecipe} from '../../footprints/scenes/artisticCatalog.ts';
 import type {CatalogSceneId} from '../../footprints/scenes/artisticCatalog.ts';
 import {SceneEffectBrowser} from './SceneEffectBrowser.tsx';
-import {flagshipHydraPatch,FLAGSHIP_RECIPES,type FlagshipId} from './flagshipVisualModel.ts';
+import {flagshipHydraPatch,type FlagshipId} from './flagshipVisualModel.ts';
 import {ComposerEventTimeline,type TimelineMode} from './ComposerEventTimeline.tsx';
 import {collectTimelineEvents,emptyTimelineCapture,timelineAt,timelineStep,timelineFootprintVisibility,type TimelineCapture} from './composerEventTimelineModel.ts';
 import {ComposedSceneRuntime,sceneIdFromSource,sceneSourceId,sceneLayerDescriptor,sceneActionPosition,type SceneAction} from './composeSceneEngine.ts';
@@ -31,6 +31,8 @@ import {FootprintDemo,LegDemo} from './MappingStudioDemo.tsx';
 import {applyFootprintEvent,emptyFootprintState,makeDemoFootEvent,pruneFootprints,type FootprintState,type FootSide,type FootEventKind} from './footprintEventStore.ts';
 import {MappingStudioFootprintControls} from './MappingStudioFootprintControls.tsx';
 import {HydraEffectInspector} from './HydraEffectInspector.tsx';
+import {FlagshipInspector} from './FlagshipInspector.tsx';
+import {activeFlagshipForSettings} from './flagshipInspectorModel.ts';
 import {LegPreviewInspector,LEG_PREVIEW_TUNING_DEFAULT,validateLegPreviewTuning,type LegPreviewTuning} from './LegPreviewInspector.tsx';
 import {composeExperimentStatus,type ComposeExperimentSource} from './composeExperimentRaster.ts';
 import {composerLayerOrder,composerSourceKind,COMPOSE_SOURCE_CHOICES,COMPOSE_STAGE_FLOOR,COMPOSE_STAGE_INPUT,COMPOSE_STAGE_HYDRA,COMPOSE_STAGE_BODY} from './composeLayerPlan.ts';
@@ -841,9 +843,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
    <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="msv4-browser-meta">BROWSER / SCENES · MEDIA · LAYERS</div><SceneEffectBrowser activeScene={sceneId as CatalogSceneId} onSceneAction={actOnScene}
      onEffectAction={actOnEffect} onFlagshipApply={actOnFlagship}
-     activeFlagship={hydraSettings?.enabled&&hydraSettings.catalogVisual===false?
-      FLAGSHIP_RECIPES.find(p=>p.graph===hydraSettings.style&&p.artwork===hydraSettings.artwork)?.id??null:null}
-     hydraEnabled={!!hydraSettings?.enabled}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
+     activeFlagship={activeFlagshipForSettings(hydraSettings)}
+     hydraEnabled={!!hydraSettings?.enabled} hydraSettings={hydraSettings}
+     stageCanvas={visualFloorCanvas} stageStatus={hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
  <label className="visr4-archive-row">
  <input type="checkbox" checked={archiveHydra}
   onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
@@ -929,7 +931,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  </label>}
  {inspectorTab==='scene'&&<details className="soma-ia-hydra" open>
   <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
-  <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
+  {activeFlagshipForSettings(hydraSettings)&&hydraSettings?
+   <FlagshipInspector id={activeFlagshipForSettings(hydraSettings)!} value={hydraSettings}
+    status={hydraStatus} onChange={onHydraSettingsChange}/>:
+   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>}
   {hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&
    !hydraSettings.catalogVisual&&<div className="fv03-archive-source">
     <label>RIFT · Archive texture source

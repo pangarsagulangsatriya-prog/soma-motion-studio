@@ -556,3 +556,49 @@
 .fp-stage-workspace[data-workspace="compose"] .msv4-root .fv03-archive-source small{
  font-size:10px;color:#9eb4b2;line-height:1.5;
 }
+
+/* FV-04: actual GPU samples + focused flagship parameter editing. */
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-live-canvas{
+ width:100%!important;height:auto!important;aspect-ratio:16/9;
+ background:#080c0e;display:block;object-fit:contain;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv01-flagship-card[data-selected="true"] .fv04-live-canvas{
+ outline:1px solid #7faeaa;outline-offset:-1px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector{
+ display:flex;flex-direction:column;gap:13px;padding:10px 0;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-head{
+ display:flex;align-items:flex-start;justify-content:space-between;gap:8px;
+ padding:11px;background:#1a2b2e;border:1px solid #4b7978;border-radius:6px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-head>div{
+ display:flex;flex-direction:column;gap:4px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-head strong{
+ font-size:14px;letter-spacing:.06em;color:#ddf5ef;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-head small{
+ font-size:10px;color:#a2b9b7;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-head>span{
+ font-size:9px;line-height:1.35;color:#b7ccc7;text-align:right;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector .msv4-parameter{
+ display:flex;flex-direction:column;gap:7px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector .msv4-parameter>small{
+ color:#849fa5;font-size:10px;line-height:1.45;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-utilities{
+ display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-inspector-utilities label{
+ display:flex;gap:6px;align-items:center;color:#c8d8d4;font-size:11px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-advanced{
+ border-top:1px solid #3b484f;padding-top:10px;
+}
+.fp-stage-workspace[data-workspace="compose"] .msv4-root .fv04-advanced>summary{
+ cursor:pointer;color:#9eb4b4;font-size:11px;
+}
