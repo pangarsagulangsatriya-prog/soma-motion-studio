@@ -82,7 +82,8 @@ export type FootObservation={
  headingRad:number;source:Exclude<FootSource,'legacy'>;positionBasis:Exclude<PositionBasis,'illustrative'>;
  confidence:number;
 };
-type FootState={phase:'stance'|'swing';positionM:FloorPoint|null;headingRad:number;timestampMs:number;source:FootSource;confirmed:boolean};
+type FootState={phase:'stance'|'swing';positionM:FloorPoint|null;headingRad:number;
+ lastVisualHeadingRad:number;timestampMs:number;source:FootSource;confirmed:boolean};
 const distance=(a:FloorPoint,b:FloorPoint)=>Math.hypot(a.xM-b.xM,a.yM-b.yM);
 
 /**
@@ -139,15 +140,24 @@ export class FootstepEventEngine{
    else if(!p&&o.positionM)emit('swing',o.positionM);
    this.rearm.delete(key);
    this.state.set(key,{phase:'swing',positionM:o.positionM??p?.positionM??null,
-    headingRad:o.headingRad,timestampMs:o.timestampMs,source:o.source,confirmed:false});
+    headingRad:o.headingRad,lastVisualHeadingRad:o.headingRad,
+    timestampMs:o.timestampMs,source:o.source,confirmed:false});
    return events;
   }
   if(!o.positionM)throw Error('Posisi kaki di lantai diperlukan untuk fase stance.');
   const shouldContact=(!p||p.phase==='swing')&&!this.rearm.has(key);
   if(shouldContact)emit('contact',o.positionM);
-  else if(p?.phase==='stance'&&p.positionM&&distance(p.positionM,o.positionM)>=this.moveThresholdM)
-   emit('move',o.positionM);
+  else if(p?.phase==='stance'&&p.positionM){
+   const headingDelta=Math.atan2(Math.sin(o.headingRad-p.lastVisualHeadingRad),
+    Math.cos(o.headingRad-p.lastVisualHeadingRad));
+   // Accumulate relative to the last VISUAL event, so a slow planted pivot
+   // can eventually emit one move without a new contact.
+   if(distance(p.positionM,o.positionM)>=this.moveThresholdM||Math.abs(headingDelta)>=.20)
+    emit('move',o.positionM);
+  }
   this.state.set(key,{phase:'stance',positionM:o.positionM,headingRad:o.headingRad,
+   lastVisualHeadingRad:shouldContact||events.some(e=>e.kind==='move')?
+    o.headingRad:(p?.lastVisualHeadingRad??o.headingRad),
    timestampMs:o.timestampMs,source:o.source,confirmed:shouldContact||(p?.confirmed??false)});
   return events;
  }
