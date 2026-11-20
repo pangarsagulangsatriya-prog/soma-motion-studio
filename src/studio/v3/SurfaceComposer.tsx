@@ -368,45 +368,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   previewMaskCache.current={at:frame.time,A:previewMaskScratch.current.A,
    B:pb?previewMaskScratch.current.B:null,safe:true};
  };
- const sceneCanvas=(layerId:string,mediaId:string,w:number,h:number,atMs:number):HTMLCanvasElement|null=>{
-  const scene=sceneIdFromSource(mediaId);if(!scene)return null;
-  let canvas=sceneCanvases.current.get(layerId);
-  if(!canvas){canvas=document.createElement('canvas');sceneCanvases.current.set(layerId,canvas);}
-  if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
-  let runtime=sceneRuntimes.current.get(layerId);
-  if(!runtime||runtime.scene!==scene){
-   runtime=new ComposedSceneRuntime(scene);
-   const old=motionEventsRef.current?.()??[];
-   runtime.skipExisting(old,motionSessionRef.current?.()??'unknown');
-   sceneRuntimes.current.set(layerId,runtime);
-  }
-  if(timelineModeRef.current==='replay'){
-   const visible=timelineAt(timelineCaptureRef.current,timelinePositionRef.current);
-   const token=timelineCaptureRef.current.session+':'+visible.length+':'+(visible.at(-1)?.id??'');
-   if(sceneReplaySeen.current.get(layerId)!==token){
-    runtime.replay(visible);sceneReplaySeen.current.set(layerId,token);
-   }
-   runtime.paint(canvas,timelinePositionRef.current);
-  }else{
-   if(sceneReplaySeen.current.has(layerId)){
-    sceneReplaySeen.current.delete(layerId);
-    runtime.skipExisting(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown');
-   }
-   runtime.ingest(motionEventsRef.current?.()??[],motionSessionRef.current?.()??'unknown',atMs,true);
-   runtime.paint(canvas,atMs);
-  }
-  return canvas;
- };
- useEffect(()=>{
-  const active=new Set(surfaces.flatMap(surface=>composition[surface].map(layer=>layer.id)));
-  for(const id of sceneRuntimes.current.keys())if(!active.has(id)){
-   sceneRuntimes.current.delete(id);sceneCanvases.current.delete(id);sceneReplaySeen.current.delete(id);
-  }
- },[composition]);
- useEffect(()=>()=>{
-  sceneCanvases.current.clear();sceneRuntimes.current.clear();sceneReplaySeen.current.clear();
- },[]);
-  const readyMedia=(s:Surface)=>{
+ const readyMedia=(s:Surface)=>{
   return compositionRef.current[s].some(l=>{
    if(!l.visible||!l.mediaId)return false;
    const item=mediaEls.current.get(l.mediaId);
@@ -425,63 +387,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
   const now=performance.now();
-  // Track may decode MP4 successfully without ever confirming a foot contact.
-  // The live-only preview must show that input instead of an opaque black
-  // material canvas. Keep physical mapping and saved layer source unchanged.
-  const canonical=motionEventsRef.current?.()??[];
-  const lastVerified=[...canonical].reverse().find(event=>event.kind==='contact'&&event.verified);
-  if(lastVerified&&lastVerified.eventId!==lastVerifiedContactRef.current.id)
-   lastVerifiedContactRef.current={id:lastVerified.eventId,seenAtMs:now};
-  const visualIsWaiting=!!activeFlagshipForSettings(hydraSettings)&&
-   s==='FLOOR'&&experimentSourceRef.current==='video'&&experimentReadyRef.current&&
-   (!lastVerifiedContactRef.current.seenAtMs||now-lastVerifiedContactRef.current.seenAtMs>20000);
-  // Sample the actual 2D material once per 400ms. Hydra can report READY
-  // while its composited canvas contains only black pixels.
-  let visualIsEmpty=false;
-  if(!physical&&s==='FLOOR'&&!!activeFlagshipForSettings(hydraSettings)&&
-    experimentSourceRef.current==='video'&&experimentReadyRef.current){
-   const source=visualFloorCanvas?.current;
-   if(!source)visualIsEmpty=true;
-   else{
-    if(!materialProbe.current){
-     const probe=document.createElement('canvas');probe.width=32;probe.height=18;
-     const ctx=probe.getContext('2d',{willReadFrequently:true});
-     if(ctx)materialProbe.current={canvas:probe,ctx,lastMs:-Infinity,visible:false};
-    }
-    const probe=materialProbe.current;
-    if(probe&&now-probe.lastMs>400){
-     probe.lastMs=now;
-     try{
-      probe.ctx.clearRect(0,0,32,18);
-      probe.ctx.drawImage(source,0,0,32,18);
-      const image=probe.ctx.getImageData(0,0,32,18).data;
-      let lit=0;
-      for(let i=0;i<image.length;i+=4)
-       if(Math.max(image[i],image[i+1],image[i+2])>25)lit++;
-      probe.visible=lit>=2;
-     }catch{probe.visible=false;}
-    }
-    visualIsEmpty=!!probe&&!probe.visible;
-   }
-  }
-  if(!physical&&s==='FLOOR'&&visualIsEmpty!==materialEmptyRef.current){
-   materialEmptyRef.current=visualIsEmpty;setVisualMaterialEmpty(visualIsEmpty);
-  }
-  if(!physical&&s==='FLOOR'&&visualIsWaiting!==waitingForContactRef.current){
-   waitingForContactRef.current=visualIsWaiting;
-   setVisualWaitingForContact(visualIsWaiting);
-  }
   for(const {layer,kind} of composerLayerOrder(compositionRef.current[s]||[],s,physical,experiment)){
    if(overlayOnly&&kind!=='media')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
     kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
     kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
-    kind==='hydra'?(!physical&&(visualIsWaiting||visualIsEmpty)?
-      ((videoRef.current?.readyState??0)>=2&&videoRef.current?.videoWidth?
-       videoRef.current:experimentInputCanvas?.current??null):
-      !physical&&previewFloorEnabled&&hydraStatus==='ready'?visualFloorCanvas?.current??null:null):
-    kind==='body'?bodyCanvas.current:
-    kind==='scene'&&!physical?sceneCanvas(layer.id,layer.mediaId,w,h,now):null;
+    kind==='body'?bodyCanvas.current:null;
    if(!el)continue;
    if(el instanceof HTMLImageElement&&(!el.complete||!el.naturalWidth))continue;
    if(el instanceof HTMLVideoElement&&(el.readyState<2||!el.videoWidth))continue;
@@ -566,39 +477,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      if(readyMedia('FLOOR')&&!blackoutRef.current&&previewLiveRef.current)
       render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false,true);
     }
-   }
-   // FV-03: feed ONE selected archive asset into the GPU as an unmodified
-   // source texture. Never render the composition into itself (Hydra feedback
-   // would otherwise become a recursive FLOOR -> Hydra -> FLOOR loop).
-   const sourceId=riftSourceRef.current;
-   const archiveInput=sourceId==='@stage:input'&&experimentSourceRef.current==='video'
-    ?experimentInputCanvas?.current:mediaEls.current.get(sourceId);
-   const archiveInputReady=archiveInput instanceof HTMLImageElement
-     ?archiveInput.complete&&archiveInput.naturalWidth>0
-     :archiveInput instanceof HTMLVideoElement
-      ?archiveInput.readyState>=2&&archiveInput.videoWidth>0
-      :!!archiveInput&&archiveInput.width>0&&archiveInput.height>0;
-   let archiveReady=archiveHydraRef.current&&!blackoutRef.current&&
-    previewLiveRef.current&&!!archiveHydraCanvas&&archiveInputReady&&
-    (sourceId!=='@stage:input'||experimentReadyRef.current);
-   if(archiveReady&&archiveHydraCanvas&&archiveInput){
-    if(!archiveHydraCanvas.current)archiveHydraCanvas.current=document.createElement('canvas');
-    const archive=archiveHydraCanvas.current;
-    if(archive.width!==640)archive.width=640;
-    if(archive.height!==360)archive.height=360;
-    const archiveCtx=archive.getContext('2d');
-    if(archiveCtx){
-     archiveCtx.setTransform(1,0,0,1,0,0);
-     archiveCtx.globalAlpha=1;archiveCtx.globalCompositeOperation='source-over';
-     archiveCtx.fillStyle='#000';archiveCtx.fillRect(0,0,640,360);
-     try{archiveCtx.drawImage(archiveInput,0,0,640,360);}
-     catch{archiveReady=false;}
-    }else archiveReady=false;
-   }
-   if(archiveReadyRef.current!==archiveReady){
-    archiveReadyRef.current=archiveReady;
-    setRiftReady(archiveReady);
-    onArchiveHydraChangeRef.current?.(archiveReady);
    }
    const preview=canvas.current;
    if(preview){const ctx=preview.getContext('2d');if(ctx){
@@ -730,69 +608,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    id=window.setTimeout(tick,85);
   };tick();return()=>clearTimeout(id);
  },[previewLive,blackout]);
- const actOnScene=(id:CatalogSceneId,action:SceneAction)=>{
-  if(action==='apply'){
-   onSceneChange?.(id);setSelected('FLOOR');setSelectedLayer(0);
-   setInspectorTab('scene');setPreviewArrangement('surface');
-   setHint('Scene FLOOR aktif: '+catalogRecipe(id).title);return;
-  }
-  const selectedCount=composition.FLOOR.length;
-  if(action==='add'&&selectedCount>=24){setHint('Maksimum 24 layer per permukaan.');return;}
-  const info=sceneLayerDescriptor(id);
-  const position=sceneActionPosition(action,selectedCount,selected==='FLOOR'?selectedLayer:0);
-  const fresh=makeLayer(info.mediaId,info.name);
-  fresh.opacity=info.opacity;fresh.blend=info.blend;
-  setComposition(current=>{
-   const floor=[...current.FLOOR];
-   if(action==='replace'){
-    const original=floor[position];
-    floor[position]={...original,mediaId:info.mediaId,name:info.name,
-     opacity:info.opacity,blend:info.blend,recipe:'none'};
-   }else floor.splice(position,0,fresh);
-   return {...current,FLOOR:floor};
-  });
-  setSelected('FLOOR');setSelectedLayer(position);
-  setPreviewArrangement('surface');setInspectorTab('object');
-  setHint((action==='add'?'Layer ditambah: ':'Layer diganti: ')+info.name);
- };
- const actOnFlagship=(id:FlagshipId)=>{
-  if(!onHydraSettingsChange){
-   setHint('Hydra belum terhubung ke sumber visual.');return;
-  }
-  onHydraSettingsChange(flagshipHydraPatch(id));
-  // RIFT requires an explicit archive input; TRACE/ECHO remain footprint-driven.
-  setArchiveHydra(id==='rift');
-  if(id==='rift'&&experimentSourceRef.current!=='video'&&riftSourceRef.current==='@stage:input'){
-   const firstArchive=media.find(asset=>asset.origin==='import');
-   if(firstArchive)setRiftSourceId(firstArchive.id);
-  }
-  if(id!=='rift')onArchiveHydraChangeRef.current?.(false);
-  const existing=composition.FLOOR.findIndex(item=>item.mediaId===COMPOSE_STAGE_HYDRA);
-  if(existing<0){
-   if(composition.FLOOR.length>=24){
-    setHint('Batas layer penuh. Pilih layer Hydra yang sudah ada.');return;
-   }
-   const visual=makeLayer(COMPOSE_STAGE_HYDRA,id.toUpperCase()+' / Hydra texture');
-   visual.blend='screen';visual.opacity=85;
-   setComposition(current=>({...current,FLOOR:[...current.FLOOR,visual]}));
-   setSelectedLayer(composition.FLOOR.length);
-  }else setSelectedLayer(existing);
-  setSelected('FLOOR');setPreviewArrangement('surface');setInspectorTab('scene');
-  setHint('Flagship '+id.toUpperCase()+' aktif · efek GPU menggunakan graph yang dipilih.');
- };
-  const actOnEffect=(style:HydraFootprintStyle,action:'apply'|'add')=>{
-  onHydraSettingsChange?.({enabled:true,style});
-  if(action==='add'){
-   if(composition.FLOOR.length>=24){setHint('Maksimum 24 layer per permukaan.');return;}
-   const fresh=makeLayer(COMPOSE_STAGE_HYDRA,'Hydra · '+style);
-   fresh.blend='screen';fresh.opacity=65;
-   setComposition(current=>({...current,FLOOR:[...current.FLOOR,fresh]}));
-   setSelected('FLOOR');setSelectedLayer(composition.FLOOR.length);
-   setInspectorTab('layer');setPreviewArrangement('surface');
-  }else{setInspectorTab('scene');setSelected('FLOOR');}
-  setHint('Hydra '+style+' · memakai satu engine bersama.');
- };
-  const triggerTest=(kind:'contact'|'move'|'release')=>{
+ const triggerTest=(kind:'contact'|'move'|'release')=>{
   const recipe=kind==='contact'?'contact-reveal':kind==='move'?'slide-hold':'pivot-decay';
   for(const surface of surfaces)for(const item of compositionRef.current[surface])
    if(item.recipe===recipe)effectClock.current.set(item.id,{started:performance.now(),kind:'simulation:'+kind});
