@@ -55,3 +55,54 @@ Review `artifacts/gpu02/*.png` and `report.json`; test rendering uses synthetic 
 ## Deferral
 
 Pressure Residue and Archive Cut remain separate, unimplemented studies. No archive image/video is fabricated inside Liquid Imprint.
+
+## ENGINE-02 PixiJS v8 compositor — integration status (20 November 2026)
+
+The prototype now has an **optional, genuine PixiJS v8.23.0 WebGL2 compositor**.
+The installed and locked package is `pixi.js@8.23.0`, with a committed
+`package-lock.json` (the one-shot bootstrap workflow has been retired).
+
+- `src/footprints/materials/PixiLiquidImprintCompositor.ts`: one `Application`
+  initialized asynchronously, one WebGL renderer, no internally running
+  ticker; the stage's external clock drives `app.render()`.
+- Each contact gets a dynamic `CanvasSource` / `Texture` / `Sprite`
+  made from GEO-01B's anatomically formed Canvas2D alpha mask.
+- A PixiJS `Filter.from({ gl: { vertex, fragment }, resources })`
+  renders the same liquid advection contract, per-stamp orientation,
+  slide/twist/release and alpha clipping.
+- Texture, sprite and filter resources are explicitly disposed on
+  expiration and engine destruction; default maximum 32 active masks.
+- Runtime selection occurs **before** renderer construction in
+  `gpu02Lab.ts`. Native WebGL2 and PixiJS do **not** run concurrently.
+- Track, Compose, Map, Perform, camera inputs and physical projector
+  transport have no imports of this research compositor.
+
+For local reproduction:
+
+```sh
+npm ci
+npm test
+npm run build
+npm run dev
+# Open /gpu02-lab.html?engine=pixi
+# Compare with /gpu02-lab.html (reference)
+```
+
+Browser screenshot QA:
+
+```sh
+node scripts/gpu02-material-browser-qa.mjs
+GPU02_RENDERER=pixi node scripts/gpu02-material-browser-qa.mjs
+```
+
+The same tests cover 1/2/6 events, slide, pivot, release, idle, crossing,
+600 ms pigment variation, a stable sole-alpha silhouette, and an accelerated
+10-minute synthetic timeline. Context instrumentation intercepts Chromium
+`HTMLCanvasElement.getContext` and checks the actual stage canvas.
+This test **does not** prove a production 30-FPS rate or projector readiness.
+
+**Gate to ship:** visual operator review, target-laptop 10-minute real-time
+profiling, actual MP4 A/B crossing, recovery after WebGL context loss, stage
+profile calibration, Hold/Blackout and pixel-safe output integration.
+Keep the PR in draft and leave Composer without a new visual preset until
+those gates pass.
