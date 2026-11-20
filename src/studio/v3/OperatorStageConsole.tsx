@@ -1,7 +1,7 @@
 import {useState,useSyncExternalStore} from 'react';
 import {
  ArrowLeft,ArrowRight,Circle,Copy,ExternalLink,MonitorOff,Pause,Play,
- Settings2,ShieldAlert,Tv,X
+ Settings2,ShieldAlert,Tv,X,Monitor,Clapperboard,Waypoints,Info,ChevronDown
 } from 'lucide-react';
 import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
@@ -139,7 +139,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    <div className="ops-r1-head-left">
     <h1>Perform</h1>
     <span className="ops-r1-head-meta">
-     <span>{sourceLabel} · {performerCount}P · {contacts} kontak</span>
+     <span>{sourceLabel} · {performerCount}P</span>
     </span>
    </div>
    <div className="ops-r1-head-right">
@@ -150,30 +150,45 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   </header>
 
   <div className="ops-r1-console-shell">
-   {/* PF-UX: one destination, one status, one primary action. Deep controls stay in Detail. */}
+   {/* Only the destination and operational status stay visible. Technical context lives behind Info/Detail. */}
    <section className="ops-r1-output-card" aria-label="Tujuan output">
-    <div className="ops-r1-output-top"><strong>Tujuan Output</strong></div>
+    <div className="ops-r1-output-top">
+     <strong>Output</strong>
+     <button type="button" className="ops-r1-mini-help" aria-label="Bantuan tujuan output"
+      title="Jenis keluaran SOMA, Resolume, dan TouchDesigner"
+      aria-expanded={outputDetailsOpen} onClick={()=>setOutputDetailsOpen(value=>!value)}>
+      <Info size={15} aria-hidden="true"/>
+     </button>
+    </div>
     <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
      {PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
-      aria-pressed={outputRouteMode===item.id}
-      onClick={()=>handleRouteChange(item.id)}
-      title={item.description}>
-      <span>{item.label}</span><small>{item.id==='touchdesigner'?'DATA':'VISUAL'}</small>
+      aria-pressed={outputRouteMode===item.id} aria-label={item.label}
+      onClick={()=>handleRouteChange(item.id)} title={item.description}>
+      {item.id==='soma'?<Monitor size={16} aria-hidden="true"/>:
+       item.id==='resolume'?<Clapperboard size={16} aria-hidden="true"/>:
+       <Waypoints size={16} aria-hidden="true"/>}
+      <span>{item.label}</span>
      </button>)}
     </div>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
      <>
-      <div className="ops-r1-destination-status" data-tone={destination.tone} role="status" aria-live="polite">
+      <div key={outputRouteMode+destination.state} className="ops-r1-destination-status"
+       data-tone={destination.tone} role="status" aria-live="polite">
+       <span className="ops-r1-status-indicator" aria-hidden="true"/>
        <strong>{destination.state}</strong>
-       <span>{destination.hint}</span>
+       <button type="button" className="ops-r1-mini-help" aria-label="Penjelasan status output"
+        title={destination.hint} aria-expanded={outputDetailsOpen}
+        onClick={()=>setOutputDetailsOpen(value=>!value)}>
+        <Info size={15} aria-hidden="true"/>
+       </button>
       </div>
-      <button type="button" className="ops-r1-primary-cta"
+      {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
        data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
        onClick={handlePrimaryAction}>
        <Tv size={14}/>{destination.action}
-      </button>
+      </button>}
       {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
        role={popupBlocked?'alert':'status'}>
        <span>{outputNotice}</span>
@@ -181,7 +196,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       </div>}
       <details className="ops-r1-output-details" open={outputDetailsOpen}
        onToggle={event=>setOutputDetailsOpen(event.currentTarget.open)}>
-       <summary>Detail koneksi, FLOOR/BODY &amp; keamanan</summary>
+       <summary><span>Pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
+       <div className="ops-r1-detail-content">
+       <p className="ops-r1-destination-explain">{destination.hint}</p>
        <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
        {!isResolume&&<p>{summary.primaryAction.detail}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
@@ -215,8 +232,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
         <button type="button" onClick={onRecovery}>Map QA</button>
        </div>}
        <button type="button" className="ops-r1-detail-blackout" onClick={handleBlackoutAll}>
-        <MonitorOff size={13}/>BLACKOUT semua jalur
+        <MonitorOff size={13}/>Blackout
        </button>
+       </div>
       </details>
      </>}
    </section>
@@ -226,27 +244,28 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-next-cue" aria-label="Ringkasan cue aktif dan berikutnya">
      <div className="ops-r1-cue-now">
       <small>AKTIF</small>
-      <strong>{String(activeSlot+1).padStart(2,'0')} · {currentSlot.label}</strong>
-      <span>{currentSlot.view.toUpperCase()} · {cue.name}</span>
+      <strong>{currentSlot.label}</strong>
      </div>
      <ArrowRight size={14} className="ops-r1-cue-arrow" aria-hidden="true"/>
      <div className="ops-r1-cue-upnext">
       <small>BERIKUTNYA</small>
-      <strong>{nextSlot?String(activeSlot+2).padStart(2,'0')+' · '+nextSlot.label:'Akhir daftar cue'}</strong>
-      <span>{nextSlot?nextSlot.view.toUpperCase():'—'}</span>
+      <strong>{nextSlot?nextSlot.label:'Selesai'}</strong>
      </div>
     </div>
 
     <div className="ops-r1-cue-transport" role="group" aria-label="Kontrol tampilan operator">
-     <button type="button" onClick={onPrevious} disabled={activeSlot===0}>
+     <button type="button" onClick={onPrevious} disabled={activeSlot===0}
+      title="Tampilan sebelumnya (←)" aria-label="Tampilan sebelumnya">
       <ArrowLeft size={14}/>Sebelumnya
      </button>
      <button type="button" onClick={onNext} disabled={activeSlot===cueGrid.slots.length-1}
-      className="fp-operator-go">Tampilan berikutnya <ArrowRight size={14}/></button>
+      title="Tampilan berikutnya (Space atau →)"
+      className="fp-operator-go">Berikutnya <ArrowRight size={14}/></button>
     </div>
-    <p className="ops-r1-cue-scope">{performCueScope(outputRouteMode)}</p>
     <details className="ops-r1-cue-editor">
-     <summary>Detail · Semua 8 cue, edit &amp; rekam</summary>
+     <summary><span>8 cue · pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
+     <div className="ops-r1-cue-detail-body">
+     <p className="ops-r1-cue-scope">{performCueScope(outputRouteMode)}</p>
      <div className="ops-r1-all-slots">
       {cueGrid.slots.map((slot,i)=><button type="button" key={slot.id}
        className="ops-r1-slot ops-r1-slot-mini" aria-pressed={activeSlot===i}
@@ -284,6 +303,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      <small className="ops-r1-keyboard-help">Pintasan: <kbd className="ops-r1-kbd">Space</kbd> berikutnya ·
       <kbd className="ops-r1-kbd">←</kbd> sebelumnya ·
       <kbd className="ops-r1-kbd">B / Esc</kbd> Blackout</small>
+     </div>
     </details>
    </section>
 

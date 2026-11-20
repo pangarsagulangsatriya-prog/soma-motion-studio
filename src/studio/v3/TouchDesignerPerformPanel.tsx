@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Link2,Unplug,Activity,FlaskConical,ShieldAlert} from 'lucide-react';
+import {Link2,Unplug,Activity,FlaskConical,ShieldAlert,Info,ChevronDown} from 'lucide-react';
 import {TouchDesignerClient,type TdBridgeStatus} from './touchDesignerClient.ts';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {STAGE_BLACKOUT_EVENT} from '../../footprints/stage-optics/StageBlackout.ts';
@@ -43,11 +43,13 @@ export function TouchDesignerPerformPanel({getSnapshot,activeSlot,cueLabel,held}
  };
  return <div className="soma-td-panel" role="group" aria-label="Koneksi TouchDesigner">
   <div className="soma-td-status" role="status" aria-live="polite">
-   <span><Activity size={14}/> Data kaki · lokal</span>
+   <span><Activity size={14} aria-hidden="true"/> Data A/B</span>
    <strong data-state={status.status}>{streaming?'Mengirim data':connecting?'Menghubungkan':
     connected?'Terhubung':status.status==='error'?'Koneksi gagal':'Belum terhubung'}</strong>
+   <button type="button" className="soma-td-info-button" aria-label="Info koneksi TouchDesigner"
+    title="Data gerak melalui WebSocket lokal" aria-expanded={settingsOpen}
+    onClick={()=>setSettingsOpen(value=>!value)}><Info size={15} aria-hidden="true"/></button>
   </div>
-  <p className="soma-td-contract">Posisi A/B dan event ke TouchDesigner; output proyektor dikendalikan terpisah di TD.</p>
   <button type="button" className="soma-td-primary"
    disabled={connecting||connected&&!streaming&&(!ready||held)}
    onClick={primary}>
@@ -57,7 +59,9 @@ export function TouchDesignerPerformPanel({getSnapshot,activeSlot,cueLabel,held}
   </button>
   <details className="soma-td-details" open={settingsOpen}
    onToggle={event=>setSettingsOpen(event.currentTarget.open)}>
-   <summary>Detail koneksi &amp; uji data</summary>
+   <summary><span>Koneksi &amp; pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
+   <div className="soma-td-detail-body">
+   <p className="soma-td-contract">Kirim posisi kaki dan event ke TouchDesigner. Output proyektor diatur di TouchDesigner.</p>
    <div className="soma-td-connection-fields">
     <label>Alamat lokal<input aria-label="Alamat WebSocket TouchDesigner" value={address}
      disabled={connected||connecting} spellCheck={false} placeholder="127.0.0.1:8765"
@@ -83,6 +87,7 @@ export function TouchDesignerPerformPanel({getSnapshot,activeSlot,cueLabel,held}
      Ambil kode sesi melalui <code>op('webserver1').fetch('soma_token')</code>
      pada Textport TouchDesigner. Izin jaringan lokal mungkin diperlukan.</p>
    </details>
+   </div>
   </details>
   {status.status==='error'||status.status==='disconnected'?
    <p className="soma-td-message" role="alert">{status.message}</p>:null}

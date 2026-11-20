@@ -44,3 +44,37 @@
  margin:8px 0;font-size:10.5px;color:#9fb4a2;
 }
 .fp-operator-mode .soma-td-message{font-size:10.5px;line-height:1.4}
+
+/* Micro-feedback aligned with compact Perform UI. */
+.fp-operator-mode .soma-td-status{
+ gap:7px;padding:7px 8px;min-height:42px;
+}
+.fp-operator-mode .soma-td-status span{font-size:11px;white-space:nowrap}
+.fp-operator-mode .soma-td-status strong{margin-left:auto;font-size:11px}
+.fp-operator-mode .soma-td-info-button{
+ display:inline-grid;place-items:center;width:29px;height:29px;
+ background:transparent;border:1px solid transparent;
+ border-radius:7px;color:#9bb9a0;padding:0;cursor:pointer;
+ transition:background-color .16s ease,color .16s ease,transform .12s ease;
+}
+.fp-operator-mode .soma-td-info-button:hover{background:#294331;color:#edf6ea}
+.fp-operator-mode .soma-td-info-button:active{transform:scale(.93)}
+.fp-operator-mode .soma-td-primary{border-radius:9px;transition:transform .12s ease,background-color .16s ease}
+.fp-operator-mode .soma-td-primary:active:not(:disabled){transform:scale(.985)}
+.fp-operator-mode .soma-td-details>summary{
+ display:flex;justify-content:space-between;align-items:center;gap:8px;
+ min-height:31px;list-style:none;border-radius:6px;
+}
+.fp-operator-mode .soma-td-details>summary::-webkit-details-marker{display:none}
+.fp-operator-mode .soma-td-details>summary svg{transition:transform .18s ease}
+.fp-operator-mode .soma-td-details[open]>summary svg{transform:rotate(180deg)}
+.fp-operator-mode .soma-td-detail-body{
+ padding:9px 2px 4px;animation:pfux-details-in .22s ease-out both;
+}
+.fp-operator-mode .soma-td-details .soma-td-contract{margin:0 0 8px}
+.fp-operator-mode .soma-td-info-button:focus-visible{outline:2px solid #cbe9a7;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){
+ .fp-operator-mode .soma-td-detail-body{animation:none}
+ .fp-operator-mode .soma-td-details>summary svg,
+ .fp-operator-mode .soma-td-info-button,.fp-operator-mode .soma-td-primary{transition:none;transform:none!important}
+}
