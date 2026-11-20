@@ -66,6 +66,14 @@ export class DirectPuppetSession{
   const f=this.getFoot(which);if(!f||!Number.isFinite(radians))return false;
   f.headingRad+=radians;
   if(f.heightM>.005)this.moveHeading(which,nowMs);
+  else{
+   // Rotate a previously LANDED foot while planted. Do not create a
+   // synthetic first contact merely because an untouched rig was rotated.
+   const lastGroundState=[...this.events].reverse().find(e=>
+    e.performerId===which.performerId&&e.foot===which.foot&&
+    (e.kind==='contact'||e.kind==='release'));
+   if(lastGroundState?.kind==='contact')this.observe(which,'stance',nowMs);
+  }
   return true;
  }
  private moveHeading(which:Selection,nowMs:number){
