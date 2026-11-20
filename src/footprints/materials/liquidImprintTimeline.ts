@@ -12,6 +12,8 @@ export type LiquidImprint={
  id:string;actorId:string;foot:'left'|'right';source:FloorInteractionEvent['source'];
  x:number;y:number;headingRad:number;orientationKnown:boolean;
  createdMs:number;ageMs:number;opacity:number;seed:number;
+ /** Last confirmed release signal; preserves draining ink beyond toe-off. */
+ releasedAtMs?:number;
  deformation:FootDeformation;
 };
 export type LiquidTimelineOptions={lifeMs?:number;limit?:number};
@@ -58,6 +60,7 @@ export function collectLiquidImprints(
    orientationKnown:finite(contact.headingRad),
    createdMs:contact.atMs,ageMs,opacity:Math.pow(clamp(1-ageMs/lifeMs,0,1),1.15),
    seed:liquidSeed(id),
+   releasedAtMs:motion?.kind==='release'?motion.atMs:undefined,
    deformation:deformationAt({
     x:contact.x,y:contact.y,atMs:contact.atMs,headingRad:contact.headingRad
    },nowMs,motion)
