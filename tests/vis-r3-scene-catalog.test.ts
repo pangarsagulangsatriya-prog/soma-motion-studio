@@ -96,7 +96,9 @@ test('VIS-R3: Compose uses software preview; hardware keeps QA-approved cleanFlo
  assert.match(stage,/floorCanvas=\{cleanFloorOutput\}/);
  assert.match(stage,/previewFloorEnabled=\{hydraSettings\.enabled&&hydraStatus==='ready'\}/);
  assert.match(composer,/!physical&&previewFloorEnabled/);
- assert.match(composer,/catalogThumbnailSvg\(catalogRecipe\(scene\.id\)\)/);
+ assert.match(composer,/SceneEffectBrowser/);
+ const browser=textFile('../src/studio/v3/SceneEffectBrowser.tsx');
+ assert.match(browser,/paintSceneSample\(ref\.current,id\)/);
  assert.match(core,/this\.art\.skipExisting\(events,generation\)/);
  assert.ok(!core.includes('getUserMedia('));
 });
