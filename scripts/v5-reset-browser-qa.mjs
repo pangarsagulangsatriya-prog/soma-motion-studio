@@ -53,6 +53,15 @@ try{
  await page.getByRole('button',{name:'Track workspace'}).click();
  await page.locator('.soma-stage-module-nav').waitFor({state:'visible',timeout:15000});
  report.checks.push('Track: workspace remains reachable');
+ await page.getByRole('button',{name:'Perform workspace'}).click();
+ await page.locator('.ops-r1-cue-grid').waitFor({state:'visible',timeout:15000});
+ assert.equal(await page.locator('.ops-r1-slot').count(),8,'Perform must retain eight cue slots');
+ assert.ok(await page.locator('.fp-operator-blackout').isVisible(),
+  'Perform must retain an accessible blackout control');
+ for(const name of oldTexts)assert.ok(!(await page.locator('.ops-r1-cue-grid').innerText()).includes(name),
+  'Retired Perform effect still visible: '+name);
+ report.checks.push('Perform: eight layout cues and blackout retained, retired effects absent');
+ await page.screenshot({path:directory+'/perform-reset.png',fullPage:true});
  assert.equal(report.errors.length,0,'Browser errors: '+report.errors.join('; '));
  console.log('V5_RESET_BROWSER_QA_PASS',JSON.stringify(report));
 }catch(error){
