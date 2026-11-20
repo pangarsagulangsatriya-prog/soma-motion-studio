@@ -91,6 +91,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  };
 
  const handleOpenSurface=(surface:StageSurface)=>{
+  // No secondary or retry button may bypass a locked/preview-only SOMA source.
+  if(!isResolume&&!summary.canOpenOutput){
+   setPopupBlocked(false);setOutputNotice(summary.primaryAction.detail);return;
+  }
   const res=openDualSurfaceOutputWindow(surface,isResolume?'resolume':'soma');
   setPopupBlocked(res.popupBlocked);
   setOutputNotice(res.message);
@@ -211,7 +215,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
            <span>{isResolume?(badge.opened?'Jendela terbuka':'Belum dibuka'):badge.status}</span>
           </div>
           <div className="ops-r1-channel-btns">
-           <button type="button" disabled={!isResolume&&!STAGE_HARDWARE_ENABLED}
+           <button type="button" disabled={!isResolume&&!summary.canOpenOutput}
             onClick={()=>handleOpenSurface(surface)}>
             <ExternalLink size={11}/>{badge.opened?'Lihat':isResolume?'Buka Feed':'Buka'}
            </button>

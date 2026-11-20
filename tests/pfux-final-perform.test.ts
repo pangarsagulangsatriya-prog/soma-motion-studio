@@ -81,3 +81,12 @@ test('PF-UX-05: TD receiver handles disconnect and releases physical permission 
  assert.match(client,/Koneksi TouchDesigner terputus/);
  assert.match(client,/this\.control\('blackout'\)/);
 });
+
+test('PF-UX-04: secondary FLOOR/BODY open is disabled for locked or MP4 sources',()=>{
+ const console=read('../src/studio/v3/OperatorStageConsole.tsx');
+ assert.match(console,/disabled=\{!isResolume&&!summary\.canOpenOutput\}/);
+ assert.match(console,/if\(!isResolume&&!summary\.canOpenOutput\)/);
+ assert.equal(state(false).canOpenOutput,false);
+ assert.equal(state(true,'video').canOpenOutput,false);
+ assert.equal(state(true,'webcam').canOpenOutput,true);
+});

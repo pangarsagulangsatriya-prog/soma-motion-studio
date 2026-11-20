@@ -4,6 +4,7 @@ import {PuppetSimulator} from './footprints/simulator/PuppetSimulator';
 import {DirectPuppetSession} from './footprints/simulator/puppet-controller.ts';
 import {defaultFloorSpace} from './footprints/spatial/coordinates.ts';
 import {createLandscapePhoneCamera,type LandscapePhoneCamera} from './engine/landscapePhoneCamera.ts';
+import {normalizeCameraDevices} from './engine/universalCamera.ts';
 import {preserveCurrentSource} from './studio/v3/sourceE2EGuard.ts';
 import {LiveFloorWorkspace} from './footprints/live/LiveFloorWorkspace';
 import {requestStageBlackout} from './footprints/stage-optics/StageBlackout';
@@ -138,6 +139,33 @@ export default function App(){
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
  const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);phoneLandscapeRef.current?.stop();phoneLandscapeRef.current=null;setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
+ // Camera recognition belongs to macOS; never assume a USB cable equals video.
+ useEffect(()=>{
+  const media=navigator.mediaDevices;
+  if(!media?.enumerateDevices)return;
+  let alive=true,previouslyVisible=false;
+  const refresh=async()=>{
+   try{
+    const found=normalizeCameraDevices(await media.enumerateDevices());
+    if(!alive)return;
+    setDevices(found);
+    const present=!!deviceId&&found.some(x=>x.deviceId===deviceId);
+    if(previouslyVisible&&!present&&cameraOn&&!cameraBusy&&
+     requestedFootprintsChoice.current==='webcam'&&activeCameraMode.current==='laptop'){
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     liveFloorEngine.revoke('Kamera Mac terputus; ulangi kalibrasi Map.');
+     multiPoseRouter.reset();setLiveFloorApproval(null);
+     stopCamera();setCameraError('Kamera terputus. Sambungkan kembali, lalu periksa Map.');
+    }
+    previouslyVisible=present;
+   }catch{
+    // Browser may not expose device metadata before camera permission.
+   }
+  };
+  void refresh();
+  media.addEventListener?.('devicechange',refresh);
+  return()=>{alive=false;media.removeEventListener?.('devicechange',refresh);};
+ },[deviceId,cameraOn,cameraBusy,stopCamera,projection.setTransport,liveFloorEngine,multiPoseRouter]);
  const processFrame=useCallback((f:MotionFrame)=>{
   frameRef.current=f;cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
   if(f.tracked)hasPlayed.current=true;
@@ -163,11 +191,14 @@ export default function App(){
    setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);
   },message=>{
    if(op!==cameraOperation.current)return;
+   requestStageBlackout(()=>projection.setTransport('blackout'));
+   liveFloorEngine.revoke('Kamera Mac gagal; ulangi kalibrasi Map.');
+   multiPoseRouter.reset();setLiveFloorApproval(null);
    setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum siap');
    setCameraError(message);notify(message);
    const f=emptyFrame();f.time=performance.now();processFrame(f);
   },(overrideDeviceId??deviceId)||undefined);
-  if(navigator.mediaDevices)try{setDevices((await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'));}catch{}
+  if(navigator.mediaDevices)try{setDevices(normalizeCameraDevices(await navigator.mediaDevices.enumerateDevices()));}catch{}
  }
  async function startPhoneCamera(stream:MediaStream){
   if(requestedFootprintsChoice.current!=='phone')return;
@@ -271,14 +302,14 @@ export default function App(){
  /** V3.1: use the existing CameraTracker; changing devices invalidates
   * floor/projection approval before restarting the capture stream. */
  async function selectFootprintsCameraDevice(nextId:string):Promise<void>{
-  if(nextId===deviceId)return;
+  if(nextId===deviceId&&cameraOn)return;
   if(footprintRecording&&!window.confirm(
    'Rekaman berjalan. Simpan rekaman dan ganti kamera?'))return;
   requestStageBlackout(()=>projection.setTransport('blackout'));
   if(footprintRecording)footprintRef.current?.toggleVideo();
   liveFloorEngine.revoke('Kamera diganti; periksa dan konfirmasi ulang kalibrasi.');
   multiPoseRouter.reset();setLiveFloorApproval(null);
-  const restart=requestedFootprintsChoice.current==='webcam'&&cameraOn;
+  const restart=requestedFootprintsChoice.current==='webcam';
   if(restart)stopCamera();
   setDeviceId(nextId);
   try{localStorage.setItem('soma-quick-camera-v1',nextId);}catch{}
@@ -465,7 +496,7 @@ export default function App(){
      setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));
      void switchFootprintsSource(choice);
     }}
-    sourceLabel={footprintsChoice==='video'?'Video MP4':footprintsChoice==='simulator'?'Simulasi 3D':footprintsChoice==='phone'?'Kamera HP':footprintsChoice==='webcam'?'Webcam laptop':'Pilih sumber'}
+    sourceLabel={footprintsChoice==='video'?'Video MP4':footprintsChoice==='simulator'?'Simulasi 3D':footprintsChoice==='phone'?'Kamera HP':footprintsChoice==='webcam'?'Kamera lain':'Pilih sumber'}
     trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
     outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Output terkunci':projection.status.connected?'QA diperlukan':'Output terkunci'}
     onPreset={()=>setModal('presets')}

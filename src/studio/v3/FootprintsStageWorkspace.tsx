@@ -17,7 +17,8 @@ import {useSharedAssetRegistry} from './useSharedAssetRegistry.ts';
 import {useComposeMonitorLayout,type ComposeLayoutPreset} from './useComposeMonitorLayout.ts';
 import {StageModuleNav,type StageModuleWorkspace} from './StageModuleNav.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
-import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2} from 'lucide-react';
+import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2,ChevronDown} from 'lucide-react';
+import {cameraDeviceLabel} from '../../engine/universalCamera.ts';
 import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
 import {isDismissEscape,shouldOpenInspector} from './interactionPolicy.ts';
 import {FootprintsExperimentalSource} from './FootprintsExperimentalSource.tsx';
@@ -1033,6 +1034,22 @@ export function FootprintsStageWorkspace({
         <p title={cameraError||trackSummary.detail}>
          {cameraError||trackSummary.detail}</p>}
       </section>
+      {sourceStatus.selection==='webcam'&&<div className="soma-track-mac-camera" role="group" aria-label="Kamera lain pada Mac">
+       <label htmlFor="soma-track-mac-device">Kamera Mac</label>
+       <div className="soma-track-mac-device-wrap">
+        <select id="soma-track-mac-device"
+         aria-label="Pilih webcam, HDMI capture, atau kamera virtual"
+         value={cameraDevices.some(device=>device.deviceId===selectedCameraId)?selectedCameraId:''}
+         disabled={cameraBusy}
+         onChange={event=>void onSelectCameraDevice(event.target.value)}>
+         <option value="">Kamera otomatis</option>
+         {cameraDevices.filter(device=>device.kind==='videoinput').map((device,i)=>
+          <option key={device.deviceId} value={device.deviceId}>{cameraDeviceLabel(device,i)}</option>)}
+        </select>
+        <ChevronDown size={15} aria-hidden="true"/>
+       </div>
+       {cameraDevices.length===0&&<small>Izinkan kamera di browser untuk melihat perangkat Mac.</small>}
+      </div>}
       {ownership.webcamAction&&<button type="button" className="soma-track-side-action"
        onClick={onStartBody} disabled={ownership.webcamAction==='connecting'||cameraBusy}
        aria-busy={ownership.webcamAction==='connecting'}>
@@ -1054,12 +1071,12 @@ export function FootprintsStageWorkspace({
       {sourceStatus.selection==='phone'&&!phonePanelOpen&&<button type="button" className="soma-track-side-action"
        aria-expanded={phonePanelOpen} aria-controls="soma-track-phone-pairing"
        onClick={()=>{setPhonePanelOpen(v=>!v);setCalibrationOpen(false);setInspectorOpen(false);}}>
-       {phoneActive?'Lihat sambungan':'Hubungkan kamera'}
+       {phoneActive?'Lihat sambungan':'Sambungkan HP'}
       </button>}
       {sourceStatus.selection==='phone'&&<section id="soma-track-phone-pairing" className="soma-track-phone-pairing"
        hidden={!phonePanelOpen||operatorMode} aria-hidden={!phonePanelOpen||operatorMode}
-       aria-label="Hubungkan kamera universal">
-       <header className="soma-track-phone-heading"><strong>Koneksi</strong>
+       aria-label="Sambungkan Kamera HP">
+       <header className="soma-track-phone-heading"><strong>Kamera HP</strong>
         <button type="button" aria-label="Tutup pilihan kamera" onClick={closePhonePanel}>×</button>
        </header>
        <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
