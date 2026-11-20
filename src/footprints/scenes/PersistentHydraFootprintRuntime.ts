@@ -158,6 +158,10 @@ export class PersistentHydraFootprintRuntime {
        if(this.materialSeen.has(event.eventId))return false;
        this.materialSeen.add(event.eventId);return true;
       });
+      if(this.materialSeen.size>2500){
+       const currentIds=new Set(events.map(event=>event.eventId));
+       this.materialSeen=new Set([...this.materialSeen].filter(id=>currentIds.has(id)));
+      }
       materialSource=this.gpuMaterial.paint(source,fresh,generation,nowMs,this.settings);
      }catch{
       this.gpuMaterialUnavailable=true;
