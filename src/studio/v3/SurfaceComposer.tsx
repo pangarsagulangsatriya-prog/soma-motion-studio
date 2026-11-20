@@ -115,6 +115,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [loadingMedia,setLoadingMedia]=useState(0);
  const media=sharedAssets;
  const [archiveHydra,setArchiveHydra]=useState(false);
+ const archiveHydraRef=useRef(archiveHydra);archiveHydraRef.current=archiveHydra;
+ const [riftSourceId,setRiftSourceId]=useState('@stage:input');
+ const riftSourceRef=useRef(riftSourceId);riftSourceRef.current=riftSourceId;
  const archiveReadyRef=useRef(false);
  const onArchiveHydraChangeRef=useRef(onArchiveHydraChange);
  onArchiveHydraChangeRef.current=onArchiveHydraChange;
@@ -526,14 +529,37 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       render(ctx,'FLOOR',previewOverlay.width,previewOverlay.height,false,false,true);
     }
    }
-   const archiveReady=archiveHydra&&!blackoutRef.current&&previewLiveRef.current&&readyMedia('FLOOR')&&!!archiveHydraCanvas;
-   if(archiveReady&&archiveHydraCanvas){
+   // FV-03: feed ONE selected archive asset into the GPU as an unmodified
+   // source texture. Never render the composition into itself (Hydra feedback
+   // would otherwise become a recursive FLOOR -> Hydra -> FLOOR loop).
+   const sourceId=riftSourceRef.current;
+   const archiveInput=sourceId==='@stage:input'&&experimentSourceRef.current==='video'
+    ?experimentInputCanvas?.current:mediaEls.current.get(sourceId);
+   const archiveInputReady=archiveInput instanceof HTMLImageElement
+     ?archiveInput.complete&&archiveInput.naturalWidth>0
+     :archiveInput instanceof HTMLVideoElement
+      ?archiveInput.readyState>=2&&archiveInput.videoWidth>0
+      :!!archiveInput&&archiveInput.width>0&&archiveInput.height>0;
+   let archiveReady=archiveHydraRef.current&&!blackoutRef.current&&
+    previewLiveRef.current&&!!archiveHydraCanvas&&archiveInputReady;
+   if(archiveReady&&archiveHydraCanvas&&archiveInput){
     if(!archiveHydraCanvas.current)archiveHydraCanvas.current=document.createElement('canvas');
     const archive=archiveHydraCanvas.current;
-    if(archive.width!==640)archive.width=640;if(archive.height!==360)archive.height=360;
-    const archiveCtx=archive.getContext('2d');if(archiveCtx)render(archiveCtx,'FLOOR',640,360,true,false);
+    if(archive.width!==640)archive.width=640;
+    if(archive.height!==360)archive.height=360;
+    const archiveCtx=archive.getContext('2d');
+    if(archiveCtx){
+     archiveCtx.setTransform(1,0,0,1,0,0);
+     archiveCtx.globalAlpha=1;archiveCtx.globalCompositeOperation='source-over';
+     archiveCtx.fillStyle='#000';archiveCtx.fillRect(0,0,640,360);
+     try{archiveCtx.drawImage(archiveInput,0,0,640,360);}
+     catch{archiveReady=false;}
+    }else archiveReady=false;
    }
-   if(archiveReadyRef.current!==archiveReady){archiveReadyRef.current=archiveReady;onArchiveHydraChangeRef.current?.(archiveReady);}
+   if(archiveReadyRef.current!==archiveReady){
+    archiveReadyRef.current=archiveReady;
+    onArchiveHydraChangeRef.current?.(archiveReady);
+   }
    const preview=canvas.current;
    if(preview){const ctx=preview.getContext('2d');if(ctx){
     if(previewArrangementRef.current==='input'&&experimentSource){
@@ -694,6 +720,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    setHint('Hydra belum terhubung ke sumber visual.');return;
   }
   onHydraSettingsChange(flagshipHydraPatch(id));
+  // RIFT requires an explicit archive input; TRACE/ECHO remain footprint-driven.
+  setArchiveHydra(id==='rift');
+  if(id!=='rift')onArchiveHydraChangeRef.current?.(false);
   const existing=composition.FLOOR.findIndex(item=>item.mediaId===COMPOSE_STAGE_HYDRA);
   if(existing<0){
    if(composition.FLOOR.length>=24){
@@ -892,6 +921,28 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  {inspectorTab==='scene'&&<details className="soma-ia-hydra" open>
   <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>
+  {hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&
+   !hydraSettings.catalogVisual&&<div className="fv03-archive-source">
+    <label>RIFT · Archive texture source
+     <select aria-label="RIFT archive source" value={riftSourceId} onChange={e=>{
+      setRiftSourceId(e.currentTarget.value);
+      onArchiveHydraChangeRef.current?.(false);archiveReadyRef.current=false;
+     }}>
+      <option value="@stage:input">Track MP4 / video input</option>
+      {media.filter(asset=>asset.origin==='import').map(asset=>
+       <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+     </select>
+    </label>
+    <label className="visr4-archive-row">
+     <input type="checkbox" checked={archiveHydra} onChange={e=>{
+      setArchiveHydra(e.currentTarget.checked);
+      if(!e.currentTarget.checked)onArchiveHydraChangeRef.current?.(false);
+     }}/> Enable RIFT archive displacement
+    </label>
+    <small role="status">{archiveReadyRef.current?
+     'Arsip aktif · Contact, Slide, Pivot mengubah UV secara lokal':
+     'Pilih MP4 Track atau gambar/video dari Media. Jalankan video dan aktifkan RIFT.'}</small>
+   </div>}
  </details>}
  {inspectorTab==='object'&&<details className="uxr3-advanced" open>
   <summary>Object · transform &amp; mask</summary>
