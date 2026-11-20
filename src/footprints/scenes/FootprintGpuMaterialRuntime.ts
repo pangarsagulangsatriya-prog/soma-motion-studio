@@ -63,7 +63,7 @@ void main(){
   float decay=exp(-age*(uMode<.5?1.2:2.2));
   float fracture=noise(local*3.3+vec2(uTime*.13,float(i)*1.97));
   float rim=exp(-abs(d)*7.5);
-  float region=smoothstep(.18,-.24,d);
+  float region=1.-smoothstep(-.24,.18,d);
   material=max(material,region*decay);
   erosion+=rim*(.3+.7*fracture)*decay*(e.w>0.5?1.4:1.);
   float distanceWeight=exp(-dot(diff,diff)*350.);
@@ -103,14 +103,12 @@ export function collectMaterialImpulses(
 ):MaterialImpulse[]{
  const next=old.filter(p=>nowMs-p.atMs<MATERIAL_LIFE_MS&&nowMs>=p.atMs);
  const seen=new Set(next.map(i=>i.id));
- const anchor=new Map<string,MaterialImpulse>();
- for(const i of next)anchor.set(i.actor+':'+(i.kind===0?0:1),i);
  for(const e of events){
   if(seen.has(e.eventId)||!Number.isFinite(e.x)||!Number.isFinite(e.y)||
    e.x<0||e.x>1||e.y<0||e.y>1||e.actorId.startsWith('unassigned-'))continue;
   if(e.kind==='contact'&&!e.verified)continue;
   if(e.kind!=='contact'&&e.kind!=='slide'&&e.kind!=='pivot')continue;
-  const actor:eActor=e.actorId==='B'||e.actorId==='performer-2'?1:0;
+  const actor:0|1=e.actorId==='B'||e.actorId==='performer-2'?1:0;
   const prior=next.findLast(i=>i.actor===actor);
   const dx=prior?Math.max(-.2,Math.min(.2,e.x-prior.x)):0;
   const dy=prior?Math.max(-.2,Math.min(.2,e.y-prior.y)):-.03;
@@ -120,7 +118,6 @@ export function collectMaterialImpulses(
  }
  return next.slice(-MAX_MATERIAL_IMPULSES);
 }
-type eActor=0|1;
 function shader(gl:WebGL2RenderingContext,type:number,code:string){
  const s=gl.createShader(type);if(!s)throw Error('WebGL shader allocation failed');
  gl.shaderSource(s,code);gl.compileShader(s);
