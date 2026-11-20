@@ -306,9 +306,10 @@ export default function App(){
  function selectScene(scene:SceneId){
   setFootprintsOperator(false);
   if(scene==='footprints'){
+   const alreadyActive=footprintsActive;
    setFootprintsActive(true);setBodyPromptDismissed(false);setTab('visual');
    if(sr.current.output==='sound')update({output:'both'});
-   notify(sr.current.input!=='body'||!cameraOn?'Footprints dipilih. Hubungkan kamera Body agar gerak kaki terbaca.':'Footprints aktif. Gerakkan kaki di depan kamera.');
+   if(!alreadyActive)notify(sr.current.input!=='body'||!cameraOn?'Footprints dipilih. Hubungkan kamera Body agar gerak kaki terbaca.':'Footprints aktif. Gerakkan kaki di depan kamera.');
    return;
   }
   if(stoppingVideoRequiresConfirmation(footprintRecording,'footprints',scene)&&!window.confirm('Video Footprints masih direkam. Mengganti scene akan menghentikan video dan mengunduhnya. Lanjutkan?'))return;
@@ -448,8 +449,9 @@ export default function App(){
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
      navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
      onNavigateStageWorkspace={workspace=>{
-      // Only Stage Studio owns these local destinations. Other SOMA modules keep their own routes.
-      requestStageBlackout(()=>projection.setTransport('blackout'));
+      // Only Stage Studio owns these local destinations; internal tab switches preserve active mapping and projector links.
+      if(!footprintsActive||archiveActive||projectionActive)
+       requestStageBlackout(()=>projection.setTransport('blackout'));
       setArchiveActive(false);setProjectionActive(false);setClean(false);selectScene('footprints');
       if(workspace==='perform'){setFootprintsOperator(true);return;}
       setFootprintsOperator(false);
@@ -489,7 +491,6 @@ export default function App(){
      operatorMode={footprintsOperator}
      softwareBlackout={softwareBlackout} onResumeSoftwarePreview={()=>setSoftwareBlackout(false)}
      onExitOperator={()=>{
-      requestStageBlackout(()=>projection.setTransport('blackout'));
       setFootprintsOperator(false);setSelectedStageTool('composer');
       setStageNavigation(last=>({id:(last?.id??0)+1,tool:'composer'}));
      }}

@@ -34,7 +34,7 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
 }){
  const [mobile,setMobile]=useState(()=>window.matchMedia(mobileQuery).matches);
  const [expanded,setExpanded]=useState(()=>{
-  try{return !window.matchMedia(mobileQuery).matches&&localStorage.getItem(NAV_KEY)!=='false';}
+  try{return !window.matchMedia(mobileQuery).matches&&localStorage.getItem(NAV_KEY)==='true';}
   catch{return false;}
  });
  const [labsOpen,setLabsOpen]=useState(false),[labsQuery,setLabsQuery]=useState('');
@@ -172,7 +172,7 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
     </div>
    </div>
    {stageModuleActive&&<div className="soma-uxr1-health" role="status" aria-label="Ringkasan status Stage 1">
-    <span title="Ubah sumber di workspace Track">SOURCE: {sourceLabel}</span>
+    <span title="Ubah sumber di workspace Track">Sumber: {sourceLabel}</span>
     <span title="Status pelacakan">{trackingLabel}</span>
     <span title="Status koneksi output">{outputLabel}</span>
    </div>}

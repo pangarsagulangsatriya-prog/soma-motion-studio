@@ -7,6 +7,7 @@ import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrack
 import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
+import {hasActiveDualSurfacePorts,syncDualSurfaceRuntime} from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
 import {SOFTWARE_PREVIEW_BLACKOUT_EVENT} from './stagePreviewCommands.ts';
 import './SurfaceComposer.css';
 import {canRenderComposeSurface} from './composePreviewGate.ts';
@@ -79,14 +80,16 @@ type Props={
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
- embedded?:boolean;mapMode?:boolean;
+ embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
+ const workspaceHiddenRef=useRef(workspaceHidden);workspaceHiddenRef.current=workspaceHidden;
+ const mapModeRef=useRef(mapMode);mapModeRef.current=mapMode;
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [previewArrangement,setPreviewArrangement]=useState<'surface'|'split'|'input'>('surface');
- useEffect(()=>{if(experimentSource)setPreviewArrangement('input');else setPreviewArrangement('surface');},[experimentSource]);
+ useEffect(()=>{setPreviewArrangement('surface');},[experimentSource]);
  const previewArrangementRef=useRef(previewArrangement);previewArrangementRef.current=previewArrangement;
  const splitScratch=useRef<{body:HTMLCanvasElement;floor:HTMLCanvasElement}|null>(null);
  const history=useCompositionHistory<Composition>(()=>{
@@ -118,9 +121,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  // Software preview starts enabled in Compose. Physical output still requires the existing routing/QA panel.
  const [blackout,setBlackout]=useState(previewBlackout);
  const [previewLive,setPreviewLive]=useState(true);
- // Liquid Imprint lives inside Compose. Projector outputs stay unchanged.
+ // Liquid Imprint defaults to Track events so real/simulated steps drive the floor;
+ // Demo mode stays one click away for single-phase inspection.
  const [liquidEnabled,setLiquidEnabled]=useState(true);
- const [liquidMode,setLiquidMode]=useState<ComposerLiquidMode>('demo');
+ const [liquidMode,setLiquidMode]=useState<ComposerLiquidMode>('track');
  const [liquidPhase,setLiquidPhase]=useState<ComposerLiquidPhase>('contact');
  const [liquidFlow,setLiquidFlow]=useState(.76);
  const [liquidStatus,setLiquidStatus]=useState('PixiJS memuat…');
@@ -134,7 +138,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const liquidPaintErrorRef=useRef('');
  useEffect(()=>{liquidDemoStart.current=performance.now();},[liquidMode,liquidPhase]);
  useEffect(()=>{
-  if(mapMode||!liquidEnabled)return;
+  if(!liquidEnabled)return;
   const surface=liquidCanvas.current;
   if(!surface)return;
   let canceled=false;
@@ -441,9 +445,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   }
  };
  useEffect(()=>{
+  syncDualSurfaceRuntime({
+   frameRef:stageRoute,bodyCanvas:bodyOutput,floorCanvas:floorOutput,
+   legacyProjection:projection,experimentLocked
+  });
+ },[projection,experimentLocked,mapMode,workspaceHidden]);
+ useEffect(()=>{
   let raf=0,last=0,lastText='';
   const tick=(now:number)=>{
    raf=requestAnimationFrame(tick);
+   if(workspaceHiddenRef.current&&!hasActiveDualSurfacePorts())return;
    if(now-last<1000/24)return;
    last=now;updateMasks(now);
    const body=bodyOutput.current,floor=floorOutput.current;
@@ -452,13 +463,14 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false,true);
    }}
    if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height,true,true);}
-   // MAT-03: software-only liquid material. Never copied into projector
-   // bodyOutput/floorOutput or StageRoute.
+   // Render Liquid Imprint for FLOOR preview and composite verified Track imprints
+   // onto floorOutput when live camera floor routing is active.
    let liquidFrame=false;
-   if(!mapMode&&liquidEnabledRef.current&&!blackoutRef.current&&
+   const renderLiquid=liquidEnabledRef.current&&!blackoutRef.current&&
     previewLiveRef.current&&liquidRenderer.current&&
-    selectedRef.current==='FLOOR'){
-    const demo=liquidModeRef.current==='demo';
+    (mapModeRef.current||workspaceHiddenRef.current||selectedRef.current==='FLOOR');
+   if(renderLiquid&&liquidRenderer.current){
+    const demo=liquidModeRef.current==='demo'&&!mapModeRef.current&&!workspaceHiddenRef.current;
     const artTime=demo?now:timelineModeRef.current==='replay'
      ?timelinePositionRef.current:now;
     const events=demo?
@@ -479,9 +491,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      }
     }
    }
+   if(floor&&liquidFrame&&liquidCanvas.current&&!experimentSourceRef.current&&
+    floorReadyRef.current&&liquidModeRef.current==='track'){
+    const ctx=floor.getContext('2d');
+    if(ctx){
+     ctx.save();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+     ctx.drawImage(liquidCanvas.current,0,0,floor.width,floor.height);
+     ctx.restore();
+    }
+   }
    // CP-03: paint imported composition layers over the live FLOOR monitor.
-   // The source scene remains visible underneath transparent pixels. This is
-   // only a software preview: StageRoute/Map QA and projector routing remain untouched.
+   // The source scene remains visible underneath transparent pixels.
    const previewOverlay=composePreviewCanvas?.current;
    if(previewOverlay){
     const ctx=previewOverlay.getContext('2d');
@@ -626,13 +646,14 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <p role="status">{bodyStatus} · FLOOR {floorReady?'terkonfirmasi':'belum terkalibrasi'} · Status cahaya wajib diperiksa fisik</p>
   <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="Map BODY output raster"/>
   <canvas ref={floorOutput} width={640} height={360} hidden aria-label="Map FLOOR output raster"/>
+  <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden aria-label="MAT-03 Liquid Imprint PixiJS raster"/>
   <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}/>
  </section>;
  return <div id="soma-compose-focus" className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
   <div className="s64-heading">
-   <div className="cpux-heading-label"><h2>Composer</h2><span>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</span></div>
+   <div className="cpux-heading-label"><h2>Compose</h2><span>{selected==='FLOOR'?'Liquid Imprint':'Body Mapping'}</span></div>
    <details className="cp04-command-menu">
     <summary aria-label="Opsi komposisi" title="Undo, redo, reset">Opsi</summary>
     <div className="cp04-command-bar" role="group" aria-label="Riwayat komposisi">

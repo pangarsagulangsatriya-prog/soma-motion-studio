@@ -1,28 +1,81 @@
-/* OPS-R1 — Perform cues stay part of the existing stage; no duplicated video/camera layer. */
-.fp-operator-mode .ops-r1-status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
-.fp-operator-mode .ops-r1-status>div{display:flex;flex-direction:column;gap:4px;min-width:0;padding:10px;border:1px solid #58675e;border-radius:7px;background:#101919}
-.fp-operator-mode .ops-r1-status small{font-size:9px;letter-spacing:.09em;color:#aebdaf}
-.fp-operator-mode .ops-r1-status strong{font-size:12px;line-height:1.45;color:#e5f0df;overflow-wrap:anywhere}
-.fp-operator-mode .ops-r1-recovery{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#342419;color:#f6e2ca;border:1px solid #b38b57;border-radius:7px;padding:10px;margin:9px 0;font-size:12px}
-.fp-operator-mode .ops-r1-recovery button{min-height:35px;background:#3b4230;color:#f0f7e8;border:1px solid #9aa67f;border-radius:6px;padding:6px 10px}
-.fp-operator-mode .ops-r1-cue-grid{padding:12px;margin:10px 0;border:1px solid #6b8775;border-radius:9px;background:#111a15;color:#e2e9dd}
-.fp-operator-mode .ops-r1-cue-grid header{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}
-.fp-operator-mode .ops-r1-cue-grid header strong{font-size:11px;letter-spacing:.09em}
-.fp-operator-mode .ops-r1-cue-grid header span{font-size:10px;color:#b4c4b5}
-.fp-operator-mode .ops-r1-cue-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-.fp-operator-mode .ops-r1-slot{display:flex;flex-direction:column;gap:4px;min-width:0;min-height:97px;text-align:left;border:1px solid #64766a;border-radius:7px;background:#1a2720;color:#dceadd;padding:9px}
-.fp-operator-mode .ops-r1-slot[aria-pressed=true]{outline:2px solid #bce5ba;background:#354739}
-.fp-operator-mode .ops-r1-slot small{color:#a8cdb6;font-size:10px}
-.fp-operator-mode .ops-r1-slot b{font-size:13px}
-.fp-operator-mode .ops-r1-slot span{font-size:11px;overflow-wrap:anywhere}
-.fp-operator-mode .ops-r1-slot em{font-style:normal;font-size:9px;color:#a3c1aa}
-.fp-operator-mode .ops-r1-cue-editor{margin-top:12px;border-top:1px solid #52675b;padding-top:8px}
-.fp-operator-mode .ops-r1-cue-editor summary{cursor:pointer;padding:7px 0;font-size:11px}
-.fp-operator-mode .ops-r1-cue-editor label{display:flex;flex-direction:column;gap:5px;margin:9px 0;font-size:11px}
-.fp-operator-mode .ops-r1-cue-editor :is(input,select){min-height:36px;background:#1e3026;border:1px solid #748b7a;border-radius:5px;color:#eef6ea;padding:6px 9px;max-width:380px}
-.fp-operator-mode .ops-r1-cue-actions{display:flex;gap:8px;flex-wrap:wrap}
-.fp-operator-mode .ops-r1-cue-actions button{border:1px solid #829e83;background:#2a422f;color:#eaf6e7;border-radius:5px;padding:8px}
-.fp-operator-mode .ops-r1-cue-editor small,.fp-operator-mode .ops-r1-guard{color:#c0cdbf;font-size:11px;line-height:1.55}
+/* OPS-R1 — Stage-first 2-column Perform layout: Stage Monitor on left, Cue Grid & Transport on right, both visible above the fold. */
+.soma-composer-host[hidden]{display:none!important}
+.fp-stage-workspace[data-workspace=perform]{
+ display:grid!important;
+ grid-template-columns:minmax(0,1.35fr) minmax(360px,450px);
+ grid-template-rows:auto minmax(0,1fr);
+ gap:10px 14px;
+ align-items:start;
+}
+.fp-stage-workspace[data-workspace=perform]>.soma-stage-module-nav{
+ grid-column:1/-1;grid-row:1;
+}
+.fp-stage-workspace[data-workspace=perform]>.fp-stage-layout{
+ grid-column:1;grid-row:2;margin:0;min-width:0;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-stage-overview:not([hidden]){
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-stage-overview>.fp-stage-video{
+ grid-column:1!important;grid-row:auto!important;max-width:none!important;width:100%!important;
+}
+.fp-stage-workspace[data-workspace=perform]>.ops-r1-console-shell{
+ grid-column:2;grid-row:2;min-width:0;display:flex;flex-direction:column;gap:8px;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-operator-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;margin:0;
+ border:1px solid #3c5443;border-radius:8px;background:#111c16;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-operator-heading span{
+ font-size:9px;letter-spacing:.1em;color:#9eb5a1;display:block;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-operator-heading h2{
+ margin:2px 0 0;font-size:16px;color:#edf5e7;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-operator-heading h2 small{
+ font-size:11px;font-weight:500;color:#adc2ae;
+}
+.fp-stage-workspace[data-workspace=perform] .fp-operator-heading>button{
+ display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 11px;
+ border:1px solid #58725e;border-radius:6px;background:#1d3023;color:#e5f0e1;font-size:11px;cursor:pointer;white-space:nowrap;
+}
+.fp-operator-mode .ops-r1-status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0}
+.fp-operator-mode .ops-r1-status>div{display:flex;flex-direction:column;gap:2px;min-width:0;padding:8px 10px;border:1px solid #3c5144;border-radius:7px;background:#101a16}
+.fp-operator-mode .ops-r1-status small{font-size:9px;letter-spacing:.08em;color:#9ab19e}
+.fp-operator-mode .ops-r1-status strong{font-size:12px;line-height:1.35;color:#e5f0df;overflow-wrap:anywhere}
+.fp-operator-mode .ops-r1-recovery{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#342419;color:#f6e2ca;border:1px solid #b38b57;border-radius:7px;padding:8px 10px;margin:0;font-size:11px}
+.fp-operator-mode .ops-r1-recovery button{min-height:32px;background:#3b4230;color:#f0f7e8;border:1px solid #9aa67f;border-radius:6px;padding:5px 9px;font-size:11px;white-space:nowrap}
+.fp-operator-mode .ops-r1-cue-grid{padding:10px;margin:0;border:1px solid #4c6956;border-radius:8px;background:#111b16;color:#e2e9dd}
+.fp-operator-mode .ops-r1-cue-grid header{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.fp-operator-mode .ops-r1-cue-grid header strong{font-size:10px;letter-spacing:.09em;color:#d6e7d3}
+.fp-operator-mode .ops-r1-cue-grid header span{font-size:10px;color:#9fb4a2}
+.fp-operator-mode .ops-r1-cue-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.fp-operator-mode .ops-r1-slot{display:flex;flex-direction:column;gap:3px;min-width:0;min-height:66px;text-align:left;border:1px solid #495f50;border-radius:6px;background:#19261f;color:#dceadd;padding:7px 8px;cursor:pointer}
+.fp-operator-mode .ops-r1-slot[aria-pressed=true]{outline:2px solid #bce5ba;background:#2f4736}
+.fp-operator-mode .ops-r1-slot small{color:#9cc2aa;font-size:10px}
+.fp-operator-mode .ops-r1-slot b{font-size:12px;line-height:1.2}
+.fp-operator-mode .ops-r1-slot em{font-style:normal;font-size:9px;color:#9ebca5;margin-top:auto}
+.fp-operator-mode .ops-r1-cue-editor{margin-top:8px;border-top:1px solid #3c5145;padding-top:6px}
+.fp-operator-mode .ops-r1-cue-editor summary{cursor:pointer;padding:4px 0;font-size:11px;color:#c9dac8}
+.fp-operator-mode .ops-r1-cue-editor label{display:flex;flex-direction:column;gap:4px;margin:7px 0;font-size:11px}
+.fp-operator-mode .ops-r1-cue-editor :is(input,select){min-height:34px;background:#192920;border:1px solid #5e7865;border-radius:5px;color:#eef6ea;padding:5px 8px;max-width:100%}
+.fp-operator-mode .ops-r1-cue-actions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px}
+.fp-operator-mode .ops-r1-cue-actions button{border:1px solid #6b886e;background:#273e2d;color:#eaf6e7;border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer}
+.fp-operator-mode .ops-r1-cue-editor small,.fp-operator-mode .ops-r1-guard{color:#b1c2b2;font-size:10px;line-height:1.45}
+.fp-operator-mode .fp-operator-health{margin:0;padding:7px 10px;border-radius:6px;border:1px solid #55614a;background:#1c2419;font-size:11px;color:#dde5ce}
+.fp-operator-mode .fp-operator-dock{position:static!important;top:auto!important;bottom:auto!important;display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:8px;border:1px solid #445c4c;border-radius:8px;background:#111b15}
+.fp-operator-mode .fp-operator-dock-group{display:flex;gap:6px;flex:1 1 170px}
+.fp-operator-mode .fp-operator-dock-group button{flex:1 1 auto;min-height:40px;font-size:12px}
+.fp-operator-mode .fp-operator-blackout{width:100%;min-height:40px;font-size:12px}
+.fp-operator-mode .fp-operator-hotkeys{margin:0;font-size:10px;line-height:1.45;color:#9eb2a1}
 .fp-operator-mode .ops-r1-cue-grid :is(button,input,select,summary):focus-visible{outline:2px solid #f1f9d6;outline-offset:2px}
-@media(max-width:900px){.fp-operator-mode .ops-r1-status{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.fp-operator-mode .ops-r1-cue-slots{grid-template-columns:repeat(2,minmax(0,1fr))}.fp-operator-mode .ops-r1-recovery{flex-direction:column;align-items:stretch}}
+
+@media(max-width:1080px){
+ .fp-stage-workspace[data-workspace=perform]{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+ .fp-stage-workspace[data-workspace=perform]>.fp-stage-layout{grid-column:1;grid-row:2}
+ .fp-stage-workspace[data-workspace=perform]>.ops-r1-console-shell{grid-column:1;grid-row:3}
+}
+@media(max-width:600px){
+ .fp-operator-mode .ops-r1-cue-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .fp-operator-mode .ops-r1-recovery{flex-direction:column;align-items:stretch}
+}

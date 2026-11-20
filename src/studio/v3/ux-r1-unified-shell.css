@@ -1,11 +1,12 @@
 /* UX-R1: compact, read-only global health; independent of projection QA. */
-.soma-primary-header .soma-uxr1-health{display:flex;align-items:center;justify-content:center;min-width:0;flex:1 1 auto;gap:7px;margin-inline:12px;overflow:visible}
-.soma-primary-header .soma-uxr1-health>span{display:block;min-width:0;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 8px;border:1px solid #314739;border-radius:6px;background:#18241c;color:#becfc0;font-size:10px;font-weight:500;letter-spacing:.01em}
+.soma-primary-header .soma-uxr1-health{display:flex;align-items:center;justify-content:center;min-width:0;flex:1 1 auto;gap:14px;margin-inline:12px;overflow:visible}
+.soma-primary-header .soma-uxr1-health>span{display:block;min-width:0;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 0;border:none;border-radius:0;background:transparent;color:#b8cab9;font-size:11px;font-weight:500;letter-spacing:.01em;position:relative}
+.soma-primary-header .soma-uxr1-health>span+span::before{content:'·';position:absolute;left:-9px;color:#5a7460}
 .soma-primary-header .soma-uxr1-health>span:last-child{color:#d7c89e}
 .soma-primary-sidebar .soma-primary-destination[aria-current="page"]{background:#243b2c;color:#d9eac5}
 .soma-primary-sidebar .soma-primary-destination:focus-visible{outline:2px solid #d7eead;outline-offset:-2px}
 @media(max-width:1140px){.soma-primary-header .soma-uxr1-health>span:nth-child(2){display:none}.soma-primary-header .soma-uxr1-health>span{max-width:175px}}
-@media(max-width:760px){.soma-primary-header .soma-uxr1-health{margin-inline:5px;gap:4px}.soma-primary-header .soma-uxr1-health>span{max-width:115px;padding:4px 5px;font-size:9px}.soma-primary-header .soma-uxr1-health>span:last-child{display:none}}
+@media(max-width:760px){.soma-primary-header .soma-uxr1-health{margin-inline:5px;gap:8px}.soma-primary-header .soma-uxr1-health>span{max-width:120px;font-size:10px}.soma-primary-header .soma-uxr1-health>span:last-child{display:none}}
 @media(max-width:430px){.soma-primary-header .soma-uxr1-health{display:none}}
 
 /* One shared source switch: only UI, calls the existing source state machine. */

@@ -290,7 +290,7 @@ export function FootprintsStageWorkspace({
  });
  const [activePerformSlot,setActivePerformSlot]=useState(0);
  const [performMessage,setPerformMessage]=useState('');
- const [performBlackout,setPerformBlackout]=useState(true);
+ const [performBlackout,setPerformBlackout]=useState(false);
  const applyPerformSlot=(index:number)=>{
   const slot=performGrid.slots[index];if(!slot)return;
   // Cue loads scene/layout only, never hardware light permissions.
@@ -328,8 +328,12 @@ export function FootprintsStageWorkspace({
   // disarmed by the App-level global Blackout before the mode is changed.
   setCalibrationOpen(false);
   setComposerOpen(false);setMappingOpen(false);
-  setView('stage');setOperatorCue(0);setActivePerformSlot(0);setPerformBlackout(true);
-  updateFootprint({hold:true});
+  setView('stage');setOperatorCue(0);setActivePerformSlot(0);
+  if(performUnsafeRef.current||softwareBlackout){
+   setPerformBlackout(true);updateFootprint({hold:true});
+  }else{
+   setPerformBlackout(false);updateFootprint({hold:false});
+  }
  },[operatorMode]);
  const nextCue=()=>applyPerformSlot(Math.min(performGrid.slots.length-1,activePerformSlot+1));
  const previousCue=()=>applyPerformSlot(Math.max(0,activePerformSlot-1));
@@ -657,7 +661,7 @@ export function FootprintsStageWorkspace({
   lastNavRequest.current=request.id;
   setCalibrationOpen(false);setVideoLabOpen(false);setRehearsalOpen(false);
   setComposerOpen(false);setMappingOpen(false);
-  onBlackout();
+  if(request.tool!=='tracking'&&request.tool!=='composer'&&request.tool!=='mapping')onBlackout();
   switch(request.tool){
    case 'live':
    case 'tracking':setView('stage');setFlowStep('process');setInspectorOpen(false);break;
@@ -861,8 +865,8 @@ export function FootprintsStageWorkspace({
      (selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
       selectedExperimentFrame.snapshot.visibleCount+'/2 · '+selectedExperimentFrame.snapshot.performance.poseFps.toFixed(1)+' FPS':'MP4 · menunggu pose'):
      experimentalKind==='simulator'?'Simulasi 3D':cameraLabel}
-    sourceLabel={sourceStatus.selection??'Belum dipilih'}
-    hardwareStatus={dual.body.mode.toUpperCase()+' BODY · '+dual.floor.mode.toUpperCase()+' FLOOR'}
+    sourceLabel={SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Belum dipilih'}
+    hardwareStatus={'BODY '+(dual.body.mode==='live'?'LIVE':dual.body.connected?'Siaga':'Offline')+' · FLOOR '+(dual.floor.mode==='live'?'LIVE':dual.floor.connected?'Siaga':'Offline')}
     unreadyReason={performReadiness.state==='attention'||performReadiness.state==='qa-required'?performReadiness.reason:''}
     onRecovery={()=>{
      operatorBlackout();onExitOperator();setView('stage');
@@ -896,7 +900,7 @@ export function FootprintsStageWorkspace({
        Resume preview
       </button>}
      </div>}
-    {composerOpen&&!operatorMode&&view==='stage'&&<SurfaceComposer embedded mapMode={mappingOpen}
+    {view==='stage'&&<div className="soma-composer-host" hidden={!composerOpen||operatorMode} aria-hidden={!composerOpen||operatorMode}><SurfaceComposer embedded mapMode={mappingOpen} workspaceHidden={!composerOpen||operatorMode}
      footprint={footprint} updateFootprint={updateFootprint}
      sharedAssets={sharedAssetRegistry.assets} onImportAssets={sharedAssetRegistry.addFiles}
      onRemoveAsset={sharedAssetRegistry.removeAsset} assetNotice={sharedAssetRegistry.notice}
@@ -914,7 +918,7 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
-     onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/>}
+     onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
@@ -989,6 +993,10 @@ export function FootprintsStageWorkspace({
        clip={experimentClip} onClip={onExperimentClip} onFrame={onExperimentFrame}
        onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
        onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
+      {identityStatus.ambiguous&&!experimentalKind&&<button type="button" className="soma-track-side-action"
+       onClick={()=>router.reset()} title="Setel ulang kunci identitas Performer A/B setelah persilangan">
+       Reset Identitas A/B
+      </button>}
       <div className="soma-track-source-utilities">
        {sourceStatus.selection!==null&&!experimentalKind&&cameraOn&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
      cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
