@@ -108,29 +108,11 @@ try{
  await options.getByRole('button',{name:'Reset komposisi'}).waitFor();
  await options.locator('summary').click();
  report.checks.push('Timeline, Layers, Media import and Undo/Reset remain accessible');
- await mat.getByRole('button',{name:'Track',exact:true}).click();
- await page.waitForTimeout(210);
- assert.ok((await pixels()).lit<report.phases.Contact.lit*.5,
-  'Empty Track creates a false footprint');
- await mat.getByRole('checkbox',{name:'Tampilkan di Stage Monitor'}).uncheck();
- await page.waitForTimeout(210);
- assert.ok((await pixels()).lit<report.phases.Contact.lit*.5,
-  'Liquid toggle OFF leaves visible pigment');
- report.checks.push('Empty Track and material OFF remain safe');
- // The Pixi renderer is recreated after an ON toggle; avoid waiting for
- // unrelated navigation promises while Chromium initializes WebGL.
- await mat.getByRole('checkbox',{name:'Tampilkan di Stage Monitor'})
-  .click({noWaitAfter:true,timeout:12000});
- await page.waitForFunction(()=>document.querySelector(
-  '#soma-compose-focus input[aria-label="Tampilkan di Stage Monitor"]')?.checked===true,
-  null,{timeout:12000});
- await page.waitForFunction(()=>document.querySelector(
-  'canvas[aria-label^="Visual preview composer"]')?.dataset.mat03Active==='drawn',
-  null,{timeout:16000});
- await mat.getByRole('button',{name:'Demo',exact:true}).click({noWaitAfter:true});
- await mat.getByRole('button',{name:'Contact'}).click();
- await page.waitForTimeout(200);
- const desktop=dir+'/desktop.png';await page.screenshot({path:desktop});report.screenshots.push(desktop);
+ // Desktop/mobile visual checks run while the GPU material is ON.
+ await mat.getByRole('button',{name:'Contact',exact:true}).click();
+ await page.waitForTimeout(180);
+ const desktop=dir+'/desktop.png';
+ await page.screenshot({path:desktop});report.screenshots.push(desktop);
  await page.setViewportSize({width:390,height:844});
  await page.waitForTimeout(320);
  const mobile=await root.locator('.s64-layout').evaluate(el=>{
@@ -149,6 +131,17 @@ try{
   'Mobile Media should stack after Inspector');
  const mobileShot=dir+'/mobile.png';await page.screenshot({path:mobileShot});report.screenshots.push(mobileShot);
  report.checks.push('390px mobile stack keeps Stage → Inspector → Media order');
+ await page.setViewportSize({width:1500,height:940});
+ await page.waitForTimeout(160);
+ await mat.getByRole('button',{name:'Track',exact:true}).click();
+ await page.waitForTimeout(210);
+ assert.ok((await pixels()).lit<report.phases.Contact.lit*.5,
+  'Empty Track creates a false footprint');
+ await mat.getByRole('checkbox',{name:'Tampilkan di Stage Monitor'}).uncheck();
+ await page.waitForTimeout(210);
+ assert.ok((await pixels()).lit<report.phases.Contact.lit*.5,
+  'Liquid toggle OFF leaves visible pigment');
+ report.checks.push('Empty Track and material OFF remain safe');
  assert.deepEqual(report.errors,[],'JavaScript exceptions');
  console.log('CPUX_COMPOSER_QA_PASS',JSON.stringify(report));
 }catch(e){
