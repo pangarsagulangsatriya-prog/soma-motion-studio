@@ -36,7 +36,7 @@ test('RESET-00 CP05: legacy base tracking layer keeps FLOOR/BODY identification'
 test('RESET-00 CP05: compositor retains alpha, blend, source and media routing',()=>{
  const src=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(src,/for\(const \{layer,kind\} of composerLayerOrder\(/);
- assert.match(src,/ctx\.globalAlpha=Math\.min\(1,Math\.max\(0,layer\.opacity\/100\*envelope\)\)/);
+ assert.match(src,/ctx\.globalAlpha=Math\.min\(1,Math\.max\(0,layer\.opacity\/100\)\)/);
  assert.match(src,/ctx\.globalCompositeOperation=layer\.blend/);
  assert.match(src,/experimentFloorCanvas\?\.current\?\?null/);
  assert.match(src,/if\(overlayOnly&&kind!=='media'\)continue/);
