@@ -165,7 +165,7 @@ export default function App(){
   void refresh();
   media.addEventListener?.('devicechange',refresh);
   return()=>{alive=false;media.removeEventListener?.('devicechange',refresh);};
- },[deviceId,cameraOn,cameraBusy,stopCamera,projection,liveFloorEngine,multiPoseRouter]);
+ },[deviceId,cameraOn,cameraBusy,stopCamera,projection.setTransport,liveFloorEngine,multiPoseRouter]);
  const processFrame=useCallback((f:MotionFrame)=>{
   frameRef.current=f;cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
   if(f.tracked)hasPlayed.current=true;
