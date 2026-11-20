@@ -691,16 +691,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    {experimentReady?' · Pilih FLOOR atau BODY untuk hasil olahan.':' · Frame sumber belum siap.'}
   </p>}
   <div className="s64-layout" data-inspector-tab={inspectorTab}>
-   <aside className="s64-column cp02-library"><h3>Scene Library</h3><div className="msv4-browser-meta">BROWSER / SCENES · MEDIA · LAYERS</div><SceneEffectBrowser activeScene={sceneId as CatalogSceneId} onSceneAction={actOnScene}
-     onEffectAction={actOnEffect} onFlagshipApply={actOnFlagship}
-     activeFlagship={activeFlagshipForSettings(hydraSettings)}
-     hydraEnabled={!!hydraSettings?.enabled} hydraSettings={hydraSettings}
-     stageCanvas={visualFloorCanvas} stageStatus={visualWaitingForContact?'waiting-contact':hydraStatus}/><details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary>{!(hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&!hydraSettings.catalogVisual)&&
- <label className="visr4-archive-row">
- <input type="checkbox" checked={archiveHydra}
-  onChange={e=>{setArchiveHydra(e.target.checked);if(!e.target.checked)onArchiveHydraChangeRef.current?.(false);}}/>
- Process FLOOR archive media with Hydra (software preview)</label>}
- <small>{archiveHydra?'Pilih layer FLOOR berisi gambar/video. Media diproses oleh instance Hydra yang sama.':'Hydra media preview tidak aktif.'}</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
+   <aside className="s64-column cp02-library">
+    <h3>Media &amp; Layers</h3>
+    <div className="msv4-browser-meta">VISUAL RESET · V5</div>
+    <p className="v5-reset-empty" role="status">Katalog visual lama sudah dikosongkan. Sumber MP4 dan media tetap tersedia. Visual baru akan masuk setelah uji bentuk telapak.</p>
+    <details className="soma-ia-media"><summary>Media {loadingMedia>0?'· Memuat…':'· '+media.length}</summary><small>Media lokal dan MP4 Track tetap dapat disusun sebagai layer.</small><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
  <button type="button" title={'Gunakan '+m.name+' pada layer aktif'}
   onClick={()=>{patch({mediaId:m.id,name:m.name});setInspectorTab('layer');setPreviewArrangement('surface');}}>
   {m.kind==='image'&&m.url?<img src={m.url} alt=""/>:
@@ -717,11 +712,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      <button type="button" aria-pressed={previewArrangement==="split"} onClick={()=>setPreviewArrangement("split")}>SPLIT</button>
      {experimentSource&&<button type="button" aria-pressed={previewArrangement==="input"}
        onClick={()=>setPreviewArrangement("input")}>INPUT · {experimentSource==='video'?'MP4':'3D'}</button>}
-     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{(visualWaitingForContact||visualMaterialEmpty)&&selected==='FLOOR'&&previewArrangement==='surface'&&
-  <div className="fv-fallback-status" role="status">
-   {visualMaterialEmpty?'Render efek kosong · MP4 ditampilkan sementara':
-    'MP4 aktif · Menunggu Contact terverifikasi · Input ditampilkan sementara'}
-  </div>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
+     </div></div><div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected==='FLOOR'&&!readyMedia('FLOOR')&&<FootprintDemo state={demoFootprints} config={footprint??{style:'Tapak',palette:0,size:32,life:8,delay:0,showLive:true,showTrail:true,hold:false,gaitAnalysis:false,colors:{background:'#000000',left:'#e5e9eb',right:'#a9a4ec'}}} nowMs={demoNowMs} sceneName={sceneId}/>}{!previewBlackout&&!blackout&&previewLive&&!cameraOn&&!experimentLocked&&selected!=='FLOOR'&&!readyMedia(selected)&&<LegDemo actor={selected==='BODY A'?'A':'B'}/>}{inspectorTab==='scene'&&<p className="v5-reset-inspector">Tidak ada preset visual aktif. Gunakan Media dan Layers untuk mengatur sumber sampai renderer V5 tersedia.</p>}
+ {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
@@ -745,11 +737,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onDragEnd={()=>{setDragLayer(null);setDropLayer(null);}}><button onClick={()=>{setSelectedLayer(i);setInspectorTab('object');}} aria-pressed={i===selectedLayer}>{i+1}. {l.name}</button><button onClick={()=>setComposition(c=>({...c,[selected]:c[selected].map((x,j)=>j===i?{...x,visible:!x.visible}:x)}))}>{l.visible?'Visible':'Hidden'}</button><button disabled={i===0} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...c,[selected]:a};})}>↑</button><button disabled={i===layers.length-1} onClick={()=>setComposition(c=>{const a=[...c[selected]];[a[i],a[i+1]]=[a[i+1],a[i]];return {...c,[selected]:a};})}>↓</button></div>)}<button onClick={()=>{setComposition(c=>({...c,[selected]:[...c[selected],makeLayer()]}));setSelectedLayer(layers.length);}}>+ Layer</button>
   <div className="cp05-source-actions" role="group" aria-label="Tambahkan sumber komposisi">
    {([{id:COMPOSE_STAGE_INPUT,label:'+ MP4 / INPUT'},
-     {id:COMPOSE_STAGE_FLOOR,label:'+ Footprints'},
-     {id:COMPOSE_STAGE_HYDRA,label:'+ Hydra'}] as const).map(source=>
+     {id:COMPOSE_STAGE_FLOOR,label:'+ FLOOR / Track'}] as const).map(source=>
     <button key={source.id} type="button" onClick={()=>{
      const added=makeLayer(source.id,COMPOSE_SOURCE_CHOICES.find(x=>x.id===source.id)?.label??'Source');
-     if(source.id===COMPOSE_STAGE_HYDRA){added.blend='screen';added.opacity=65;}
+
      const at=source.id===COMPOSE_STAGE_INPUT?0:layers.length;
      setComposition(c=>{const next=[...c[selected]];next.splice(at,0,added);return {...c,[selected]:next};});
      setSelectedLayer(at);setInspectorTab('layer');
@@ -765,53 +756,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   </div>}
   {selected!=='FLOOR'&&<LegPreviewInspector value={legTuning}
    onChange={updateLegTuning} trackingReady={cameraOn&&bodySelected&&identitySafe&&floorReady}/>}
-  {selected==='FLOOR'&&footprint&&updateFootprint&&<MappingStudioFootprintControls value={footprint} onChange={updateFootprint}/>}
+  
   <div className="cp04-inspector-tabs" role="group" aria-label="Jenis pengaturan">
    {(['scene','layer','object'] as const).map(tab=><button type="button" key={tab}
     aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>
-    {tab==='scene'?'Scene':tab==='layer'?'Layer':'Objek'}</button>)}
+    {tab==='scene'?'Sumber':tab==='layer'?'Layer':'Objek'}</button>)}
   </div>
   {inspectorTab!=='scene'&&<div className="cp04-current-layer" role="status">
    <strong>{selected} / {layer?.name??'Tidak ada layer'}</strong>
    <span>{COMPOSE_SOURCE_CHOICES.find(o=>o.id===layer?.mediaId)?.label??media.find(m=>m.id===layer?.mediaId)?.name??(composerSourceKind(layer??{mediaId:'',name:''},selected)==='floor'?'Footprints / FLOOR':'Belum ada media')}</span>
   </div>}
- {inspectorTab==='scene'&&<label className="cp04-scene-select">Scene aktif
-  <select value={sceneId} onChange={e=>{
-   onSceneChange?.(e.target.value as 'footprints'|FloorSceneId);
-   setSelected('FLOOR');setSelectedLayer(0);
-  }} aria-label="Scene aktif pada FLOOR">
-   {COMPOSE_SCENES.map(scene=><option value={scene.id} key={scene.id}>{scene.name}</option>)}
-  </select>
- </label>}
- {inspectorTab==='scene'&&<details className="soma-ia-hydra" open>
-  <summary>Hydra · {hydraSettings?.enabled?hydraStatus??'loading':'OFF'}</summary>
-  {activeFlagshipForSettings(hydraSettings)&&hydraSettings?
-   <FlagshipInspector id={activeFlagshipForSettings(hydraSettings)!} value={hydraSettings}
-    status={hydraStatus} onChange={onHydraSettingsChange}/>:
-   <HydraEffectInspector value={hydraSettings} status={hydraStatus} onChange={onHydraSettingsChange}/>}
-  {hydraSettings?.style==='flow'&&hydraSettings.artwork==='negative-memory'&&
-   !hydraSettings.catalogVisual&&<div className="fv03-archive-source">
-    <label>RIFT · Archive texture source
-     <select aria-label="RIFT archive source" value={riftSourceId} onChange={e=>{
-      setRiftSourceId(e.currentTarget.value);
-      onArchiveHydraChangeRef.current?.(false);archiveReadyRef.current=false;
-     }}>
-      <option value="@stage:input">Track MP4 / video input</option>
-      {media.filter(asset=>asset.origin==='import').map(asset=>
-       <option key={asset.id} value={asset.id}>{asset.name}</option>)}
-     </select>
-    </label>
-    <label className="visr4-archive-row">
-     <input type="checkbox" checked={archiveHydra} onChange={e=>{
-      setArchiveHydra(e.currentTarget.checked);
-      if(!e.currentTarget.checked)onArchiveHydraChangeRef.current?.(false);
-     }}/> Enable RIFT archive displacement
-    </label>
-    <small role="status">{riftReady?
-     'Arsip aktif · Contact, Slide, Pivot mengubah UV secara lokal':
-     'Pilih MP4 Track atau gambar/video dari Media. Jalankan video dan aktifkan RIFT.'}</small>
-   </div>}
- </details>}
  {inspectorTab==='object'&&<details className="uxr3-advanced" open>
   <summary>Object · transform &amp; mask</summary>
   <label>Object name<input type="text" maxLength={90} value={layer?.name??''}
@@ -829,7 +783,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <option value="">No source / empty</option>
    {COMPOSE_SOURCE_CHOICES.filter(source=>source.id!==SHARED_TRACK_MP4_ID||!media.some(m=>m.id===SHARED_TRACK_MP4_ID)).map(source=>
     <option key={source.id} value={source.id}>{source.label}</option>)}
-   {ARTISTIC_CATALOG.map(recipe=><option key={recipe.id} value={sceneSourceId(recipe.id)}>{recipe.title} / Scene</option>)}
+   
    {sharedAssetChoices(media).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
   </select></label>
   <label>Opacity · {layer?.opacity??100}%
