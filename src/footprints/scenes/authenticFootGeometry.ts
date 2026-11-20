@@ -9,10 +9,12 @@ export const FOOT_LENGTH_M=0.26;
 export const FOOT_WIDTH_M=0.095;
 /** Closed outer perimeter, from medial ball along toes to lateral heel. */
 export const RIGHT_SOLE:readonly SolePoint[]=[
- [-.37,-.53],[-.45,-.35],[-.45,-.10],[-.37,.10],[-.30,.26],
- [-.34,.48],[-.33,.70],[-.25,.90],[-.09,.99],[.11,.98],
- [.27,.87],[.34,.66],[.33,.43],[.27,.23],[.34,.04],
- [.43,-.16],[.44,-.38],[.34,-.54],[.13,-.64],[-.10,-.65]
+ // Wide forefoot, a genuine medial arch cut-in, narrow heel and five toes.
+ [-.36,-.53],[-.43,-.39],[-.47,-.20],[-.44,-.09],[-.30,.05],
+ [-.12,.22],[-.11,.36],[-.25,.52],[-.29,.68],[-.22,.90],
+ [-.07,.99],[.13,.97],[.28,.86],[.33,.64],[.33,.45],
+ [.35,.20],[.41,-.01],[.46,-.20],[.43,-.40],[.32,-.54],
+ [.15,-.61],[-.07,-.63]
 ];
 export type Toe={x:number;y:number;rx:number;ry:number;angle:number};
 export const RIGHT_TOES:readonly Toe[]=[
