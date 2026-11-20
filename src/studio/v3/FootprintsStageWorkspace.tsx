@@ -1046,7 +1046,7 @@ export function FootprintsStageWorkspace({
       {sourceStatus.selection==='phone'&&phoneActive&&<button type="button" className="soma-track-side-action"
        onClick={onRotatePhone} title="Putar isi gambar kamera HP, keluaran tetap horizontal 16:9">
        Putar gambar 90°
-      </button>
+      </button>}
       {sourceStatus.selection==='phone'&&phoneActive&&<button type="button" className="soma-track-side-action"
        onClick={onMirrorCamera} title="Cerminkan isi gambar kamera; Map perlu diperiksa ulang">
        Cerminkan gambar
