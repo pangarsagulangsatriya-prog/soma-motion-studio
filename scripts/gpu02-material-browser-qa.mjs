@@ -33,7 +33,7 @@ try{
  await page.goto(url,{waitUntil:'networkidle'});
  await page.locator('#gpu02-stage').waitFor({state:'visible'});
  const cases=[
-  ['one',1,10450],['two',2,10450],['six',6,10450],
+  ['one',1,10390],['two',2,10450],['six',6,10450],
   ['slide',1,10390],['pivot',1,10390],['release',1,10390],
   ['idle',0,10450],['crossing',4,10450]
  ];
