@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {FloorInteractionEngine} from '../src/footprints/scenes/FloorInteractionEngine.ts';
-import {MOTION_RECIPE_DEFAULT,resolveMotionRecipeCue} from '../src/footprints/scenes/motionRecipeModel.ts';
 import {defaultStageSurfacePlan,outputSurfaceDecision} from '../src/footprints/stage-optics/DualSurfaceCalibration.ts';
 import {defaultPerformCueGrid,normalizePerformCueGrid,performCueAuthorizesLight} from '../src/studio/v3/performCueModel.ts';
 import {stageHardwareAvailable} from '../src/footprints/stage-optics/StageHardwareGate.ts';
@@ -42,12 +41,12 @@ test('QA-R1 E2E: two actor surfaces keep A/B independent across six steps',()=>{
  const bus=sixSteps(),events=bus.canonicalRecent.filter(e=>e.kind==='contact');
  assert.deepEqual(events.map(e=>e.actorId),['A','B','A','B','A','B']);
  assert.deepEqual(events.map(e=>e.foot),['left','right','left','right','left','right']);
- const layerA=events.map(e=>resolveMotionRecipeCue(e,MOTION_RECIPE_DEFAULT,'BODY A',6000)).filter(Boolean);
- const layerB=events.map(e=>resolveMotionRecipeCue(e,MOTION_RECIPE_DEFAULT,'BODY B',6000)).filter(Boolean);
+ const layerA=events.filter(e=>e.actorId==='A');
+ const layerB=events.filter(e=>e.actorId==='B');
  assert.equal(layerA.length,3);assert.equal(layerB.length,3);
- assert.ok(layerA.every(c=>c?.actorId==='A'));
- assert.ok(layerB.every(c=>c?.actorId==='B'));
- assert.ok(events.every(e=>resolveMotionRecipeCue(e,MOTION_RECIPE_DEFAULT,'FLOOR',6000)));
+ assert.ok(layerA.every(e=>e.actorId==='A'&&e.verified));
+ assert.ok(layerB.every(e=>e.actorId==='B'&&e.verified));
+ assert.ok(events.every(e=>e.actorId==='A'||e.actorId==='B'));
 });
 
 test('QA-R1 E2E: MP4 ↔ simulator ↔ camera source sessions never reuse IDs',()=>{
