@@ -26,8 +26,17 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
  useEffect(()=>setSurface(cueToFinalSurface(cueView)),[cueView,cueIndex]);
  useEffect(()=>{
   const sync=()=>setFull(document.fullscreenElement===viewport.current);
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key!=='Escape'||document.fullscreenElement!==viewport.current)return;
+   event.preventDefault();
+   void document.exitFullscreen().catch(()=>setFullscreenError('Gagal keluar dari fullscreen.'));
+  };
   document.addEventListener('fullscreenchange',sync);
-  return()=>document.removeEventListener('fullscreenchange',sync);
+  document.addEventListener('keydown',onEscape,true);
+  return()=>{
+   document.removeEventListener('fullscreenchange',sync);
+   document.removeEventListener('keydown',onEscape,true);
+  };
  },[]);
  const fullscreen=()=>{
   const target=viewport.current;if(!target)return;
