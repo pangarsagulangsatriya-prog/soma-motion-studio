@@ -777,6 +777,8 @@ export function MapStageMonitor({
     {simState.active&&!hasLiveSource&&<span className="map-r2-sim-tag">SIMULASI</span>}
    </div>
    <div className="map-r2-monitor-tools">
+    <details className="map-r5-pattern-options">
+     <summary>Pola · {pattern==='grid'?'Grid '+String(gridStepM).replace('.',',')+' m':pattern==='crosshair'?'Cross':pattern==='diagonal'?'Diagonal':'Off'}</summary>
     {(view==='stage'||view==='split'||view==='align')&&
      <div className="map-r2-seg-mini" role="group" aria-label="Pola bantu kalibrasi">
       {([['grid','Grid'],['crosshair','Cross'],['diagonal','Diag'],['off','Off']] as const).map(([id,lbl])=>
@@ -788,6 +790,7 @@ export function MapStageMonitor({
       {m===1?'1 m':m===0.5?'0,5 m':'0,25 m'}
      </button>)}
     </div>}
+    </details>
     {!hasLiveSource&&(
      simState.active
       ?<>
@@ -828,11 +831,17 @@ export function MapStageMonitor({
     {([
      ['stage','Panggung'],
      ['align','Kamera + Panggung'],
-     ['camera','Kamera'],
-     ['output','Hasil Proyektor'],
-     ['split','Split']
+     ['output','Hasil Proyektor']
     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
      onClick={()=>onChangeView(id)}>{label}</button>)}
+    <details className="map-r5-other-views">
+     <summary>{view==='camera'?'Kamera':view==='split'?'Split':'Lainnya'}</summary>
+     {([
+      ['camera','Kamera'],
+      ['split','Split']
+     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
+      onClick={()=>onChangeView(id)}>{label}</button>)}
+    </details>
    </div>
    <span className="map-r2-parity-note">
     {connected?'Transformasi sama dengan jendela output':'Pratinjau perkiraan software · uji fisik diperlukan'}
