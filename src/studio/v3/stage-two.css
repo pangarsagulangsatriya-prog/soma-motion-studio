@@ -7,7 +7,7 @@
  min-height:37px;padding:7px 12px;
  border:1px solid #916859;border-radius:7px;
  background:#3b2624;color:#f5d5c7;
- font:650 12px/1.2 inherit;cursor:pointer;
+ font-size:12px;font-weight:650;line-height:1.2;font-family:inherit;cursor:pointer;
 }
 .soma-stage2-app .soma-ia-blackout:hover{background:#59302b;border-color:#c1957f}
 .soma-stage2-app .soma-stage2-workspace{
