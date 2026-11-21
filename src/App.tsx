@@ -55,6 +55,11 @@ import './studio/v3/mapping-studio-v4.css';
 
 type Preset={id:string;name:string;settings:Settings};
 const KEY='soma-presets-v1';
+const initialStageTwoSettings=():Settings=>{
+ const base=defaults();
+ return {...base,input:'mouse',mappings:defaultMappings(base.mode,'mouse'),
+  visual:{...base.visual,mappings:defaultVisualMappings('mouse')}};
+};
 const clock=(n:number)=>`${Math.floor(n/60).toString().padStart(2,'0')}:${Math.floor(n%60).toString().padStart(2,'0')}`;
 const noteName=(hz:number)=>{const n=Math.round(69+12*Math.log2(hz/440));return ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'][((n%12)+12)%12]+(Math.floor(n/12)-1);};
 const STARTERS=[
@@ -100,7 +105,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const multiPoseRouter=useRef(new MultiPoseGaitRouter(liveFloorEngine)).current;
  const updateFootprint=(patch:Partial<FootprintConfig>)=>setFootprintConfig(c=>({...c,...patch}));
  useEffect(()=>{try{localStorage.setItem('soma-footprint-visual-v1',JSON.stringify({...footprintConfig,hold:false}));}catch{}},[footprintConfig]);
- const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem(stageTwo?'soma-stage-two-session-v1':'soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):defaults();}catch{return defaults();}});
+ const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem(stageTwo?'soma-stage-two-session-v1':'soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):(stageTwo?initialStageTwoSettings():defaults());}catch{return stageTwo?initialStageTwoSettings():defaults();}});
  useEffect(()=>{const timer=setTimeout(()=>{try{localStorage.setItem(stageTwo?'soma-stage-two-session-v1':'soma-studio-session-v3',JSON.stringify({version:2,settings}));}catch{}},300);return()=>clearTimeout(timer);},[settings,stageTwo]);const sr=useRef(settings);sr.current=settings;
  const [source,setSource]=useState<'camera'|'mouse'>(settings.input==='mouse'?'mouse':'camera');const sourceRef=useRef(source);sourceRef.current=source;
  const [cameraOn,setCameraOn]=useState(false),[cameraBusy,setCameraBusy]=useState(false),[status,setStatus]=useState('Kamera belum aktif'),[cameraError,setCameraError]=useState('');
