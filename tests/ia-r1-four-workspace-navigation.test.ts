@@ -3,19 +3,20 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
-test('IA-R1: one global Stage 1 module owns four local workspaces',()=>{
+test('IA-R1: Stage 1 owns four local workspaces beside isolated Stage 2',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
  const local=read('../src/studio/v3/StageModuleNav.tsx');
  const global=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
   nav.indexOf('className="soma-primary-labs-launch"'));
- assert.equal((global.match(/soma-primary-destination/g)||[]).length,1);
+ assert.equal((global.match(/soma-primary-destination/g)||[]).length,2);
  assert.match(global,/aria-label="Stage 1"/);
+ assert.match(global,/aria-label="Stage 2"/);
  for(const name of ['Track','Compose','Map','Perform'])
   assert.match(local,new RegExp("id:'"+name.toLowerCase()+"'"));
  assert.match(local,/aria-label="Stage 1 — workspace"/);
  assert.match(local,/onNavigate\(item.id\)/);
  assert.match(nav,/stageModuleActive&&<div className="soma-uxr1-health"/);
- assert.match(nav,/aria-label="Tools · SOMA Labs"/);
+ assert.match(nav,/aria-label="Instrumen Stage 2"/);
 });
 
 test('IA-R1: each local destination routes into the one Stage session',()=>{
