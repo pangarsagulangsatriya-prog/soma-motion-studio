@@ -60,6 +60,18 @@ test('MAP-R1: hardware QA remains independent for BODY/FLOOR and requires five p
  assert.match(panel,/noUnsafeSpill/);
  assert.match(panel,/assessment\(id\)\.status!=='within-provisional-target'/);
 });
+test('MAP-R6: Map stays focused on calibration and physical QA; LIVE handoff belongs to Perform',()=>{
+ const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
+ const css=source('../src/footprints/stage-optics/dual-surface-routing.css');
+ assert.match(panel,/<summary><SlidersHorizontal size=\{12\}\/> Teknis &amp; diagnostik<\/summary>/);
+ assert.doesNotMatch(panel,/Grid homografi 3 × 3/);
+ assert.doesNotMatch(panel,/className="map-r2-live-btn"/);
+ assert.doesNotMatch(panel,/changeMode\(id,'live'\)/);
+ assert.match(panel,/QA Fisik 5 Titik/);
+ assert.match(panel,/samples\.length<5/);
+ assert.match(panel,/Lanjutkan pengaturan LIVE di Perform/);
+ assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+});
 test('MAP-R1: Stage Map uses existing BODY/FLOOR compositor and routing; no extra camera',()=>{
  const composer=source('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(composer,/if\(mapMode\)return <section className="map-r1-workspace"/);
