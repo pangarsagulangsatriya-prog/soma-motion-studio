@@ -62,7 +62,10 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
     ctx.fillStyle='#000';ctx.fillRect(0,0,main.width,main.height);
     const paint=(canvas:HTMLCanvasElement|null,x:number,w:number)=>{
      if(!canvas||canvas.width<16||canvas.height<16)return;
-     try{ctx.drawImage(canvas,x,0,w,main.height);}catch{ /* source switching */ }
+     const scale=Math.min(w/canvas.width,main.height/canvas.height);
+     const dw=canvas.width*scale,dh=canvas.height*scale;
+     try{ctx.drawImage(canvas,x+(w-dw)/2,(main.height-dh)/2,dw,dh);}
+     catch{ /* source switching */ }
     };
     if(sourceReady){
      if(surface==='split'){
@@ -89,7 +92,7 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
  return <section className="pf-final" aria-label="Perform Final Preview">
   <header className="pf-final-top">
    <div className="pf-final-title"><strong>Final Preview</strong>
-    <span>{sourceReady?mapReady?'Visual Compose · Map siap':'Visual Compose · Map perlu QA':'Menunggu sumber Track'}</span>
+    <span>{sourceReady?mapReady?'Visual Compose · QA Map lengkap':'Visual Compose · QA Map diperlukan':'Menunggu sumber Track'}</span>
    </div>
    <div className="pf-final-tools">
     <div className="pf-final-tabs" role="group" aria-label="Pilih visual final">
