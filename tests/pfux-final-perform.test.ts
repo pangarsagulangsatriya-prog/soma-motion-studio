@@ -115,5 +115,5 @@ test('PF-UX: a feed needs explicit opening, a fresh source and a live raster; no
  const src=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
  assert.match(src,/outputMode\[id\]==='resolume'/);
  assert.match(src,/feedEnabled\[id\]=false/);
- assert.match(src,/link\.sendArtwork\(stageSurfaceState\(plan,mode==='feed'/);
+ assert.match(src,/cleanFeedSurfaceState\(plan\)/);
 });
