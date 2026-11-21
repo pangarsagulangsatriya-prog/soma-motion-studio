@@ -1,6 +1,8 @@
 /** Ephemeral distributed pairing state, backed by Redis EVAL (atomic transitions).
  * Redis keys expire automatically; no local instance state or stored video frames.
  */
+// The API function runs in Node; Vercel checks this file without @types/node.
+declare const process:{env:Record<string,string|undefined>};
 // Standalone server constants: Vercel's Node.js Function bundle does not include
 // relative .ts imports from src/. Keep values aligned with PhonePairProtocol.ts.
 const PHONE_PAIR_MAX_SDP=90_000;
