@@ -61,7 +61,7 @@ test('PF-UX-04: changing route always orders blackout and never silently opens o
  assert.match(console,/window.dispatchEvent\(new Event\('soma:td-blackout'\)\)/);
  assert.doesNotMatch(console,/getDualSurfaceFeedUrl/);
  assert.match(console,/closeDualSurfaceOutputWindow\('floor'\)/);
- assert.match(console,/PRIMARY_PERFORM_DESTINATIONS\\.map/);
+ assert.ok(console.includes('PRIMARY_PERFORM_DESTINATIONS.map('));
  assert.doesNotMatch(console,/ops-r1-advanced-route/);
  assert.match(console,/ops-r1-route-steps/);
  assert.match(console,/className="ops-r1-bridge-guide"/);
