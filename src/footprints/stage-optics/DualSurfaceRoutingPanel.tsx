@@ -388,7 +388,6 @@ export function DualSurfaceRoutingPanel({
 <div className="soma-map-v2-foot">
  {STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step map-r8-projector-setup">
      <summary className="map-r2-step-head">
-      <span className="map-r2-step-num">3</span>
       <strong>Uji proyektor fisik</strong>
      </summary>
      <label className="stage-dual-check map-r7-safety-check" title="Pastikan cahaya tidak mengenai mata/wajah; operator siap menjalankan Blackout fisik.">
