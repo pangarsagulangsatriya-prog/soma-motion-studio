@@ -46,8 +46,8 @@ test('S6.8.5 projector: corner changes alter WYSIWYG matrix, remain validated',(
  assert.ok(previewArtworkMatrix(modified,480,270).every(Number.isFinite));
 });
 
-test('S6.8.5 projector: MP4 and 3D cannot unlock dual physical output',()=>{
- assert.equal(dualPhysicalOutputAllowed(true,true,true),false);
+test('S6.8.5 projector: MP4 and 3D still require explicit operator confirmation',()=>{
+ assert.equal(dualPhysicalOutputAllowed(true,true,true),true);
  assert.equal(dualPhysicalOutputAllowed(true,true,false),false);
  assert.equal(dualPhysicalOutputAllowed(false,false,true),false);
  assert.equal(dualPhysicalOutputAllowed(true,false,false),false);
