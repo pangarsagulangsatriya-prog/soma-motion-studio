@@ -779,6 +779,7 @@ export function MapStageMonitor({
    <div className="map-r2-monitor-tools">
     <details className="map-r5-pattern-options">
      <summary>Pola · {pattern==='grid'?'Grid '+String(gridStepM).replace('.',',')+' m':pattern==='crosshair'?'Cross':pattern==='diagonal'?'Diagonal':'Off'}</summary>
+     <div className="map-r5-pattern-popover">
     {(view==='stage'||view==='split'||view==='align')&&
      <div className="map-r2-seg-mini" role="group" aria-label="Pola bantu kalibrasi">
       {([['grid','Grid'],['crosshair','Cross'],['diagonal','Diag'],['off','Off']] as const).map(([id,lbl])=>
@@ -790,6 +791,7 @@ export function MapStageMonitor({
       {m===1?'1 m':m===0.5?'0,5 m':'0,25 m'}
      </button>)}
     </div>}
+     </div>
     </details>
     {!hasLiveSource&&(
      simState.active
