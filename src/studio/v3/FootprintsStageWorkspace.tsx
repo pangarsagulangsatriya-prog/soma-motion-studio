@@ -609,10 +609,14 @@ export function FootprintsStageWorkspace({
   source:sourceStatus.selection,
   cameraOk:experimentalKind?Boolean(selectedExperimentFrame&&
     (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):cameraOn&&bodySelected&&frameFresh&&!cameraBusy,
-  identityOk:performerCount===1?!identityStatus.ambiguous:
+  identityOk:experimentalKind?Boolean(selectedExperimentFrame&&
+   (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
+   performerCount===1?!identityStatus.ambiguous:
    identityStatus.visible.length===2&&!identityStatus.ambiguous&&
    identityStatus.observedFrameTime===frameRef.current.time,
-  floorOk:floorStatus.confirmed&&cameraMatched,
+  floorOk:experimentalKind?Boolean(selectedExperimentFrame&&
+   (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
+   floorStatus.confirmed&&cameraMatched,
   bodyOutputQa:dual.body.connected&&dual.body.qa==='within-provisional-target',
   floorOutputQa:dual.floor.connected&&dual.floor.qa==='within-provisional-target'
  });
