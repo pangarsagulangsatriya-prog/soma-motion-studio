@@ -131,7 +131,7 @@ test('CAM-UI-02: help control stays outside two-route HP tabs',async()=>{
  assert.match(phone,/<Cable size=\{15\}/);
  assert.match(phone,/<QrCode size=\{15\}/);
  assert.match(phone,/<KeyRound size=\{14\}/);
- assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
+ assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
  const cameraCss=get('../src/studio/v3/trk06-control-polish.css');
  assert.match(cameraCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\) 37px!important/);

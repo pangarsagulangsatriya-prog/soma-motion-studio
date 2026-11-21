@@ -1,6 +1,7 @@
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App';
+import {StageTwoApp} from './studio/v3/StageTwoApp.tsx';
 import './style.css';
 import './v2.css';
 import './archive/archive.css';
@@ -14,4 +15,5 @@ const bodyProjection=query.get('bodyProjection');
 const stageSurface=new URLSearchParams(location.search).get('stageSurface');
 const role=stageSurface==='body'||stageSurface==='floor'?stageSurface:undefined;
 const projection=new URLSearchParams(location.search).get('projection');
-createRoot(document.getElementById('root')!).render(<React.StrictMode>{phoneCamera?<PhoneCameraSender/>:bodyProjection?<ProjectionOutput session={bodyProjection} surface={role}/>:projection?<ProjectionScreen sessionId={projection}/>:<StageSessionProvider><App/></StageSessionProvider>}</React.StrictMode>);
+const stageTwo=query.get('stage')==='2';
+createRoot(document.getElementById('root')!).render(<React.StrictMode>{phoneCamera?<PhoneCameraSender/>:bodyProjection?<ProjectionOutput session={bodyProjection} surface={role}/>:projection?<ProjectionScreen sessionId={projection}/>:stageTwo?<StageTwoApp/>:<StageSessionProvider><App/></StageSessionProvider>}</React.StrictMode>);

@@ -1,0 +1,47 @@
+name: Stage 2 Release Smoke
+on:
+  pull_request:
+    paths:
+      - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/studio/v3/StageTwo*.tsx'
+      - 'src/studio/v3/GlobalNav.tsx'
+      - 'src/studio/v3/labsCatalog.ts'
+      - 'src/studio/v3/stage-two.css'
+      - 'e2e/tools-secondary-sidebar.spec.mjs'
+      - '.github/workflows/stage-two-release.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/studio/v3/StageTwo*.tsx'
+      - 'src/studio/v3/GlobalNav.tsx'
+      - 'src/studio/v3/labsCatalog.ts'
+      - 'src/studio/v3/stage-two.css'
+      - 'e2e/tools-secondary-sidebar.spec.mjs'
+      - '.github/workflows/stage-two-release.yml'
+permissions:
+  contents: read
+jobs:
+  stage-two:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Test Stage 1 and Stage 2 interaction on desktop and mobile
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 tools-secondary-sidebar.spec.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-two-smoke-failure
+          path: e2e/test-results/
+          if-no-files-found: ignore
