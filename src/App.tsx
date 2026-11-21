@@ -376,6 +376,9 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   projection.setTransport('blackout');setLiveFloorOpen(true);
  }
  function selectScene(scene:SceneId){
+  // Keep Stage 1 Footprints and Stage 2 legacy scenes on separate routes.
+  if(stageTwo&&scene==='footprints')return;
+  if(!stageTwo&&scene!=='footprints')return;
   setFootprintsOperator(false);
   if(scene==='footprints'){
    const alreadyActive=footprintsActive;
@@ -465,7 +468,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   mouse.current.shift=e.shiftKey;if(e.code==='KeyP')mouse.current.keyPinch=e.type==='keydown';
   if(e.type==='keydown'&&!e.repeat){if(e.code==='Space'){e.preventDefault();panic();return;}
    if(e.code==='Escape'&&controlsOpen){setControlsOpen(false);return;}if(document.querySelector('dialog[open]'))return;if(e.code==='Escape'&&cameraCue.frame.open){cameraCue.close();return;}
-   if(e.code==='KeyC'){setClean(v=>!v);setControlsOpen(false);}if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')toggleTracking();if(!e.ctrlKey&&!e.metaKey&&!e.altKey){const i=Number(e.key)-1;if(Number.isInteger(i)&&i>=0&&i<LIVE_MODES.length){setFootprintsActive(false);update(switchLiveMode(sr.current,LIVE_MODES[i][0]));revealHUD();}if(e.code==='Digit5'){selectScene('footprints');revealHUD();}if(e.code==='KeyR'){if(footprintsActive)footprintRef.current?.clearView();else {const h={...hydraDefaults(),...sr.current.hydra};update({hydra:{...h,reset:h.reset+1}});}revealHUD();}}if(e.key==='?')setModal('help');}
+   if(e.code==='KeyC'){setClean(v=>!v);setControlsOpen(false);}if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')toggleTracking();if(!e.ctrlKey&&!e.metaKey&&!e.altKey){const i=Number(e.key)-1;if(stageTwo&&Number.isInteger(i)&&i>=0&&i<LIVE_MODES.length){setFootprintsActive(false);update(switchLiveMode(sr.current,LIVE_MODES[i][0]));revealHUD();}if(e.code==='Digit5'){selectScene('footprints');revealHUD();}if(e.code==='KeyR'){if(footprintsActive)footprintRef.current?.clearView();else {const h={...hydraDefaults(),...sr.current.hydra};update({hydra:{...h,reset:h.reset+1}});}revealHUD();}}if(e.key==='?')setModal('help');}
  };const blur=()=>{mouse.current.down=false;mouse.current.shift=false;mouse.current.keyPinch=false;if(!archiveActive&&!projection.opened){engine.mute();setMuted(true);}};const visibility=()=>{if(document.hidden){blur();if(archiveActive){archive.hold();engine.mute();setMuted(true);}}};document.addEventListener('keydown',handle);document.addEventListener('keyup',handle);window.addEventListener('blur',blur);document.addEventListener('visibilitychange',visibility);return()=>{document.removeEventListener('keydown',handle);document.removeEventListener('keyup',handle);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);};});
  function pointer(e:React.PointerEvent<HTMLDivElement>){const r=e.currentTarget.getBoundingClientRect();mouse.current.x=clamp((e.clientX-r.left)/r.width);mouse.current.y=clamp(1-(e.clientY-r.top)/r.height);}
  const current=MODES.find(m=>m.id===settings.mode)!;const sounding=audioOn&&!muted&&level>.002;const hz=engine.params.frequency;const db=level>.0001?`${Math.max(-96,20*Math.log10(level)).toFixed(0)}`:'−∞';
