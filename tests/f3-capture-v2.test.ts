@@ -4,6 +4,8 @@ import {F3PunchEngine} from '../src/f3/F3PunchEngine.ts';
 import {F3FramingController,f3Crop} from '../src/f3/F3FramingController.ts';
 import {F3SessionMachine} from '../src/f3/F3SessionMachine.ts';
 import {F3CameraRegistry} from '../src/f3/F3CameraRegistry.ts';
+import {F3PhotoStore} from '../src/f3/F3PhotoStore.ts';
+import {drawF3Stage,makeF3StageFrame} from '../src/f3/F3StageRenderer.ts';
 import type {F3MotionFrame,F3Landmark} from '../src/f3/F3Types.ts';
 const point=(x:number,y:number):F3Landmark=>({x,y,z:0,visibility:1});
 function hand(x:number,y:number,fist=true,pinch=false):F3Landmark[]{
@@ -82,4 +84,42 @@ test('F3 role registry never silently swaps A and B or approves stale/duplicated
  assert.equal(r.bothReady(1000),false);
  assert.equal(r.status('A').role,'A');assert.equal(r.status('B').role,'B');
  assert.notEqual(r.status('A'),r.status('B'));
+});
+
+test('F3 preview and saved JPEG draw exactly the same source B crop; no A substitution',async()=>{
+ const crop={x:130,y:40,width:640,height:470};
+ const videoB={readyState:4,videoWidth:1280,videoHeight:720,srcObject:null} as HTMLVideoElement;
+ const calls:unknown[][]=[];
+ const ctx={
+  canvas:{width:1600,height:800},
+  save(){},restore(){},fillRect(){},strokeRect(){},beginPath(){},arc(){},fill(){},stroke(){},
+  fillText(){},moveTo(){},lineTo(){},
+  drawImage(...args:unknown[]){calls.push(args);}
+ } as unknown as CanvasRenderingContext2D;
+ const frame=makeF3StageFrame({sourceId:'B-fixture',frameId:7,timestamp:345,crop,slots:[null,null,null,null],state:'LIVE'});
+ drawF3Stage(ctx,frame,videoB);
+ const previewCall=calls.find(c=>c[0]===videoB);
+ assert.ok(previewCall);
+ assert.deepEqual(previewCall!.slice(1,5),[crop.x,crop.y,crop.width,crop.height]);
+ let captureCall:unknown[]=[];
+ const original=globalThis.document;
+ globalThis.document={
+  createElement(name:string){
+   assert.equal(name,'canvas');
+   return {width:0,height:0,
+    getContext(){return {drawImage(...args:unknown[]){captureCall=args;}};},
+    toBlob(cb:(b:Blob)=>void){cb(new Blob(['F3 pixel B'],{type:'image/jpeg'}));}
+   };
+  }
+ } as unknown as Document;
+ const store=new F3PhotoStore();
+ try{
+  const photo=await store.capture({video:videoB,crop,cameraId:'B-fixture',frameId:7,sourceTimestamp:345,
+   preset:'manual',consent:true,eventId:'B-fixture-event-1',fresh:true});
+  assert.equal(photo.cameraId,'B-fixture');
+  assert.equal(photo.frameId,7);
+  assert.deepEqual(captureCall.slice(1,5),previewCall!.slice(1,5));
+  await assert.rejects(store.capture({video:videoB,crop,cameraId:'B-fixture',frameId:7,sourceTimestamp:345,
+   preset:'manual',consent:true,eventId:'B-fixture-event-1',fresh:true}),/Satu gerakan/);
+ }finally{globalThis.document=original;store.revokeAll();}
 });
