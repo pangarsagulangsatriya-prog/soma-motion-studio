@@ -130,6 +130,19 @@ export function stageSurfaceState(plan:StageSurfacePlan,mode:'blackout'|'test'|'
   reason:live?(mode==='test'?'Optical target (manual)': 'Stage output (manual armed)'):
    'Stage surface locked in blackout',opacity:1,image:null};
 }
+/** Normalized 16:9 artwork for Resolume / OBS capture.
+ * Keeps physical projector warp and brightness out of the clean signal. */
+export function cleanFeedSurfaceState(plan:StageSurfacePlan):ProjectionState{
+ const p=validateStageSurfacePlan(plan),defaults=projectionDefaults();
+ return {
+  ...stageSurfaceState(p,'live',true),
+  config:{...defaults,mode:'screen',mirror:false,brightness:1,
+   resolution:p.resolution,quad:identityQuad(),
+   registration:{...defaults.registration,enabled:false}
+  },
+  reason:'Clean Feed software capture · physical mapping handled downstream'
+ };
+}
 export function outputSurfaceDecision(args:{
  plan:StageSurfacePlan;signature:string|null;proof:SurfaceProof|null;
  requested:'blackout'|'test'|'live';connected:boolean;cameraSafe:boolean;
