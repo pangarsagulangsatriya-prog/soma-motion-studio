@@ -214,7 +214,7 @@ test('MAP-R7: compact Map keeps one Perform handoff and a readable primary monit
  assert.match(panel,/map-r7-qa-count/);
  assert.match(panel,/urgentBlackout\(id\)/);
  assert.match(panel,/stage-dual-check map-r7-safety-check/);
- assert.match(panel,/STAGE_HARDWARE_ENABLED&&<section className="map-r2-step map-r7-qa-step"/);
+ assert.match(panel,/STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step/);
  assert.doesNotMatch(panel,/stage-dual-setup-uat|stage-dual-profile|map-r2-nudge-pad/);
  assert.doesNotMatch(panel,/stage-dual-emergency map-r2-blackout/);
  assert.doesNotMatch(panel,/className="map-r5-next-action"/);
