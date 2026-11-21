@@ -1016,7 +1016,7 @@ export function FootprintsStageWorkspace({
      sourceReady={experimentalKind?Boolean(selectedExperimentFrame&&
       (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
       cameraOn&&sourceStatus.phase==='ready'}
-     mapReady={floorStatus.confirmed&&cameraMatched}
+     mapReady={dual.floor.qa==='within-provisional-target'&&dual.body.qa==='within-provisional-target'}
      skeletonVisible={skeletonVisible} onSkeletonChange={setSkeletonVisible}
      cueView={performGrid.slots[activePerformSlot]?.view??'floor'}
      cueIndex={activePerformSlot}/>}
