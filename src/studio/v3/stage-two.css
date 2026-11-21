@@ -1,39 +1,52 @@
-/* Stage 2 deliberately has no Stage 1 capture, scene library, or settings. */
-.soma-stage2-app .soma-primary-sidebar .soma-primary-nav-list{
- gap:5px;
+/* Stage 2 reuses SOMA's instrument renderer; only navigation is new. */
+.soma-stage2-app .soma-stage2-instruments{
+ display:flex;flex-direction:column;gap:12px;
+ max-width:1550px;margin:0 auto 14px;padding:16px 17px 12px;
+ border:1px solid #344b3a;border-radius:10px;background:#152119;
 }
-.soma-stage2-app .soma-ia-blackout{
- display:inline-flex;align-items:center;justify-content:center;gap:7px;
- min-height:37px;padding:7px 12px;
- border:1px solid #916859;border-radius:7px;
- background:#3b2624;color:#f5d5c7;
- font-size:12px;font-weight:650;line-height:1.2;font-family:inherit;cursor:pointer;
+.soma-stage2-app .soma-stage2-instruments-head{
+ display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
 }
-.soma-stage2-app .soma-ia-blackout:hover{background:#59302b;border-color:#c1957f}
-.soma-stage2-app .soma-stage2-workspace{
- display:flex;flex-direction:column;
- min-height:calc(100dvh - 110px);max-width:1320px;margin:0 auto;
- border:1px solid #293d30;border-radius:10px;background:#101813;
- overflow:hidden;
+.soma-stage2-app .soma-stage2-eyebrow{
+ font:650 10px/1.4 ui-monospace,monospace;letter-spacing:.13em;color:#9db5a1;
 }
-.soma-stage2-app .soma-stage2-topline{
- display:flex;align-items:center;justify-content:space-between;
- gap:10px;padding:14px 17px;
- border-bottom:1px solid #293d30;color:#a7baaa;
- font:600 10px/1.3 ui-monospace,monospace;letter-spacing:.12em;
+.soma-stage2-app .soma-stage2-instruments-head h1{
+ margin:4px 0 0;font-size:20px;line-height:1.3;
+ font-weight:650;letter-spacing:-.02em;color:#eff3e9;
 }
-.soma-stage2-app .soma-stage2-empty{
- flex:1;min-height:360px;
- display:flex;flex-direction:column;align-items:center;justify-content:center;
- gap:12px;padding:32px 20px;text-align:center;color:#a8bca8;
+.soma-stage2-app .soma-stage2-instruments-counter{
+ flex:0 0 auto;white-space:nowrap;font-size:11px;color:#9eb49f;
 }
-.soma-stage2-app .soma-stage2-empty h1{
- margin:2px 0 0;color:#e7f0e4;font-size:30px;font-weight:600;letter-spacing:-.035em;
+.soma-stage2-app .soma-stage2-instrument-tabs{
+ display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;
+ scrollbar-width:thin;scrollbar-color:#53725a transparent;
+ padding:2px 2px 5px;overscroll-behavior-x:contain;
 }
-.soma-stage2-app .soma-stage2-empty p{margin:0;font-size:13px;color:#91a793}
+.soma-stage2-app .soma-stage2-instrument-tab{
+ display:inline-flex;justify-content:center;align-items:center;
+ flex:0 0 auto;min-height:35px;padding:7px 12px;
+ border:1px solid #334d3a;border-radius:7px;
+ background:#1b2c21;color:#b3c8b6;
+ font-size:12px;font-weight:600;line-height:1.2;font-family:inherit;cursor:pointer;
+ transition:background .16s ease,color .16s ease,border-color .16s ease;
+}
+.soma-stage2-app .soma-stage2-instrument-tab:hover{
+ background:#2a4230;color:#f1f6eb;border-color:#617c65;
+}
+.soma-stage2-app .soma-stage2-instrument-tab[aria-current=page]{
+ background:#344e35;color:#eaf4d8;border-color:#b6d39a;
+}
+.soma-stage2-app .soma-stage2-instrument-tab:focus-visible{
+ outline:2px solid #cae0ac;outline-offset:2px;
+}
 @media(max-width:760px){
- .soma-stage2-app .soma-ia-blackout{padding:7px 9px;min-width:37px}
- .soma-stage2-app .soma-ia-blackout span{display:none}
- .soma-stage2-app .soma-stage2-workspace{min-height:calc(100dvh - 91px)}
- .soma-stage2-app .soma-stage2-empty{min-height:300px}
+ .soma-stage2-app .soma-stage2-instruments{
+  margin-bottom:10px;padding:12px 10px 9px;gap:9px;
+ }
+ .soma-stage2-app .soma-stage2-instruments-head h1{font-size:17px}
+ .soma-stage2-app .soma-stage2-instrument-tabs{margin-right:-8px}
+ .soma-stage2-app .soma-stage2-instrument-tab{min-height:40px}
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-stage2-app .soma-stage2-instrument-tab{transition:none}
 }
