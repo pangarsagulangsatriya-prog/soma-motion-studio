@@ -103,7 +103,7 @@ type Props={
  motionSession?:()=>string;
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
- onOpenCameraCalibration?:()=>void;
+ onOpenCameraCalibration?:(size:{widthM:number;depthM:number})=>void;
  onEnterPerform?:()=>void;
 };
 export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenCameraCalibration,onEnterPerform}:Props){
