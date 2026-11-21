@@ -7,6 +7,7 @@ export class F3MotionFusion{
  private loading:Promise<void>|null=null;
  private lastFrame=-1;
  private lastTime=0;
+ private sharedCanvas:HTMLCanvasElement|null=null;
  status:'idle'|'loading'|'ready'|'error'='idle';
  error='';
  async init(){
@@ -31,10 +32,20 @@ export class F3MotionFusion{
   this.lastFrame=frameId;
   const timestamp=Math.max(this.lastTime+1,Math.floor(now));
   this.lastTime=timestamp;
-  const pose=this.pose.detectForVideo(video,timestamp);
-  const hands=this.hand.detectForVideo(video,timestamp);
+  // One frozen decoded A pixel buffer for BOTH models. Never sample the live
+  // video element twice: its media frame may advance between CPU inferences.
+  const width=video.videoWidth,height=video.videoHeight;
+  if(!width||!height)return null;
+  this.sharedCanvas??=document.createElement('canvas');
+  const shared=this.sharedCanvas;
+  if(shared.width!==width||shared.height!==height){shared.width=width;shared.height=height;}
+  const ctx=shared.getContext('2d',{willReadFrequently:true});
+  if(!ctx)return null;
+  ctx.drawImage(video,0,0,width,height);
+  const pose=this.pose.detectForVideo(shared,timestamp);
+  const hands=this.hand.detectForVideo(shared,timestamp);
   return {frameId,timestamp,videoTime:video.currentTime,pose:pose.landmarks[0]??[],hands:hands.landmarks??[],
    confidence:pose.landmarks[0]?.[11]&&hands.landmarks?.length?1:0,fresh:true};
  }
- dispose(){this.pose?.close();this.hand?.close();this.pose=null;this.hand=null;this.loading=null;this.status='idle';this.lastFrame=-1;}
+ dispose(){this.pose?.close();this.hand?.close();this.pose=null;this.hand=null;this.loading=null;this.status='idle';this.lastFrame=-1;this.sharedCanvas=null;}
 }
