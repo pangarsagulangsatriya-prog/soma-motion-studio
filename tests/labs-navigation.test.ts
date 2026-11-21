@@ -16,6 +16,8 @@ test('Labs search matches name, description, and group without hiding an unrelat
  assert.deepEqual(video.flatMap(g=>g.items.map(i=>i.id)),['video']);
  const sound=searchLabs('suara');
  assert.ok(sound.some(g=>g.items.some(i=>i.id==='sound')));
+ const textaire=searchLabs('Textaire');
+ assert.deepEqual(textaire.flatMap(g=>g.items.map(i=>i.id)),['liquid']);
  const named=searchLabs('Siluet');
  assert.deepEqual(named.flatMap(g=>g.items.map(i=>i.id)),['body']);
  const group=searchLabs('Motion');
