@@ -1,6 +1,6 @@
 import {useState,useSyncExternalStore} from 'react';
 import {
- ArrowLeft,ArrowRight,Circle,ExternalLink,MonitorOff,Pause,Play,
+ ArrowLeft,ArrowRight,Circle,ExternalLink,MonitorOff,Pause,Play,Check,
  Settings2,ShieldAlert,Tv,X,Monitor,Clapperboard,Waypoints,Info,ChevronDown
 } from 'lucide-react';
 import {operatorCueAt} from './OperatorStageModel.ts';
@@ -8,7 +8,7 @@ import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
 import {PERFORM_DESTINATIONS,PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
-import {detectResolumeHostPlatform,getResolumeBridgeRecipe,getPerformRouteDescription,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
+import {detectResolumeHostPlatform,getResolumeBridgeRecipe,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
 import type {StageSurface} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import './ops-r1-perform.css';
+import './perform-three-routes.css';
 
 type Props={
  index:number;onPrevious:()=>void;onNext:()=>void;
@@ -73,10 +74,31 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  const isTouchDesigner=outputRouteMode==='touchdesigner';
  const hostPlatform=detectResolumeHostPlatform(typeof navigator==='undefined'?'':navigator.userAgent);
  const bridge=getResolumeBridgeRecipe(hostPlatform);
+ const sourceReady=!!sourceKind&&cameraOk;
  const destination=presentPerformDestination({
-  route:outputRouteMode,primary:summary.primaryAction,
+  route:outputRouteMode,primary:summary.primaryAction,sourceReady,
   floor:summary.floorBadge,body:summary.bodyBadge
  });
+ const feedFrameReady=summary.floorBadge.tone==='feed'||summary.bodyBadge.tone==='feed';
+ const directLive=summary.floorBadge.tone==='live'||summary.bodyBadge.tone==='live';
+ const routeSteps=isResolume?[
+  {label:'Feed SOMA',done:feedFrameReady,detail:'Frame sampai ke jendela feed'},
+  {label:'OBS',done:false,detail:'Tangkap jendela dan kirim melalui '+bridge.transport},
+  {label:'Resolume',done:false,detail:'Pilih sender '+bridge.transport+' pada clip'}
+ ]:[
+  {label:'Track',done:sourceReady&&identityOk,detail:'Sumber gerak siap'},
+  {label:'Map QA',done:floorQaOk||bodyQaOk,detail:'Lulus pemeriksaan fisik'},
+  {label:'LIVE',done:directLive,detail:'Proyektor menerima perintah LIVE'}
+ ];
+ const routePurpose=isTouchDesigner?'Gerak kaki A/B · WebSocket lokal':
+  isResolume?'Visual · lewat OBS '+bridge.transport:'Visual · langsung ke proyektor';
+ const shortStatus=!sourceReady?'Pilih sumber di Track':
+  !identityOk?'Periksa aktor A/B di Track':
+  outputRouteMode==='soma'&&!floorOk?'Periksa kalibrasi Map':
+  isResolume?'Periksa gambar di OBS dan Resolume':
+  destination.kind==='info'?'Periksa pengaturan output':
+  destination.kind==='qa'?'Selesaikan uji 5 titik di Map':
+  destination.kind==='arm'?'QA selesai · konfirmasi LIVE':destination.hint;
  const handleRouteChange=(next:PerformOutputRouteMode)=>{
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
   // Switching destinations cannot silently leave prior output illuminating the stage.
@@ -114,7 +136,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
  const handlePrimaryAction=()=>{
   if(destination.kind==='info'){setOutputDetailsOpen(true);return;}
-  if(isResolume){handleOpenSurface('floor');return;}
+  if(isResolume){
+   if(destination.kind==='setup'){onGoTrack?.();return;}
+   handleOpenSurface('floor');return;
+  }
   const act=summary.primaryAction;
   if(act.kind==='open-output'||act.kind==='monitor-live'){
    handleOpenSurface(act.surface);return;
@@ -155,7 +180,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-output-top">
      <strong>Output</strong>
      <button type="button" className="ops-r1-mini-help" aria-label="Bantuan tujuan output"
-      title="SOMA Direct ke proyektor atau Clean Feed ke Resolume"
+      title="Pilih proyektor SOMA, video Resolume, atau data TouchDesigner"
       aria-expanded={outputDetailsOpen} onClick={()=>setOutputDetailsOpen(value=>!value)}>
       <Info size={15} aria-hidden="true"/>
      </button>
