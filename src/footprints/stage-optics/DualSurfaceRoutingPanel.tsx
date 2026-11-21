@@ -573,7 +573,7 @@ export function DualSurfaceRoutingPanel({
       <strong>Uji proyektor &amp; QA</strong>
      </div>
      <label className="stage-dual-check">
-      <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked} checked={operatorConfirm}
+      <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
        onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
       Area proyeksi aman, bebas sorot mata/wajah, dan operator siap Blackout fisik
      </label>
@@ -584,7 +584,7 @@ export function DualSurfaceRoutingPanel({
       </button>
       {devices[selected].connected&&
        <button type="button" className="map-r2-live-btn"
-        disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||qa.status!=='within-provisional-target'}
+        disabled={!STAGE_HARDWARE_ENABLED||!operatorConfirm||qa.status!=='within-provisional-target'}
         onClick={()=>changeMode(selected,devices[selected].mode==='live'?'blackout':'live')}>
         {devices[selected].mode==='live'?'Hentikan':'LIVE'}
        </button>}
@@ -592,7 +592,7 @@ export function DualSurfaceRoutingPanel({
      {(!STAGE_HARDWARE_ENABLED||experimentLocked)&&
       <p className="map-r2-lock-note">
        {experimentLocked
-        ?'Sumber latihan (MP4/3D): kalibrasi lokal aktif, output fisik terkunci.'
+        ?'MP4/3D: output bisa dibuka setelah konfirmasi operator. LIVE memerlukan QA fisik lima titik.'
         :'Build Production: kalibrasi lokal aktif, output proyektor fisik terkunci.'}
       </p>}
 
@@ -734,7 +734,7 @@ export function DualSurfaceRoutingPanel({
        <div>
         <b>KELUARAN FLOOR</b>
         <small>{!STAGE_HARDWARE_ENABLED?'Build Production: output fisik terkunci.':
-         experimentLocked?'Sumber eksperimen: preview software saja.':
+         experimentLocked?'MP4/3D: buka output lalu selesaikan QA sebelum LIVE.':
          !devices.floor.connected?'Buka output FLOOR dan pindahkan ke layar proyektor (tekan F).':
          assessment('floor').status!=='within-provisional-target'?
           'Lengkapi QA fisik 5 titik di bawah sebelum LIVE.':
@@ -744,7 +744,7 @@ export function DualSurfaceRoutingPanel({
        <div className="stage-dual-quick-actions">
         <button type="button" className="stage-dual-perform-go"
          disabled={devices.floor.mode!=='live'&&
-          (!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||
+          (!STAGE_HARDWARE_ENABLED||!operatorConfirm||
            !devices.floor.connected||assessment('floor').status!=='within-provisional-target')}
          onClick={()=>changeMode('floor',devices.floor.mode==='live'?'blackout':'live')}>
          {devices.floor.mode==='live'?'Hentikan FLOOR':'Aktifkan FLOOR'}
@@ -762,12 +762,12 @@ export function DualSurfaceRoutingPanel({
          </div>
          <p>{s.opened?(s.connected?'Jendela terhubung':'Menunggu jendela output…'):'Jendela belum dibuka'} · QA {a.count}/5</p>
          <div className="stage-dual-buttons">
-          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm||s.connected}
+          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!operatorConfirm||s.connected}
             onClick={()=>open(id)}>{s.opened&&!s.connected?'Pulihkan output':'Buka output'}</button>
           <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
-          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm}
+          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm}
            onClick={()=>changeMode(id,'test')}><Target size={13}/> Pola uji</button>
-          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||experimentLocked||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
+          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
            onClick={()=>changeMode(id,'live')}>LIVE</button>
          </div>
          <small>{s.reason}</small>
