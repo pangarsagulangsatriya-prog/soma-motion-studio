@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PERFORM_DESTINATIONS,presentPerformDestination,routeChangeRequiresBlackout,performCueScope} from '../src/studio/v3/performDestinationModel.ts';
-import {evaluatePerformOutputSummary} from '../src/studio/v3/performOutputModel.ts';
+import {evaluatePerformOutputSummary,deriveSurfaceBadge} from '../src/studio/v3/performOutputModel.ts';
+import {canStreamCleanFeed} from '../src/footprints/stage-optics/DualSurfaceSessionStore.ts';
 import type {SurfaceDeviceState} from '../src/footprints/stage-optics/DualSurfaceSessionStore.ts';
 
 const read=(name:string)=>readFileSync(new URL(name,import.meta.url),'utf8');
@@ -40,9 +41,9 @@ test('PF-UX-04: direct output follows setup -> open -> QA -> explicit arm -> LIV
 });
 test('PF-UX-01: Resolume feed does not masquerade as hardware light authorization',()=>{
  assert.equal(view('resolume',state(false)).state,'Feed belum dibuka');
- assert.equal(view('resolume',state(false,'video','opening')).state,'Jendela feed dibuka');
- assert.equal(view('resolume',state(false,'video','blackout')).state,'Feed terbuka');
- assert.match(view('resolume',state(false,'video','blackout')).hint,/Periksa penerimaan/);
+ assert.equal(view('resolume',state(false,'video','opening')).state,'Menunggu sambungan');
+ assert.equal(view('resolume',state(false,'video','blackout')).state,'Feed Blackout / HOLD');
+ assert.match(view('resolume',state(false,'video','blackout')).hint,/Lanjutkan Visual/);
 });
 test('PF-UX-03: cue changes monitor only on Direct/Resolume and data cue only on active TD',()=>{
  assert.match(performCueScope('soma'),/operator saja/);
@@ -89,4 +90,30 @@ test('PF-UX-04: secondary FLOOR/BODY open remains disabled only for build locks'
  assert.equal(state(false).canOpenOutput,false);
  assert.equal(state(true,'video').canOpenOutput,true);
  assert.equal(state(true,'webcam').canOpenOutput,true);
+});
+
+test('PF-UX: Clean Feed reports actual frames, not just an open popup',()=>{
+ const feedDevice:SurfaceDeviceState={
+  connected:true,opened:true,viewport:{width:1280,height:720,dpr:1},
+  mode:'feed',reason:'Artwork frames received'
+ };
+ const model=evaluatePerformOutputSummary({
+  hardwareEnabled:true,source:'video',cameraOk:true,identityOk:true,floorOk:true,
+  floorDevice:feedDevice,bodyDevice:device('offline'),
+  floorQaOk:false,bodyQaOk:false,operatorConfirm:false
+ });
+ assert.equal(deriveSurfaceBadge('floor',feedDevice).status,'Feed');
+ assert.equal(view('resolume',model).state,'Feed mengalir');
+ assert.notEqual(view('soma',model).state,'LIVE');
+});
+test('PF-UX: a feed needs explicit opening, a fresh source and a live raster; no QA is fabricated',()=>{
+ const good={requested:true,connected:true,sourceFresh:true,cameraSafe:true,visualReady:true,canvasReady:true};
+ assert.equal(canStreamCleanFeed(good),true);
+ for(const key of Object.keys(good) as Array<keyof typeof good>){
+  assert.equal(canStreamCleanFeed({...good,[key]:false}),false,key+' must block feed');
+ }
+ const src=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
+ assert.match(src,/outputMode\[id\]==='resolume'/);
+ assert.match(src,/feedEnabled\[id\]=false/);
+ assert.match(src,/link\.sendArtwork\(stageSurfaceState\(plan,mode==='feed'/);
 });
