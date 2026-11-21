@@ -85,3 +85,13 @@
 @media(prefers-reduced-motion:reduce){
  .f3-workspace button{transition:none}
 }
+
+.f3-stage-shell{position:relative}
+.f3-stage-local-controls{display:none;position:absolute;z-index:10;right:18px;bottom:18px;
+ align-items:center;gap:9px;padding:8px;border:1px solid #526a59;border-radius:10px;
+ background:#06100cdb;box-shadow:0 9px 24px #0007}
+.f3-stage-shell:fullscreen .f3-stage-local-controls[data-revealed="true"],
+.f3-workspace[data-stage-active="true"] .f3-stage-shell:not(:fullscreen) .f3-stage-local-controls[data-revealed="true"]{
+ display:flex
+}
+.f3-stage-local-controls button{min-height:34px;color:#ecf4e7}
