@@ -176,16 +176,22 @@ export function MapWysiwygWorkspace({
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   setPointer(null);
   if(where==='output'){
-   onCommitProjectorQuad(outputDraftRef.current);setOutputDirty(false);
-   onMessage('Posisi proyektor berubah. Uji output fisik perlu diulang.');
+   setStatus('Pratinjau berubah. Simpan bidang output untuk memakai posisi baru.');
   }
  };
  const keyMove=(e:KeyboardEvent<SVGSVGElement>,where:'source'|'output')=>{
   if(e.key>='1'&&e.key<='4'){activePoint.current=Number(e.key)-1;return;}
   if(e.key==='Escape'){
-   if(where==='source'){setCameraDraft(floorTracker?.calibrationData?.cameraQuad??initialCameraQuad());setCameraDirty(false);}
-   else{setOutputDraft(plan.projectorQuad);setOutputDirty(false);}
-   setStatus('Perubahan dibatalkan.');return;
+   if(where==='source'){
+    const previous=floorTracker?.calibrationData?.cameraQuad;
+    setCameraDraft(previous??initialCameraQuad());setCameraDirty(false);
+    if(previous){const result=onCommitCameraQuad(previous);setStatus(result.message);}
+    else setStatus('Perubahan dibatalkan.');
+   }else{
+    setOutputDraft(plan.projectorQuad);setOutputDirty(false);
+    setStatus('Posisi proyektor dikembalikan.');
+   }
+   return;
   }
   const deltas:Record<string,[number,number]>={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
   const d=deltas[e.key];if(!d)return;e.preventDefault();
@@ -200,7 +206,7 @@ export function MapWysiwygWorkspace({
   }else{
    if(!outputDirty)onBeginProjectorEdit();
    setOutputDirty(true);setOutputDraft(next);
-   onCommitProjectorQuad(next);setOutputDirty(false);
+   setStatus('Pratinjau berubah. Simpan bidang output untuk memakai posisi baru.');
   }
  };
  const applyCamera=()=>{
@@ -213,8 +219,13 @@ export function MapWysiwygWorkspace({
  };
  const cancel=()=>{
   if(projectorEdit){setOutputDraft(plan.projectorQuad);setOutputDirty(false);}
-  else{setCameraDraft(floorTracker?.calibrationData?.cameraQuad??initialCameraQuad());setCameraDirty(false);}
-  setResetArmed(false);setStatus('Kembali ke posisi terakhir yang tersimpan.');
+  else{
+   const previous=floorTracker?.calibrationData?.cameraQuad;
+   setCameraDraft(previous??initialCameraQuad());setCameraDirty(false);
+   if(previous){const restore=onCommitCameraQuad(previous);setStatus(restore.message);}
+  }
+  setResetArmed(false);
+  if(projectorEdit)setStatus('Posisi proyektor dikembalikan ke yang tersimpan.');
  };
  const reset=()=>{
   if(!resetArmed){setResetArmed(true);return;}
@@ -280,12 +291,19 @@ export function MapWysiwygWorkspace({
      {mapOverlay('output')}
     </div>
     <div className="soma-map-wysiwyg-controls">
-     <button type="button" aria-pressed={projectorEdit} onClick={()=>{setProjectorEdit(v=>!v);setResetArmed(false);}}>
-      <ScanLine size={14}/> {projectorEdit?'Selesai atur':'Sesuaikan proyektor'}
+     <button type="button" aria-pressed={projectorEdit} onClick={()=>{
+      if(projectorEdit&&outputDirty){
+       onCommitProjectorQuad(outputDraftRef.current);
+       setOutputDirty(false);
+       onMessage('Bidang output disimpan. Proyektor perlu uji ulang.');
+      }
+      setProjectorEdit(v=>!v);setResetArmed(false);
+     }}>
+      <ScanLine size={14}/> {projectorEdit?'Simpan bidang':'Sesuaikan proyektor'}
      </button>
      <button type="button" onClick={cancel} disabled={!cameraDirty&&!outputDirty}>Batalkan</button>
     </div>
-    <p className="soma-map-wysiwyg-caption">{projectorEdit?'Tarik sudut hasil; output fisik tetap Blackout sampai uji ulang.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
+    <p className="soma-map-wysiwyg-caption">{projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
    </div>
   </div>
   <div className="soma-map-wysiwyg-bottom">
