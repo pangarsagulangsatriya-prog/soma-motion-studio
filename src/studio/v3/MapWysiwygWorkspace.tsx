@@ -33,8 +33,39 @@ type Props={
  onBeginProjectorEdit:()=>void;
  onCommitProjectorQuad:(quad:Quad)=>void;
  onMessage:(message:string)=>void;
+ onOpenTrack:()=>void;
+ onOpenCompose:()=>void;
+ onSourceLost:()=>void;
 };
 const W=640,H=360;
+const SIM_CAMERA_QUAD:Quad=[{x:.18,y:.2},{x:.82,y:.2},{x:.98,y:.92},{x:.02,y:.92}];
+const drawSimulatedSource=(ctx:CanvasRenderingContext2D,sim:MapSimState)=>{
+ const matrix=homography(SIM_CAMERA_QUAD);
+ const project=(u:number,v:number)=>transform(matrix,{x:u,y:v});
+ ctx.fillStyle='#16221a';ctx.fillRect(0,0,W,H);
+ const quad=SIM_CAMERA_QUAD.map(numericPoint);
+ ctx.beginPath();quad.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();
+ ctx.fillStyle='#273c2a';ctx.fill();ctx.strokeStyle='#80a184';ctx.lineWidth=1.5;ctx.stroke();
+ ctx.strokeStyle='#46614b';ctx.lineWidth=.9;
+ for(let i=1;i<8;i++){
+  const t=i/8;const a=project(t,0),b=project(t,1),c=project(0,t),d=project(1,t);
+  ctx.beginPath();ctx.moveTo(a.x*W,a.y*H);ctx.lineTo(b.x*W,b.y*H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(c.x*W,c.y*H);ctx.lineTo(d.x*W,d.y*H);ctx.stroke();
+ }
+ for(const foot of sim.footprints.slice(-32)){
+  const p=project(foot.x,foot.y);const age=Math.max(0,(sim.elapsedMs-foot.atMs)/1000);
+  paintAuthenticFootprint(ctx,{x:p.x*W,y:p.y*H,side:foot.foot,
+   headingRad:foot.headingRad-Math.PI/2,widthPx:9,lengthPx:21,
+   alpha:Math.max(.15,.8-age*.055),color:foot.actorId==='B'?'#8ad8e2':'#cbe9a7'});
+ }
+ for(const performer of sim.performers){
+  const p=project(performer.x,performer.y),x=p.x*W,y=p.y*H;
+  ctx.fillStyle=performer.id==='A'?'#cbe9a7':'#8ad8e2';
+  ctx.beginPath();ctx.ellipse(x,y-18,7,19,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x,y-36,6,0,Math.PI*2);ctx.fill();
+  ctx.textAlign='center';ctx.font='bold 10px system-ui';ctx.fillText(performer.id,x,y-48);
+ }
+};
 const numericPoint=(p:Point)=>({x:p.x*W,y:p.y*H});
 const pointsString=(quad:Quad,box:{x:number;y:number;width:number;height:number})=>
  quad.map(p=>String(box.x+p.x*box.width)+','+String(box.y+p.y*box.height)).join(' ');
@@ -49,7 +80,7 @@ export function MapWysiwygWorkspace({
  selected,stageDimensions,plan,sourceKind,hasLiveSource,videoRef,motionFrameRef,experimentInputCanvas,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
- onCommitProjectorQuad,onMessage
+ onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost
 }:Props){
  const [cameraDraft,setCameraDraft]=useState<Quad>(()=>floorTracker?.calibrationData?.cameraQuad??initialCameraQuad());
  const [outputDraft,setOutputDraft]=useState<Quad>(()=>plan.projectorQuad);
@@ -61,6 +92,16 @@ export function MapWysiwygWorkspace({
  const [resetArmed,setResetArmed]=useState(false);
  const [sourceBox,setSourceBox]=useState({x:0,y:0,width:W,height:H});
  const [sourceAvailable,setSourceAvailable]=useState(false);
+ const [sourceInterrupted,setSourceInterrupted]=useState(false);
+ const [invalidWhere,setInvalidWhere]=useState<'source'|'output'|null>(null);
+ const [savedWhere,setSavedWhere]=useState<'source'|'output'|null>(null);
+ const [focusedCorner,setFocusedCorner]=useState(0);
+ const invalidTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const savedTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const everHadCamera=useRef(false);
+ const lossHandled=useRef(false);
+ const simRef=useRef(simState);
+ simRef.current=simState;
  const [status,setStatus]=useState('');
  const [pointer,setPointer]=useState<{target:'source'|'output';index:number;id:number}|null>(null);
  const sourceCanvas=useRef<HTMLCanvasElement>(null);
@@ -75,7 +116,26 @@ export function MapWysiwygWorkspace({
   if(q&&!cameraDirty)setCameraDraft(q.map(p=>({...p})) as Quad);
  },[floorTracker?.calibrationData,cameraDirty]);
  useEffect(()=>{if(!outputDirty)setOutputDraft(plan.projectorQuad.map(p=>({...p})) as Quad);},[plan.projectorQuad,outputDirty]);
- useEffect(()=>{setFrozen(false);setCameraDirty(false);setSourceAvailable(false);},[sourceKind]);
+ useEffect(()=>{
+  if(sourceKind==='camera')return;
+  if(everHadCamera.current&&!lossHandled.current){
+   lossHandled.current=true;onSourceLost();
+  }
+  everHadCamera.current=false;setFrozen(false);setCameraDirty(false);
+  setSourceAvailable(false);
+ },[sourceKind,onSourceLost]);
+ useEffect(()=>()=>{if(invalidTimer.current)clearTimeout(invalidTimer.current);
+  if(savedTimer.current)clearTimeout(savedTimer.current);},[]);
+ const flagInvalid=(where:'source'|'output')=>{
+  setInvalidWhere(where);
+  if(invalidTimer.current)clearTimeout(invalidTimer.current);
+  invalidTimer.current=setTimeout(()=>setInvalidWhere(null),190);
+ };
+ const flashSaved=(where:'source'|'output')=>{
+  setSavedWhere(where);
+  if(savedTimer.current)clearTimeout(savedTimer.current);
+  savedTimer.current=setTimeout(()=>setSavedWhere(null),230);
+ };
  useEffect(()=>{
   const sync=()=>setFullScreen(document.fullscreenElement===wrapper.current);
   document.addEventListener('fullscreenchange',sync);return()=>document.removeEventListener('fullscreenchange',sync);
@@ -90,9 +150,12 @@ export function MapWysiwygWorkspace({
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);if(now-last<46)return;last=now;
    const c=sourceCanvas.current,ctx=c?.getContext('2d');if(!c||!ctx)return;
-   if(frozen)return;
    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0a100d';ctx.fillRect(0,0,W,H);
+   if(sourceKind==='demo-sim'){
+    drawSimulatedSource(ctx,simRef.current);return;
+   }
    const src=validSource(sourceKind,videoRef?.current,experimentInputCanvas?.current);
+   if(frozen&&src)return;
    if(src){
     const box=containedImageRect(src.width,src.height,W,H);
     if(box){
@@ -100,15 +163,23 @@ export function MapWysiwygWorkspace({
      const signature=[box.x,box.y,box.width,box.height].join(':');
      if(signature!==oldBox){oldBox=signature;setSourceBox(box);}
      if(!seen){seen=true;setSourceAvailable(true);}
+     if(sourceKind==='camera'){everHadCamera.current=true;lossHandled.current=false;setSourceInterrupted(false);}
     }
    }else{
-    if(seen){seen=false;setSourceAvailable(false);}
+    if(seen){
+     seen=false;setSourceAvailable(false);
+     if(sourceKind==='camera'&&everHadCamera.current&&!lossHandled.current){
+      lossHandled.current=true;setSourceInterrupted(true);
+      setStatus('Sumber terputus. Periksa sambungan di Track.');
+      onSourceLost();
+     }
+    }
     ctx.fillStyle='#738a79';ctx.font='14px system-ui';ctx.textAlign='center';
-    ctx.fillText(sourceKind==='none'||sourceKind==='demo-sim'?'Belum ada sumber kamera':'Menunggu gambar sumber…',W/2,H/2);
+    ctx.fillText(sourceKind==='none'?'Belum ada sumber kamera':'Menunggu gambar sumber…',W/2,H/2);
    }
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[sourceKind,videoRef,experimentInputCanvas,frozen]);
+ },[sourceKind,videoRef,experimentInputCanvas,frozen,onSourceLost]);
  useEffect(()=>{
   let raf=0,last=0;
   const paint=(now:number)=>{
