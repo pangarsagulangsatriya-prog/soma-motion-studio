@@ -2,7 +2,8 @@
 import {useEffect,useRef,useState,type PointerEvent,type RefObject,type KeyboardEvent} from 'react';
 import {Check,Maximize2,Minimize2,Pause,Play,RotateCcw,ScanLine} from 'lucide-react';
 import type {Quad,Point} from '../../projection/geometry.ts';
-import {identityQuad,transform,homography} from '../../projection/geometry.ts';
+import type {MotionFrame} from '../../engine/types.ts';
+import {identityQuad,transform,homography,inverse3} from '../../projection/geometry.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
@@ -17,6 +18,7 @@ type Props={
  sourceKind:'camera'|'video'|'simulator'|'demo-sim'|'none';
  hasLiveSource:boolean;
  videoRef?:RefObject<HTMLVideoElement|null>;
+ motionFrameRef?:RefObject<MotionFrame>;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  floorTracker?:LiveFloorTrackingEngine;
  floorCanvas:RefObject<HTMLCanvasElement|null>;
@@ -44,7 +46,7 @@ const validSource=(mode:Props['sourceKind'],video:HTMLVideoElement|null|undefine
  return null;
 };
 export function MapWysiwygWorkspace({
- selected,stageDimensions,plan,sourceKind,hasLiveSource,videoRef,experimentInputCanvas,
+ selected,stageDimensions,plan,sourceKind,hasLiveSource,videoRef,motionFrameRef,experimentInputCanvas,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
  onCommitProjectorQuad,onMessage
@@ -117,6 +119,24 @@ export function MapWysiwygWorkspace({
    const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
    if(ready)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
+   // Preview each detected foot against the draft camera quad.
+   // This does not touch the actual tracking stream until Apply.
+   if(sourceKind==='camera'&&cameraDirty&&motionFrameRef?.current?.pose?.length){
+    try{
+     const inverseCamera=inverse3(homography(cameraDraftRef.current));
+     const outputMatrix=homography(outputDraftRef.current);
+     for(const index of [27,28,29,30,31,32]){
+      const landmark=motionFrameRef.current.pose[index];
+      if(!landmark||(landmark.visibility??1)<.35)continue;
+      const floor=transform(inverseCamera,{x:landmark.x,y:landmark.y});
+      if(floor.x<0||floor.x>1||floor.y<0||floor.y>1)continue;
+      const target=transform(outputMatrix,floor);
+      ctx.save();ctx.beginPath();ctx.arc(target.x*W,target.y*H,9,0,Math.PI*2);
+      ctx.fillStyle=index%2===0?'#8ad8e27a':'#cbe9a77a';ctx.fill();
+      ctx.strokeStyle='#f4ffe9';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+     }
+    }catch{/* Draft geometry never authorizes tracking or projection. */}
+   }
    if(!hasLiveSource&&simState.active){
     const matrix=homography(outputDraftRef.current);
     const recent=simState.footprints.slice(-28);
@@ -142,7 +162,7 @@ export function MapWysiwygWorkspace({
    ctx.stroke();
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,floorCanvas,bodyCanvas]);
+ },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,sourceKind,cameraDirty,cameraDraft,motionFrameRef,floorCanvas,bodyCanvas]);
  const currentBox=sourceBox;
  const projectorBox={x:0,y:0,width:W,height:H};
  const overlayQuad=(where:'source'|'output')=>where==='source'?cameraDraft:outputDraft;
@@ -303,7 +323,7 @@ export function MapWysiwygWorkspace({
      </button>
      <button type="button" onClick={cancel} disabled={!cameraDirty&&!outputDirty}>Batalkan</button>
     </div>
-    <p className="soma-map-wysiwyg-caption">{projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
+    <p className="soma-map-wysiwyg-caption">{projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':cameraDirty?'Posisi kaki mengikuti sudut kamera yang sedang digeser. Terapkan untuk menyimpan.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
    </div>
   </div>
   <div className="soma-map-wysiwyg-bottom">
