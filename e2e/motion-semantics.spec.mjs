@@ -28,13 +28,17 @@ test('S6.8.8.6 compact seven-kind event timeline supports A/B filters and safe e
  await expect(page.locator('.vml-hand-limb')).toBeVisible();
 });
 
-test('S6.8.8.6 semantic timeline cannot unlock physical BODY/FLOOR projector',async({page})=>{
+test('S6.8.8.6 semantic timeline requires operator confirmation and five-point QA before LIVE',async({page})=>{
  await page.goto('/');
  await selectStageSource(page,'Video MP4');
- await expect(page.locator('.fp-preview-body')).toBeVisible();
- await expect(page.locator('.fp-preview-floor')).toBeVisible();
+ await expect(page.locator('.fp-preview-body')).toHaveCount(1);
+ await expect(page.locator('.fp-preview-floor')).toHaveCount(1);
  await openStageMap(page);
  const outputs=page.locator('.stage-dual').getByRole('button',{name:'Buka output'});
  await expect(outputs).toHaveCount(2);
  for(const output of await outputs.all())await expect(output).toBeDisabled();
+ await page.locator('.stage-dual-check input[type=checkbox]').check();
+ for(const output of await outputs.all())await expect(output).toBeEnabled();
+ for(const live of await page.locator('.stage-dual-output').getByRole('button',{name:'LIVE'}).all())
+  await expect(live).toBeDisabled();
 });
