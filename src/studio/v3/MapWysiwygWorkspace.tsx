@@ -344,7 +344,7 @@ export function MapWysiwygWorkspace({
    {canEdit&&q.map((p,i)=>{
     const x=box.x+p.x*box.width,y=box.y+p.y*box.height;
     return <g key={i} className="soma-map-wysiwyg-handle"
-      data-active={pointer?.target===where&&pointer.index===i}
+      data-active={pointer?.target===where&&pointer.index===i} data-focused={focusedCorner===i}
       onPointerDown={e=>{setFocusedCorner(i);startMove(e,where,i);}}>
      <circle cx={x} cy={y} r="16" fill="transparent"/>
      <circle cx={x} cy={y} r="9" fill="#d1ecc0" stroke="#132019" strokeWidth="1.5"/>
@@ -369,7 +369,7 @@ export function MapWysiwygWorkspace({
   'Hasil muncul setelah simulasi atau input aktif';
  return <section className="soma-map-wysiwyg" ref={wrapper} aria-label="Kalibrasi Map langsung">
   <div className="soma-map-wysiwyg-head">
-   <div><strong>Bidang {selected==='floor'?'lantai':'tubuh'}</strong></div>
+   <div aria-label={`Bidang ${selected==='floor'?'lantai':'tubuh'} ${stageDimensions.widthM} kali ${stageDimensions.depthM} meter`}><strong>Bidang {selected==='floor'?'lantai':'tubuh'}</strong></div>
    <button type="button" onClick={changeFullscreen} aria-label={fullScreen?'Tutup layar penuh':'Layar penuh Map'}>
     {fullScreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
    </button>
