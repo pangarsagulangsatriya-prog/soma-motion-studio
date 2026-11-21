@@ -21,9 +21,10 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,onF3Capture,f3Active=false,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
  onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
+ onF3Capture:()=>void;f3Active?:boolean;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
  onStageTool:(tool:StageNavigationTool)=>void;
@@ -47,7 +48,7 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
  const tipTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  useEffect(()=>()=>{if(tipTimer.current!==null)clearTimeout(tipTimer.current);},[]);
  const labsContext=stageTwo;
- const stageModuleActive=!stageTwo&&workspace==='studio'&&scene==='footprints';
+ const stageModuleActive=!f3Active&&!stageTwo&&workspace==='studio'&&scene==='footprints';
  useEffect(()=>{
   const media=window.matchMedia(mobileQuery);
   const update=()=>{
@@ -170,7 +171,7 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
      {expanded?<PanelLeftClose size={17}/>:<PanelLeftOpen size={17}/>}
     </button>
     <div className="v3-brand"><b>SOMA</b>
-     <span> / {stageTwo?'STAGE 2':stageModuleActive?'STAGE 1':'TOOLS'}</span>
+     <span> / {f3Active?'F3 CAPTURE':stageTwo?'STAGE 2':stageModuleActive?'STAGE 1':'TOOLS'}</span>
     </div>
    </div>
    {stageModuleActive&&<div className="soma-uxr1-health" role="status" aria-label="Ringkasan status Stage 1">
@@ -219,6 +220,17 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
      onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onStageTwo();}}>
      <Layers3 size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Stage 2</b></span>
+    </button>
+    <button type="button" className="soma-rail-item soma-primary-destination soma-f3-capture-launch"
+     aria-label="F3 Capture" aria-current={f3Active?'page':undefined}
+     title={expanded?'F3 Capture · dua kamera, empat foto':undefined}
+     onMouseEnter={e=>showTip('F3 Capture',e.currentTarget,'hover')}
+     onMouseLeave={clearTip}
+     onFocus={e=>showTip('F3 Capture',e.currentTarget,'focus')}
+     onBlur={clearTip}
+     onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onF3Capture();}}>
+     <Camera size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>F3 Capture</b></span>
     </button>
    </div>
 
