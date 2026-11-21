@@ -769,6 +769,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   consume();return()=>clearTimeout(id);
  },[previewLive,blackout,!!motionEvents]);
  const points=(e:PointerEvent<HTMLCanvasElement>)=>{
+  if(monitorFullscreen)return; // Presentation mode must not select or edit objects.
   const rect=e.currentTarget.getBoundingClientRect();
   if(editMask&&layer){
    const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
@@ -909,7 +910,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      </button>
      {fullscreenNotice&&<small className="cp-compose-fullscreen-notice" role="status">{fullscreenNotice}</small>}
     </div>
-    <div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={monitorFullscreen?undefined:points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
+    <div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
