@@ -1,21 +1,13 @@
 import {test,expect} from '@playwright/test';
 
 test('Perform uses completed Compose output instead of the Track skeleton monitor',async({page})=>{
- const browserErrors=[];
- page.on('pageerror',error=>browserErrors.push(error.message));
  await page.goto('/');
  await page.getByRole('button',{name:'Compose workspace'}).click();
  await expect(page.locator('#soma-compose-monitor')).toBeVisible();
  await page.getByRole('button',{name:'Map workspace'}).click();
  await expect(page.locator('.map-r2-monitor')).toBeVisible();
  await page.getByRole('button',{name:'Perform workspace'}).click();
- console.log('MAP_PERFORM_DIAG',JSON.stringify(await page.evaluate(()=>({
-  workspace:document.querySelector('.fp-stage-workspace')?.getAttribute('data-workspace'),
-  stageText:document.querySelector('.soma-stage-module-nav')?.textContent?.slice(0,160),
-  finalCount:document.querySelectorAll('.pf-final').length,
-  composerCount:document.querySelectorAll('.soma-composer-host').length,
-  performCount:document.querySelectorAll('.ops-r1-console-shell').length
- }))),browserErrors);
+ await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-utility','none');
  const preview=page.getByRole('region',{name:'Perform Final Preview'});
  await expect(preview).toBeVisible();
  await expect(preview.locator('canvas[aria-label="Visual final hasil komposisi FLOOR dan BODY"]')).toBeVisible();
@@ -59,6 +51,7 @@ test('Compose visual recipe remains mounted after visiting Perform',async({page}
  const compose=page.locator('#soma-compose-monitor');
  await expect(compose).toBeVisible();
  await page.getByRole('button',{name:'Perform workspace'}).click();
+ await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-utility','none');
  await expect(page.getByRole('region',{name:'Perform Final Preview'})).toBeVisible();
  await page.getByRole('button',{name:'Compose workspace'}).click();
  await expect(compose).toBeVisible();
