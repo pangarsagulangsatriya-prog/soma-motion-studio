@@ -517,7 +517,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   const tick=(now:number)=>{
    raf=requestAnimationFrame(tick);
    if(workspaceHiddenRef.current&&!hasActiveDualSurfacePorts())return;
-   if(now-last<1000/24)return;
+   if(now-last<1000/30)return;
    last=now;updateMasks(now);
    const body=bodyOutput.current,floor=floorOutput.current;
     // The renderer shared by Compose and SOMA Direct follows the Map output resolution.
