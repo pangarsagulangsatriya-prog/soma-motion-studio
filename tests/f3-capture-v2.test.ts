@@ -10,7 +10,7 @@ function hand(x:number,y:number,fist=true,pinch=false):F3Landmark[]{
  const a=Array.from({length:21},()=>point(x,y));
  a[0]=point(x,y);for(const id of [5,9,13,17])a[id]=point(x+.015,y-.04);
  for(const id of [8,12,16,20])a[id]=point(x+(fist?.018:.18),y+(fist?-.037:-.15));
- a[4]=pinch?point(a[8].x+.005,a[8].y):point(x+.16,y-.13);
+ a[4]=pinch?point(a[8].x+.005,a[8].y):point(x-.11,y-.13);
  return a;
 }
 function frame(id:number,rightX=.7,rightY=.54,opts:{fist?:boolean;pinch?:boolean;otherX?:number;fresh?:boolean}={}):F3MotionFrame{
