@@ -6,7 +6,7 @@ function hand(x,y,{pinch=false,fist=true}={}){
  const a=Array.from({length:21},()=>p(x,y));
  a[0]=p(x,y);for(const i of [5,9,13,17])a[i]=p(x+.015,y-.04);
  for(const i of [8,12,16,20])a[i]=p(x+(fist?.018:.18),y+(fist?-.037:-.15));
- a[4]=pinch?p(a[8].x+.005,a[8].y):p(x+.16,y-.13);
+ a[4]=pinch?p(a[8].x+.005,a[8].y):p(x-.11,y-.13);
  return a;
 }
 function frame(id,x=.7,y=.54,{pinch=false,resize=false,fist=true,fresh=true,otherX=.35}={}){
