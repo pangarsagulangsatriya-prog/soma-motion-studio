@@ -21,7 +21,7 @@ test('MP4 loading error stays prominent instead of suggesting video ready',()=>{
  assert.equal(hint.severity,'warning');assert.equal(hint.id,'source-error');
  assert.match(hint.description,/MP4 rusak/);
 });
-test('Preview-only MP4 cannot authorize physical projector',()=>{
+test('MP4 with no valid frames cannot authorize physical projector',()=>{
  const result=safeProjectionPreflight({source:'video',cameraOn:false,cameraBusy:false,bodySelected:false,frameFresh:false,identities:0,performers:2,identityAmbiguous:false,matchedFrame:false,floorConfirmed:false,cameraMatched:false,hardwareEnabled:true,floorOutput:{connected:false,qa:'not-tested',mode:'offline'} as Parameters<typeof safeProjectionPreflight>[0]['floorOutput']});
- assert.equal(result.physicalReady,false);assert.equal(result.softwareOnly,true);
+ assert.equal(result.physicalReady,false);assert.equal(result.step,'tracking');assert.equal(result.softwareOnly,false);
 });
