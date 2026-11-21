@@ -108,6 +108,8 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
    }
   };
   const outside=(e:PointerEvent)=>{
+   // Wide screens use a persistent second sidebar, not an outside-dismiss popover.
+   if(window.matchMedia('(min-width: 1360px)').matches)return;
    if(e.target instanceof Node&&!labsPanelRef.current?.contains(e.target)&&
     !labsRef.current?.contains(e.target))setLabsOpen(false);
   };
@@ -144,7 +146,9 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
   simulator:()=>onStageTool('simulator')
  };
  const launch=(id:LabsId)=>{
-  setActiveLab(id);setLabsOpen(false);clearTip();
+  setActiveLab(id);
+  setLabsOpen(window.matchMedia('(min-width: 1360px)').matches);
+  clearTip();
   if(mobile)setExpanded(false);
   action[id]();
   requestAnimationFrame(()=>{
@@ -226,7 +230,8 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
   </div>}
   {labsOpen&&mobile&&<button type="button" className="soma-labs-backdrop"
    aria-label="Tutup SOMA Labs" onClick={()=>{setLabsOpen(false);labsRef.current?.focus({preventScroll:true});}}/>}
-  {labsOpen&&<section id="soma-labs-panel" ref={labsPanelRef} role="dialog"
+  {labsOpen&&<section id="soma-labs-panel" ref={labsPanelRef}
+   role={mobile?'dialog':'navigation'}
    aria-modal={mobile?true:undefined} aria-labelledby="soma-labs-title"
    className="soma-labs-panel" data-expanded={expanded}>
    <header className="soma-labs-head">
