@@ -1,6 +1,6 @@
 # SOMA → TouchDesigner (local WebSocket data bridge)
 
-The SOMA Vercel site sends *tracking data* to a locally running TouchDesigner instance. It sends no live camera video to Vercel. A TouchDesigner operator is responsible for physical calibration and projector arming.
+The SOMA GitHub Pages site sends *tracking data* to a locally running TouchDesigner instance. It sends no live camera video to Vercel. A TouchDesigner operator is responsible for physical calibration and projector arming.
 
 ## Setup in TouchDesigner (on the **same laptop** as SOMA's browser)
 
@@ -9,7 +9,7 @@ The SOMA Vercel site sends *tracking data* to a locally running TouchDesigner in
 3. Add a **Text DAT**, paste `soma_webserver_callbacks.py`, set as `webserver1`'s **Callbacks DAT**.
 4. Restart the Web Server DAT to run `onServerStart`. Open TouchDesigner Textport and type `op('webserver1').fetch('soma_token')`; copy the generated code. This code changes on server restart and is never committed to Git.
 5. Add a **Script CHOP** with callbacks DAT containing `soma_script_chop.py`. The Script CHOP should cook each frame, referencing `webserver1` in the same network.
-6. In SOMA Vercel → `04 Perform` → `TouchDesigner`, enter `127.0.0.1:8765` and the code; click **Hubungkan TouchDesigner**, then **Trigger Uji**.
+6. On the **same laptop**, open SOMA GitHub Pages → `04 Perform` → `TouchDesigner`, enter `127.0.0.1:8765` and the code; click **Hubungkan TouchDesigner**, then **Trigger Uji**.
 7. If that works, choose a running source in Track, return to Perform, click **Mulai Kirim Data**.
 8. In TD, use `a_left_x`, `a_left_y`, `b_right_x`, etc. to drive visual TOPs; `contact_A_L` or `contact_B_R` provides a short pulse. Add a CHOP Execute DAT or Trigger CHOP according to your patch.
 9. **Before any projector test:** separately add your own manual arm toggle, Black TOP / safe-mute gate, physical power blackout, and test it with a real projector. `scene_gate` from the starter Script CHOP remains `0` intentionally. Do not use the received data as a physical-live authorization.
