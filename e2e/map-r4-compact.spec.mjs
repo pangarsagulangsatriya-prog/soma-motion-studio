@@ -8,12 +8,12 @@ test('MAP-R4: only essential room presets and corners are visible by default',as
  const room=rail.locator('.map-r4-room-extra');
  await expect(room.locator('summary')).toContainText('5×5 m');
  await expect(common.getByRole('button',{name:'5×5 m'})).toBeHidden();
+ await expect(rail.getByLabel('Lebar (m)')).toBeHidden();
  await room.locator('summary').click();
  await expect(common.getByRole('button',{name:'5×5 m'})).toBeVisible();
  await expect(common.getByRole('button')).toHaveCount(3);
- await expect(rail.getByLabel('Lebar (m)')).toBeHidden();
  await expect(rail.getByRole('button',{name:'Geser sudut ke kiri'})).toBeHidden();
- await expect(rail.locator('.map-r4-active-corner')).toContainText('Titik 1');
+ await expect(rail.locator('.map-r4-active-corner')).toBeHidden();
  await expect(rail.locator('.stage-dual-qa-disclosure')).toBeVisible();
  await expect(rail.locator('.map-r2-test-btn')).toBeVisible();
  await expect(rail.getByLabel('Lebar (m)')).toBeVisible();
