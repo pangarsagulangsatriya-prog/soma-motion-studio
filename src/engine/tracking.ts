@@ -1,3 +1,4 @@
+import {CameraLiveness} from './cameraLiveness.ts';
 import {PoseWorkerClient} from './poseWorker';
 import {unionMasks} from '../studio/bodyField.ts';
 import type {HandLandmarker,PoseLandmarker,FaceLandmarker} from '@mediapipe/tasks-vision';
@@ -19,7 +20,7 @@ export class CameraTracker {
   try{
    if(!window.isSecureContext)throw new Error('Kamera memerlukan HTTPS atau localhost.');
    if(!externalStream&&!navigator.mediaDevices?.getUserMedia)throw new Error('Browser ini belum mendukung akses kamera.');
-   const canvas=document.createElement('canvas');const gl=canvas.getContext('webgl2')||canvas.getContext('webgl');if(!gl)throw new Error('Pelacak memerlukan WebGL. Aktifkan akselerasi grafis browser atau gunakan Mouse.');gl.getExtension('WEBGL_lose_context')?.loseContext();
+   const canvas=document.createElement('canvas');const gl=canvas.getContext('webgl2')||canvas.getContext('webgl');if(!gl)throw new Error('Gambar belum bisa diproses. Aktifkan akselerasi grafis browser, lalu coba lagi.');gl.getExtension('WEBGL_lose_context')?.loseContext();
    if(!reuse){
     onStatus(externalStream?'Menghubungkan video HP…':'Meminta akses kamera wide horizontal…');
     const stream=externalStream??await navigator.mediaDevices.getUserMedia({video:buildHorizontalCameraConstraints({captureSize:this.captureSize,deviceId}),audio:false});
@@ -38,8 +39,10 @@ export class CameraTracker {
    else if(kind==='face'&&!this.face){const model=await vision.FaceLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/face_landmarker.task`,delegate:'CPU'},numFaces:1,minFaceDetectionConfidence:.6,minFacePresenceConfidence:.6,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:false});if(token!==this.token){model.close();return;}this.face=model;}
    else if(kind==='hands'&&!this.hand){const model=await vision.HandLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/hand_landmarker.task`,delegate:'CPU'},numHands:2,minHandDetectionConfidence:.6,minHandPresenceConfidence:.6});if(token!==this.token){model.close();return;}this.hand=model;}
    if(token!==this.token)return;this.processor.reset();this.previousVideoTime=-1;this.previousTime=0;this.lastTick=0;this.interval=33;this.inFlight=false;this.skippedFrames=0;this.observedVideoTime=-1;onStatus(`Pelacak ${kind==='body'?'tubuh':kind==='face'?'wajah':'tangan'} siap`);
+   const liveness=new CameraLiveness();
    const tick=async(time:number)=>{
     if(!this.running||token!==this.token)return;this.raf=requestAnimationFrame(tick);
+    if(liveness.sample(video.currentTime,time,!document.hidden)){this.stop(video);onError('Gambar kamera berhenti. Periksa sambungan, lalu coba lagi.');return;}
     if(video.readyState<2||video.currentTime===this.previousVideoTime){if(this.previousTime&&time-this.previousTime>450&&!this.staleSent){this.staleSent=true;onFrame(this.processor.process(null,null,time,settings(),0));}return;}
     if(this.inFlight){if(video.currentTime!==this.observedVideoTime){if(this.observedVideoTime!==this.previousVideoTime)this.skippedFrames++;this.observedVideoTime=video.currentTime;}return;}
     if(time-this.lastTick<this.interval)return;
@@ -56,7 +59,7 @@ export class CameraTracker {
      this.inFlight=false;this.interval=this.poseWorker?33:Math.max(33,Math.min(100,(performance.now()-begin)*1.25));
     }catch(e){if(token!==this.token)return;this.inFlight=false;this.stop(video);onError(`Pelacakan berhenti: ${e instanceof Error?e.message:'coba muat ulang kamera.'}`);}
    };this.raf=requestAnimationFrame(tick);
-  }catch(e){if(token!==this.token)return;this.stop(video);const err=e && typeof e==='object' ? e as {name?:string;message?:string} : {};const detail=typeof err.message==='string'&&err.message.trim()?err.message:typeof e==='string'&&e.trim()?e:'Periksa izin kamera dan koneksi, lalu coba lagi.';onError(err.name==='NotAllowedError'?'Akses kamera ditolak. Izinkan kamera melalui pengaturan browser, lalu coba lagi.':err.name==='NotFoundError'?'Kamera belum ditemukan. Sambungkan webcam atau gunakan Mouse.':err.name==='NotReadableError'?'Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.':`Kamera atau pelacak belum siap. ${detail}`);}
+  }catch(e){if(token!==this.token)return;this.stop(video);const err=e && typeof e==='object' ? e as {name?:string;message?:string} : {};const detail=typeof err.message==='string'&&err.message.trim()?err.message:typeof e==='string'&&e.trim()?e:'Periksa izin kamera dan koneksi, lalu coba lagi.';onError(err.name==='NotAllowedError'?'Akses kamera ditolak. Izinkan kamera melalui pengaturan browser, lalu coba lagi.':err.name==='NotFoundError'?'Kamera belum ditemukan. Sambungkan kamera, lalu coba lagi.':err.name==='NotReadableError'?'Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.':`Kamera atau pelacak belum siap. ${detail}`);}
  }
  stop(video?:HTMLVideoElement,keepStream=false){this.running=false;this.token++;this.poseWorker?.dispose();this.poseWorker=null;this.inFlight=false;cancelAnimationFrame(this.raf);if(!keepStream){this.stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});this.stream=null;if(video){video.pause();video.srcObject=null;}}this.processor.reset();}
  dispose(video?:HTMLVideoElement){this.stop(video);this.hand?.close();this.pose?.close();this.face?.close();this.hand=null;this.pose=null;this.face=null;}

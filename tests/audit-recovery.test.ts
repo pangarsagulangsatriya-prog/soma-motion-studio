@@ -45,7 +45,7 @@ test('AUDIT-RECOVERY F-04/F-07/F-09/F-10: Perform 2-column layout, humanized sou
  const nav=read('../src/studio/v3/GlobalNav.tsx');
  const performCss=read('../src/studio/v3/ops-r1-perform.css');
  assert.match(stage,/SOURCE_CHOICES\.find\(option=>option\.id===sourceStatus\.selection\)\?\.label\?\?'Belum dipilih'/);
- assert.match(stage,/Reset Identitas A\/B/);
+ assert.match(stage,/Baca ulang kedua orang/);
  assert.match(consoleSrc,/Edit Compose/);
  assert.doesNotMatch(consoleSrc,/Kembali Build/);
  assert.match(nav,/localStorage\.getItem\(NAV_KEY\)==='true'/);
@@ -59,12 +59,13 @@ test('UX-BENCHMARK: Sequential pipeline CTA, Track Motion HUD, and Compose direc
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  const composeCss=read('../src/studio/v3/cpux-compose-focus.css');
  assert.match(nav,/soma-stage-next-cta/);
- assert.match(nav,/Lanjut Compose/);
+ assert.match(nav,/track:\{target:'map',label:'Lanjut Map'\}/);
  assert.match(nav,/Lanjut Map/);
  assert.match(nav,/Masuk Perform/);
  assert.match(stage,/soma-track-motion-hud/);
  assert.match(stage,/onPerformerCount\(n\)/);
- assert.match(stage,/Kalibrasi Lantai 4 Sudut/);
+ assert.doesNotMatch(stage,/Kalibrasi Lantai 4 Sudut/);
+ assert.match(stage,/soma-input-check/);
  assert.match(composer,/cpux-footprint-sculpt/);
  assert.match(composer,/Gaya jejak lantai/);
  assert.match(composeCss,/\.cp04-inspector-tabs\{\s*order:0;/);

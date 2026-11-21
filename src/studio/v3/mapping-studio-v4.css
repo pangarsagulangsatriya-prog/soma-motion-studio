@@ -755,3 +755,22 @@
  cursor:pointer;font-size:11px;font-weight:600;color:#9eb3a2;padding:3px 0;
 }
 
+
+/* Input stays quiet; calibration uses the same live stream inside Map. */
+.soma-input-check{display:grid;gap:8px;padding:16px;border:1px solid #39453e;border-radius:12px;color:#ced8d1;font-size:14px;transition:border-color .18s,background .18s}
+.soma-input-check[data-ready=true]{border-color:#8eaf73;background:#b9e4a30a}
+.soma-input-check span{line-height:1.45;color:#aab8ad}
+.soma-map-hint{font-size:14px;line-height:1.5;color:#c5d1c8;margin:8px 0 14px}
+.soma-map-camera-editor{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr);gap:18px;align-items:start}
+.soma-map-camera-image{position:relative;background:#050807;overflow:hidden;border-radius:10px}
+.soma-map-camera-image canvas{display:block;width:100%;height:100%;cursor:crosshair}
+.soma-map-camera-image svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.soma-keyboard-marker{visibility:hidden}.soma-map-camera-image:focus-within .soma-keyboard-marker{visibility:visible}
+.soma-map-camera-image canvas:focus-visible{outline:2px solid #c7eba6;outline-offset:-3px}
+.soma-map-camera-editor .fp-inline-floor-editor{max-height:65vh;overflow:auto}
+.soma-track-source-panel button{transition:background-color .15s,border-color .15s,transform .15s}
+.soma-track-source-panel button:active:not(:disabled){transform:scale(.98)}
+@media(max-width:760px){.soma-map-camera-editor{grid-template-columns:1fr}.soma-map-camera-editor .fp-inline-floor-editor{max-height:none}}
+@media(prefers-reduced-motion:reduce){.soma-input-check,.soma-track-source-panel button{transition:none}}
+
+.soma-map-input-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;color:#c5d1c8;font-size:14px;border-bottom:1px solid #39453e}.soma-map-input-notice button{padding:8px 14px;border-radius:8px;border:1px solid #8eaf73;background:#b9e4a30a;color:inherit}

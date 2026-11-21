@@ -1,10 +1,10 @@
+import {MapCameraCalibration} from './MapCameraCalibration.tsx';
 import {useCallback,useEffect,useLayoutEffect,useRef,useState,type RefObject,type PointerEvent} from 'react';
 import {operatorCueAt,operatorShortcut} from './OperatorStageModel.ts';
 import {OperatorStageConsole} from './OperatorStageConsole.tsx';
 import {poseFootObservations,type TdFootObservation} from './touchDesignerProtocol.ts';
 import {PERFORM_CUE_STORAGE_KEY,defaultPerformCueGrid,normalizePerformCueGrid,updatePerformCueSlot,evaluatePerformReadiness,type PerformCueGrid} from './performCueModel.ts';
 import {InlineSetupAssistant} from './InlineSetupAssistant.tsx';
-import {QuickStageSetup} from './QuickStageSetup.tsx';
 import {safeProjectionPreflight} from './safeProjectionPreflight.ts';
 import {startSetupBench} from './safeProjectionBench.ts';
 import {inlineSetupHint,type InlineSetupAction} from './inlineSetupModel.ts';
@@ -59,7 +59,6 @@ import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTra
 import {readDualOutputStatus,watchDualOutputStatus,verifiedDualStatus} from '../../footprints/stage-optics/DualSurfaceTelemetry.ts';
 import {stageHardwareAvailable} from '../../footprints/stage-optics/StageHardwareGate.ts';
 import {deriveUnifiedStageStatus,legacyStageTransportGate,type LegacyOutputStatus} from './unifiedStageStatus.ts';
-import {FootprintsStageTransport} from './UnifiedStageConsole.tsx';
 import './footprints-stage-workspace.css';
 import './source-screen.css';
 import './compact-stage.css';
@@ -143,6 +142,7 @@ export function FootprintsStageWorkspace({
  cleanFloorOutput.current=floorCanvas.current;
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
+ const [mapCameraOpen,setMapCameraOpen]=useState(false);
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
  useEffect(()=>{
   // Connected HP switches directly to the live preview. Receiver stays mounted
@@ -866,15 +866,14 @@ export function FootprintsStageWorkspace({
   <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
    onNavigate={onNavigateStageWorkspace}
    status={{
-    trackReady:!!sourceStatus.selection&&(!!experimentalKind||frameFresh),
-    composeReady:!!sourceStatus.selection&&(mappingOpen||operatorMode),
-    mapReady:dual.floor.connected||dual.body.connected,
+    trackReady:feedback.state==='ready'||feedback.state==='synthetic',
+    mapReady:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
     outputLive:dual.floor.mode==='live'||dual.body.mode==='live'
    }}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<header className="soma-ia-track-head">
    <div className="soma-ia-track-title">
     <h1>Track</h1>
-    <span>{performerCount}P · {experimentalKind?floorInteractionStats.contacts:floorStatus.contacts} kontak · {floorStatus.confirmed?'Lantai terkalibrasi':experimentalKind?'Mode latihan':'Lantai belum dikalibrasi'}</span>
+    <span>Pilih sumber · periksa gambar dan kaki</span>
    </div>
   </header>}
   {operatorMode?
@@ -973,6 +972,14 @@ export function FootprintsStageWorkspace({
    initialReference={rehearsalReference}
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
+  {mappingOpen&&!operatorMode&&(!sourceStatus.selection||sourceStatus.phase==='error'||(!experimentalKind&&!cameraOn)||(experimentalKind==='video'&&!experimentClip))&&<div className="soma-map-input-notice" role="status">
+   <span>Input belum siap. Periksa sumber di Track.</span>
+   <button type="button" onClick={()=>onNavigateStageWorkspace('track')}>Periksa input</button>
+  </div>}
+  {mapCameraOpen&&mappingOpen&&!operatorMode&&<MapCameraCalibration
+   videoRef={videoRef} tracker={tracker} router={router} cameraOn={cameraOn}
+   bodySelected={bodySelected} videoReady={videoReady} cameraMatched={cameraMatched}
+   onBlackout={onBlackout} onClose={()=>setMapCameraOpen(false)}/>}
   <div className="fp-stage-layout">
    <div className="fp-stage-main">
     {composerOpen&&!operatorMode&&view==='stage'&&!mappingOpen&&
@@ -1003,10 +1010,7 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
-     onOpenCameraCalibration={()=>{
-      setMappingOpen(false);setComposerOpen(false);setView('stage');
-      setFlowStep('process');setInspectorOpen(true);setCalibrationOpen(true);
-     }}
+     onOpenCameraCalibration={()=>setMapCameraOpen(true)}
      onEnterPerform={()=>onNavigateStageWorkspace('perform')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     {operatorMode&&<PerformFinalPreview
@@ -1066,7 +1070,7 @@ export function FootprintsStageWorkspace({
          {cameraError||trackSummary.detail}</p>}
       </section>
       {sourceStatus.selection==='webcam'&&<div className="soma-track-mac-camera" role="group" aria-label="Kamera lain pada Mac">
-       <label htmlFor="soma-track-mac-device">Kamera Mac</label>
+       <label htmlFor="soma-track-mac-device">Kamera</label>
        <div className="soma-track-mac-device-wrap">
         <select id="soma-track-mac-device"
          aria-label="Pilih webcam, HDMI capture, atau kamera virtual"
@@ -1079,7 +1083,7 @@ export function FootprintsStageWorkspace({
         </select>
         <ChevronDown size={15} aria-hidden="true"/>
        </div>
-       {cameraDevices.length===0&&<small>Izinkan kamera di browser untuk melihat perangkat Mac.</small>}
+       {cameraDevices.length===0&&<small>Izinkan kamera di browser untuk melihat perangkat.</small>}
       </div>}
       {ownership.webcamAction&&<button type="button" className="soma-track-side-action"
        onClick={onStartBody} disabled={ownership.webcamAction==='connecting'||cameraBusy}
@@ -1089,6 +1093,8 @@ export function FootprintsStageWorkspace({
        {ownership.webcamAction==='retry'?'Coba lagi':
         ownership.webcamAction==='connecting'?'Menghubungkan…':'Aktifkan webcam'}
       </button>}
+      {!experimentalKind&&cameraOn&&!cameraBusy&&bodySelected&&<button type="button" className="soma-track-side-action"
+       onClick={sourceStatus.selection==='phone'?onPhoneDisconnect:onToggleCamera}>Hentikan kamera</button>}
       {ownership.showBodyAction&&<button type="button" className="soma-track-side-action"
        onClick={onStartBody}>Aktifkan Body</button>}
       {sourceStatus.selection==='phone'&&phoneActive&&<button type="button" className="soma-track-side-action"
@@ -1120,9 +1126,9 @@ export function FootprintsStageWorkspace({
        onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
       {identityStatus.ambiguous&&!experimentalKind&&<button type="button" className="soma-track-side-action"
        onClick={()=>router.reset()} title="Setel ulang kunci identitas Performer A/B setelah persilangan">
-       Reset Identitas A/B
+       Baca ulang kedua orang
       </button>}
-      <section className="soma-track-motion-hud" aria-label="Deteksi gerak dan lantai">
+      <section className="soma-track-motion-hud" aria-label="Jumlah orang dalam gambar">
        <div className="soma-track-hud-row">
         <span>Performer</span>
         <div className="soma-track-segmented" role="group" aria-label="Jumlah performer">
@@ -1130,42 +1136,13 @@ export function FootprintsStageWorkspace({
           onClick={()=>onPerformerCount(n)}>{n}P</button>)}
         </div>
        </div>
-       <div className="soma-track-hud-metrics">
-        <div><small>KONTAK</small><strong>{experimentalKind?floorInteractionStats.contacts:floorStatus.contacts}</strong></div>
-        <div><small>LANTAI</small><strong>{floorStatus.confirmed?'Terkalibrasi':experimentalKind?'Simulasi':'Belum'}</strong></div>
-       </div>
-       {!experimentalKind&&cameraOn&&!floorStatus.confirmed&&
-        <button type="button" className="soma-track-calibrate-btn" onClick={openCalibration}>
-         Kalibrasi Lantai 4 Sudut
-        </button>}
       </section>
-      <div className="soma-track-source-utilities">
-       {sourceStatus.selection!==null&&!experimentalKind&&cameraOn&&<QuickStageSetup cameraOn={cameraOn} cameraBusy={cameraBusy}
-     cameraError={cameraError} bodySelected={bodySelected} videoReady={videoReady}
-     frameFresh={frameFresh} cameraMatched={cameraMatched}
-     outputConnected={legacy.connected||dual.body.connected||dual.floor.connected}
-     performerCount={performerCount}
-     visibleCount={identityStatus.visible.length}
-     identityAmbiguous={identityStatus.ambiguous}
-     identityMatchedFrame={identityStatus.observedFrameTime===frameRef.current.time}
-     devices={cameraDevices} deviceId={selectedCameraId} videoRef={videoRef}
-     tracker={tracker} router={router} onConnectCamera={()=>chooseSource('webcam')}
-     onSelectCamera={onSelectCameraDevice} onOpenCalibration={openCalibration}
-     projectionPreflight={projectionPreflight} onPrepareProjection={prepareProjection}
-     onOpenProjector={openProjectorQA} onBlackout={onBlackout}
-     inspectorOpen={inspectorOpen} onExpand={()=>{
-      setInspectorOpen(false);setCalibrationOpen(false);
-     }}/>}
-       <button type="button" className="soma-ia-advanced-button" aria-expanded={inspectorOpen}
-        onClick={event=>{setPhonePanelOpen(false);
-         setupTrigger.current=event.currentTarget;
-         if(experimentalKind==='video'){setVideoLabOpen(true);setInspectorOpen(false);}
-         else {setFlowStep('process');setInspectorOpen(v=>!v);}}}>
-        Pengaturan
-       </button>
-      </div>
+      <section className="soma-input-check" data-ready={feedback.state==='ready'||feedback.state==='synthetic'} role="status" aria-live="polite">
+       <strong>{feedback.state==='ready'?'Input siap':feedback.state==='synthetic'?'Simulasi siap':'Periksa input'}</strong>
+       <span>{feedback.state==='ready'?'Gerakkan kaki dan periksa garisnya.':feedback.state==='synthetic'?'Lanjut untuk mengatur bidang.':feedback.hint||feedback.label}</span>
+      </section>
      </aside>
-     {showSetupHint&&ownership.showInlineAssistant&&
+     {composerOpen&&showSetupHint&&ownership.showInlineAssistant&&
       <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
 
      <div className="fp-stage-video">
@@ -1180,7 +1157,7 @@ export function FootprintsStageWorkspace({
         aria-label={skeletonVisible?'Sembunyikan kerangka tubuh':'Tampilkan kerangka tubuh 33 titik'}
         title="Kerangka tubuh 33 titik · diagnostik, bukan output proyektor"
         onClick={()=>setSkeletonVisible(current=>!current)}>
-        Skeleton <span aria-hidden="true">{skeletonVisible?'ON':'OFF'}</span>
+        Garis tubuh <span aria-hidden="true">{skeletonVisible?'ON':'OFF'}</span>
        </button>}
        {!calibrationOpen&&<button type="button" className="fp-preview-focus-action"
         aria-label={focusPreview==='input'?'Kembali ke Split':'Perbesar INPUT'}
@@ -1495,14 +1472,5 @@ export function FootprintsStageWorkspace({
      onProjector={onOpenProjection}/>}
    </aside>}
   </div>
-  {!operatorMode&&!composerOpen&&view==='stage'&&<FootprintsStageTransport cameraOn={cameraOn} cameraBusy={cameraBusy}
-   experiment={experimentalKind}
-   frameFresh={frameFresh} videoRecording={videoRecording} canRecordVideo={canRecordVideo}
-   bodySelected={bodySelected}
-   held={footprint.hold} legacy={legacy} dual={dual} canPreview={view==='stage'}
-   onCamera={onToggleCamera} onRecordVideo={onRecordVideo} onCapture={onCapture}
-   onHold={()=>updateFootprint({hold:true})}
-   onLivePreview={()=>updateFootprint({hold:false})} onBlackout={onBlackout}
-   onOutputSettings={prepareProjection}/>}
  </section>;
 }

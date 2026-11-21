@@ -15,7 +15,7 @@ const workspaces:readonly {id:StageModuleWorkspace;label:string;step:string}[]=[
  {id:'perform',label:'Perform',step:'04'}
 ];
 const NEXT_STEP:Record<StageModuleWorkspace,{target:StageModuleWorkspace;label:string}>={
- track:{target:'compose',label:'Lanjut Compose'},
+ track:{target:'map',label:'Lanjut Map'},
  compose:{target:'map',label:'Lanjut Map'},
  map:{target:'perform',label:'Masuk Perform'},
  perform:{target:'map',label:'Kalibrasi Map'}

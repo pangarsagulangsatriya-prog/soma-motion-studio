@@ -532,7 +532,7 @@ export function DualSurfaceRoutingPanel({
       <strong>Cocokkan sudut</strong>
      </div>
 
-     <p className="map-r7-sr-only" id="map-corner-help">Tarik titik 1–4 di monitor. Pilih sudut untuk penyesuaian halus.</p>
+     <p className="soma-map-hint" id="map-corner-help">Tarik empat sudut pada gambar.</p>
      <details className="map-r4-disclosure map-r4-precision">
       <summary title="Geser halus, Snap, Undo, Redo, dan Reset"
         aria-label={'Penyetelan halus · titik '+(activeCorner+1)}>
@@ -589,7 +589,7 @@ export function DualSurfaceRoutingPanel({
      </details>
      {cameraOn&&!floorReady&&onOpenCameraCalibration&&
       <button type="button" className="map-r2-link-action" onClick={onOpenCameraCalibration}>
-       Kalibrasi kamera ke lantai di Track →
+       Tandai lantai pada kamera
       </button>}
     </section>
 

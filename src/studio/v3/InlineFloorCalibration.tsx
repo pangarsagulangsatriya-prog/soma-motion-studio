@@ -87,10 +87,10 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
  const matchesCurrentCamera=tracker.isCalibrated&&cameraMatched;
  return <section className="fp-inline-floor-editor" aria-label="Kalibrasi lantai empat titik">
   <header className="fp-inline-floor-heading">
-   <div><small>FOOTPRINTS / TRACKING</small>
+   <div><small>MAP / KAMERA</small>
     <h2 id="fp-flow-inspector-title" tabIndex={-1}>Kalibrasi lantai</h2>
     <p>Tandai sudut bidang lantai langsung pada monitor kamera.</p></div>
-   <button type="button" aria-label="Tutup kalibrasi" title="Kembali ke Tracking" onClick={onClose}><X size={17}/></button>
+   <button type="button" aria-label="Tutup kalibrasi" title="Kembali ke Map" onClick={onClose}><X size={17}/></button>
   </header>
   <div className="fp-inline-floor-body">
    <div className="fp-inline-floor-status" role="status">
