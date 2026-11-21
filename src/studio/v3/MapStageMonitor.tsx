@@ -183,7 +183,7 @@ export function MapStageMonitor({
  const monitorRef=useRef<HTMLDivElement>(null);
  const [fullscreen,setFullscreen]=useState(false);
  const [fullscreenError,setFullscreenError]=useState('');
- const [gridStepM,setGridStepM]=useState<0.25|0.5|1>(0.5);
+ const [gridStepM]=useState<0.25|0.5|1>(0.5);
  useEffect(()=>{
   const sync=()=>setFullscreen(document.fullscreenElement===monitorRef.current);
   document.addEventListener('fullscreenchange',sync);
@@ -205,9 +205,7 @@ export function MapStageMonitor({
  const [hoveredCorner,setHoveredCorner]=useState<MapCornerIndex|null>(null);
  const [draggingPerformer,setDraggingPerformer]=useState<'A'|'B'|null>(null);
  const [snapGuides,setSnapGuides]=useState<{x:number|null;y:number|null}>({x:null,y:null});
- const [pattern,setPattern]=useState<CalibrationGuidePattern>('grid');
- const patternMenuRef=useRef<HTMLDetailsElement>(null);
- const viewMenuRef=useRef<HTMLDetailsElement>(null);
+ const [pattern]=useState<CalibrationGuidePattern>('grid');
  const [showPoseOverlay,setShowPoseOverlay]=useState(true);
  const [quadError,setQuadError]=useState('');
  const draftRef=useRef(draftQuad);draftRef.current=draftQuad;
@@ -760,28 +758,10 @@ export function MapStageMonitor({
   {/* Track-matching monitor header bar */}
   <div className="map-r2-monitor-head">
    <div className="map-r2-monitor-title">
-    <strong>Kalibrasi {selected==='floor'?'Lantai':'Tubuh'}</strong>
+    <strong>Atur {selected==='floor'?'lantai':'tubuh'} · geser empat sudut</strong>
     {simState.active&&!hasLiveSource&&<span className="map-r2-sim-tag">SIMULASI</span>}
    </div>
    <div className="map-r2-monitor-tools">
-    {view!=='output'&&<details ref={patternMenuRef} className="map-r5-pattern-options">
-     <summary title="Pilih grid dan pola bantu kalibrasi" aria-label="Ubah pola bantu kalibrasi">
-      {pattern==='grid'?'Grid '+String(gridStepM).replace('.',',')+' m':pattern==='crosshair'?'Cross':pattern==='diagonal'?'Diagonal':'Pola: Off'}
-     </summary>
-     <div className="map-r5-pattern-popover">
-    {(view==='stage'||view==='split'||view==='align')&&
-     <div className="map-r2-seg-mini" role="group" aria-label="Pola bantu kalibrasi">
-      {([['grid','Grid'],['crosshair','Cross'],['diagonal','Diag'],['off','Off']] as const).map(([id,lbl])=>
-       <button type="button" key={id} aria-pressed={pattern===id} onClick={()=>{setPattern(id);if(patternMenuRef.current)patternMenuRef.current.open=false;}}>{lbl}</button>)}
-     </div>}
-    {(view==='stage'||view==='camera'||view==='align')&&<div className="map-r2-grid-step" role="group" aria-label="Jarak grid dalam meter">
-     {([1,0.5,0.25] as const).map(m=><button type="button" key={m}
-      aria-pressed={gridStepM===m} onClick={()=>{setGridStepM(m);setPattern('grid');if(patternMenuRef.current)patternMenuRef.current.open=false;}}>
-      {m===1?'1 m':m===0.5?'0,5 m':'0,25 m'}
-     </button>)}
-    </div>}
-     </div>
-    </details>}
     {!hasLiveSource&&(
      simState.active
       ?<>
@@ -793,7 +773,7 @@ export function MapStageMonitor({
        </>
       :<button type="button" className="map-r2-sim-btn map-r2-cta-sim" onClick={onStartSim}
         title="Opsional: tampilkan 2 performer virtual untuk menguji hasil kalibrasi">
-        <Users size={11}/> Simulasi
+        <Users size={11}/> Coba simulasi
        </button>
     )}
     <button type="button" className="map-r2-fullscreen-btn"
@@ -819,24 +799,14 @@ export function MapStageMonitor({
   </div>}
 
   <div className="map-r2-view-bar">
-   <div className="map-r2-view-switch map-r7-view-switch" role="group" aria-label="Mode tampilan Stage Map Monitor">
+   <div className="map-r2-view-switch map-r7-view-switch" role="group" aria-label="Tampilan Map">
     {([
-     ['stage','Panggung'],
-     ['camera','Kamera'],
-     ['output','Output']
-    ] as const).map(([id,label])=><button type="button" key={id}
-      aria-label={id==='output'?'Hasil Proyektor':label} aria-pressed={view===id}
-      onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
-    <details ref={viewMenuRef} className="map-r5-other-views">
-     <summary>{view==='align'?'Bandingkan':view==='split'?'Split':'Lainnya'}</summary>
-     <div className="map-r5-other-view-popover">
-     {([
-      ['align','Bandingkan'],
-      ['split','Split']
-     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
-      onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
-     </div>
-    </details>
+     ['stage','Atur'],
+     ['align','Bandingkan'],
+     ['output','Hasil']
+    ] as const).filter(([id])=>id!=='align'||hasLiveSource).map(([id,label])=><button type="button" key={id}
+      aria-label={id==='output'?'Pratinjau output proyektor':label} aria-pressed={view===id}
+      onClick={()=>onChangeView(id)}>{label}</button>)}
    </div>
    <span className="map-r2-parity-note" role="status"
     title={connected?'Transformasi sama dengan jendela output':'Pratinjau perkiraan software. Uji cahaya fisik tetap diperlukan.'}>
