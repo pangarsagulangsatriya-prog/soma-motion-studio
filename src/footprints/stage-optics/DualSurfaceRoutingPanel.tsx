@@ -7,7 +7,6 @@ import type {Quad} from '../../projection/geometry.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
 import type {FootMotionEventV2} from '../scenes/FootMotionEventV2.ts';
-import {download} from '../../engine/recording.ts';
 import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {type PreviewView} from './projectorWysiwygModel.ts';
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
@@ -164,6 +163,9 @@ export function DualSurfaceRoutingPanel({
   const next=clampStageDimensions(size);
   if(next.widthM===stageDimensions.widthM&&next.depthM===stageDimensions.depthM)return;
   allBlackout();
+  setProofs({body:null,floor:null});
+  setRequested({body:'blackout',floor:'blackout'});
+  setArmed({body:false,floor:false});
   if(floorTracker?.isCalibrated)floorTracker.revoke('Ukuran lantai berubah di Map. Tandai ulang lantai pada gambar kamera.');
   setStageDimensions(next);
   setMessage('Ukuran lantai diubah. Tandai ulang bidang pada kamera sebelum menguji proyektor.');
