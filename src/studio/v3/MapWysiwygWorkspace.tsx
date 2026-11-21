@@ -70,8 +70,14 @@ const numericPoint=(p:Point)=>({x:p.x*W,y:p.y*H});
 const pointsString=(quad:Quad,box:{x:number;y:number;width:number;height:number})=>
  quad.map(p=>String(box.x+p.x*box.width)+','+String(box.y+p.y*box.height)).join(' ');
 const validSource=(mode:Props['sourceKind'],video:HTMLVideoElement|null|undefined,exp:HTMLCanvasElement|null|undefined)=>{
- if(mode==='camera'&&video&&video.readyState>=2&&video.videoWidth&&video.videoHeight)
+ if(mode==='camera'&&video&&video.readyState>=2&&video.videoWidth&&video.videoHeight){
+  const stream=video.srcObject;
+  if(stream instanceof MediaStream){
+   const tracks=stream.getVideoTracks();
+   if(!tracks.length||tracks.every(track=>track.readyState==='ended'))return null;
+  }
   return {media:video as CanvasImageSource,width:video.videoWidth,height:video.videoHeight};
+ }
  if((mode==='video'||mode==='simulator')&&exp&&exp.width&&exp.height)
   return {media:exp as CanvasImageSource,width:exp.width,height:exp.height};
  return null;
@@ -418,6 +424,9 @@ export function MapWysiwygWorkspace({
      {!visibleSource&&<div className="soma-map-v3-result-empty" role="status">
       <span className="soma-map-v3-result-mark" aria-hidden="true">▱</span>
       <span>{resultText}</span>
+      {!sourceInterrupted&&!waitingForSource&&<button type="button" className="soma-map-v3-link" onClick={onOpenCompose}>
+       Buka Compose
+      </button>}
      </div>}
     </div>
     {visibleSource&&<div className="soma-map-wysiwyg-controls">
