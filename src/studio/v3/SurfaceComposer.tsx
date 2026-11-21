@@ -7,7 +7,7 @@ import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrack
 import {cameraBinding,cameraBindingKey} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {buildLowerBodyMask,LOWER_BODY_MASK_DEFAULTS} from '../../footprints/stage-optics/LowerBodyMaskEngine.ts';
 import {DualSurfaceRoutingPanel,type StageRouteInput} from '../../footprints/stage-optics/DualSurfaceRoutingPanel.tsx';
-import {hasActiveDualSurfacePorts,syncDualSurfaceRuntime} from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
+import {getDualSurfaceState,hasActiveDualSurfacePorts,syncDualSurfaceRuntime} from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
 import {SOFTWARE_PREVIEW_BLACKOUT_EVENT} from './stagePreviewCommands.ts';
 import './SurfaceComposer.css';
 import {canRenderComposeSurface} from './composePreviewGate.ts';
@@ -446,10 +446,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   if(clear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
   if(blackoutRef.current||!previewLiveRef.current)return;
   const body=s!=='FLOOR',experiment=!!experimentSourceRef.current;
-  const selectedMask=physical?maskCache.current:previewMaskCache.current;
+  const selectedMask=experiment?previewMaskCache.current:physical?maskCache.current:previewMaskCache.current;
   const currentMask=s==='BODY A'?selectedMask.A:s==='BODY B'?selectedMask.B:null;
-  // Physical outputs NEVER inherit the special MP4/3D preview bypass.
-  if(experiment&&physical)return;
   if(!experiment&&!canRenderComposeSurface({surface:s,physical,floorReady:floorReadyRef.current,
    bodyMaskSafe:selectedMask.safe,bodyMaskPresent:!!currentMask}))return;
   const demoFloor=!physical&&!overlayOnly&&s==='FLOOR'&&liquidEnabledRef.current&&liquidModeRef.current==='demo';
@@ -464,8 +462,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    if(overlayOnly&&kind!=='media')continue;
    if(demoFloor&&kind==='floor')continue;
    const el=kind==='media'?mediaEls.current.get(layer.mediaId):
-    kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment&&!physical?experimentFloorCanvas?.current??null:floorCanvas.current):
-    kind==='input'?(experiment&&!physical?experimentInputCanvas?.current??null:null):
+    kind==='floor'?(timelineModeRef.current==='replay'&&!physical?null:experiment?experimentFloorCanvas?.current??null:floorCanvas.current):
+    kind==='input'?(experiment?experimentInputCanvas?.current??null:null):
     kind==='body'?bodyCanvas.current:null;
    if(!el)continue;
    if(el instanceof HTMLImageElement&&(!el.complete||!el.naturalWidth))continue;
@@ -522,7 +520,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    if(now-last<1000/24)return;
    last=now;updateMasks(now);
    const body=bodyOutput.current,floor=floorOutput.current;
-   if(body){const ctx=body.getContext('2d');if(ctx){
+    // The renderer shared by Compose and SOMA Direct follows the Map output resolution.
+    const outputPlans=getDualSurfaceState().plans;
+    for(const [surface,raster] of [['body',body],['floor',floor]] as const){
+     if(!raster)continue;
+     const high=outputPlans[surface].resolution==='1080p';
+     const width=high?1920:1280,height=high?1080:720;
+     if(raster.width!==width)raster.width=width;
+     if(raster.height!==height)raster.height=height;
+    }
+    if(body){const ctx=body.getContext('2d');if(ctx){
     render(ctx,'BODY A',body.width,body.height,true,true);
     if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false,true);
    }}
@@ -561,8 +568,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      }
     }
    }
-   if(floor&&liquidFrame&&liquidCanvas.current&&!experimentSourceRef.current&&
-    floorReadyRef.current&&liquidModeRef.current==='track'){
+   if(floor&&liquidFrame&&liquidCanvas.current&&
+     (experimentSourceRef.current?experimentReadyRef.current:floorReadyRef.current)&&liquidModeRef.current==='track'){
     const ctx=floor.getContext('2d');
     if(ctx){
      ctx.save();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
@@ -689,21 +696,32 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     }
    }
    const masks=maskCache.current;
-   const live=previewLiveRef.current&&!blackoutRef.current;
-   const cameraKey=floorRef.current.boundCamera;
-   const floorKey=floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,performerRef.current]):null;
-   const bodyMedia=masks.safe&&readyMedia('BODY A')&&(performerRef.current===1||readyMedia('BODY B'));
-   const defaultFloor=floorCanvas.current;
-   const floorMedia=floorReadyRef.current&&
-    (readyMedia('FLOOR')||!!(defaultFloor&&defaultFloor.width>=16&&defaultFloor.height>=16));
-   const cameraSafe=live&&masks.safe&&!!cameraKey;
-   outputReadyRef.current={body:cameraSafe&&bodyMedia,floor:cameraSafe&&floorMedia};
-   stageRoute.current={
-    mode:'live',frameAtMs:cameraSafe?masks.at:0,computedAtMs:now,
-    cameraSafe,bodyMediaReady:outputReadyRef.current.body,
-    bridgeSafe:outputReadyRef.current.floor,mask:cameraSafe?masks.union:null,
-    cameraKey:cameraSafe?cameraKey:null,floorKey:cameraSafe?floorKey:null
-   };
+    const live=previewLiveRef.current&&!blackoutRef.current;
+    const experiment=experimentSourceRef.current;
+    const experimentFrame=experimentFrameRef?.current??null;
+    const experimentSafe=!!(experiment&&experimentReadyRef.current&&live);
+    // A clip or virtual rig has a stable QA binding across playback frames.
+    // The binding changes when the file, resolution or performer count changes.
+    const experimentKey=experiment==='video'&&experimentFrame?.kind==='video'
+     ?'mp4:'+experimentFrame.name+':'+(experimentFrame.video?.videoWidth??0)+'x'+(experimentFrame.video?.videoHeight??0)
+     :experiment==='simulator'?'puppet:2d:'+performerRef.current:null;
+    const cameraKey=experiment?experimentKey:floorRef.current.boundCamera;
+    const floorKey=experiment?(experimentKey?JSON.stringify([experimentKey,performerRef.current]):null):
+     floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,performerRef.current]):null;
+    const bodyMedia=experiment?experimentSafe:
+     masks.safe&&readyMedia('BODY A')&&(performerRef.current===1||readyMedia('BODY B'));
+    const defaultFloor=floorCanvas.current;
+    const floorMedia=experiment?experimentSafe:
+     floorReadyRef.current&&(readyMedia('FLOOR')||!!(defaultFloor&&defaultFloor.width>=16&&defaultFloor.height>=16));
+    const cameraSafe=experiment?experimentSafe:live&&masks.safe&&!!cameraKey;
+    outputReadyRef.current={body:cameraSafe&&bodyMedia,floor:cameraSafe&&floorMedia};
+    stageRoute.current={
+     mode:experiment?'simulation':'live',
+     frameAtMs:cameraSafe?(experiment?now:masks.at):0,computedAtMs:now,
+     cameraSafe,bodyMediaReady:outputReadyRef.current.body,
+     bridgeSafe:outputReadyRef.current.floor,mask:!experiment&&cameraSafe?masks.union:null,
+     cameraKey:cameraSafe?cameraKey:null,floorKey:cameraSafe?floorKey:null
+    };
    const status=(!live?'Preview blackout':masks.reason)+
     (masks.safe?' · '+(performerRef.current===2?'BODY A/B':'BODY A')+' siap':'');
    if(status!==lastText){lastText=status;setBodyStatus(status);}
@@ -764,8 +782,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
  if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
-  <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="Map BODY output raster"/>
-  <canvas ref={floorOutput} width={640} height={360} hidden aria-label="Map FLOOR output raster"/>
+  <canvas ref={bodyOutput} width={1280} height={720} hidden aria-label="Map BODY output raster"/>
+  <canvas ref={floorOutput} width={1280} height={720} hidden aria-label="Map FLOOR output raster"/>
   <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden aria-label="MAT-03 Liquid Imprint PixiJS raster"/>
   <DualSurfaceRoutingPanel frameRef={stageRoute} bodyCanvas={bodyOutput}
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}
@@ -1098,8 +1116,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
   </div>
   <div className="s64-runtime" aria-hidden="true">
-   <canvas ref={bodyOutput} width={160} height={90} hidden aria-label="BODY compositor raster"/>
-   <canvas ref={floorOutput} width={640} height={360} hidden aria-label="FLOOR compositor raster"/>
+   <canvas ref={bodyOutput} width={1280} height={720} hidden aria-label="BODY compositor raster"/>
+   <canvas ref={floorOutput} width={1280} height={720} hidden aria-label="FLOOR compositor raster"/>
     <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden
      aria-label="MAT-03 Liquid Imprint PixiJS preview only"/>
   </div>
