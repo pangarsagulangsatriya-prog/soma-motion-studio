@@ -55,7 +55,6 @@ type Props={
  performerCount?:1|2;
  identitySafe?:boolean;
  experimentSource?:'video'|'simulator'|null;
- onOpenCameraCalibration?:(size:MapStageDimensions)=>void;
  onEnterPerform?:()=>void;
 };
 
@@ -173,7 +172,6 @@ export function DualSurfaceRoutingPanel({
   setStageDimensions(next);
   setMessage('Ukuran lantai diubah. Tandai ulang bidang pada kamera sebelum menguji proyektor.');
  };
- const openMapCameraCalibration=()=>onOpenCameraCalibration?.(stageDimensions);
  const commitMonitorQuad=(quad:Quad)=>{
   try{
    validateStageSurfacePlan({...getDualSurfaceState().plans[selected],projectorQuad:quad});
