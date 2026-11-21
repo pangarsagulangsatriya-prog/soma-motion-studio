@@ -130,9 +130,5 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
     </button>
    </div>
   </div>
-  <footer className="pf-final-foot">
-   <span>Pratinjau perangkat lunak · gambar dari Compose</span>
-   <span>{mapReady?'Kalibrasi tersedia':'Periksa Track dan Map sebelum LIVE'}</span>
-  </footer>
  </section>;
 }

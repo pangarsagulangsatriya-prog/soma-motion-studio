@@ -13,6 +13,11 @@ test('Perform shows three primary outputs and only one route-specific connection
  await expect(output.getByText('Sumber belum siap')).toBeVisible();
  await expect(output.getByRole('button',{name:'Buka Track'})).toBeVisible();
  await expect(output.locator('.ops-r1-route-step')).toHaveCount(3);
+ const presets=page.locator('.ops-r1-monitor-presets');
+ await expect(presets).not.toHaveAttribute('open','');
+ await expect(presets.locator('.ops-r1-monitor-summary')).toContainText('Preset monitor');
+ await presets.locator('.ops-r1-monitor-summary').click();
+ await expect(presets.locator('.ops-r1-cue-transport button')).toHaveCount(2);
  await output.getByText(/Cara sambungkan/).click();
  await expect(output.getByText('OBS Browser Source dengan URL feed tidak berbagi sesi SOMA. Pakai Window Capture.')).toBeVisible();
  await choices.getByRole('button',{name:'TouchDesigner',exact:true}).click();

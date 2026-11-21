@@ -22,6 +22,8 @@ test('Stage 1 and Stage 2 keep their own active workspaces and engines',async({p
  await expect(page.locator('.instrument-grid')).toBeVisible();
  await selector.getByRole('button',{name:/Textaire/}).click();
 
+ await expect(page.locator('.soma-primary-header').getByRole('button',{name:'Instrumen Stage 2'})).toBeVisible();
+ await expect(page.locator('.soma-primary-sidebar').getByRole('button',{name:'Instrumen Stage 2'})).toHaveCount(0);
  await page.getByRole('button',{name:'Instrumen Stage 2'}).click();
  const labs=page.locator('#soma-labs-panel');
  await expect(labs).toBeVisible();

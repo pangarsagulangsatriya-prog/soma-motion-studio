@@ -834,10 +834,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
      disabled={previewBlackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
     <span className="cpux-preview-status" role="status">{blackout||previewBlackout?'Padam':'Aktif'}</span>
-    <details className="soma-ia-display-options"><summary>Display</summary>
+    <details className="soma-ia-display-options"><summary>Tampilan lanjutan</summary>
      <label><input type="checkbox" checked={previewLive}
-      onChange={e=>setPreviewLive(e.target.checked)}/> Live frames</label>
-     <button type="button" onClick={openPreview}>Buka preview terpisah</button>
+      onChange={e=>setPreviewLive(e.target.checked)}/> Gerak real-time</label>
+     <button type="button" onClick={openPreview}>Jendela preview</button>
      <button type="button" onClick={()=>setBlackout(true)}>Padam preview</button>
     </details>
    </div>
