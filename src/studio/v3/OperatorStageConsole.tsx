@@ -260,10 +260,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        <summary><span>Pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
        <div className="ops-r1-detail-content">
        <p className="ops-r1-destination-explain">{destination.hint}</p>
-       <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
-       {!isResolume&&<p className="ops-r1-build-meta">Build output: {STAGE_HARDWARE_ENABLED?'diizinkan · tetap perlu QA Map':'terkunci'} · revisi {import.meta.env.VITE_SOMA_BUILD_ID?.slice(0,8)||'lokal'}</p>}
-       {isResolume&&<p>Feed browser memerlukan OBS dan plugin lokal agar tampil pada Sources Resolume.</p>}
-       {!isResolume&&<p>{summary.primaryAction.detail}</p>}
+       {!isResolume&&<p className="ops-r1-build-meta">Build: {STAGE_HARDWARE_ENABLED?'output tersedia, QA wajib':'proyektor terkunci'} · {import.meta.env.VITE_SOMA_BUILD_ID?.slice(0,8)||'lokal'}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
         {(['floor','body'] as const).map(surface=>{
          const badge=surface==='floor'?summary.floorBadge:summary.bodyBadge;
