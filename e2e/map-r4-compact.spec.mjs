@@ -32,3 +32,29 @@ test('MAP-V2: projector edit is contextual and no UV technical editor remains',a
  await expect(output.locator('.soma-map-wysiwyg-handle')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
 });
+
+test('MAP-V4: QA, status and Perform share one bottom dock, no detached foot cards',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Map workspace'}).click();
+ const map=page.locator('.soma-map-wysiwyg');
+ const dock=map.locator('.soma-map-wysiwyg-bottom');
+ await expect(dock).toBeVisible();
+ await expect(page.locator('.soma-map-v2-foot')).toHaveCount(0);
+ await expect(dock.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
+ await expect(dock.locator('.soma-map-v4-status [role="status"]')).toBeVisible();
+ const qa=dock.locator('.map-r8-projector-setup');
+ if(await qa.count()){
+  await expect(qa.locator(':scope > summary')).toBeVisible();
+  await qa.locator(':scope > summary').click();
+  await expect(qa.locator('.soma-map-v4-qa-popover')).toBeVisible();
+  const screen=page.viewportSize();
+  const popup=await qa.locator('.soma-map-v4-qa-popover').boundingBox();
+  expect(popup).toBeTruthy();
+  expect(popup.x).toBeGreaterThanOrEqual(-2);
+  expect(popup.x+popup.width).toBeLessThanOrEqual(screen.width+2);
+  await qa.locator(':scope > summary').click();
+ }
+ const box=await dock.boundingBox();
+ expect(box).toBeTruthy();
+ expect(box.height).toBeLessThan(105);
+});
