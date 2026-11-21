@@ -143,6 +143,7 @@ export function FootprintsStageWorkspace({
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
  const [mapCameraOpen,setMapCameraOpen]=useState(false);
+ const [mapCameraSize,setMapCameraSize]=useState({widthM:5,depthM:5});
  const [phonePanelOpen,setPhonePanelOpen]=useState(false);
  useEffect(()=>{
   // Connected HP switches directly to the live preview. Receiver stays mounted
@@ -976,7 +977,7 @@ export function FootprintsStageWorkspace({
    <span>Input belum siap. Periksa sumber di Track.</span>
    <button type="button" onClick={()=>onNavigateStageWorkspace('track')}>Periksa input</button>
   </div>}
-  {mapCameraOpen&&mappingOpen&&!operatorMode&&<MapCameraCalibration
+  {mapCameraOpen&&mappingOpen&&!operatorMode&&<MapCameraCalibration floorSize={mapCameraSize}
    videoRef={videoRef} tracker={tracker} router={router} cameraOn={cameraOn}
    bodySelected={bodySelected} videoReady={videoReady} cameraMatched={cameraMatched}
    onBlackout={onBlackout} onClose={()=>setMapCameraOpen(false)}/>}
@@ -1010,7 +1011,7 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
-     onOpenCameraCalibration={()=>setMapCameraOpen(true)}
+     onOpenCameraCalibration={size=>{setMapCameraSize(size);setMapCameraOpen(true);}}
      onEnterPerform={()=>onNavigateStageWorkspace('perform')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     {operatorMode&&<PerformFinalPreview
