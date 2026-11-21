@@ -21,6 +21,9 @@ import {usePhotoArchive} from './photos/usePhotoArchive';
 import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
+import {StageTwoInstrumentNav} from './studio/v3/StageTwoInstrumentNav.tsx';
+import type {StageTwoLabId} from './studio/v3/labsCatalog.ts';
+import './studio/v3/stage-two.css';
 import type {StageNavigationRequest,StageNavigationTool} from './studio/v3/stageNavigation.ts';
 import type {SceneId} from './studio/v3/ScenePicker';
 import {FootprintsStageWorkspace} from './studio/v3/FootprintsStageWorkspace';
@@ -52,6 +55,11 @@ import './studio/v3/mapping-studio-v4.css';
 
 type Preset={id:string;name:string;settings:Settings};
 const KEY='soma-presets-v1';
+const initialStageTwoSettings=():Settings=>{
+ const base=defaults();
+ return {...base,input:'mouse',mappings:defaultMappings(base.mode,'mouse'),
+  visual:{...base.visual,mappings:defaultVisualMappings('mouse')}};
+};
 const clock=(n:number)=>`${Math.floor(n/60).toString().padStart(2,'0')}:${Math.floor(n%60).toString().padStart(2,'0')}`;
 const noteName=(hz:number)=>{const n=Math.round(69+12*Math.log2(hz/440));return ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'][((n%12)+12)%12]+(Math.floor(n/12)-1);};
 const STARTERS=[
@@ -62,11 +70,12 @@ const STARTERS=[
  {name:'Dark / Tubuh',description:'Dengung rendah. Ruang dari gerak tubuh.',settings:{...defaults(),...characterPatch('dark'),mode:'drone',input:'body',mappings:defaultMappings('drone','body'),eventMap:defaultEvents('drone'),visual:{...defaults().visual,style:'planes',mappings:defaultVisualMappings('body')}}},
  {name:'Pulse / Kit',description:'Kick, snare, dan clap dari sapuan.',settings:{...defaults(),mode:'percussion',mappings:defaultMappings('percussion','hands'),eventMap:defaultEvents('percussion'),visual:{...defaults().visual,style:'particles'}}}
 ].map(p=>({...p,settings:{...p.settings,hydra:{...hydraDefaults(),enabled:false}}})) as {name:string;description:string;settings:Settings}[];
-export default function App(){
+export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const stageSession=useStageSession();
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
- const [footprintsActive,setFootprintsActive]=useState(defaultFootprintsWorkspace);
+ const [footprintsActive,setFootprintsActive]=useState<boolean>(()=>stageTwo?false:defaultFootprintsWorkspace());
+ const [stageTwoActive,setStageTwoActive]=useState<StageTwoLabId>('liquid');
  const [footprintsOperator,setFootprintsOperator]=useState(false);
  const [softwareBlackout,setSoftwareBlackout]=useState(false);
  const [stageNavigation,setStageNavigation]=useState<StageNavigationRequest|null>(null);
@@ -96,8 +105,8 @@ export default function App(){
  const multiPoseRouter=useRef(new MultiPoseGaitRouter(liveFloorEngine)).current;
  const updateFootprint=(patch:Partial<FootprintConfig>)=>setFootprintConfig(c=>({...c,...patch}));
  useEffect(()=>{try{localStorage.setItem('soma-footprint-visual-v1',JSON.stringify({...footprintConfig,hold:false}));}catch{}},[footprintConfig]);
- const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem('soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):defaults();}catch{return defaults();}});
- useEffect(()=>{const timer=setTimeout(()=>{try{localStorage.setItem('soma-studio-session-v3',JSON.stringify({version:2,settings}));}catch{}},300);return()=>clearTimeout(timer);},[settings]);const sr=useRef(settings);sr.current=settings;
+ const [settings,setSettings]=useState<Settings>(()=>{try{const saved=localStorage.getItem(stageTwo?'soma-stage-two-session-v1':'soma-studio-session-v3');return saved?validatePreset(JSON.parse(saved)):(stageTwo?initialStageTwoSettings():defaults());}catch{return stageTwo?initialStageTwoSettings():defaults();}});
+ useEffect(()=>{const timer=setTimeout(()=>{try{localStorage.setItem(stageTwo?'soma-stage-two-session-v1':'soma-studio-session-v3',JSON.stringify({version:2,settings}));}catch{}},300);return()=>clearTimeout(timer);},[settings,stageTwo]);const sr=useRef(settings);sr.current=settings;
  const [source,setSource]=useState<'camera'|'mouse'>(settings.input==='mouse'?'mouse':'camera');const sourceRef=useRef(source);sourceRef.current=source;
  const [cameraOn,setCameraOn]=useState(false),[cameraBusy,setCameraBusy]=useState(false),[status,setStatus]=useState('Kamera belum aktif'),[cameraError,setCameraError]=useState('');
  const [audioOn,setAudioOn]=useState(false),[muted,setMuted]=useState(false),[frame,setFrame]=useState(emptyFrame),[level,setLevel]=useState(0);
@@ -372,6 +381,8 @@ export default function App(){
   projection.setTransport('blackout');setLiveFloorOpen(true);
  }
  function selectScene(scene:SceneId){
+  if(stageTwo&&scene==='footprints')return;
+  if(!stageTwo&&scene!=='footprints')return;
   setFootprintsOperator(false);
   if(scene==='footprints'){
    const alreadyActive=footprintsActive;
@@ -387,6 +398,30 @@ export default function App(){
   setBodyPromptDismissed(false);
   try{if(sr.current.input!=='body')await chooseInput('body');if(!tracker.running)await startCamera();if(tracker.running)notify('Body siap. Gerakkan kaki dalam jangkauan kamera.');}
   catch(e){notify('Body belum terhubung: '+(e instanceof Error?e.message:'coba mulai kamera lagi.'));}
+ }
+ function selectStageTwoLab(id:StageTwoLabId){
+  if(!stageTwo)return;
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  requestSoftwarePreviewBlackout();
+  setStageTwoActive(id);
+  setFootprintsOperator(false);setProjectionActive(false);
+  setClean(false);setModal(null);setCaptureOpen(false);setControlsOpen(false);
+  if(id==='archive'){setArchiveActive(true);return;}
+  setArchiveActive(false);
+  if(id==='liquid'||id==='echo'||id==='cut'||id==='body'){
+   selectScene(id);setTab('visual');setInspectorOpen(true);return;
+  }
+  selectScene('liquid');setInspectorOpen(true);
+  if(id==='sound'){setTab('sound');setControlsOpen(true);}
+  else if(id==='hydra'){setTab('visual');setControlsOpen(true);}
+  else if(id==='capture'){setCaptureTab('photo');setCaptureOpen(true);}
+ }
+ function openStageOneFromTwo(){
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  requestSoftwarePreviewBlackout();
+  const url=new URL(window.location.href);
+  url.searchParams.delete('stage');
+  window.location.assign(url.toString());
  }
  function openFootprintOutput(){projection.setTransport('live');projection.openOutput();}
  function testMode(){setFootprintsActive(false);void chooseInput('mouse');}
@@ -437,7 +472,7 @@ export default function App(){
   mouse.current.shift=e.shiftKey;if(e.code==='KeyP')mouse.current.keyPinch=e.type==='keydown';
   if(e.type==='keydown'&&!e.repeat){if(e.code==='Space'){e.preventDefault();panic();return;}
    if(e.code==='Escape'&&controlsOpen){setControlsOpen(false);return;}if(document.querySelector('dialog[open]'))return;if(e.code==='Escape'&&cameraCue.frame.open){cameraCue.close();return;}
-   if(e.code==='KeyC'){setClean(v=>!v);setControlsOpen(false);}if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')toggleTracking();if(!e.ctrlKey&&!e.metaKey&&!e.altKey){const i=Number(e.key)-1;if(Number.isInteger(i)&&i>=0&&i<LIVE_MODES.length){setFootprintsActive(false);update(switchLiveMode(sr.current,LIVE_MODES[i][0]));revealHUD();}if(e.code==='Digit5'){selectScene('footprints');revealHUD();}if(e.code==='KeyR'){if(footprintsActive)footprintRef.current?.clearView();else {const h={...hydraDefaults(),...sr.current.hydra};update({hydra:{...h,reset:h.reset+1}});}revealHUD();}}if(e.key==='?')setModal('help');}
+   if(e.code==='KeyC'){setClean(v=>!v);setControlsOpen(false);}if(e.code==='KeyF')void toggleFullscreen();if(e.code==='KeyT')toggleTracking();if(!e.ctrlKey&&!e.metaKey&&!e.altKey){const i=Number(e.key)-1;if(stageTwo&&Number.isInteger(i)&&i>=0&&i<LIVE_MODES.length){setFootprintsActive(false);update(switchLiveMode(sr.current,LIVE_MODES[i][0]));revealHUD();}if(e.code==='Digit5'){selectScene('footprints');revealHUD();}if(e.code==='KeyR'){if(footprintsActive)footprintRef.current?.clearView();else {const h={...hydraDefaults(),...sr.current.hydra};update({hydra:{...h,reset:h.reset+1}});}revealHUD();}}if(e.key==='?')setModal('help');}
  };const blur=()=>{mouse.current.down=false;mouse.current.shift=false;mouse.current.keyPinch=false;if(!archiveActive&&!projection.opened){engine.mute();setMuted(true);}};const visibility=()=>{if(document.hidden){blur();if(archiveActive){archive.hold();engine.mute();setMuted(true);}}};document.addEventListener('keydown',handle);document.addEventListener('keyup',handle);window.addEventListener('blur',blur);document.addEventListener('visibilitychange',visibility);return()=>{document.removeEventListener('keydown',handle);document.removeEventListener('keyup',handle);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);};});
  function pointer(e:React.PointerEvent<HTMLDivElement>){const r=e.currentTarget.getBoundingClientRect();mouse.current.x=clamp((e.clientX-r.left)/r.width);mouse.current.y=clamp(1-(e.clientY-r.top)/r.height);}
  const current=MODES.find(m=>m.id===settings.mode)!;const sounding=audioOn&&!muted&&level>.002;const hz=engine.params.frequency;const db=level>.0001?`${Math.max(-96,20*Math.log10(level)).toFixed(0)}`:'−∞';
@@ -446,15 +481,27 @@ export default function App(){
  const selectedPreset=settings.hydra?.preset;
  const currentScene:SceneId=footprintsActive?'footprints':selectedPreset==='echo'||selectedPreset==='cut'||selectedPreset==='body'?selectedPreset:'liquid';
  const archive=useArchive({pointerStart:e=>{pointer(e);mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);},pointerMove:pointer,pointerEnd:()=>{mouse.current.down=false;},active:archiveActive,engine,frameRef,videoRef:video,settings,cameraOn,cameraBusy,cameraStatus:cameraError||status,audioOn,muted,recording,recordSeconds,chooseInput,startCamera,stopCamera,enableAudio,panic,toggleRecording,openSessions:()=>{archive.setClean(false);setModal('sessions');},setMaster:master=>update({master}),exit:()=>{archive.hold();setArchiveActive(false);archive.setClean(false);}});
- return <div className={`app soma-v2 soma-v3 ${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
+ return <div className={`app soma-v2 soma-v3 ${stageTwo?'soma-stage2-app ':''}${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
    {!clean&&<GlobalNav workspace={archiveActive?'archive':projectionActive?'projection':'studio'} scene={currentScene}
+    stageTwo={stageTwo} stageTwoLab={stageTwoActive} onStageTwoLab={selectStageTwoLab}
     perform={footprintsOperator}
-    onFootprints={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+    onFootprints={()=>{if(stageTwo){openStageOneFromTwo();return;}
+     requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
      setSelectedStageTool('composer');
      setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'composer'}));}}
+    onStageTwo={()=>{
+     if(stageTwo)return;
+     // A full workspace transition unmounts Stage 1's camera and renderer.
+     // Always request software blackout before navigating to the isolated module.
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     requestSoftwarePreviewBlackout();
+     const url=new URL(window.location.href);
+     url.searchParams.set('stage','2');
+     window.location.assign(url.toString());
+    }}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
@@ -513,6 +560,8 @@ export default function App(){
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main>
+    {stageTwo&&!clean&&!archiveActive&&!projectionActive&&<StageTwoInstrumentNav
+     active={stageTwoActive} onSelect={selectStageTwoLab}/>}
 
     {footprintsActive&&!clean&&<FootprintsStageWorkspace
      navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
@@ -595,13 +644,13 @@ export default function App(){
        {!cameraOn&&!frame.tracked&&!hasPlayed.current&&!(footprintsActive&&(footprintRef.current?.count()??0)>0)&&<div className="empty-stage"><IdleArt/><h2>{source==='mouse'?'Mulai dengan satu gerakan.':settings.input==='face'?'Hadapkan wajahmu.':settings.input==='body'?'Masuk ke dalam bingkai.':'Angkat tanganmu.'}</h2><p>{source==='mouse'?'Tahan dan geser. Bunyi dan garis akan mengikuti.':settings.input==='face'?'Buka mulut dan miringkan kepala di depan kamera.':settings.input==='body'?'Tampilkan bahu dan pinggul di dalam bingkai.':'Buka telapak di depan kamera, lalu gerakkan perlahan.'}</p>{source==='camera'&&<div className="empty-actions"><button className="primary-button" onClick={()=>void startCamera()}><Camera size={16}/> Mulai kamera</button><button className="text-button" onClick={testMode}>Coba dengan mouse <ArrowUpRight size={15}/></button></div>}{source==='mouse'&&<span className="mouse-helper">ATAS · NADA NAIK <span/> KANAN · VOLUME NAIK</span>}</div>}
        {cameraOn&&!frame.tracked&&<div className="tracking-prompt"><span className={cameraBusy?'loader':'tracking-cross'}>{!cameraBusy&&<Hand size={26}/>}</span><p>{cameraBusy?status:settings.input==='body'?'Mundur hingga tubuh masuk bingkai.':settings.input==='face'?'Hadapkan wajah ke kamera.':'Tunjukkan telapak tangan ke kamera.'}</p></div>}
        {!footprintsActive&&<VisualStage frameRef={frameRef} settingsRef={sr} paramsRef={visualParams} videoRef={video} trackingRef={trackingVisible} metricsRef={metrics}/>}
-       <StudioFootprints ref={footprintRef} active={footprintsActive} forceGaitForLiveFloor={footprintsActive} frameRef={frameRef} videoRef={video} settingsRef={sr} trackingRef={trackingVisible} canvasRef={footprintCanvasRef} config={footprintConfig} onNotice={notify} onRecording={setFootprintRecording} audioStream={audioOn&&!muted?engine.recordDestination?.stream:null}
+       {!stageTwo&&<StudioFootprints ref={footprintRef} active={footprintsActive} forceGaitForLiveFloor={footprintsActive} frameRef={frameRef} videoRef={video} settingsRef={sr} trackingRef={trackingVisible} canvasRef={footprintCanvasRef} config={footprintConfig} onNotice={notify} onRecording={setFootprintRecording} audioStream={audioOn&&!muted?engine.recordDestination?.stream:null}
          onGaitSample={(mark,side,aspect)=>{if(!footprintsActive||liveFloorCount!==1)return;
           const emitted=liveFloorEngine.ingest(mark,side,aspect,cameraBinding(video.current),
            'performer-1',frameRef.current.telemetry?.capturedAt??null);
           multiPoseRouter.acceptSingle(mark,side,emitted);}}
          onPoseFrame={(f,clock,aspect)=>{if(!footprintsActive||liveFloorCount!==2)return;
-          multiPoseRouter.observe(f,clock,aspect,cameraBinding(video.current));}}/>
+          multiPoseRouter.observe(f,clock,aspect,cameraBinding(video.current));}}/>}
        <PhotoWall archive={photoArchive} clean={clean}/>
        <CameraFrame cue={cameraCue}/>
        {(cameraCue.listening||cameraCue.voice.status==='error')&&<button className={`camera-voice-indicator ${cameraCue.voice.status}`} onClick={()=>setModal('photos')} aria-label={cameraCue.voice.message}>{cameraCue.voice.status==='listening'?'● MIC · “kamera”':cameraCue.voice.status==='error'?'MIC · periksa suara':'MIC · menyambungkan…'}</button>}
