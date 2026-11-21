@@ -10,7 +10,7 @@ import type {PreviewView} from '../../footprints/stage-optics/projectorWysiwygMo
 import type {StageSurface,StageSurfacePlan,SurfaceAssessment} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import {moveMapCorner,type MapCornerIndex} from './mapCornerModel.ts';
 import {
- screenToStageFloor,snapQuadPoint,stageFloorToScreen,
+ screenToStageFloor,snapQuadPoint,stageFloorToScreen,mapGridFractions,
  type MapSimPerformer,type MapSimState,type MapStageDimensions
 } from './mapStageModel.ts';
 
@@ -57,13 +57,6 @@ type Props={
 
 const W=960,H=540;
 const CORNER_LABELS=['Kiri Atas','Kanan Atas','Kanan Bawah','Kiri Bawah'] as const;
-/** Distances are real meters in the mapped room, never percentages of the preview. */
-export const mapGridFractions=(meters:number,stepM:number):number[]=>{
- if(!Number.isFinite(meters)||!Number.isFinite(stepM)||meters<=0||stepM<=0)return [];
- return Array.from({length:Math.min(80,Math.max(0,Math.ceil(meters/stepM)-1))},
-  (_,i)=>(i+1)*stepM/meters).filter(t=>t>0&&t<1-1e-6);
-};
-
 function drawStudioPerformer(
  ctx:CanvasRenderingContext2D,
  p:MapSimPerformer,
