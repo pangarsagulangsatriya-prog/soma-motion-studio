@@ -23,6 +23,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
  const callbacks=useRef({onStream,onDisconnect});callbacks.current={onStream,onDisconnect};
  const endedHandler=useRef<(()=>void)|null>(null);
  const mounted=useRef(true);
+ const autoAttempted=useRef(new Set<string>());
  const stop=useCallback((notify=true)=>{
   generation.current++;
   const previous=active.current;active.current=null;
@@ -119,10 +120,20 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
    if(mounted.current){setPhase('error');setMessage(cameraErrorMessage(error));}
   }
  };
+ // Start a clearly identified phone webcam once it is available. A generic or
+ // built-in camera must still be selected deliberately through Manual.
+ useEffect(()=>{
+  if(intent!=='phone'||phase!=='idle'||!deviceId||active.current)return;
+  const selected=devices.find(d=>d.deviceId===deviceId);
+  if(!selected||!looksLikePhoneWebcam(selected.label)||autoAttempted.current.has(deviceId))return;
+  autoAttempted.current.add(deviceId);
+  void connect();
+ },[deviceId,devices,phase,intent]);
  const busy=phase==='connecting'||phase==='searching';
  const connected=phase==='connected';
  const needsPermission=devices.length===0||devices.some(device=>!device.label);
  const phoneDetected=devices.some(device=>looksLikePhoneWebcam(device.label));
+ const autoCandidate=!!devices.find(device=>device.deviceId===deviceId&&looksLikePhoneWebcam(device.label));
  const showFeedback=phase==='error'||phase==='searching'||phase==='connecting'||connected||devices.length===0;
  return <section className="soma-usb-phone soma-camera-quick-connect" aria-label="Pilih kamera" data-phase={phase}>
   <div className="soma-usb-head">
@@ -132,6 +143,9 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
     <RefreshCw size={15} aria-hidden="true"/>
    </button>
   </div>
+  {autoCandidate&&<p className="soma-usb-status" role="status">{devices.find(d=>d.deviceId===deviceId)?.label} · {connected?'Aktif':phase==='connecting'?'Menghubungkan otomatis…':'Siap dihubungkan'}</p>}
+  <details className="soma-usb-manual-picker" open={!autoCandidate?true:undefined}>
+   <summary>{autoCandidate?'Pilih kamera lain secara manual':'Pilih kamera secara manual'}</summary>
   <div className="soma-usb-select-wrap">
    <select id="soma-usb-phone-device" value={deviceId} disabled={busy}
     title={devices.find(device=>device.deviceId===deviceId)?.label||'Pilih kamera'}
@@ -141,6 +155,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
    </select>
    <ChevronDown size={16} aria-hidden="true" className="soma-usb-chevron"/>
   </div>
+  </details>
   <div className="soma-usb-actions">
    {connected?
     <div className="soma-usb-connected" role="status">
@@ -164,7 +179,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
    <span>{message}</span>
   </p>}
   {intent==='phone'&&!phoneDetected&&!connected&&<p className="soma-phone-no-auto" role="status">
-   HP belum teridentifikasi. Pilih kamera HP secara manual bila sudah muncul di Mac.
+   Kamera HP belum dikenali. Buka pilihan manual untuk mencoba perangkat yang tersedia.
   </p>}
   <details className="soma-usb-help">
    <summary><HelpCircle size={14} aria-hidden="true"/> Kamera tidak muncul?</summary>
