@@ -56,5 +56,6 @@ test('MAP-V4: QA, status and Perform share one bottom dock, no detached foot car
  }
  const box=await dock.boundingBox();
  expect(box).toBeTruthy();
- expect(box.height).toBeLessThan(105);
+ // Touch screens use two stacked action/status rows with accessible targets.
+ expect(box.height).toBeLessThan(page.viewportSize().width<600?135:85);
 });
