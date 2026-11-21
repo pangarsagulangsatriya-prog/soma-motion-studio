@@ -104,3 +104,43 @@ test('PF-03 / PF-06 / UI-CONSISTENCY: Perform reuses DualSurfaceSessionStore, ne
  assert.match(composeCss,/@media\(max-height:850px\)/);
  assert.match(performCss,/@media\(max-height:850px\)/);
 });
+
+test('SOMA Direct: disconnected phone and stale performer pose take precedence over build status',()=>{
+ for(const hardwareEnabled of [false,true]){
+  const missingPhone=evaluatePerformOutputSummary({
+   hardwareEnabled,source:'phone',cameraOk:false,identityOk:false,floorOk:false,
+   floorDevice:offlineDevice,bodyDevice:offlineDevice,floorQaOk:false,bodyQaOk:false,
+   operatorConfirm:false
+  });
+  assert.equal(missingPhone.primaryAction.kind,'fix-setup');
+  assert.match(missingPhone.primaryAction.detail,/Kamera HP/);
+  assert.equal(missingPhone.canOpenOutput,hardwareEnabled);
+
+  const noIdentity=evaluatePerformOutputSummary({
+   hardwareEnabled,source:'phone',cameraOk:true,identityOk:false,floorOk:false,
+   floorDevice:offlineDevice,bodyDevice:offlineDevice,floorQaOk:false,bodyQaOk:false,
+   operatorConfirm:false
+  });
+  assert.equal(noIdentity.primaryAction.kind,'fix-setup');
+  assert.match(noIdentity.primaryAction.detail,/A\/B/);
+ }
+ const validButLocked=evaluatePerformOutputSummary({
+  hardwareEnabled:false,source:'phone',cameraOk:true,identityOk:true,floorOk:true,
+  floorDevice:offlineDevice,bodyDevice:offlineDevice,floorQaOk:false,bodyQaOk:false,
+  operatorConfirm:false
+ });
+ assert.equal(validButLocked.primaryAction.kind,'build-locked');
+ assert.equal(validButLocked.canOpenOutput,false);
+});
+
+test('Direct LIVE is only reported after an acknowledged artwork frame',()=>{
+ const channel=read('../src/projection/channel.ts');
+ const session=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
+ const receiver=read('../src/projection/ProjectionOutput.tsx');
+ assert.match(channel,/lastFrameAckAt=performance\.now\(\)/);
+ assert.match(channel,/state\.transport==='blackout'/);
+ assert.match(session,/needsArtworkAck=mode==='feed'\|\|mode==='live'/);
+ assert.match(session,/now-link\.lastFrameAckAt<2400/);
+ assert.match(session,/reportedMode=awaitingFrame\?'blackout':mode/);
+ assert.match(receiver,/type:'frame-ack'/);
+});
