@@ -288,18 +288,7 @@ export function MapStageMonitor({
    drawStageGrid(mapGridFractions(stageDimensions.widthM,1),true);
    drawStageGrid(mapGridFractions(stageDimensions.depthM,1),false);
 
-   // Stage center mark & physical ruler markings
-   const leftMid=stageFloorToScreen(0,0.5,W,H,stageDimensions);
-   ctx.font='600 11px ui-monospace, monospace';
-   ctx.fillStyle='rgba(164, 190, 170, 0.78)';
-   ctx.textAlign='center';
-   ctx.fillText(`Lebar ${stageDimensions.widthM.toFixed(1)} m`,W/2,dl.y+22);
-   ctx.textAlign='right';
-   ctx.fillText(`Dalam ${stageDimensions.depthM.toFixed(1)} m`,Math.max(90,leftMid.x-14),leftMid.y+4);
-   ctx.textAlign='center';
-   ctx.fillStyle='rgba(136, 164, 144, 0.55)';
-   ctx.font='600 10px ui-monospace, monospace';
-   ctx.fillText('DEPAN / UPSTAGE',W/2,ul.y-10);
+   // Stage coordinates are in step 1, while the four corner handles own the canvas.
    ctx.restore();
 
    // Calibrated Projector Quad region + live Compose raster + calibration alignment pattern
@@ -720,8 +709,8 @@ export function MapStageMonitor({
 
      {/* Single contextual precision readout (meter + UV) cleanly clear of labels and edges */}
      {(()=>{
-      const tipText=`${activeCorner+1} ${CORNER_LABELS[activeCorner]} · ${meterX}m, ${meterY}m (${Math.round(activePt.x*100)}%,${Math.round(activePt.y*100)}%)`;
-      const boxW=Math.max(256,Math.ceil(tipText.length*6.9)+24);
+      const tipText=`${activeCorner+1} · ${CORNER_LABELS[activeCorner]}`;
+      const boxW=Math.max(128,Math.ceil(tipText.length*6.9)+24);
       const preferRight=activeCorner===1||activeCorner===2;
       const rawX=preferRight?activeScreen.x-boxW+18:activeScreen.x-18;
       const boxX=Math.min(W-boxW-12,Math.max(12,rawX));
@@ -774,13 +763,14 @@ export function MapStageMonitor({
   {/* Track-matching monitor header bar */}
   <div className="map-r2-monitor-head">
    <div className="map-r2-monitor-title">
-    <strong>Kalibrasi {selected==='floor'?'Lantai':'Tubuh (A+B)'}</strong>
-    <span>{stageDimensions.widthM}×{stageDimensions.depthM} m</span>
+    <strong>Kalibrasi {selected==='floor'?'Lantai':'Tubuh'}</strong>
     {simState.active&&!hasLiveSource&&<span className="map-r2-sim-tag">SIMULASI</span>}
    </div>
    <div className="map-r2-monitor-tools">
     {view!=='output'&&<details ref={patternMenuRef} className="map-r5-pattern-options">
-     <summary>Pola · {pattern==='grid'?'Grid '+String(gridStepM).replace('.',',')+' m':pattern==='crosshair'?'Cross':pattern==='diagonal'?'Diagonal':'Off'}</summary>
+     <summary title="Pilih grid dan pola bantu kalibrasi" aria-label="Ubah pola bantu kalibrasi">
+      {pattern==='grid'?'Grid '+String(gridStepM).replace('.',',')+' m':pattern==='crosshair'?'Cross':pattern==='diagonal'?'Diagonal':'Pola: Off'}
+     </summary>
      <div className="map-r5-pattern-popover">
     {(view==='stage'||view==='split'||view==='align')&&
      <div className="map-r2-seg-mini" role="group" aria-label="Pola bantu kalibrasi">
@@ -801,18 +791,19 @@ export function MapStageMonitor({
         <button type="button" className="map-r2-sim-btn" onClick={onToggleSimPlay}>
          {simState.playing?<><Pause size={11}/> Jeda</>:<><Play size={11}/> Jalan</>}
         </button>
-        <button type="button" className="map-r2-sim-btn" onClick={onStopSim}>Tutup simulasi</button>
+        <button type="button" className="map-r2-sim-btn" onClick={onStopSim}
+         aria-label="Tutup simulasi Map">Akhiri</button>
        </>
       :<button type="button" className="map-r2-sim-btn map-r2-cta-sim" onClick={onStartSim}
         title="Opsional: tampilkan 2 performer virtual untuk menguji hasil kalibrasi">
-        <Users size={11}/> Gunakan simulasi
+        <Users size={11}/> Simulasi
        </button>
     )}
     <button type="button" className="map-r2-fullscreen-btn"
      aria-label={fullscreen?'Keluar fullscreen Map Monitor':'Fullscreen Map Monitor'}
      title={fullscreen?'Kembali ke Map (Esc)':'Layar penuh monitor Map · preview software'}
      onClick={toggleMonitorFullscreen}>
-     {fullscreen?<Minimize2 size={15}/>:<Maximize2 size={15}/>}<span>{fullscreen?'Keluar':'Layar penuh'}</span>
+     {fullscreen?<Minimize2 size={15}/>:<Maximize2 size={15}/>}
     </button>
    </div>
   </div>
@@ -831,26 +822,28 @@ export function MapStageMonitor({
   </div>}
 
   <div className="map-r2-view-bar">
-   <div className="map-r2-view-switch" role="group" aria-label="Mode tampilan Stage Map Monitor">
+   <div className="map-r2-view-switch map-r7-view-switch" role="group" aria-label="Mode tampilan Stage Map Monitor">
     {([
      ['stage','Panggung'],
-     ['align','Kamera + Panggung'],
-     ['output','Hasil Proyektor']
-    ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
-     onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
+     ['camera','Kamera'],
+     ['output','Output']
+    ] as const).map(([id,label)=><button type="button" key={id}
+      aria-label={id==='output'?'Hasil Proyektor':label} aria-pressed={view===id}
+      onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
     <details ref={viewMenuRef} className="map-r5-other-views">
-     <summary>{view==='camera'?'Kamera':view==='split'?'Split':'Lainnya'}</summary>
+     <summary>{view==='align'?'Bandingkan':view==='split'?'Split':'Lainnya'}</summary>
      <div className="map-r5-other-view-popover">
      {([
-      ['camera','Kamera'],
+      ['align','Bandingkan'],
       ['split','Split']
-     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
+     ] as const).map(([id,label)=><button type="button" key={id} aria-pressed={view===id}
       onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
      </div>
     </details>
    </div>
-   <span className="map-r2-parity-note">
-    {connected?'Transformasi sama dengan jendela output':'Pratinjau perkiraan software · uji fisik diperlukan'}
+   <span className="map-r2-parity-note" role="status"
+    title={connected?'Transformasi sama dengan jendela output':'Pratinjau perkiraan software. Uji cahaya fisik tetap diperlukan.'}>
+    {connected?'Output terhubung':'Pratinjau software'}
    </span>
   </div>
  </div>;
