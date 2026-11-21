@@ -20,10 +20,10 @@ test('RESET-00 CP05: hidden or zero-alpha layers excluded without reordering',()
   layer(COMPOSE_STAGE_FLOOR,'Floor'),layer('photo2','Transparent',0)];
  assert.deepEqual(composerLayerOrder(layers,'FLOOR',false,true).map(x=>x.kind),['input','floor']);
 });
-test('RESET-00 CP05: physical gate excludes experimental and retired sources',()=>{
+test('RESET-00 CP05: physical projection keeps MP4 layers while excluding retired sources',()=>{
  const layers=[layer(COMPOSE_STAGE_INPUT,'MP4'),layer('@stage:hydra','Old Hydra'),
   layer('@scene:footprints','Old scene'),layer(COMPOSE_STAGE_FLOOR,'Floor'),layer('asset','Archive')];
- assert.deepEqual(composerLayerOrder(layers,'FLOOR',true,true),[]);
+ assert.deepEqual(composerLayerOrder(layers,'FLOOR',true,true).map(x=>x.kind),['input','floor','media']);
  assert.deepEqual(composerLayerOrder(layers,'FLOOR',true,false).map(x=>x.kind),['floor','media']);
  assert.equal(composerSourceKind(layer('@stage:unknown','Unknown'),'FLOOR'),'empty');
  assert.equal(composerSourceKind(layer(COMPOSE_STAGE_BODY,'Leg'),'BODY A'),'body');
