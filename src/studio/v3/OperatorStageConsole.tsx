@@ -87,7 +87,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   {label:'Resolume',done:false,detail:'Pilih sender '+bridge.transport+' pada clip'}
  ]:[
   {label:'Track',done:sourceReady&&identityOk,detail:'Sumber gerak siap'},
-  {label:'Map QA',done:floorQaOk||bodyQaOk,detail:'Lulus pemeriksaan fisik'},
+  {label:'Output fisik',done:floorQaOk||bodyQaOk,detail:'Izin output fisik'},
   {label:'LIVE',done:directLive,detail:'Proyektor menerima perintah LIVE'}
  ];
  const routePurpose=isTouchDesigner?'Gerak kaki A/B · WebSocket lokal':
@@ -97,8 +97,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   outputRouteMode==='soma'&&!floorOk?'Periksa kalibrasi Map':
   isResolume?'Periksa gambar di OBS dan Resolume':
   destination.kind==='info'?'Periksa pengaturan output':
-  destination.kind==='qa'?'Selesaikan uji 5 titik di Map':
-  destination.kind==='arm'?'QA selesai · konfirmasi LIVE':destination.hint;
+  destination.kind==='qa'?'SOMA Direct terkunci · Feed Resolume tersedia':
+  destination.kind==='arm'?'Output siap · konfirmasi LIVE':destination.hint;
  const handleRouteChange=(next:PerformOutputRouteMode)=>{
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
   // Switching destinations cannot silently leave prior output illuminating the stage.
@@ -135,6 +135,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  };
 
  const handlePrimaryAction=()=>{
+  if(destination.kind==='qa'&&outputRouteMode==='soma'){
+   handleRouteChange('resolume');return;
+  }
   if(destination.kind==='info'){setOutputDetailsOpen(true);return;}
   if(isResolume){
    if(destination.kind==='setup'){onGoTrack?.();return;}
@@ -280,7 +283,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        </div>
        {!isResolume&&unreadyReason&&<div className="ops-r1-recovery">
         <span><ShieldAlert size={13}/>{unreadyReason}</span>
-        <button type="button" onClick={onRecovery}>Map QA</button>
+        <button type="button" onClick={onRecovery}>Buka Map</button>
        </div>}
        <button type="button" className="ops-r1-detail-blackout" onClick={handleBlackoutAll}>
         <MonitorOff size={13}/>Blackout
