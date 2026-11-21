@@ -77,6 +77,8 @@ test('PF-UX-02: one output CTA, details contain secondary per-surface controls',
  assert.match(ui,/aria-label="Tujuan output"/);
  assert.doesNotMatch(ui,/className="ops-r1-cue-slots"/);
  assert.match(ui,/className="ops-r1-cue-transport"/);
+ assert.match(ui,/className="ops-r1-cue-grid ops-r1-monitor-presets"/);
+ assert.match(ui,/Hanya mengatur monitor operator/);
  assert.match(ui,/Details|Detail koneksi/);
 });
 test('PF-UX-05: TD receiver handles disconnect and releases physical permission separately',()=>{
