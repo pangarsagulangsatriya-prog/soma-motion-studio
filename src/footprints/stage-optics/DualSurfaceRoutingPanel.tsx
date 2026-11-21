@@ -61,7 +61,7 @@ type Props={
  performerCount?:1|2;
  identitySafe?:boolean;
  experimentSource?:'video'|'simulator'|null;
- onOpenCameraCalibration?:()=>void;
+ onOpenCameraCalibration?:(size:MapStageDimensions)=>void;
  onEnterPerform?:()=>void;
 };
 
@@ -143,7 +143,7 @@ export function DualSurfaceRoutingPanel({
  const [activeCorner,setActiveCorner]=useState<MapCornerIndex>(0);
  const [snapEnabled,setSnapEnabled]=useState(true);
  const [resetArmed,setResetArmed]=useState(false);
- const [stageDimensions,setStageDimensions]=useState<MapStageDimensions>(DEFAULT_STAGE_DIMENSIONS);
+ const [stageDimensions,setStageDimensions]=useState<MapStageDimensions>(()=>floorTracker?.floor?{widthM:floorTracker.floor.widthM,depthM:floorTracker.floor.depthM}:DEFAULT_STAGE_DIMENSIONS);
  const [simState,setSimState]=useState<MapSimState>(createDefaultMapSim);
  const [quadHistory,setQuadHistory]=useState<Record<StageSurface,MapQuadHistory>>({
   body:emptyQuadHistory(),
@@ -212,6 +212,15 @@ export function DualSurfaceRoutingPanel({
   }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi tidak valid.');}
  };
 
+ const changeRoomSize=(size:MapStageDimensions)=>{
+  const next=clampStageDimensions(size);
+  if(next.widthM===stageDimensions.widthM&&next.depthM===stageDimensions.depthM)return;
+  allBlackout();
+  if(floorTracker?.isCalibrated)floorTracker.revoke('Ukuran lantai berubah di Map. Tandai ulang lantai pada gambar kamera.');
+  setStageDimensions(next);
+  setMessage('Ukuran lantai diubah. Tandai ulang bidang pada kamera sebelum menguji proyektor.');
+ };
+ const openMapCameraCalibration=()=>onOpenCameraCalibration?.(stageDimensions);
  const commitMonitorQuad=(quad:Quad)=>{
   const prevQuad=getDualSurfaceState().plans[selected].projectorQuad;
   try{
@@ -497,7 +506,7 @@ export function DualSurfaceRoutingPanel({
        const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
        return <button type="button" key={preset.id} aria-pressed={isMatch}
         onClick={()=>{
-         setStageDimensions({widthM:preset.widthM,depthM:preset.depthM});
+         changeRoomSize({widthM:preset.widthM,depthM:preset.depthM});
          setMessage(`Ukuran ruang kalibrasi diatur ke ${preset.label}.`);
         }}>{preset.label}</button>;
       })}
@@ -508,7 +517,7 @@ export function DualSurfaceRoutingPanel({
         const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
         return <button type="button" key={preset.id} aria-pressed={isMatch}
          onClick={()=>{
-          setStageDimensions({widthM:preset.widthM,depthM:preset.depthM});
+          changeRoomSize({widthM:preset.widthM,depthM:preset.depthM});
           setMessage(`Ukuran ruang kalibrasi diatur ke ${preset.label}.`);
          }}>{preset.label}</button>;
        })}
@@ -516,11 +525,11 @@ export function DualSurfaceRoutingPanel({
       <div className="map-r2-dims" role="group" aria-label="Ukuran ruang kustom (meter)">
        <label>Lebar (m)
         <input type="number" min={1} max={20} step={0.5} value={stageDimensions.widthM}
-         onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,widthM:Number(e.target.value)}))}/>
+         onChange={e=>changeRoomSize({...stageDimensions,widthM:Number(e.target.value)})}/>
        </label>
        <label>Dalam (m)
         <input type="number" min={1} max={20} step={0.5} value={stageDimensions.depthM}
-         onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,depthM:Number(e.target.value)}))}/>
+         onChange={e=>changeRoomSize({...stageDimensions,depthM:Number(e.target.value)})}/>
        </label>
       </div>
      </details>
@@ -587,9 +596,9 @@ export function DualSurfaceRoutingPanel({
        </button>
       </div>
      </details>
-     {cameraOn&&!floorReady&&onOpenCameraCalibration&&
-      <button type="button" className="map-r2-link-action" onClick={onOpenCameraCalibration}>
-       Tandai lantai pada kamera
+     {cameraOn&&onOpenCameraCalibration&&
+      <button type="button" className="map-r2-link-action" onClick={openMapCameraCalibration}>
+       {floorReady?'Ubah bidang kamera':'Tandai lantai pada kamera'}
       </button>}
     </section>
 
@@ -857,7 +866,7 @@ export function DualSurfaceRoutingPanel({
      onToggleSimPlay={()=>setSimState(prev=>({...prev,playing:!prev.playing}))}
      onMoveSimPerformer={(actorId,pos)=>setSimState(prev=>moveMapSimPerformer(prev,actorId,pos))}
      onCommitProjectorQuad={commitMonitorQuad}
-     onOpenCameraCalibration={onOpenCameraCalibration}
+     onOpenCameraCalibration={openMapCameraCalibration}
      previewView={previewView}
      onChangePreviewView={setPreviewView}
      softwareMode={devices[selected].mode}
