@@ -6,8 +6,8 @@ import type {SurfaceDeviceState} from '../../footprints/stage-optics/DualSurface
 export type PerformSurfaceBadge={
  surface:StageSurface;
  label:'FLOOR'|'BODY';
- status:'Offline'|'Blackout'|'Test'|'LIVE';
- tone:'off'|'blackout'|'test'|'live';
+ status:'Offline'|'Blackout'|'Test'|'LIVE'|'Feed';
+ tone:'off'|'blackout'|'test'|'live'|'feed';
  connected:boolean;
  opened:boolean;
 };
@@ -55,6 +55,9 @@ export function deriveSurfaceBadge(surface:StageSurface,device:SurfaceDeviceStat
  }
  if(device.mode==='live'){
   return {surface,label,status:'LIVE',tone:'live',connected:true,opened:true};
+ }
+ if(device.mode==='feed'){
+  return {surface,label,status:'Feed',tone:'feed',connected:true,opened:true};
  }
  if(device.mode==='test'){
   return {surface,label,status:'Test',tone:'test',connected:true,opened:true};

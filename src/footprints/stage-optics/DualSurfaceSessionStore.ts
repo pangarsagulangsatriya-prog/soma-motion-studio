@@ -9,7 +9,7 @@ import {stageHardwareAvailable} from './StageHardwareGate.ts';
 import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
 import {defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceState,
- assessSurfaceProof,outputSurfaceDecision,
+ assessSurfaceProof,outputSurfaceDecision,cleanFeedSurfaceState,
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext}
  from './DualSurfaceCalibration.ts';
 
@@ -83,6 +83,15 @@ let testCanvases:Record<StageSurface,HTMLCanvasElement>|null=null;
 let pumpTimer:number|null=null;
 let lastUI=0;
 let blackoutBound=false;
+export type SurfaceOutputMode='soma'|'resolume';
+const outputMode:Record<StageSurface,SurfaceOutputMode>={body:'soma',floor:'soma'};
+const feedEnabled:Record<StageSurface,boolean>={body:false,floor:false};
+/** Capture feed uses composed pixels, separate from QA-gated physical projection. */
+export const canStreamCleanFeed=(input:{
+ requested:boolean;connected:boolean;sourceFresh:boolean;
+ cameraSafe:boolean;visualReady:boolean;canvasReady:boolean;
+})=>input.requested&&input.connected&&input.sourceFresh&&
+ input.cameraSafe&&input.visualReady&&input.canvasReady;
 const listeners=new Set<Listener>();
 
 const sources:RuntimeSources={
@@ -145,6 +154,7 @@ export function hasActiveDualSurfacePorts():boolean{
 }
 
 export function urgentBlackoutDualSurface(id:StageSurface){
+ feedEnabled[id]=false;
  const links=ensurePorts();
  state={
   ...state,
@@ -207,10 +217,16 @@ export function openDualSurfaceOutputWindow(id:StageSurface,feedMode:'soma'|'res
   return {ok:false,alreadyOpen:false,popupBlocked:false,message:msg};
  }
  const links=ensurePorts();
+ 
+if(links[id].opened&&outputMode[id]!==feedMode){
+  urgentBlackoutDualSurface(id);
+  links[id].closeOutput(); // Reopen with correct feed URL
+ }
  if(links[id].opened){
   links[id].focusOutput();
+  if(feedMode==='resolume')feedEnabled[id]=true; // Explicit user action
   const msg=feedMode==='resolume'
-   ?`Feed Resolume ${surfaceLabel} sudah terbuka. Pilih jendela ini di Resolume Arena (Window/Screen Capture · Blend: Add/Luma Key).`
+   ?`Clean Feed ${surfaceLabel} diaktifkan; lanjutkan visual jika masih HOLD.`
    :`Output ${surfaceLabel} sudah terbuka (${links[id].connected?'terkoneksi':'menunggu koneksi'}). Pindahkan ke layar proyektor lalu tekan F.`;
   patchDualSurfaceState({message:msg});
   return {ok:true,alreadyOpen:true,popupBlocked:false,message:msg};
@@ -221,6 +237,7 @@ export function openDualSurfaceOutputWindow(id:StageSurface,feedMode:'soma'|'res
   patchDualSurfaceState({message:msg});
   return {ok:false,alreadyOpen:false,popupBlocked:true,message:msg};
  }
+ outputMode[id]=feedMode;
  state={
   ...state,
   requested:{...state.requested,[id]:'blackout'},
@@ -231,6 +248,7 @@ export function openDualSurfaceOutputWindow(id:StageSurface,feedMode:'soma'|'res
    :`Output ${surfaceLabel} dibuka (Blackout). Pindahkan ke layar proyektor lalu tekan F.`
  };
  urgentBlackoutDualSurface(id);
+ feedEnabled[id]=feedMode==='resolume';
  return {ok:true,alreadyOpen:false,popupBlocked:false,message:state.message};
 }
 
@@ -238,6 +256,7 @@ export function closeDualSurfaceOutputWindow(id:StageSurface){
  const links=ensurePorts();
  urgentBlackoutDualSurface(id);
  links[id].closeOutput();
+ outputMode[id]='soma';
  const surfaceLabel=id==='floor'?'FLOOR':'BODY';
  patchDualSurfaceState({message:`Output ${surfaceLabel} ditutup.`});
 }
@@ -326,9 +345,30 @@ function sendTick(now:number){
    connected:link.connected,cameraSafe:safe,sourceFresh:fresh,
    bridgeSafe:sourceSafe,operatorArmed:state.armed[id]
   });
-  let canvas:HTMLCanvasElement|null=null;
-  if(decision.mode==='live')canvas=(id==='body'?sources.bodyCanvas:sources.floorCanvas)?.current??null;
-  if(decision.mode==='test'&&testCanvases){
+  
+let canvas:HTMLCanvasElement|null=null;
+  let mode:'blackout'|'test'|'live'|'feed'=decision.mode;
+  let reason=decision.reason;
+  if(outputMode[id]==='resolume'){
+   const raster=(id==='body'?sources.bodyCanvas:sources.floorCanvas)?.current??null;
+   const ready=canStreamCleanFeed({
+    requested:feedEnabled[id],connected:link.connected,sourceFresh:fresh,
+    cameraSafe:!!stage?.cameraSafe,visualReady:sourceSafe,
+    canvasReady:!!raster&&raster.width>=16&&raster.height>=16
+   });
+   if(ready){
+    canvas=raster;mode='feed';
+    reason='Clean Feed aktif: frame Compose dikirim ke jendela.';
+   }else{
+    mode='blackout';
+    reason=!feedEnabled[id]?'Clean Feed Blackout. Klik Buka Feed lagi untuk melanjutkan.':
+     !link.connected?'Jendela Clean Feed belum terhubung.':
+     'Visual sumber belum siap atau sedang HOLD. Klik Lanjutkan Visual.';
+   }
+  }else if(decision.mode==='live'){
+   canvas=(id==='body'?sources.bodyCanvas:sources.floorCanvas)?.current??null;
+  }
+  if(outputMode[id]!=='resolume'&&decision.mode==='test'&&testCanvases){
    canvas=testCanvases[id];
    const ok=drawSurfaceTestPattern(canvas,id,
     state.target[id]||(id==='body'?'B1':'F1'),
@@ -336,19 +376,23 @@ function sendTick(now:number){
    if(!ok)canvas=null;
   }
   if(canvas&&canvas.width>=16&&canvas.height>=16){
-   link.sendArtwork(stageSurfaceState(plan,decision.mode,true),canvas,now);
+   link.sendArtwork(mode==='feed'?cleanFeedSurfaceState(plan):stageSurfaceState(plan,mode,true),canvas,now);
   }else link.send(stageSurfaceState(plan,'blackout',false),now);
+
   if(now-lastUI>240){
+   const reportedMode=mode==='feed'&&link.receivedFrames<1?'blackout':mode;
+   const reportedReason=mode==='feed'&&link.receivedFrames<1?
+    'Feed terhubung, menunggu frame pertama diterima jendela.':reason;
    reportDualOutputStatus(telemetryOwner,{
     surface:id,reported:true,opened:link.opened,connected:link.connected,
-    mode:canvas&&link.connected?decision.mode:'blackout',
+    mode:canvas&&link.connected?reportedMode:'blackout',
     qa:decision.assessment.status,
-    sampledAtMs:now,reason:canvas?decision.reason:'Sumber visual atau output tidak siap.'
+    sampledAtMs:now,reason:reportedReason
    });
    const next:SurfaceDeviceState={
     connected:link.connected,opened:link.opened,viewport,
-    mode:canvas?decision.mode:'blackout',
-    reason:canvas?decision.reason:'Sumber visual/test tidak siap atau output terputus.'
+    mode:canvas&&link.connected?reportedMode:'blackout',
+    reason:reportedReason
    };
    const prior=state.devices[id];
    if(prior.connected!==next.connected||prior.opened!==next.opened||
@@ -398,6 +442,8 @@ export function resetDualSurfaceSessionForTest(){
   ports=null;
  }
  testCanvases=null;
+ outputMode.body='soma';outputMode.floor='soma';
+ feedEnabled.body=false;feedEnabled.floor=false;
  state=initialState();
  emit();
 }

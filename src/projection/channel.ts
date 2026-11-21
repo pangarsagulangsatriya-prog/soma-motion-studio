@@ -13,7 +13,7 @@ export class ProjectionLink{
  start(){if(this.channel)return;try{this.channel=new BroadcastChannel(`soma-body-projection-${this.id}`);this.channel.onmessage=e=>{const m=e.data;if(m?.session!==this.id)return;if(m.type==='hello'){this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=Date.now();}if(m.type==='heartbeat'){this.lastSeen=Date.now();this.renderer=String(m.renderer??'').slice(0,60);if(m.info&&['width','height','viewportWidth','viewportHeight','dpr','fps','p95Ms','frames','samples'].every(k=>Number.isFinite(m.info[k])&&m.info[k]>=0))this.outputInfo=m.info;}if(m.type==='closed')this.lastSeen=0;};window.addEventListener('message',this.ack);}catch{this.error='Komunikasi output belum tersedia pada browser ini.';}}
  buildOutputUrl(surface?:'body'|'floor',feedMode:'soma'|'resolume'='soma'){const url=new URL(import.meta.env.BASE_URL||'/',location.origin);url.searchParams.set('bodyProjection',this.id);if(surface)url.searchParams.set('stageSurface',surface);if(feedMode==='resolume')url.searchParams.set('feed','resolume');return url.toString();}
  open(surface?:'body'|'floor',feedMode:'soma'|'resolume'='soma'){this.start();if(!this.channel)return false;const url=this.buildOutputUrl(surface,feedMode);
-  this.child=window.open(url,`soma-${surface??'body'}-${this.id}`,'popup,width=1280,height=720');this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=0;this.error=this.child?'':'Pop-up diblokir. Izinkan pop-up SOMA, lalu buka output lagi.';return !!this.child;}
+  this.child=window.open(url,`soma-${surface??'body'}-${this.id}`,'popup,width=1280,height=720');this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=0;this.receivedFrames=0;this.outputInfo=null;this.error=this.child?'':'Pop-up diblokir. Izinkan pop-up SOMA, lalu buka output lagi.';return !!this.child;}
  focusOutput(){if(!this.opened)return false;try{this.child?.focus();}catch{}return true;}
  get opened(){return !!this.child&&!this.child.closed;}
  get connected(){return this.opened&&Date.now()-this.lastSeen<OUTPUT_TIMEOUT;}
@@ -47,6 +47,6 @@ export class ProjectionLink{
     this.error='Kirim komposisi Footprints gagal. Periksa output.';}
   }).catch(()=>{this.error='Tidak bisa menyalin komposisi Footprints.';}).finally(()=>{this.artworkBusy=false;});
  }
- closeOutput(){this.channel?.postMessage({type:'shutdown',session:this.id});this.child?.close();this.child=null;this.lastSeen=0;this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.latestArtworkAllowed=false;}
+ closeOutput(){this.channel?.postMessage({type:'shutdown',session:this.id});this.child?.close();this.child=null;this.lastSeen=0;this.inFlight=null;this.receivedFrames=0;this.outputInfo=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.latestArtworkAllowed=false;}
  dispose(){this.closeOutput();this.channel?.close();this.channel=null;window.removeEventListener('message',this.ack);}
 }
