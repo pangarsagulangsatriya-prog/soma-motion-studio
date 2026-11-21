@@ -114,7 +114,7 @@ export function MapWysiwygWorkspace({
    const c=outputCanvas.current,ctx=c?.getContext('2d');if(!c||!ctx)return;
    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
    ctx.fillStyle='#090e0a';ctx.fillRect(0,0,W,H);
-   const src=selected==='body'?bodyCanvas.current:(liquidCanvas?.current?.width?liquidCanvas.current:floorCanvas.current);
+   const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
    if(ready)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
    if(!hasLiveSource&&simState.active){
@@ -142,7 +142,7 @@ export function MapWysiwygWorkspace({
    ctx.stroke();
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,liquidCanvas,floorCanvas,bodyCanvas]);
+ },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,floorCanvas,bodyCanvas]);
  const currentBox=sourceBox;
  const projectorBox={x:0,y:0,width:W,height:H};
  const overlayQuad=(where:'source'|'output')=>where==='source'?cameraDraft:outputDraft;
