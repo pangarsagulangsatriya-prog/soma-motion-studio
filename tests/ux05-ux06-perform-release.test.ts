@@ -38,10 +38,10 @@ test('offline source must not show Perform as ready',()=>{
  assert.equal(status.state,'attention');
 });
 
-test('MP4 simulator remains preview-only even if QA flags appear true',()=>{
+test('MP4 and simulator require physical Map QA for Perform',()=>{
  for(const source of ['video','simulator'] as const){
   const status=evaluatePerformReadiness({source,cameraOk:true,identityOk:true,floorOk:true,bodyOutputQa:true,floorOutputQa:true});
-  assert.equal(status.state,'preview');
+  assert.equal(status.state,'qa-required');
  }
 });
 
