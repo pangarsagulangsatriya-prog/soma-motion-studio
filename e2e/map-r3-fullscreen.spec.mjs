@@ -26,22 +26,21 @@ test('MAP-V2: source and projected result stay side by side in fullscreen',async
  await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
 });
 
-test('MAP-V2: no duplicate technical panel; projector QA is opt-in',async({page})=>{
+test('MAP-V5: Map uses Track-standard top CTA and has no projector testing panel',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
+ const nav=page.locator('.soma-stage-module-nav');
  const map=page.locator('.stage-dual.map-r2-shell');
+ await expect(nav.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
  await expect(map.locator('.soma-map-v2-main')).toBeVisible();
+ await expect(map.getByRole('button',{name:'Lanjut Perform'})).toHaveCount(0);
+ await expect(map.locator('.map-r8-projector-setup')).toHaveCount(0);
+ await expect(map.getByText('Uji proyektor',{exact:true})).toHaveCount(0);
+ await expect(map.getByText('QA fisik',{exact:true})).toHaveCount(0);
  await expect(map.locator('.map-r2-advanced')).toHaveCount(0);
- await expect(map.getByText('Teknis & diagnostik')).toHaveCount(0);
- const qa=map.locator('.map-r8-projector-setup');
- if(await qa.count()){
-  await expect(qa).not.toHaveAttribute('open');
-  await qa.locator(':scope > summary').click();
-  await expect(qa.locator('.stage-dual-qa-disclosure')).toBeVisible();
- }
- await expect(map.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
 });
-
+ 
 test('MAP-V3: idle state offers simulation and real Track/Compose navigation',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
