@@ -26,8 +26,8 @@ test('MAP-R3 Camera and Stage share monitor, and fullscreen does not open physic
  assert.match(monitor,/sourceKind==='camera'&&vid&&vid\.readyState>=2/);
  assert.match(monitor,/frameRef\?\.current\?\.pose\?\.length/);
  assert.match(monitor,/cal\.cameraQuad\.length===4/);
- assert.match(router,/setMonitorView\('align'\)/);
- assert.match(router,/className="map-r2-advanced"/);
+ assert.match(router,/useState<MapMonitorView>\('stage'\)/);
+ assert.doesNotMatch(router,/className="map-r2-advanced"/);
  assert.match(router,/className="stage-dual-qa-disclosure"/);
  assert.match(router,/allBlackout/);
  assert.match(router,/STAGE_HARDWARE_ENABLED/);
