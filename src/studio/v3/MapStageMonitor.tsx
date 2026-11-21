@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type KeyboardEvent,type PointerEvent,type RefObject} from 'react';
-import {Pause,Play,Users} from 'lucide-react';
+import {Maximize2,Minimize2,Pause,Play,Users} from 'lucide-react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Quad} from '../../projection/geometry.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
@@ -14,7 +14,7 @@ import {
  type MapSimPerformer,type MapSimState,type MapStageDimensions
 } from './mapStageModel.ts';
 
-export type MapMonitorView='stage'|'camera'|'output'|'split';
+export type MapMonitorView='stage'|'camera'|'output'|'split'|'align';
 export type CalibrationGuidePattern='grid'|'crosshair'|'diagonal'|'off';
 
 type Props={
@@ -57,6 +57,12 @@ type Props={
 
 const W=960,H=540;
 const CORNER_LABELS=['Kiri Atas','Kanan Atas','Kanan Bawah','Kiri Bawah'] as const;
+/** Distances are real meters in the mapped room, never percentages of the preview. */
+export const mapGridFractions=(meters:number,stepM:number):number[]=>{
+ if(!Number.isFinite(meters)||!Number.isFinite(stepM)||meters<=0||stepM<=0)return [];
+ return Array.from({length:Math.min(80,Math.max(0,Math.ceil(meters/stepM)-1))},
+  (_,i)=>(i+1)*stepM/meters).filter(t=>t>0&&t<1-1e-6);
+};
 
 function drawStudioPerformer(
  ctx:CanvasRenderingContext2D,
@@ -181,6 +187,23 @@ export function MapStageMonitor({
  bodyCanvas,floorCanvas,liquidCanvas,experimentInputCanvas,videoRef,
  frameRef,floorTracker,motionEvents,testCanvases,performerCount,identitySafe
 }:Props){
+ const monitorRef=useRef<HTMLDivElement>(null);
+ const [fullscreen,setFullscreen]=useState(false);
+ const [fullscreenError,setFullscreenError]=useState('');
+ const [gridStepM,setGridStepM]=useState<0.25|0.5|1>(0.5);
+ useEffect(()=>{
+  const sync=()=>setFullscreen(document.fullscreenElement===monitorRef.current);
+  document.addEventListener('fullscreenchange',sync);
+  return()=>document.removeEventListener('fullscreenchange',sync);
+ },[]);
+ const toggleMonitorFullscreen=()=>{
+  const el=monitorRef.current;
+  if(!el)return;
+  setFullscreenError('');
+  const op=document.fullscreenElement===el?document.exitFullscreen():el.requestFullscreen?.();
+  if(!op){setFullscreenError('Browser ini belum mendukung fullscreen Map.');return;}
+  void op.catch(()=>setFullscreenError('Fullscreen ditolak browser. Periksa izin tampilan layar.'));
+ };
  const stageCanvasRef=useRef<HTMLCanvasElement>(null);
  const camCanvasRef=useRef<HTMLCanvasElement>(null);
  const svgRef=useRef<SVGSVGElement>(null);
@@ -200,7 +223,7 @@ export function MapStageMonitor({
 
  // Render calibration stage canvas (~24 fps)
  useEffect(()=>{
-  if(view!=='stage'&&view!=='split')return;
+  if(view!=='stage'&&view!=='split'&&view!=='align')return;
   const canvas=stageCanvasRef.current;
   if(!canvas)return;
   const ctx=canvas.getContext('2d');
@@ -251,43 +274,24 @@ export function MapStageMonitor({
    ctx.lineWidth=1.2;
    ctx.stroke();
 
-   // Exact physical meter grid (1m major + 0.5m minor subdivisions)
-   const cols=Math.max(1,Math.round(stageDimensions.widthM));
-   const rows=Math.max(1,Math.round(stageDimensions.depthM));
-   const subCols=cols*2;
-   const subRows=rows*2;
-
+   // 1m reference lines and selectable 0.5m / 0.25m alignment subdivisions.
+   const drawStageGrid=(steps:number[],vertical:boolean)=>{
+    for(const t of steps){
+     const a=vertical?stageFloorToScreen(t,0,W,H,stageDimensions):stageFloorToScreen(0,t,W,H,stageDimensions);
+     const b=vertical?stageFloorToScreen(t,1,W,H,stageDimensions):stageFloorToScreen(1,t,W,H,stageDimensions);
+     ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    }
+   };
    ctx.strokeStyle='rgba(124, 162, 134, 0.08)';
    ctx.lineWidth=1;
-   for(let i=1;i<subCols;i++){
-    if(i%2===0)continue;
-    const u=i/subCols;
-    const a=stageFloorToScreen(u,0,W,H,stageDimensions);
-    const b=stageFloorToScreen(u,1,W,H,stageDimensions);
-    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+   if(gridStepM<1){
+    drawStageGrid(mapGridFractions(stageDimensions.widthM,gridStepM),true);
+    drawStageGrid(mapGridFractions(stageDimensions.depthM,gridStepM),false);
    }
-   for(let j=1;j<subRows;j++){
-    if(j%2===0)continue;
-    const v=j/subRows;
-    const a=stageFloorToScreen(0,v,W,H,stageDimensions);
-    const b=stageFloorToScreen(1,v,W,H,stageDimensions);
-    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-   }
-
-   ctx.strokeStyle='rgba(156, 196, 166, 0.19)';
+   ctx.strokeStyle='rgba(156, 196, 166, 0.23)';
    ctx.lineWidth=1.1;
-   for(let i=1;i<cols;i++){
-    const u=i/cols;
-    const a=stageFloorToScreen(u,0,W,H,stageDimensions);
-    const b=stageFloorToScreen(u,1,W,H,stageDimensions);
-    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-   }
-   for(let j=1;j<rows;j++){
-    const v=j/rows;
-    const a=stageFloorToScreen(0,v,W,H,stageDimensions);
-    const b=stageFloorToScreen(1,v,W,H,stageDimensions);
-    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-   }
+   drawStageGrid(mapGridFractions(stageDimensions.widthM,1),true);
+   drawStageGrid(mapGridFractions(stageDimensions.depthM,1),false);
 
    // Stage center mark & physical ruler markings
    const leftMid=stageFloorToScreen(0,0.5,W,H,stageDimensions);
@@ -336,11 +340,13 @@ export function MapStageMonitor({
    if(pattern==='grid'){
     ctx.strokeStyle=selected==='floor'?'rgba(203, 233, 167, 0.24)':'rgba(128, 207, 216, 0.24)';
     ctx.lineWidth=1;
-    for(const t of [0.25,0.5,0.75]){
+    for(const t of mapGridFractions(stageDimensions.widthM,gridStepM)){
      const a=bilerp(t,0),b=bilerp(t,1);
      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-     const c=bilerp(0,t),d=bilerp(1,t);
-     ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.stroke();
+    }
+    for(const t of mapGridFractions(stageDimensions.depthM,gridStepM)){
+     const a=bilerp(0,t),b=bilerp(1,t);
+     ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
    }else if(pattern==='crosshair'){
     ctx.strokeStyle=selected==='floor'?'rgba(203, 233, 167, 0.42)':'rgba(128, 207, 216, 0.42)';
@@ -446,13 +452,13 @@ export function MapStageMonitor({
   raf=requestAnimationFrame(paint);
   return()=>cancelAnimationFrame(raf);
  },[
-  view,selected,editingCorners,pattern,stageDimensions,hasLiveSource,simState,
+  view,selected,editingCorners,pattern,gridStepM,stageDimensions,hasLiveSource,simState,
   bodyCanvas,floorCanvas,liquidCanvas,motionEvents,performerCount,identitySafe
  ]);
 
  // Render Camera Feed view (~20 fps)
  useEffect(()=>{
-  if(view!=='camera')return;
+  if(view!=='camera'&&view!=='align')return;
   const canvas=camCanvasRef.current;
   if(!canvas)return;
   const ctx=canvas.getContext('2d');
@@ -470,12 +476,17 @@ export function MapStageMonitor({
    const vid=videoRef?.current;
    const exp=experimentInputCanvas?.current;
    let painted=false;
-   if(sourceKind==='camera'&&vid&&vid.readyState>=2&&vid.videoWidth>0){
-    ctx.drawImage(vid,0,0,W,H);
+   let box={x:0,y:0,w:W,h:H};
+   const drawInput=(source:CanvasImageSource,sw:number,sh:number)=>{
+    const factor=Math.min(W/sw,H/sh);
+    box={x:(W-sw*factor)/2,y:(H-sh*factor)/2,w:sw*factor,h:sh*factor};
+    ctx.drawImage(source,box.x,box.y,box.w,box.h);
     painted=true;
+   };
+   if(sourceKind==='camera'&&vid&&vid.readyState>=2&&vid.videoWidth>0&&vid.videoHeight>0){
+    drawInput(vid,vid.videoWidth,vid.videoHeight);
    }else if((sourceKind==='video'||sourceKind==='simulator')&&exp&&exp.width>0&&exp.height>0){
-    ctx.drawImage(exp,0,0,W,H);
-    painted=true;
+    drawInput(exp,exp.width,exp.height);
    }
 
    if(!painted){
@@ -497,13 +508,32 @@ export function MapStageMonitor({
     ctx.strokeStyle='#cbe9a7';
     ctx.lineWidth=2;
     ctx.beginPath();
-    cal.cameraQuad.forEach((pt,idx)=>{
-     const px=pt.x*W,py=pt.y*H;
+    const q=cal.cameraQuad;
+    const at=(u:number,v:number)=>{
+     const a=q[0],b=q[1],c=q[2],d=q[3];
+     const x=(1-u)*(1-v)*a.x+u*(1-v)*b.x+u*v*c.x+(1-u)*v*d.x;
+     const y=(1-u)*(1-v)*a.y+u*(1-v)*b.y+u*v*c.y+(1-u)*v*d.y;
+     return {x:box.x+x*box.w,y:box.y+y*box.h};
+    };
+    q.forEach((pt,idx)=>{
+     const px=box.x+pt.x*box.w,py=box.y+pt.y*box.h;
      if(idx===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
     });
     ctx.closePath();
     ctx.fillStyle='rgba(203, 233, 167, 0.08)';
     ctx.fill();ctx.stroke();
+    if(pattern==='grid'){
+     ctx.strokeStyle='rgba(203, 233, 167, 0.22)';
+     ctx.lineWidth=1;
+     for(const t of mapGridFractions(stageDimensions.widthM,gridStepM)){
+      const p=at(t,0),r=at(t,1);
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(r.x,r.y);ctx.stroke();
+     }
+     for(const t of mapGridFractions(stageDimensions.depthM,gridStepM)){
+      const p=at(0,t),r=at(1,t);
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(r.x,r.y);ctx.stroke();
+     }
+    }
     ctx.restore();
    }
 
@@ -516,7 +546,7 @@ export function MapStageMonitor({
      if(!lm||(lm.visibility??1)<0.35)continue;
      ctx.fillStyle=idx%2===1?'#cbe9a7':'#8ad8e2';
      ctx.beginPath();
-     ctx.arc(lm.x*W,lm.y*H,5.5,0,Math.PI*2);
+     ctx.arc(box.x+lm.x*box.w,box.y+lm.y*box.h,5.5,0,Math.PI*2);
      ctx.fill();
      ctx.strokeStyle='#050806';
      ctx.lineWidth=1.5;
@@ -527,7 +557,7 @@ export function MapStageMonitor({
   };
   raf=requestAnimationFrame(paint);
   return()=>cancelAnimationFrame(raf);
- },[view,sourceKind,videoRef,experimentInputCanvas,floorTracker,frameRef,showPoseOverlay]);
+ },[view,sourceKind,videoRef,experimentInputCanvas,floorTracker,frameRef,showPoseOverlay,gridStepM,stageDimensions,pattern]);
 
  const commitQuadSafe=(next:Quad)=>{
   try{
@@ -715,6 +745,20 @@ export function MapStageMonitor({
   </div>
  );
 
+ const renderCameraPane=()=>(
+  <div className="map-r2-viewport">
+   <canvas ref={camCanvasRef} width={W} height={H} className="map-r2-canvas" aria-label="Tampilan feed kamera Map"/>
+   <div className="map-r2-cam-bar">
+    <label className="map-r2-pose-toggle">
+     <input type="checkbox" checked={showPoseOverlay} onChange={e=>setShowPoseOverlay(e.target.checked)}/> Titik kaki
+    </label>
+    {onOpenCameraCalibration&&<button type="button" className="map-r2-sim-btn" onClick={onOpenCameraCalibration}>
+     Kalibrasi 4 titik kamera
+    </button>}
+   </div>
+  </div>
+ );
+
  const renderOutputPane=()=>(
   <div className="map-r2-output-pane">
    <div className="map-r2-output-head">
@@ -731,7 +775,7 @@ export function MapStageMonitor({
   </div>
  );
 
- return <div className="map-r2-monitor" aria-label="Stage Map Monitor">
+ return <div className="map-r2-monitor" ref={monitorRef} aria-label="Stage Map Monitor">
   {/* Track-matching monitor header bar */}
   <div className="map-r2-monitor-head">
    <div className="map-r2-monitor-title">
@@ -740,11 +784,17 @@ export function MapStageMonitor({
     {simState.active&&!hasLiveSource&&<span className="map-r2-sim-tag">SIMULASI</span>}
    </div>
    <div className="map-r2-monitor-tools">
-    {(view==='stage'||view==='split')&&
+    {(view==='stage'||view==='split'||view==='align')&&
      <div className="map-r2-seg-mini" role="group" aria-label="Pola bantu kalibrasi">
       {([['grid','Grid'],['crosshair','Cross'],['diagonal','Diag'],['off','Off']] as const).map(([id,lbl])=>
        <button type="button" key={id} aria-pressed={pattern===id} onClick={()=>setPattern(id)}>{lbl}</button>)}
      </div>}
+    {(view==='stage'||view==='camera'||view==='align')&&<div className="map-r2-grid-step" role="group" aria-label="Jarak grid dalam meter">
+     {([1,0.5,0.25] as const).map(m=><button type="button" key={m}
+      aria-pressed={gridStepM===m} onClick={()=>{setGridStepM(m);setPattern('grid');}}>
+      {m===1?'1 m':m===0.5?'0,5 m':'0,25 m'}
+     </button>)}
+    </div>}
     {!hasLiveSource&&(
      simState.active
       ?<>
@@ -758,31 +808,33 @@ export function MapStageMonitor({
         <Users size={11}/> Gunakan simulasi
        </button>
     )}
+    <button type="button" className="map-r2-fullscreen-btn"
+     aria-label={fullscreen?'Keluar fullscreen Map Monitor':'Fullscreen Map Monitor'}
+     title={fullscreen?'Kembali ke Map (Esc)':'Layar penuh monitor Map · preview software'}
+     onClick={toggleMonitorFullscreen}>
+     {fullscreen?<Minimize2 size={15}/>:<Maximize2 size={15}/>}<span>{fullscreen?'Keluar':'Layar penuh'}</span>
+    </button>
    </div>
   </div>
+  {fullscreenError&&<p className="map-r2-inline-alert" role="status">{fullscreenError}</p>}
 
   {view==='stage'&&renderStagePane()}
-  {view==='camera'&&<div className="map-r2-viewport">
-   <canvas ref={camCanvasRef} width={W} height={H} className="map-r2-canvas" aria-label="Tampilan feed kamera Map"/>
-   <div className="map-r2-cam-bar">
-    <label className="map-r2-pose-toggle">
-     <input type="checkbox" checked={showPoseOverlay} onChange={e=>setShowPoseOverlay(e.target.checked)}/> Overlay titik kaki
-    </label>
-    {onOpenCameraCalibration&&<button type="button" className="map-r2-sim-btn" onClick={onOpenCameraCalibration}>
-     Kalibrasi kamera di Track
-    </button>}
-   </div>
-  </div>}
+  {view==='camera'&&renderCameraPane()}
   {view==='output'&&renderOutputPane()}
   {view==='split'&&<div className="map-r2-split">
    {renderStagePane()}
    {renderOutputPane()}
+  </div>}
+  {view==='align'&&<div className="map-r2-split map-r2-alignment">
+   <div className="map-r2-alignment-cell"><span>Kamera / input</span>{renderCameraPane()}</div>
+   <div className="map-r2-alignment-cell"><span>Panggung / proyektor</span>{renderStagePane()}</div>
   </div>}
 
   <div className="map-r2-view-bar">
    <div className="map-r2-view-switch" role="group" aria-label="Mode tampilan Stage Map Monitor">
     {([
      ['stage','Panggung'],
+     ['align','Kamera + Panggung'],
      ['camera','Kamera'],
      ['output','Hasil Proyektor'],
      ['split','Split']
