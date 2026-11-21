@@ -29,7 +29,7 @@ test('MAP-V2: no duplicate technical panel; projector QA is opt-in',async({page}
  const qa=map.locator('.map-r8-projector-setup');
  if(await qa.count()){
   await expect(qa).not.toHaveAttribute('open');
-  await qa.locator('summary').click();
+  await qa.locator(':scope > summary').click();
   await expect(qa.locator('.stage-dual-qa-disclosure')).toBeVisible();
  }
  await expect(map.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
