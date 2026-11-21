@@ -150,7 +150,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
   <div className="ops-r1-console-shell">
    {/* Only the destination and operational status stay visible. Technical context lives behind Info/Detail. */}
-   <section className="ops-r1-output-card" aria-label="Tujuan output">
+   <section className="ops-r1-output-card" aria-label="Tujuan output"
+    data-stage-build={STAGE_HARDWARE_ENABLED?'output-enabled':'output-locked'}>
     <div className="ops-r1-output-top">
      <strong>Output</strong>
      <button type="button" className="ops-r1-mini-help" aria-label="Bantuan tujuan output"
@@ -186,6 +187,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
         <Info size={15} aria-hidden="true"/>
        </button>
       </div>
+      {outputRouteMode==='soma'&&(destination.tone==='attention'||destination.tone==='locked')&&
+       <p className="ops-r1-direct-reason" role="status">{destination.hint}</p>}
       {held&&!isTouchDesigner&&<button type="button" className="ops-r1-preview-resume"
         disabled={!canResume} onClick={onResume}>Lanjutkan Visual</button>}
        {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
@@ -223,6 +226,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        <div className="ops-r1-detail-content">
        <p className="ops-r1-destination-explain">{destination.hint}</p>
        <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
+       {!isResolume&&<p className="ops-r1-build-meta">Build output: {STAGE_HARDWARE_ENABLED?'diizinkan · tetap perlu QA Map':'terkunci'} · revisi {import.meta.env.VITE_SOMA_BUILD_ID?.slice(0,8)||'lokal'}</p>
        {isResolume&&<p>Feed browser memerlukan OBS dan plugin lokal agar tampil pada Sources Resolume.</p>}
        {!isResolume&&<p>{summary.primaryAction.detail}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
