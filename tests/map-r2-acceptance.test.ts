@@ -153,7 +153,7 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  const editor=read('../src/studio/v3/MapFourCornerEditor.tsx');
 
  // Single dominant Stage Map Monitor with 4 view modes & empty-state CTA
- assert.match(monitor,/Gunakan simulasi/);
+ assert.match(monitor,/<Users size=\{11\}\/> Simulasi/);
  assert.match(monitor,/\['stage','Panggung'\]/);
  assert.match(monitor,/\['camera','Kamera'\]/);
  assert.match(monitor,/\['output','Output'\]/);
