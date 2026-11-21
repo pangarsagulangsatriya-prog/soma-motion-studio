@@ -128,8 +128,9 @@ test('V3.5: implementation preserves manual opt-in and distinct clean output',()
   '../src/projection/ProjectionOutput.tsx',import.meta.url),'utf8');
  assert.match(dual,/shouldLatchProjectionBlackout/);
  assert.match(dual,/if\(!STAGE_HARDWARE_ENABLED\)/);
- assert.match(dual,/onClick=\{\(\)=>changeMode\(id,'live'\)\}/);
- assert.match(dual,/a\.status!=='within-provisional-target'/);
+ assert.doesNotMatch(dual,/changeMode\(id,'live'\)/);
+  assert.match(dual,/Lanjutkan pengaturan LIVE di Perform/);
+ assert.match(dual,/assessment\(id\)\.status!=='within-provisional-target'/);
  assert.match(dual,/setProofs\(\{body:null,floor:null\}\)/);
  assert.match(dual,/ids\.forEach\(urgentBlackout\)/);
  assert.match(stage,/safeProjectionPreflight/);
