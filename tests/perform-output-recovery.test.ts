@@ -21,7 +21,7 @@ const liveDevice:SurfaceDeviceState={
  connected:true,opened:true,viewport:{width:1280,height:720,dpr:1},mode:'live',reason:'LIVE.'
 };
 
-test('PF-01 / PF-18 / PF-19: build-locked and simulation sources never claim LIVE or hardware readiness',()=>{
+test('PF-01 / PF-18 / PF-19: build-locked stays safe, ready MP4 and 3D can open a QA-gated output',()=>{
  const buildLocked=evaluatePerformOutputSummary({
   hardwareEnabled:false,source:'webcam',cameraOk:true,identityOk:true,floorOk:true,
   floorDevice:offlineDevice,bodyDevice:offlineDevice,floorQaOk:true,bodyQaOk:true,operatorConfirm:true
@@ -35,9 +35,9 @@ test('PF-01 / PF-18 / PF-19: build-locked and simulation sources never claim LIV
    hardwareEnabled:true,source:simSource,cameraOk:true,identityOk:true,floorOk:true,
    floorDevice:offlineDevice,bodyDevice:offlineDevice,floorQaOk:true,bodyQaOk:true,operatorConfirm:true
   });
-  assert.equal(sim.primaryAction.kind,'preview-only');
+  assert.equal(sim.primaryAction.kind,'open-output');
   assert.equal(sim.globalStatus.label,'Preview siap');
-  assert.equal(sim.canOpenOutput,false);
+  assert.equal(sim.canOpenOutput,true);
  }
 });
 
