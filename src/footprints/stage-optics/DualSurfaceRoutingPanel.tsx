@@ -728,7 +728,7 @@ export function DualSurfaceRoutingPanel({
         {id:'safe',label:'2. Aman',done:operatorConfirm},
         {id:'output',label:'3. Output',done:devices[selected].connected},
         {id:'qa',label:'4. QA 5/5',done:qa.status==='within-provisional-target'},
-        {id:'live',label:'5. LIVE',done:devices[selected].mode==='live'}
+
        ] as const).map((step,idx,arr)=>{
         const isCurrent=!step.done&&arr.slice(0,idx).every(s=>s.done);
         return <li key={step.id} data-done={step.done||undefined} data-current={isCurrent||undefined}>
