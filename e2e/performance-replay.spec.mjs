@@ -21,13 +21,17 @@ test('Video Lab profiler stays available without hand inference controls',async(
  await expect(panel).toContainText('Analisis event');
  await expect(panel).toContainText('Render');
 });
-test('S6.8.8.7 profiler and worker code do not unlock MP4 hardware output',async({page})=>{
+test('S6.8.8.7 profiler and worker code retain operator gating of MP4 output',async({page})=>{
  await page.goto('/');
  await selectStageSource(page,'Video MP4');
- await expect(page.locator('.fp-preview-body')).toBeVisible();
- await expect(page.locator('.fp-preview-floor')).toBeVisible();
+ await expect(page.locator('.fp-preview-body')).toHaveCount(1);
+ await expect(page.locator('.fp-preview-floor')).toHaveCount(1);
  await openStageMap(page);
  const controls=page.locator('.stage-dual').getByRole('button',{name:'Buka output'});
  await expect(controls).toHaveCount(2);
  for(const item of await controls.all())await expect(item).toBeDisabled();
+ await page.locator('.stage-dual-check input[type=checkbox]').check();
+ for(const item of await controls.all())await expect(item).toBeEnabled();
+ for(const live of await page.locator('.stage-dual-output').getByRole('button',{name:'LIVE'}).all())
+  await expect(live).toBeDisabled();
 });
