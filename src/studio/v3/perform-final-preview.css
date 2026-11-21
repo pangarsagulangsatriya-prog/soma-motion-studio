@@ -1,0 +1,68 @@
+/* Perform final-preview is the same Compose artwork. Fullscreen contains only the canvas. */
+.fp-stage-workspace[data-workspace=perform] .fp-stage-overview{display:none!important}
+.fp-stage-workspace[data-workspace=perform] .pf-final{
+ display:flex;flex-direction:column;gap:10px;min-width:0;width:100%;
+ border:1px solid #36513c;border-radius:10px;padding:12px;
+ box-sizing:border-box;background:#101a14;color:#e9f2e4;
+}
+.pf-final-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pf-final-title{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pf-final-title strong{font-size:13px;line-height:1.35}
+.pf-final-title span{font-size:10.5px;color:#9fb5a1;line-height:1.35}
+.pf-final-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pf-final-tabs{display:inline-flex;gap:3px;padding:3px;border:1px solid #38503e;border-radius:7px;background:#09110c}
+.pf-final-tabs button{min-height:31px;border:0;background:transparent;color:#b2c8b2;border-radius:5px;padding:6px 9px;font-size:11px;font-weight:650;cursor:pointer}
+.pf-final-tabs button[aria-pressed=true]{background:#31543c;color:#f2faed}
+.pf-final-fullscreen{
+ min-height:37px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ border:1px solid #567b5a;border-radius:7px;padding:7px 10px;
+ background:#223d2a;color:#e7f4dd;font-size:11px;font-weight:650;cursor:pointer;
+}
+.pf-final-fullscreen:hover{background:#365b3e}
+.pf-final :is(button):focus-visible{outline:2px solid #d5ecab;outline-offset:2px}
+.pf-final-viewport{
+ width:100%;aspect-ratio:16/9;min-width:0;position:relative;
+ border:1px solid #334638;border-radius:7px;box-sizing:border-box;
+ overflow:hidden;background:#000;
+}
+.pf-final-viewport>canvas{
+ display:block;width:100%;height:100%;aspect-ratio:16/9;object-fit:contain;
+ background:#000;
+}
+.pf-final-viewport:fullscreen{
+ box-sizing:border-box;display:flex!important;align-items:center;justify-content:center;
+ width:100vw!important;height:100dvh!important;min-width:100vw!important;
+ min-height:100dvh!important;max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;margin:0!important;padding:0!important;border:0!important;
+ border-radius:0!important;background:#000!important;overflow:hidden;
+}
+.pf-final-viewport:fullscreen::backdrop{background:#000}
+.pf-final-viewport:fullscreen>canvas{
+ display:block!important;width:100%!important;height:100%!important;
+ max-width:100vw!important;max-height:100dvh!important;
+ object-fit:contain!important;aspect-ratio:auto!important;background:#000!important;
+}
+.pf-final-input-strip{
+ display:grid;grid-template-columns:minmax(0,205px) minmax(0,1fr);gap:11px;align-items:center;
+ border:1px solid #2d4434;border-radius:8px;padding:8px;background:#0c150f;
+}
+.pf-final-camera-image{aspect-ratio:16/9;border:1px solid #344b3b;border-radius:5px;overflow:hidden;background:#000}
+.pf-final-camera-image canvas{display:block;width:100%;height:100%;object-fit:contain}
+.pf-final-camera-controls{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
+.pf-final-camera-controls strong{font-size:12px}
+.pf-final-camera-controls small{font-size:10px;color:#96ae9e}
+.pf-final-camera-controls button{
+ border:1px solid #526b57;border-radius:6px;min-height:32px;padding:5px 9px;
+ background:#1a2b20;color:#e4f0df;cursor:pointer;font-size:11px;font-weight:650;
+}
+.pf-final-camera-controls button[aria-pressed=true]{background:#31553d;border-color:#b5d2a1}
+.pf-final-camera-controls button span{margin-left:5px;color:#b9daae}
+.pf-final-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;font-size:10px;color:#91a994}
+.pf-final-error{margin:0;color:#e9c48a;font-size:11px}
+@media(max-width:580px){
+ .fp-stage-workspace[data-workspace=perform] .pf-final{padding:9px}
+ .pf-final-tools{width:100%;justify-content:space-between}
+ .pf-final-tabs button{min-height:38px;padding:7px}
+ .pf-final-fullscreen{min-height:39px}
+ .pf-final-input-strip{grid-template-columns:minmax(0,42%) minmax(0,1fr);gap:7px}
+}
