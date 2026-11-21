@@ -58,14 +58,14 @@ test('MAP-V5: physical output interlock stays in the engine rather than Map cont
  assert.match(session,/qa.status!=='within-provisional-target'/);
  assert.match(session,/urgentBlackoutDualSurface/);
  const map=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
- assert.doesNotMatch(map,/QA Fisik 5 Titik|samples\\.length|blackoutObserved|STAGE_HARDWARE_ENABLED&&<details/);
+ assert.doesNotMatch(map,/QA Fisik 5 Titik|samples\.length|blackoutObserved|STAGE_HARDWARE_ENABLED&&<details/);
 });
 test('MAP-V5: workbench has calibration only and navigation handoff lives at the top',()=>{
  const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const nav=source('../src/studio/v3/StageModuleNav.tsx');
  assert.doesNotMatch(panel,/Teknis &amp; diagnostik|Uji proyektor|className="map-r7-perform-cta"/);
- assert.doesNotMatch(panel,/changeMode\\(id,'live'\\)|handleEnterPerform/);
- assert.match(nav,/map:\\{target:'perform',label:'Lanjut Perform'\\}/);
+ assert.doesNotMatch(panel,/changeMode\(id,'live'\)|handleEnterPerform/);
+ assert.match(nav,/map:\{target:'perform',label:'Lanjut Perform'\}/);
  assert.match(nav,/active!=='perform'&&<button/);
  const css=source('../src/studio/v3/map-wysiwyg.css');
  assert.match(css,/max-width:1252px/);
