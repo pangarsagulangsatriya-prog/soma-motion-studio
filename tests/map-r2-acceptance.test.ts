@@ -147,7 +147,7 @@ test('MAP-06 / MAP-07 / MAP-14: quad snap, undo/redo history, and degenerate qua
  });
 });
 
-test('MAP-V2: one camera overlay, one mapped result, four corners and hardware-gated QA',()=>{
+test('MAP-V5: camera overlay and mapped result, with physical protection outside Map',()=>{
  const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const editor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
  const model=read('../src/studio/v3/mapWysiwygModel.ts');
@@ -155,7 +155,10 @@ test('MAP-V2: one camera overlay, one mapped result, four corners and hardware-g
  assert.match(panel,/router\?\.reset\(\)/);
  assert.match(panel,/floorTracker\.configure\(config,binding\)/);
  assert.match(panel,/floorTracker\.confirm\(true\)/);
- assert.match(panel,/STAGE_HARDWARE_ENABLED&&<details/);
+ assert.doesNotMatch(panel,/STAGE_HARDWARE_ENABLED&&<details|Uji proyektor|Selesaikan QA manual/);
+ const output=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
+ assert.match(output,/armDualSurfaceLiveFromPerform/);
+ assert.match(output,/urgentBlackoutDualSurface/);
  assert.match(panel,/className="soma-map-v2-room"/);
  assert.match(editor,/mapOverlay\('source'\)/);
  assert.match(editor,/mapOverlay\('output'\)/);
@@ -169,27 +172,20 @@ test('MAP-V2: one camera overlay, one mapped result, four corners and hardware-g
  assert.doesNotMatch(panel,/map-r2-advanced|stage-dual-profile|Teknis &amp; diagnostik/);
 });
 
-test('MAP-R7: compact Map keeps one Perform handoff and a readable primary monitor',()=>{
+test('MAP-V5: Track is the navigation standard, Map has no projector test and no duplicate CTA',()=>{
  const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const nav=read('../src/studio/v3/StageModuleNav.tsx');
- const monitor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
- const styles=read('../src/footprints/stage-optics/dual-surface-routing.css');
- assert.match(panel,/map-r2-status-inline map-r7-status/);
- assert.match(panel,/className="map-r7-perform-cta"/);
- assert.match(panel,/onClick=\{handleEnterPerform\}/);
- assert.match(panel,/QA Fisik 5 Titik/);
- assert.match(panel,/map-r7-qa-count/);
- assert.match(panel,/urgentBlackout\(id\)/);
- assert.match(panel,/stage-dual-check map-r7-safety-check/);
- assert.match(panel,/STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step/);
- assert.doesNotMatch(panel,/stage-dual-setup-uat|stage-dual-profile|map-r2-nudge-pad/);
- assert.doesNotMatch(panel,/stage-dual-emergency map-r2-blackout/);
- assert.doesNotMatch(panel,/className="map-r5-next-action"/);
- assert.doesNotMatch(panel,/map-r2-perform-link/);
- assert.match(nav,/active!=='map'&&<button/);
- assert.match(monitor,/mapOverlay\('source'\)/);
- assert.match(monitor,/mapOverlay\('output'\)/);
- assert.match(monitor,/Coba simulasi/);
- assert.doesNotMatch(monitor,/Lebar \$\{stageDimensions\.widthM\.toFixed/);
- assert.match(styles,/MAP-R7 — compact operator map/);
+ const workspace=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
+ const editor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
+ const css=read('../src/studio/v3/map-wysiwyg.css');
+ assert.match(nav,/map:\{target:'perform',label:'Lanjut Perform'\}/);
+ assert.match(nav,/active!=='perform'&&<button/);
+ assert.match(workspace,/mapReady:tracker.isConfirmed/);
+ assert.doesNotMatch(panel,/map-r7-perform-cta|handleEnterPerform|Uji proyektor|stage-dual-qa-disclosure|QA Fisik 5 Titik/);
+ assert.doesNotMatch(panel,/STAGE_HARDWARE_ENABLED&&<details|triggerProjectorTest/);
+ assert.doesNotMatch(editor,/children\}|Uji proyektor|map-r8-projector-setup/);
+ assert.match(editor,/mapOverlay\('source'\)/);
+ assert.match(editor,/mapOverlay\('output'\)/);
+ assert.match(editor,/Coba simulasi/);
+ assert.match(css,/max-width:1252px/);
 });
