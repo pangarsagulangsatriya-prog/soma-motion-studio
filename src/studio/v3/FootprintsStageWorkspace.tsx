@@ -1005,6 +1005,8 @@ export function FootprintsStageWorkspace({
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
      onEnterPerform={()=>onNavigateStageWorkspace('perform')}
+      onOpenMapTrack={()=>onNavigateStageWorkspace('track')}
+      onOpenMapCompose={()=>onNavigateStageWorkspace('compose')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     {operatorMode&&<PerformFinalPreview
      floorRaster={performFloorRaster} bodyRaster={performBodyRaster}

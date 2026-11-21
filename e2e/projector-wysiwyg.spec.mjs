@@ -27,6 +27,7 @@ test('Projector WYSIWYG: quad preview can be cancelled or saved without arming p
  await openStageMap(page);
  const map=page.locator('.soma-map-wysiwyg');
  const output=map.locator('.soma-map-wysiwyg-pane').last();
+ await map.getByRole('button',{name:'Coba simulasi'}).click();
  const overlay=output.locator('svg.soma-map-wysiwyg-overlay');
  await output.getByRole('button',{name:'Sesuaikan proyektor'}).click();
  const before=await overlay.locator('polygon').getAttribute('points');

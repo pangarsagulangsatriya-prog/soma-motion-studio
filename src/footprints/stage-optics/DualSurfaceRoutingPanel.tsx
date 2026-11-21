@@ -56,13 +56,15 @@ type Props={
  identitySafe?:boolean;
  experimentSource?:'video'|'simulator'|null;
  onEnterPerform?:()=>void;
+ onOpenTrack?:()=>void;
+ onOpenCompose?:()=>void;
 };
 
 export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
  liquidCanvas,experimentInputCanvas,videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
- onEnterPerform
+ onEnterPerform,onOpenTrack,onOpenCompose
 }:Props){
  // Keep shouldLatchProjectionBlackout referenced here and enforced in DualSurfaceSessionStore.
  void shouldLatchProjectionBlackout;
@@ -372,13 +374,20 @@ export function DualSurfaceRoutingPanel({
     return {ok:true,message:'Bidang kamera tersimpan. Coba gerakkan kaki di lantai.'};
    }catch(err){return {ok:false,message:err instanceof Error?err.message:'Titik kamera belum valid.'};}
   }}
+  onOpenTrack={()=>onOpenTrack?.()} onOpenCompose={()=>onOpenCompose?.()}
+  onSourceLost={()=>{
+   allBlackout();setProofs({body:null,floor:null});
+   setRequested({body:'blackout',floor:'blackout'});
+   setArmed({body:false,floor:false});
+   if(floorTracker?.isCalibrated)floorTracker.revoke('Kamera terputus. Periksa ulang bidang lantai.');
+   router?.reset();setMessage('Sumber kamera terputus. Buka Track untuk menyambungkan kembali.');
+  }}
   onCommitProjectorQuad={commitMonitorQuad} onMessage={setMessage}
  />
 </main>
 <div className="soma-map-v2-foot">
  {STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step map-r8-projector-setup">
      <summary className="map-r2-step-head">
-      <span className="map-r2-step-num">3</span>
       <strong>Uji proyektor fisik</strong>
      </summary>
      <label className="stage-dual-check map-r7-safety-check" title="Pastikan cahaya tidak mengenai mata/wajah; operator siap menjalankan Blackout fisik.">

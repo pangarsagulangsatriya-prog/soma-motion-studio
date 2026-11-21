@@ -88,3 +88,83 @@
  .stage-dual.map-r2-shell .soma-map-v2-foot>.map-r7-perform-cta{width:100%;margin-left:0}
  .stage-dual.map-r2-shell .soma-map-v2-foot>.map-r8-projector-setup{max-width:none;flex:auto}
 }
+
+/* Map V3 · contextual state and compact composition.
+   All motion is feedback; camera and tracking data never animate here. */
+.soma-map-wysiwyg{
+ --map-fast:120ms;--map-base:180ms;--map-emphasis:240ms;
+ --map-ease:cubic-bezier(.2,.7,.2,1);
+ gap:10px;padding:12px;border-color:#344a3b;background:#101a13
+}
+.soma-map-wysiwyg-head{min-height:32px}
+.soma-map-wysiwyg-head strong{font-size:14px;letter-spacing:.01em}
+.soma-map-wysiwyg-grid{gap:10px}
+.soma-map-wysiwyg-pane{gap:8px;border-color:#2e4536;padding:9px;background:#0d1710}
+.soma-map-wysiwyg-pane-head{min-height:21px}
+.soma-map-wysiwyg-pane-head small[data-live="true"]{color:#bdd7ad}
+.soma-map-wysiwyg-image{background:#090f0b;border-color:#2e4234}
+.soma-map-wysiwyg-image canvas{opacity:1}
+.soma-map-wysiwyg-overlay polygon{
+ transition:stroke var(--map-fast) var(--map-ease),
+ fill var(--map-fast) var(--map-ease),opacity var(--map-fast) var(--map-ease);
+}
+.soma-map-wysiwyg-handle{transform-box:fill-box;transform-origin:center;
+ transition:transform var(--map-fast) var(--map-ease);will-change:transform}
+.soma-map-wysiwyg-handle:hover,.soma-map-wysiwyg-handle[data-active="true"]{
+ transform:scale(1.12)}
+.soma-map-wysiwyg-overlay[data-dragging="true"] .soma-map-wysiwyg-handle[data-active="true"]{
+ transform:scale(1.16)}
+.soma-map-wysiwyg-overlay[data-dragging="true"] polygon{stroke-width:2.8}
+.soma-map-wysiwyg-overlay[data-invalid="true"] polygon{stroke:#dfad5f}
+.soma-map-wysiwyg-overlay[data-invalid="true"] .soma-map-wysiwyg-handle circle:nth-child(2){
+ fill:#efc17d}
+.soma-map-wysiwyg-overlay[data-saved="true"] polygon{stroke:#d9f4b9;stroke-width:3}
+.soma-map-wysiwyg-overlay:focus-visible .soma-map-wysiwyg-handle[data-focused="true"] circle:nth-child(2){
+ stroke:#ffffff;stroke-width:3}
+.soma-map-wysiwyg-controls{gap:7px}
+.soma-map-wysiwyg-caption{min-height:0;color:#9db4a4}
+.soma-map-wysiwyg-bottom{padding-top:9px;min-height:30px}
+.soma-map-wysiwyg-bottom [role="status"]{min-height:18px}
+.soma-map-v3-empty,.soma-map-v3-result-empty{
+ position:absolute;inset:0;display:flex;flex-direction:column;
+ justify-content:center;align-items:center;gap:11px;
+ color:#9fb6a4;text-align:center;padding:18px;box-sizing:border-box;
+ background:#0a120ddc;animation:map-v3-appear var(--map-emphasis) var(--map-ease) both;
+}
+.soma-map-v3-empty strong{font:600 14px system-ui;color:#e1ecdf}
+.soma-map-v3-empty span,.soma-map-v3-result-empty span:last-child{
+ max-width:30ch;font:12px/1.5 system-ui;color:#9eb4a3}
+.soma-map-v3-empty-mark{font:36px/1 system-ui;color:#5e896d}
+.soma-map-v3-result-mark{font:36px/1 system-ui;color:#587361}
+.soma-map-v3-cta{
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;
+ padding:10px 16px;min-height:39px;border:1px solid #7fae87;
+ border-radius:8px;background:#284e33;color:#eefbe9;
+ font:650 12px system-ui;cursor:pointer;
+ transition:background var(--map-fast) var(--map-ease),border-color var(--map-fast) var(--map-ease),
+ transform var(--map-fast) var(--map-ease);
+}
+.soma-map-v3-cta:hover{background:#356542;border-color:#b8ddae;transform:translateY(-1px)}
+.soma-map-v3-cta:active{transform:translateY(0)}
+.soma-map-v3-link{background:transparent;border:0;color:#a9cab0;cursor:pointer;
+ font:550 12px system-ui;text-decoration:underline;text-underline-offset:3px;
+ padding:6px 8px}
+.soma-map-v3-link:hover{color:#e5f5df}
+.soma-map-v3-cta:focus-visible,.soma-map-v3-link:focus-visible{
+ outline:2px solid #c8f1b2;outline-offset:3px}
+.soma-map-v3-sim-controls{animation:map-v3-appear var(--map-base) var(--map-ease) both}
+.stage-dual.map-r2-shell .soma-map-v2-main{margin-top:5px!important}
+.stage-dual.map-r2-shell .map-r2-topbar{margin-bottom:0!important;padding-bottom:10px!important}
+.stage-dual.map-r2-shell .soma-map-v2-foot{margin-top:10px}
+.stage-dual.map-r2-shell .map-r8-projector-setup>.map-r2-step-head{min-height:34px}
+@keyframes map-v3-appear{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){
+ .soma-map-wysiwyg-grid{gap:8px}
+ .soma-map-v3-empty{min-height:170px}
+ .stage-dual.map-r2-shell .soma-map-v2-main{margin-top:3px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-map-v3-empty,.soma-map-v3-result-empty,.soma-map-v3-sim-controls{animation:none!important}
+ .soma-map-wysiwyg-overlay polygon,.soma-map-wysiwyg-handle,.soma-map-v3-cta{
+  transition:none!important;transform:none!important}
+}

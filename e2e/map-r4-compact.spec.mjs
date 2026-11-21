@@ -21,6 +21,8 @@ test('MAP-V2: projector edit is contextual and no UV technical editor remains',a
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const output=map.locator('.soma-map-wysiwyg-pane').last();
+ await expect(output.getByRole('button',{name:'Sesuaikan proyektor'})).toHaveCount(0);
+ await map.getByRole('button',{name:'Coba simulasi'}).click();
  await expect(output.getByRole('button',{name:'Sesuaikan proyektor'})).toBeVisible();
  await expect(output.locator('.soma-map-wysiwyg-handle')).toHaveCount(0);
  await output.getByRole('button',{name:'Sesuaikan proyektor'}).click();
