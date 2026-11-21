@@ -600,3 +600,135 @@
  .stage-dual-stepper{grid-template-columns:repeat(2,minmax(0,1fr))}
  .map-r2-advanced .stage-dual-cal-controls{grid-template-columns:1fr}
 }
+
+
+/* MAP-R7 — compact operator map. Technical controls remain mounted and reachable. */
+.stage-dual.map-r2-shell{gap:9px}
+.stage-dual .map-r2-topbar{gap:12px}
+.stage-dual .map-r2-brand{align-items:center;gap:12px;min-width:0}
+.stage-dual .map-r7-status{
+ display:inline-flex;align-items:center;gap:7px;min-width:0;
+ padding:5px 10px;border:1px solid #38503e;border-radius:999px;
+ background:#121d16;color:#b6cbb9;font-size:10.5px;line-height:1.25;
+}
+.stage-dual .map-r7-status strong{font-size:10.5px;font-weight:650;white-space:nowrap}
+.stage-dual .map-r7-status-dot{
+ flex:none;width:7px;height:7px;border-radius:50%;background:#d3b474;
+ box-shadow:0 0 0 2px #d3b47422;
+}
+.stage-dual .map-r7-status[data-status="ready-perform"] .map-r7-status-dot{background:#a4cf9a}
+.stage-dual .map-r7-status[data-status="ready-to-test"] .map-r7-status-dot{background:#81c9d0}
+.stage-dual .map-r2-workbench{
+ grid-template-columns:minmax(262px,288px) minmax(0,1fr);
+ gap:16px;align-items:start;
+}
+.stage-dual .map-r2-rail{gap:8px}
+.stage-dual .map-r2-rail>.map-r2-step{
+ padding:12px;border-radius:9px;gap:8px;
+ background:#111b15;
+}
+.stage-dual .map-r2-step-head{gap:8px}
+.stage-dual .map-r2-step-head strong{font-size:12.5px;line-height:1.25}
+.stage-dual .map-r2-step-num{width:20px;height:20px;border-radius:6px}
+.stage-dual .map-r5-room-summary{
+ display:flex;align-items:center;justify-content:space-between;
+ min-height:41px!important;gap:8px;padding:8px 10px!important;
+}
+.stage-dual .map-r5-room-summary>b{font-size:14px;letter-spacing:-.015em}
+.stage-dual .map-r5-room-summary>span{font-size:10.5px!important}
+.stage-dual .map-r4-disclosure:not([open]){margin:0}
+.stage-dual .map-r7-sr-only{
+ position:absolute!important;width:1px!important;height:1px!important;
+ padding:0!important;margin:-1px!important;overflow:hidden!important;
+ clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+}
+.stage-dual .map-r4-precision>summary{min-height:37px}
+.stage-dual .map-r4-precision>summary>span{font-size:10px!important}
+.stage-dual .map-r7-qa-step{gap:9px}
+.stage-dual .map-r7-safety-check{align-items:center!important;gap:9px!important;min-height:34px}
+.stage-dual .map-r7-safety-check>input{width:17px;height:17px;margin-top:0}
+.stage-dual .map-r7-safety-check>span{
+ display:flex;flex-direction:column;gap:2px;min-width:0;font-size:11px;
+ font-weight:650;color:#e0ecdd;
+}
+.stage-dual .map-r7-safety-check small{
+ font-size:10px;font-weight:450;line-height:1.3;color:#a4b7a8;
+}
+.stage-dual .map-r2-test-btn{min-height:38px;font-size:11.5px}
+.stage-dual .map-r7-output-hint{
+ margin:0;color:#a5baa6;font-size:10px;line-height:1.35;
+}
+.stage-dual .stage-dual-qa-disclosure{padding:6px 9px}
+.stage-dual .stage-dual-qa-disclosure>summary{
+ display:flex;align-items:center;gap:7px;min-height:32px;
+ font-size:11px;font-weight:650;
+}
+.stage-dual .stage-dual-qa-disclosure>summary .map-r7-qa-count{
+ margin-left:auto;min-width:40px;text-align:center;
+ padding:4px 7px;border-radius:5px;
+ border:1px solid #38503e;background:#16271b;
+ font-variant-numeric:tabular-nums;font-size:10px;color:#cce7bf;
+}
+.stage-dual .map-r7-qa-result{margin-top:6px;border-top:1px solid #2e4334;padding-top:7px}
+.stage-dual .map-r7-qa-result>summary{cursor:pointer;color:#9fb69f;font-size:10.5px}
+.stage-dual .map-r7-qa-result>p{margin:7px 0 0!important}
+.stage-dual .map-r7-perform-cta{
+ display:flex;align-items:center;justify-content:space-between;
+ width:100%;min-height:38px;padding:7px 12px;
+ border:1px solid #68936d;border-radius:7px;
+ background:#294632;color:#eef8e7;cursor:pointer;
+ font-size:11.5px;font-weight:700;
+ transition:background-color .15s ease,border-color .15s ease;
+}
+.stage-dual .map-r7-perform-cta:hover{background:#355b41;border-color:#9ac592}
+.stage-dual .map-r7-perform-cta:focus-visible{outline:2px solid #cbe9a7;outline-offset:2px}
+.stage-dual .map-r2-advanced{padding:7px 11px}
+.stage-dual .map-r2-advanced>summary{font-size:11px;color:#a5baaa;min-height:34px}
+.stage-dual .map-r7-footer{
+ align-items:center;justify-content:flex-start;gap:8px;
+ padding:5px 0 0;border-top:0;
+}
+.stage-dual .map-r7-feedback-dot{
+ width:6px;height:6px;flex:none;border-radius:50%;background:#9aa99a;
+}
+.stage-dual .map-r7-footer .map-r2-blocker{
+ display:block;flex:0 1 auto;min-width:0;max-width:100%;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ font-size:10px;color:#95aa99;
+}
+.stage-dual .map-r2-monitor-head{min-height:38px;padding:7px 10px}
+.stage-dual .map-r2-monitor-title{gap:6px;font-size:11.5px}
+.stage-dual .map-r2-monitor-tools{gap:5px}
+.stage-dual .map-r2-monitor-tools .map-r2-sim-btn{min-height:33px;font-size:10.5px;padding:5px 9px}
+.stage-dual .map-r2-monitor-tools .map-r2-fullscreen-btn{
+ flex:none;width:34px;min-width:34px;min-height:34px;
+ padding:0;justify-content:center;
+}
+.stage-dual .map-r2-view-bar{padding:7px 10px;gap:8px}
+.stage-dual .map-r7-view-switch{gap:2px;max-width:100%}
+.stage-dual .map-r7-view-switch>button{min-height:32px;padding:6px 11px;font-size:10.5px}
+.stage-dual .map-r5-other-views>summary{min-height:32px;padding:6px 9px}
+.stage-dual .map-r2-parity-note{font-size:10px;line-height:1.3}
+@media(max-width:1080px){
+ .stage-dual .map-r2-workbench{grid-template-columns:minmax(0,1fr);gap:12px}
+ .stage-dual .map-r2-monitor-col{order:-1}
+}
+@media(max-width:560px){
+ .stage-dual .map-r2-brand{gap:8px}
+ .stage-dual .map-r7-status{padding:4px 8px}
+ .stage-dual .map-r7-status strong{white-space:normal}
+ .stage-dual .map-r2-workbench{gap:10px}
+ .stage-dual .map-r7-view-switch{
+  width:100%;display:flex;flex-wrap:wrap;justify-content:flex-start;
+ }
+ .stage-dual .map-r7-view-switch>button{flex:1 1 auto;min-width:65px;padding:7px 6px}
+ .stage-dual .map-r5-other-views>summary{min-height:35px}
+ .stage-dual .map-r2-view-bar{gap:7px;align-items:flex-start}
+ .stage-dual .map-r2-parity-note{font-size:9.5px}
+ .stage-dual .map-r2-monitor-title{font-size:11px}
+ .stage-dual .map-r2-monitor-head{gap:7px}
+ .stage-dual .map-r2-monitor-tools{justify-content:flex-start}
+}
+@media(prefers-reduced-motion:reduce){
+ .stage-dual .map-r7-perform-cta{transition:none}
+}
