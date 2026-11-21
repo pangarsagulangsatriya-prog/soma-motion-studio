@@ -26,7 +26,9 @@ test('MAP-R3 camera and projector are always visible together with no physical o
  assert.match(editor,/mapOverlay\('output'\)/);
  assert.match(editor,/onCommitCameraQuad\(cameraDraftRef\.current\)/);
  assert.match(router,/<MapWysiwygWorkspace/);
- assert.match(router,/className="stage-dual-qa-disclosure"/);
+ assert.doesNotMatch(router,/className="stage-dual-qa-disclosure"|Uji proyektor/);
  assert.match(router,/allBlackout/);
- assert.match(router,/STAGE_HARDWARE_ENABLED/);
+ const store=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
+ assert.match(store,/STAGE_HARDWARE_ENABLED/);
+ assert.match(store,/armDualSurfaceLiveFromPerform/);
 });
