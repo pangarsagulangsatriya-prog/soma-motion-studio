@@ -241,8 +241,7 @@ export function DualSurfaceRoutingPanel({
   }}
   onCommitProjectorQuad={commitMonitorQuad} onMessage={setMessage}
   externalNotice={message}
- >
- </MapWysiwygWorkspace>
+ />
  </main>
  </section>;
 }
