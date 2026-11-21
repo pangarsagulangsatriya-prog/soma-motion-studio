@@ -257,10 +257,10 @@ export function MapWysiwygWorkspace({
   const p=pointerToPoint(e,where);
   if(!p)return;
   const next=replaceValidCorner(overlayQuad(where),pointer.index,p);
-  if(!next){setStatus('Sudut terlalu dekat atau bersilangan.');return;}
+  if(!next){flagInvalid(where);setStatus('Sudut tidak valid. Posisi terakhir dipertahankan.');return;}
   if(where==='source')setCameraDraft(next);
   else setOutputDraft(next);
-  setStatus('');
+  setStatus('Pratinjau perubahan · belum tersimpan');
  };
  const stopMove=(e:PointerEvent<SVGSVGElement>,where:'source'|'output')=>{
   if(!pointer||pointer.target!==where||pointer.id!==e.pointerId)return;
@@ -271,7 +271,7 @@ export function MapWysiwygWorkspace({
   }
  };
  const keyMove=(e:KeyboardEvent<SVGSVGElement>,where:'source'|'output')=>{
-  if(e.key>='1'&&e.key<='4'){activePoint.current=Number(e.key)-1;return;}
+  if(e.key>='1'&&e.key<='4'){activePoint.current=Number(e.key)-1;setFocusedCorner(activePoint.current);return;}
   if(e.key==='Escape'){
    if(where==='source'){
     const previous=floorTracker?.calibrationData?.cameraQuad;
@@ -290,7 +290,7 @@ export function MapWysiwygWorkspace({
   const next=replaceValidCorner(value,activePoint.current,{
    x:Math.max(0,Math.min(1,p.x+d[0]*step)),y:Math.max(0,Math.min(1,p.y+d[1]*step))
   });
-  if(!next){setStatus('Sudut tidak valid.');return;}
+  if(!next){flagInvalid(where);setStatus('Sudut tidak valid. Posisi terakhir dipertahankan.');return;}
   if(where==='source'){
    if(!cameraDirty)onBeginCameraEdit();
    setCameraDirty(true);setCameraDraft(next);
@@ -306,7 +306,7 @@ export function MapWysiwygWorkspace({
   }
   const result=onCommitCameraQuad(cameraDraftRef.current);
   setStatus(result.message);
-  if(result.ok){setCameraDirty(false);setFrozen(false);}
+  if(result.ok){setCameraDirty(false);setFrozen(false);flashSaved('source');}
  };
  const cancel=()=>{
   if(projectorEdit){setOutputDraft(plan.projectorQuad);setOutputDirty(false);}
@@ -328,10 +328,12 @@ export function MapWysiwygWorkspace({
   setResetArmed(false);setStatus('Titik dikembalikan ke awal. Periksa dan terapkan ulang.');
  };
  const mapOverlay=(where:'source'|'output')=>{
-  const box=where==='source'?currentBox:projectorBox,q=overlayQuad(where);
+  const box=where==='source'?currentBox:projectorBox,q=where==='source'&&sourceKind==='demo-sim'?SIM_CAMERA_QUAD:overlayQuad(where);
   const canEdit=where==='source'?sourceAvailable&&sourceKind==='camera':projectorEdit;
   return <svg className="soma-map-wysiwyg-overlay" viewBox="0 0 640 360"
    role="group" aria-label={where==='source'?'Empat sudut lantai pada gambar sumber':'Empat sudut proyeksi'}
+   data-invalid={invalidWhere===where} data-dragging={pointer?.target===where}
+   data-saved={savedWhere===where}
    tabIndex={canEdit?0:-1}
    onKeyDown={e=>keyMove(e,where)}
    onPointerMove={e=>move(e,where)}
@@ -341,8 +343,10 @@ export function MapWysiwygWorkspace({
     stroke={where==='source'?'#cbe9a7':'#80cfd8'} strokeWidth="2"/>
    {canEdit&&q.map((p,i)=>{
     const x=box.x+p.x*box.width,y=box.y+p.y*box.height;
-    return <g key={i} className="soma-map-wysiwyg-handle" onPointerDown={e=>startMove(e,where,i)}>
-     <circle cx={x} cy={y} r="14" fill="transparent"/>
+    return <g key={i} className="soma-map-wysiwyg-handle"
+      data-active={pointer?.target===where&&pointer.index===i}
+      onPointerDown={e=>{setFocusedCorner(i);startMove(e,where,i);}}>
+     <circle cx={x} cy={y} r="16" fill="transparent"/>
      <circle cx={x} cy={y} r="9" fill="#d1ecc0" stroke="#132019" strokeWidth="1.5"/>
      <text x={x} y={y+3.5} fontSize="10" textAnchor="middle" fontWeight="700" fill="#122219">{i+1}</text>
     </g>;
@@ -385,7 +389,7 @@ export function MapWysiwygWorkspace({
      <button type="button" aria-pressed={projectorEdit} onClick={()=>{
       if(projectorEdit&&outputDirty){
        onCommitProjectorQuad(outputDraftRef.current);
-       setOutputDirty(false);
+       setOutputDirty(false);flashSaved('output');
        onMessage('Bidang output disimpan. Proyektor perlu uji ulang.');
       }
       setProjectorEdit(v=>!v);setResetArmed(false);
