@@ -12,7 +12,7 @@ test('Perform Final Preview honors cues and never authorizes a projector',()=>{
  assert.equal(cueToFinalSurface('split'),'split');
  const code=read('../src/studio/v3/PerformFinalPreview.tsx');
  assert.match(code,/document\.fullscreenElement===viewport\.current/);
- assert.match(code,/viewport\.requestFullscreen\?\.\(\)/);
+ assert.match(code,/target\.requestFullscreen\?\.\(\)/);
  assert.match(code,/inputRaster\.current/);
  assert.match(code,/floorRaster\.current/);
  assert.match(code,/bodyRaster\.current/);
