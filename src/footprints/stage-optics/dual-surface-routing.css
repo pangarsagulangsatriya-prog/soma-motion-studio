@@ -260,7 +260,7 @@
 }
 .stage-dual-check input{flex:none;width:15px;height:15px;accent-color:#cbe9a7;margin-top:2px}
 
-.stage-dual-stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;list-style:none;margin:0;padding:0}
+.stage-dual-stepper{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;list-style:none;margin:0;padding:0}
 .stage-dual-stepper li{padding:5px 3px;border:1px solid #2e4236;border-radius:5px;background:#0c140f;color:#8ea393;font-size:9.5px;font-weight:650;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stage-dual-stepper li[data-current=true]{border-color:#8eb582;background:#1d3325;color:#eef7e8}
 .stage-dual-stepper li[data-done=true]{border-color:#5b8361;background:#24412c;color:#cbe9a7}
@@ -573,4 +573,30 @@
 }
 @media(prefers-reduced-motion:reduce){
  .map-r5-pattern-options>summary,.map-r5-other-views>summary{transition:none}
+}
+
+
+/* MAP-R6 — operator-first hierarchy: calibration and physical QA stay visible;
+   geometry and device diagnostics remain available only on demand. */
+.map-r2-step{gap:7px}
+.map-r2-step-head{min-height:22px}
+.map-r2-advanced>summary{min-height:38px}
+.map-r2-advanced-body{gap:8px}
+.map-r2-rail .map-r5-next-action{
+ margin:0;padding:8px 9px;border:1px solid #304738;border-radius:6px;
+ background:#0e1712;color:#a9bca9;font-size:10.5px;line-height:1.45;
+}
+.map-r2-rail .stage-dual-qa-disclosure{background:#101a13}
+.map-r2-rail .stage-dual-qa-disclosure>summary{min-height:30px}
+.map-r2-rail .stage-dual-qa{gap:7px}
+.map-r2-rail .stage-dual-metrics{padding-top:5px;border-top:1px solid #26392c}
+.map-r2-rail .stage-dual-metrics span{font-variant-numeric:tabular-nums}
+.map-r2-advanced .map-r2-aux-details,
+.map-r2-advanced .map-r5-model-diagnostics,
+.map-r2-advanced .map-r5-output-diagnostics{background:#0e1712}
+.map-r2-advanced .stage-dual-calibration{gap:7px}
+.map-r2-advanced .stage-dual-cal-controls{grid-template-columns:1fr 1fr}
+@media(max-width:560px){
+ .stage-dual-stepper{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .map-r2-advanced .stage-dual-cal-controls{grid-template-columns:1fr}
 }
