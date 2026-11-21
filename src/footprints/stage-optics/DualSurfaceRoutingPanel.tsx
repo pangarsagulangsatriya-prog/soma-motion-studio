@@ -339,7 +339,7 @@ export function DualSurfaceRoutingPanel({
   <main className="soma-map-v2-main">
  <MapWysiwygWorkspace selected={selected} stageDimensions={stageDimensions} plan={activePlan}
   sourceKind={sourceKind} hasLiveSource={hasLiveSource}
-  videoRef={videoRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
+  videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
   onStartSim={()=>{setSimState(prev=>({...prev,active:true,playing:true}));setMessage('Simulasi jejak berjalan di Map.');}}
