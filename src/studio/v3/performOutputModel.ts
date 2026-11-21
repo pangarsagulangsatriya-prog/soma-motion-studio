@@ -148,7 +148,7 @@ export function evaluatePerformOutputSummary(input:PerformOutputSummaryInput):{
    primaryAction:{
     kind:'run-qa',
     label:'Uji Proyektor & QA Map',
-    detail:'Jendela output terkoneksi (Blackout). Lengkapi pola uji dan QA 5 titik di Map sebelum LIVE.',
+    detail:'Jendela output terkoneksi dalam Blackout. Pengaman fisik SOMA Direct belum terpenuhi.',
     surface:targetSurface
    }
   };
