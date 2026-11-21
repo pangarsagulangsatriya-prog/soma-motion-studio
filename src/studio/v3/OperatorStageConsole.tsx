@@ -1,18 +1,19 @@
 import {useState,useSyncExternalStore} from 'react';
 import {
- ArrowLeft,ArrowRight,Circle,Copy,ExternalLink,MonitorOff,Pause,Play,
+ ArrowLeft,ArrowRight,Circle,ExternalLink,MonitorOff,Pause,Play,
  Settings2,ShieldAlert,Tv,X,Monitor,Clapperboard,Waypoints,Info,ChevronDown
 } from 'lucide-react';
 import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
-import {PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
+import {PERFORM_DESTINATIONS,PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
+import {detectResolumeHostPlatform,getResolumeBridgeRecipe,getPerformRouteDescription,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
  STAGE_HARDWARE_ENABLED,armDualSurfaceLiveFromPerform,blackoutAllDualSurfaces,
- closeDualSurfaceOutputWindow,getDualSurfaceFeedUrl,getDualSurfaceState,openDualSurfaceOutputWindow,
+ closeDualSurfaceOutputWindow,getDualSurfaceState,openDualSurfaceOutputWindow,
  subscribeDualSurface
 } from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
 import type {StageSurface} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
@@ -70,6 +71,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
  const isResolume=outputRouteMode==='resolume';
  const isTouchDesigner=outputRouteMode==='touchdesigner';
+ const hostPlatform=detectResolumeHostPlatform(typeof navigator==='undefined'?'':navigator.userAgent);
+ const bridge=getResolumeBridgeRecipe(hostPlatform);
  const destination=presentPerformDestination({
   route:outputRouteMode,primary:summary.primaryAction,
   floor:summary.floorBadge,body:summary.bodyBadge
@@ -78,6 +81,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
   // Switching destinations cannot silently leave prior output illuminating the stage.
   blackoutAllDualSurfaces('Tujuan output diganti; verifikasi sebelum membuka ulang.');
+  closeDualSurfaceOutputWindow('floor');
+  closeDualSurfaceOutputWindow('body');
   window.dispatchEvent(new Event('soma:td-blackout'));
   setOutputRouteMode(next);setOutputDetailsOpen(false);setPopupBlocked(false);
   setOutputNotice('');
@@ -99,17 +104,6 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    if(res.ok&&isResolume&&held&&canResume)onResume();
    setPopupBlocked(res.popupBlocked);
   setOutputNotice(res.message);
- };
-
- const handleCopyFeedUrl=(surface:StageSurface)=>{
-  const url=getDualSurfaceFeedUrl(surface,'resolume');
-  if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText){
-   navigator.clipboard.writeText(url)
-    .then(()=>setOutputNotice(`URL Clean Feed ${surface==='floor'?'FLOOR':'BODY'} disalin untuk Resolume / OBS.`))
-    .catch(()=>setOutputNotice(`URL Feed ${surface==='floor'?'FLOOR':'BODY'}: ${url}`));
-   return;
-  }
-  setOutputNotice(`URL Feed ${surface==='floor'?'FLOOR':'BODY'}: ${url}`);
  };
 
  const handleCloseSurface=(surface:StageSurface)=>{
@@ -160,13 +154,13 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-output-top">
      <strong>Output</strong>
      <button type="button" className="ops-r1-mini-help" aria-label="Bantuan tujuan output"
-      title="Jenis keluaran SOMA, Resolume, dan TouchDesigner"
+      title="SOMA Direct ke proyektor atau Clean Feed ke Resolume"
       aria-expanded={outputDetailsOpen} onClick={()=>setOutputDetailsOpen(value=>!value)}>
       <Info size={15} aria-hidden="true"/>
      </button>
     </div>
     <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
-     {PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
+     {PRIMARY_PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
       aria-pressed={outputRouteMode===item.id} aria-label={item.label}
       onClick={()=>handleRouteChange(item.id)} title={item.description}>
       {item.id==='soma'?<Monitor size={16} aria-hidden="true"/>:
@@ -175,6 +169,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <span>{item.label}</span>
      </button>)}
     </div>
+    <p className="ops-r1-route-contract" data-route={outputRouteMode}>
+      {isTouchDesigner?'Data kaki A/B → TouchDesigner':getPerformRouteDescription(outputRouteMode==='resolume'?'resolume':'soma')}
+     </p>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
@@ -196,6 +193,25 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        onClick={handlePrimaryAction}>
        <Tv size={14}/>{destination.action}
       </button>}
+      {isResolume&&<details className="ops-r1-bridge-guide" aria-label="Cara hubungkan Resolume">
+       <summary>Hubungkan ke Resolume <ChevronDown size={14}/></summary>
+       <div className="ops-r1-bridge-steps">
+        <div className="ops-r1-bridge-protocol">{bridge.transport} · {hostPlatform==='mac'?'Mac':hostPlatform==='windows'?'Windows':'Sistem belum dikenali'}</div>
+        <ol>
+         <li>Buka Feed FLOOR atau BODY di SOMA. Biarkan jendelanya tetap terbuka.</li>
+         <li>Di OBS: {bridge.obsCapture}. Pilih <b>SOMA / RESOLUME FEED · FLOOR</b> atau BODY.</li>
+         <li>{bridge.obsOutput}. Lalu {bridge.resolumeSource}.</li>
+        </ol>
+        <p>Gunakan Window Capture. OBS Browser Source dengan URL feed tidak berbagi sesi SOMA.</p>
+        <div className="ops-r1-bridge-links">
+         {bridge.pluginUrl&&<a href={bridge.pluginUrl} target="_blank" rel="noopener noreferrer">
+          Pasang {bridge.pluginName} <ExternalLink size={12}/></a>}
+         <a href={RESOLUME_BRIDGE_DOCS.resolume} target="_blank" rel="noopener noreferrer">
+          Panduan Resolume <ExternalLink size={12}/></a>
+        </div>
+        <small>Status Feed SOMA hanya mengukur frame sampai popup. Periksa Sources → Syphon/Spout di Resolume untuk memastikan gambar diterima.</small>
+       </div>
+      </details>}
       {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
        role={popupBlocked?'alert':'status'}>
        <span>{outputNotice}</span>
@@ -207,6 +223,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        <div className="ops-r1-detail-content">
        <p className="ops-r1-destination-explain">{destination.hint}</p>
        <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
+       {isResolume&&<p>Feed browser memerlukan OBS dan plugin lokal agar tampil pada Sources Resolume.</p>}
        {!isResolume&&<p>{summary.primaryAction.detail}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
         {(['floor','body'] as const).map(surface=>{
@@ -215,18 +232,13 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
          return <div key={surface} className="ops-r1-channel" data-tone={badge.tone}>
           <div className="ops-r1-channel-meta">
            <b>{isFloor?'FLOOR':'BODY'}</b>
-           <span>{isResolume?(badge.status==='Feed'?'Frame mengalir':badge.opened?'Blackout / menunggu frame':'Belum dibuka'):badge.status}</span>
+           <span>{isResolume?(badge.status==='Feed'?'Feed SOMA aktif':badge.opened?'Blackout / menunggu frame':'Belum dibuka'):badge.status}</span>
           </div>
           <div className="ops-r1-channel-btns">
            <button type="button" disabled={!isResolume&&!summary.canOpenOutput}
             onClick={()=>handleOpenSurface(surface)}>
-            <ExternalLink size={11}/>{badge.opened?'Lihat':isResolume?'Buka Feed':'Buka'}
+            <ExternalLink size={11}/>{isResolume?(badge.opened?'Lihat / Aktifkan':'Buka Feed'):(badge.opened?'Lihat':'Buka')}
            </button>
-           {isResolume&&<button type="button" className="ops-r1-copy-btn"
-            aria-label={`Salin URL Feed Resolume ${isFloor?'FLOOR':'BODY'}`}
-            title="Salin URL Clean Feed" onClick={()=>handleCopyFeedUrl(surface)}>
-            <Copy size={11}/>URL
-           </button>}
            {badge.opened&&<button type="button"
             aria-label={`Tutup output ${badge.label}`}
             onClick={()=>handleCloseSurface(surface)}><X size={11}/></button>}
@@ -244,6 +256,14 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        </div>
       </details>
      </>}
+     {isTouchDesigner?
+      <button type="button" className="ops-r1-back-visual" onClick={()=>handleRouteChange('soma')}>
+       <ArrowLeft size={12}/> Kembali ke output visual
+      </button>:
+      <details className="ops-r1-advanced-route">
+       <summary>Lanjutan · TouchDesigner</summary>
+       <button type="button" onClick={()=>handleRouteChange('touchdesigner')}>Buka jalur data TouchDesigner</button>
+      </details>}
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}

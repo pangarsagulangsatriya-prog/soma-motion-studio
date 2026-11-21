@@ -3,10 +3,12 @@
 import type {PerformOutputRouteMode,PerformPrimaryAction,PerformSurfaceBadge} from './performOutputModel.ts';
 
 export const PERFORM_DESTINATIONS=[
- {id:'soma',label:'SOMA Direct',medium:'Visual · Proyektor',description:'Visual FLOOR/BODY melalui jendela SOMA. LIVE perlu izin build dan QA Map.'},
- {id:'resolume',label:'Resolume',medium:'Visual · Clean Feed',description:'Jendela visual 16:9 untuk ditangkap Resolume. Jendela terbuka belum membuktikan penerimaan di Resolume.'},
+ {id:'soma',label:'SOMA Direct',medium:'Visual · Proyektor',description:'Visual FLOOR/BODY → fullscreen proyektor. LIVE perlu izin build dan QA Map.'},
+ {id:'resolume',label:'Resolume',medium:'Visual · Clean Feed',description:'Jendela 16:9 → OBS → Syphon/Spout → Resolume. Feed terbuka belum membuktikan penerimaan di Resolume.'},
  {id:'touchdesigner',label:'TouchDesigner',medium:'Data · Kaki A/B',description:'Posisi kaki, kontak, slide, pivot dan cue melalui WebSocket lokal. Visual dan izin proyektor dikelola di TouchDesigner.'}
 ] as const satisfies ReadonlyArray<{id:PerformOutputRouteMode;label:string;medium:string;description:string}>;
+/** Keep the experimental TouchDesigner tool in advanced controls, not in the two primary routes. */
+export const PRIMARY_PERFORM_DESTINATIONS=PERFORM_DESTINATIONS.filter(item=>item.id!=='touchdesigner');
 
 export type DestinationTone='locked'|'attention'|'idle'|'open'|'live';
 export type DestinationPresentation={
@@ -30,13 +32,13 @@ export function presentPerformDestination(input:{
   const connected=floor.connected||body.connected;
   const streaming=floor.status==='Feed'||body.status==='Feed';
   return open?{
-   state:streaming?'Feed mengalir':connected?'Feed Blackout / HOLD':'Menunggu sambungan',
-   hint:streaming?'Frame komposisi sedang dikirim. Periksa penerimaan di Resolume.':
-    'Feed terbuka, namun frame belum mengalir. Periksa video dan klik Lanjutkan Visual.',
+   state:streaming?'Feed SOMA aktif':connected?'Feed Blackout / HOLD':'Menunggu sambungan',
+   hint:streaming?'Frame sampai ke jendela SOMA. Hubungkan OBS Syphon/Spout; Resolume belum terverifikasi.':
+    'Feed terbuka, tetapi frame belum mengalir. Periksa sumber dan klik Lanjutkan Visual.',
    tone:streaming?'live':'open',
-   action:floor.opened?'Lihat / Aktifkan Feed FLOOR':'Buka Feed FLOOR',kind:'review'
+   action:floor.opened?'Lihat / Aktifkan FLOOR':'Buka Feed FLOOR',kind:'review'
   }:{
-   state:'Feed belum dibuka',hint:'Clean feed 16:9 perlu menangkap jendela yang dibuka SOMA.',
+   state:'Feed belum dibuka',hint:'Buka Clean Feed 16:9 lalu tangkap jendelanya lewat OBS agar tersedia di Resolume.',
    tone:'idle',action:'Buka Feed FLOOR',kind:'open'
   };
  }

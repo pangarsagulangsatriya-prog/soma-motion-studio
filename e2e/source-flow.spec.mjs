@@ -89,7 +89,13 @@ test('Resolume Clean Feed opens the proper receiver, never silently reuses SOMA 
  await choose(page,'Simulasi 3D','simulator');
  await page.getByRole('button',{name:'Langkah kiri'}).click();
  await page.getByRole('button',{name:'Perform workspace'}).click();
+ await expect(page.getByRole('group',{name:'Jalur Output Perform'}).getByRole('button')).toHaveCount(2);
  await page.getByRole('button',{name:'Resolume',exact:true}).click();
+ await expect(page.getByText(/SOMA Clean Feed → OBS → Syphon\/Spout → Resolume/)).toBeVisible();
+ await expect(page.locator('.ops-r1-bridge-guide')).toBeVisible();
+ await page.locator('.ops-r1-bridge-guide summary').click();
+ await expect(page.locator('.ops-r1-bridge-steps')).toBeVisible();
+ await expect(page.locator('.ops-r1-bridge-links a')).toHaveCount(1); // Headless Linux: no platform plugin guessed
  const popupPromise=page.waitForEvent('popup');
  await page.locator('.ops-r1-primary-cta').click();
  const popup=await popupPromise;
@@ -97,7 +103,7 @@ test('Resolume Clean Feed opens the proper receiver, never silently reuses SOMA 
  await expect(popup).toHaveURL(/feed=resolume/);
  await expect(popup.locator('canvas[aria-label="Output Footprints berwarna"]')).toHaveCount(1);
  // A connected popup alone is insufficient: require an ACK and visible canvas.
- await expect(page.locator('.ops-r1-destination-status')).toContainText('Feed mengalir',{timeout:20000});
+ await expect(page.locator('.ops-r1-destination-status')).toContainText('Feed SOMA aktif',{timeout:20000});
  const artwork=popup.locator('canvas[aria-label="Output Footprints berwarna"]');
  await expect(artwork).toHaveCSS('display','block',{timeout:20000});
  const raster=await artwork.evaluate(canvas=>{
@@ -115,5 +121,5 @@ test('Resolume Clean Feed opens the proper receiver, never silently reuses SOMA 
  expect(raster.width).toBeGreaterThanOrEqual(640);
  expect(raster.ok).toBe(true);
  await page.getByRole('button',{name:'SOMA Direct',exact:true}).click();
- await expect(page.locator('.ops-r1-destination-status')).not.toContainText('Feed mengalir');
+ await expect(page.locator('.ops-r1-destination-status')).not.toContainText('Feed SOMA aktif');
 });

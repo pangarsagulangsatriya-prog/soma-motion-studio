@@ -139,5 +139,7 @@ test('Resolume feed URL and Perform console output mode toggle contract',()=>{
  const routeModel=fs.readFileSync('src/studio/v3/performDestinationModel.ts','utf8');
  assert.ok(routeModel.includes('Resolume'),'Perform must offer Resolume clean feed route');
  assert.ok(routeModel.includes('Buka Feed FLOOR'),'Perform must expose Resolume clean-feed launch CTA');
- assert.ok(performSrc.includes('getDualSurfaceFeedUrl'),'Perform must allow copying Resolume feed URL');
+ assert.ok(!performSrc.includes('getDualSurfaceFeedUrl'),'Do not advertise a session-bound popup URL as a standalone OBS Browser Source');
+ assert.ok(performSrc.includes('ops-r1-bridge-guide'),'Perform must guide OBS Window Capture + Syphon/Spout');
+ assert.ok(performSrc.includes('PRIMARY_PERFORM_DESTINATIONS'),'Only the two visual routes appear as primary controls');
 });
