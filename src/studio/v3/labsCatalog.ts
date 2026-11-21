@@ -45,7 +45,8 @@ export type StageTwoLabId=typeof STAGE_TWO_LAB_IDS[number];
 export function isStageTwoLab(value:LabsId):value is StageTwoLabId{
  return STAGE_TWO_LAB_IDS.some(id=>id===value);
 }
-export const STAGE_TWO_ITEMS=LABS_GROUPS.flatMap(group=>group.items)
+type LabsItem=(typeof LABS_GROUPS)[number]['items'][number];
+export const STAGE_TWO_ITEMS=LABS_GROUPS.flatMap<LabsItem>(group=>group.items)
  .filter(item=>isStageTwoLab(item.id));
 export const STAGE_TWO_ITEM_COUNT=STAGE_TWO_ITEMS.length;
 export function searchStageTwoLabs(query:string){
