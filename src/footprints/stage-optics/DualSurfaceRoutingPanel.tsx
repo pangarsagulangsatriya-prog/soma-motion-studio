@@ -139,6 +139,7 @@ export function DualSurfaceRoutingPanel({
 
  // Calibration-first state: handles ready immediately on Map open
  const [monitorView,setMonitorView]=useState<MapMonitorView>('stage');
+ const sourceFirstShown=useRef(false);
  const [editingCorners,setEditingCorners]=useState(true);
  const [activeCorner,setActiveCorner]=useState<MapCornerIndex>(0);
  const [snapEnabled,setSnapEnabled]=useState(true);
@@ -151,6 +152,13 @@ export function DualSurfaceRoutingPanel({
  });
 
  const hasLiveSource=Boolean(cameraOn||experimentSource);
+ // When a real input becomes ready, show it beside the projected room first.
+ useEffect(()=>{
+  if(hasLiveSource&&!sourceFirstShown.current){
+   sourceFirstShown.current=true;
+   setMonitorView('align');
+  }else if(!hasLiveSource)sourceFirstShown.current=false;
+ },[hasLiveSource]);
  const sourceKind:'camera'|'video'|'simulator'|'demo-sim'|'none'=
   experimentSource==='video'?'video'
   :experimentSource==='simulator'?'simulator'
@@ -672,11 +680,14 @@ export function DualSurfaceRoutingPanel({
          <option value="720p">720p</option><option value="1080p">1080p</option>
         </select></label>
        </div>
-       <MapFourCornerEditor key={selected} sourceQuad={activePlan.sourceQuad}
+       <details className="map-r2-aux-details">
+        <summary>Warp UV sumber / proyektor · editor lanjutan</summary>
+        <MapFourCornerEditor key={selected} sourceQuad={activePlan.sourceQuad}
         projectorQuad={activePlan.projectorQuad}
         previewCanvas={selected==='body'?bodyCanvas:floorCanvas}
         onReset={group=>editPlan(selected,p=>({...p,[group]:defaultStageSurfacePlan(selected)[group]}))}
         onCommit={(group,quad)=>editPlan(selected,p=>({...p,[group]:quad}))}/>
+       </details>
        <div className="stage-dual-advanced-row">
         {selected==='floor'&&<details className="stage-dual-grid-qa">
          <summary>Grid homografi 3 × 3 (9 titik)</summary>
@@ -712,7 +723,9 @@ export function DualSurfaceRoutingPanel({
        </div>
       </div>
 
-      <ol className="stage-dual-stepper" aria-label={'Alur kesiapan proyektor '+selected.toUpperCase()}>
+      <details className="map-r2-aux-details">
+       <summary>Output ganda, status layar &amp; diagnostik</summary>
+       <ol className="stage-dual-stepper" aria-label={'Alur kesiapan proyektor '+selected.toUpperCase()}>
        {([
         {id:'display',label:'1. Layar',done:displayInfo.extended===true},
         {id:'safe',label:'2. Aman',done:operatorConfirm},
@@ -824,6 +837,7 @@ export function DualSurfaceRoutingPanel({
         Catat hasil uji fisik
        </button>
        {benchResult&&<p role="status">{benchResult}</p>}
+      </details>
       </details>
      </div>
     </details>
