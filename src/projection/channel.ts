@@ -19,6 +19,10 @@ export class ProjectionLink{
  get connected(){return this.opened&&Date.now()-this.lastSeen<OUTPUT_TIMEOUT;}
  send(state:ProjectionState,now:number,urgent=false){
   this.latestTransport=state.transport;this.latestArtworkAllowed=shouldTransmitArtwork(state);
+  if(state.transport==='blackout'){
+   // Ignore late ACKs from artwork rendered before a manual/safety blackout.
+   this.inFlight=null;this.lastFrameAckAt=0;this.artworkTransfer.reset();
+  }
   if(!this.opened)return;
   // Safety blackout bypasses the regular 90 ms control throttle. The remote
   // renderer still depends on browser delivery and the physical power switch.
