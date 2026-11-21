@@ -54,7 +54,7 @@ export function presentPerformDestination(input:{
   case 'preview-only':return {state:'Terkunci · latihan',hint:'MP4/3D hanya untuk pratinjau.',tone:'locked',action:'Lihat syarat output',kind:'info'};
   case 'fix-setup':return {state:'Perlu setup',hint:primary.detail,tone:'attention',action:'Perbaiki setup',kind:'setup'};
   case 'open-output':return {state:'Siap dibuka',hint:'Jendela baru dimulai Blackout.',tone:'idle',action:'Buka Output',kind:'open'};
-  case 'run-qa':return {state:'Terbuka · Blackout',hint:'Lanjutkan QA lima titik di Map.',tone:'open',action:'Uji di Map',kind:'qa'};
+  case 'run-qa':return {state:'Terbuka · Blackout',hint:'Output fisik SOMA Direct masih terkunci oleh pemeriksaan perangkat. Feed Resolume tersedia untuk latihan.',tone:'open',action:'Pilih Feed Resolume',kind:'qa'};
   case 'arm-live':return {state:'Terbuka · siap diuji',hint:'Hanya setelah QA dan konfirmasi operator.',tone:'open',action:primary.label,kind:'arm'};
   case 'monitor-live':return {state:'LIVE',hint:'Gunakan BLACKOUT ketika perlu memadamkan output.',tone:'live',action:'Lihat Output LIVE',kind:'live'};
  }
