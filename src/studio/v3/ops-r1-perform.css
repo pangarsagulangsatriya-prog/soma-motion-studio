@@ -578,3 +578,15 @@
 @media(prefers-reduced-motion:reduce){
  .fp-operator-mode .ops-r1-bridge-guide>summary svg{transition:none}
 }
+
+
+/* Direct output diagnostics: display the first real blocker before a black preview. */
+.ops-r1-direct-reason{
+ margin:7px 1px 2px;padding:8px 10px;
+ border:1px solid #604b36;border-radius:7px;
+ background:#251e15;color:#e0cda8;
+ font-size:11px;line-height:1.5;
+}
+.ops-r1-build-meta{
+ margin:5px 0;color:#9db1a2;font:500 10px/1.5 ui-monospace,monospace;
+}

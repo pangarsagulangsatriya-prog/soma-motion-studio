@@ -162,6 +162,7 @@ export function urgentBlackoutDualSurface(id:StageSurface){
   armed:{...state.armed,[id]:false}
  };
  const now=performance.now();
+ links[id].lastFrameAckAt=0; // Discard old LIVE receipts when blackout is requested.
  links[id].send(stageSurfaceState(state.plans[id],'blackout',false),now,true);
  const stage=sources.frameRef?.current??null;
  reportDualOutputStatus(telemetryOwner,{
@@ -380,9 +381,17 @@ let canvas:HTMLCanvasElement|null=null;
   }else link.send(stageSurfaceState(plan,'blackout',false),now);
 
   if(now-lastUI>240){
-   const reportedMode=mode==='feed'&&link.receivedFrames<1?'blackout':mode;
-   const reportedReason=mode==='feed'&&link.receivedFrames<1?
-    'Feed terhubung, menunggu frame pertama diterima jendela.':reason;
+   const needsArtworkAck=mode==='feed'||mode==='live';
+   const recentAck=link.lastFrameAckAt>0&&
+    now>=link.lastFrameAckAt&&now-link.lastFrameAckAt<2400;
+   // A popup handshake is not proof that an image reached the output.
+   const awaitingFrame=needsArtworkAck&&!recentAck;
+   const reportedMode=awaitingFrame?'blackout':mode;
+   const reportedReason=awaitingFrame
+    ?mode==='live'
+     ?'SOMA Direct menunggu frame visual. Periksa komposisi, sumber dan HOLD.'
+     :'Feed terhubung, menunggu frame pertama diterima jendela.'
+    :reason;
    reportDualOutputStatus(telemetryOwner,{
     surface:id,reported:true,opened:link.opened,connected:link.connected,
     mode:canvas&&link.connected?reportedMode:'blackout',
