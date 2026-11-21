@@ -732,3 +732,17 @@
 @media(prefers-reduced-motion:reduce){
  .stage-dual .map-r7-perform-cta{transition:none}
 }
+
+/* MAP-R8: the physical-only commissioning path stays available, collapsed
+   until the operator explicitly chooses to test a real projector. */
+.stage-dual .map-r8-projector-setup>summary{
+ list-style:none;cursor:pointer;min-height:34px;user-select:none;
+}
+.stage-dual .map-r8-projector-setup>summary::-webkit-details-marker{display:none}
+.stage-dual .map-r8-projector-setup>summary::after{
+ content:"+";margin-left:auto;color:#b6d2aa;font-size:17px;
+}
+.stage-dual .map-r8-projector-setup[open]>summary::after{content:"−"}
+.stage-dual .map-r8-projector-setup>summary:focus-visible{
+ outline:2px solid #cbe9a7;outline-offset:3px;border-radius:4px;
+}
