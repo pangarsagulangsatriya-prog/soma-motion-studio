@@ -11,7 +11,7 @@ export class ProjectionLink{
  lastSeen=0;receivedFrames=0;renderer='';error='';outputInfo:{width:number;height:number;viewportWidth:number;viewportHeight:number;dpr:number;fps:number;p95Ms:number;frames:number;samples:number}|null=null;
  private ack=(event:MessageEvent)=>{if(event.origin!==location.origin||event.source!==this.child||event.data?.session!==this.id)return;if(event.data.type==='frame-ack'&&event.data.sequence===this.inFlight){this.artworkTransfer.markAck(event.data.sequence,performance.now());this.inFlight=null;this.receivedFrames++;}};
  start(){if(this.channel)return;try{this.channel=new BroadcastChannel(`soma-body-projection-${this.id}`);this.channel.onmessage=e=>{const m=e.data;if(m?.session!==this.id)return;if(m.type==='hello'){this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=Date.now();}if(m.type==='heartbeat'){this.lastSeen=Date.now();this.renderer=String(m.renderer??'').slice(0,60);if(m.info&&['width','height','viewportWidth','viewportHeight','dpr','fps','p95Ms','frames','samples'].every(k=>Number.isFinite(m.info[k])&&m.info[k]>=0))this.outputInfo=m.info;}if(m.type==='closed')this.lastSeen=0;};window.addEventListener('message',this.ack);}catch{this.error='Komunikasi output belum tersedia pada browser ini.';}}
- buildOutputUrl(surface?:'body'|'floor',feedMode:'soma'|'resolume'='soma'){const url=new URL('/',location.origin);url.searchParams.set('bodyProjection',this.id);if(surface)url.searchParams.set('stageSurface',surface);if(feedMode==='resolume')url.searchParams.set('feed','resolume');return url.toString();}
+ buildOutputUrl(surface?:'body'|'floor',feedMode:'soma'|'resolume'='soma'){const url=new URL(import.meta.env.BASE_URL||'/',location.origin);url.searchParams.set('bodyProjection',this.id);if(surface)url.searchParams.set('stageSurface',surface);if(feedMode==='resolume')url.searchParams.set('feed','resolume');return url.toString();}
  open(surface?:'body'|'floor',feedMode:'soma'|'resolume'='soma'){this.start();if(!this.channel)return false;const url=this.buildOutputUrl(surface,feedMode);
   this.child=window.open(url,`soma-${surface??'body'}-${this.id}`,'popup,width=1280,height=720');this.inFlight=null;this.artworkTransfer.reset();this.lastArtworkRevision=null;this.lastSeen=0;this.error=this.child?'':'Pop-up diblokir. Izinkan pop-up SOMA, lalu buka output lagi.';return !!this.child;}
  focusOutput(){if(!this.opened)return false;try{this.child?.focus();}catch{}return true;}
@@ -32,7 +32,7 @@ export class ProjectionLink{
    */
  sendArtwork(state:ProjectionState,source:HTMLCanvasElement,now:number){
   this.send({...state,image:null},now);
-  if(!this.opened||!this.connected||this.inFlight!==null||this.artworkBusy||now-this.artworkSent<50||!shouldTransmitArtwork(state))return;
+  if(!this.opened||!this.connected||this.inFlight!==null||this.artworkBusy||now-this.artworkSent<1000/30||!shouldTransmitArtwork(state))return;
   if(typeof createImageBitmap!=='function')return;
   const revision=source.dataset.floorRevision;
   if(!shouldRefreshFloorArtwork(revision,this.lastArtworkRevision,now-this.artworkSent))return;
