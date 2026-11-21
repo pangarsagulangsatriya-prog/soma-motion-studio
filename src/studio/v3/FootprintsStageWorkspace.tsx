@@ -607,11 +607,16 @@ export function FootprintsStageWorkspace({
  });
  const performReadiness=evaluatePerformReadiness({
   source:sourceStatus.selection,
-  cameraOk:cameraOn&&bodySelected&&frameFresh&&!cameraBusy,
-  identityOk:performerCount===1?!identityStatus.ambiguous:
+  cameraOk:experimentalKind?Boolean(selectedExperimentFrame&&
+    (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):cameraOn&&bodySelected&&frameFresh&&!cameraBusy,
+  identityOk:experimentalKind?Boolean(selectedExperimentFrame&&
+   (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
+   performerCount===1?!identityStatus.ambiguous:
    identityStatus.visible.length===2&&!identityStatus.ambiguous&&
    identityStatus.observedFrameTime===frameRef.current.time,
-  floorOk:floorStatus.confirmed&&cameraMatched,
+  floorOk:experimentalKind?Boolean(selectedExperimentFrame&&
+   (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
+   floorStatus.confirmed&&cameraMatched,
   bodyOutputQa:dual.body.connected&&dual.body.qa==='within-provisional-target',
   floorOutputQa:dual.floor.connected&&dual.floor.qa==='within-provisional-target'
  });
@@ -628,8 +633,10 @@ export function FootprintsStageWorkspace({
   dualOpened:dual.body.opened||dual.floor.opened,legacy
  });
  const projectionPreflight=safeProjectionPreflight({
-  source:sourceStatus.selection,cameraOn,cameraBusy,bodySelected,frameFresh,
-  identities:performerCount===1?
+  source:sourceStatus.selection,cameraOn,cameraBusy,bodySelected,
+   frameFresh:experimentalKind?Boolean(selectedExperimentFrame&&
+    (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):frameFresh,
+   identities:performerCount===1?
    (frameFresh&&frameRef.current.pose.length>=29?1:0):identityStatus.visible.length,
   performers:performerCount,identityAmbiguous:identityStatus.ambiguous,
   matchedFrame:performerCount===1||
@@ -865,7 +872,7 @@ export function FootprintsStageWorkspace({
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onExit={onExitOperator} onBlackout={operatorBlackout}
     held={footprint.hold||performBlackout} onHold={()=>updateFootprint({hold:true})}
-    onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});}}
+    onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});onResumeSoftwarePreview();setPreviewResumeRevision(v=>v+1);}}
     videoRecording={videoRecording} canRecordVideo={canRecordVideo}
     onRecordVideo={onRecordVideo} units={units}
     contacts={floorStatus.contacts} performerCount={performerCount}
@@ -931,10 +938,13 @@ export function FootprintsStageWorkspace({
        calibrated:live&&floorStatus.confirmed}:null};
     }}
     sourceKind={sourceStatus.selection}
-    cameraOk={cameraOn&&bodySelected&&frameFresh}
-    identityOk={performerCount===1?!identityStatus.ambiguous:identityStatus.visible.length>=2&&!identityStatus.ambiguous&&identityStatus.observedFrameTime===frameRef.current.time}
-    floorOk={floorStatus.confirmed&&cameraMatched}
-    floorQaOk={dual.floor.qa==='within-provisional-target'}
+    cameraOk={experimentalKind?Boolean(selectedExperimentFrame&&
+    (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):cameraOn&&bodySelected&&frameFresh}
+     identityOk={experimentalKind?Boolean(selectedExperimentFrame&&
+    (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):performerCount===1?!identityStatus.ambiguous:identityStatus.visible.length>=2&&!identityStatus.ambiguous&&identityStatus.observedFrameTime===frameRef.current.time}
+    floorOk={experimentalKind?Boolean(selectedExperimentFrame&&
+    (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):floorStatus.confirmed&&cameraMatched}
+     floorQaOk={dual.floor.qa==='within-provisional-target'}
     bodyQaOk={dual.body.qa==='within-provisional-target'}
     onGoTrack={()=>onNavigateStageWorkspace('track')}
     onGoMap={()=>{

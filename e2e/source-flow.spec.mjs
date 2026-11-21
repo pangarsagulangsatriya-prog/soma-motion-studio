@@ -42,7 +42,7 @@ test('Camera E2E: wireless route exposes code fallback on static-compatible UI',
  await expect(page.getByRole('button',{name:'Kembali ke QR'})).toBeVisible();
 });
 
-test('Source E2E: MP4 and simulation stay software-only in Perform',async({page})=>{
+test('Source E2E: MP4 and simulator enter Perform with source-specific QA',async({page})=>{
  await page.goto('/');
  await choose(page,'Video MP4','video');
  await expect(stage(page)).toHaveAttribute('data-experimental','true');
@@ -51,12 +51,12 @@ test('Source E2E: MP4 and simulation stay software-only in Perform',async({page}
  await page.getByRole('button',{name:'Perform workspace'}).click();
  await expect(stage(page)).toHaveAttribute('data-workspace','perform');
  await expect(page.locator('.ops-r1-output-card')).toBeVisible();
- await expect(page.locator('.ops-r1-destination-status')).toContainText('Terkunci');
- await expect(page.locator('.ops-r1-primary-cta')).toHaveCount(0);
+ await expect(page.locator('.ops-r1-destination-status')).toContainText('Perlu setup');
+ await expect(page.locator('.ops-r1-primary-cta')).toBeVisible();
  await page.locator('.ops-r1-output-details summary').click();
  const openButtons=page.locator('.ops-r1-channel-btns button');
  await expect(openButtons).toHaveCount(2);
- for(const button of await openButtons.all())await expect(button).toBeDisabled();
+ for(const button of await openButtons.all())await expect(button).toBeEnabled();
  await page.getByRole('button',{name:'Track workspace'}).click();
  await choose(page,'Simulasi 3D','simulator');
  await expect(stage(page)).toHaveAttribute('data-experimental','true');

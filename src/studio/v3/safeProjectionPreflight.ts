@@ -20,13 +20,12 @@ export type SafeProjectionInput={
  * A successful software preflight NEVER grants optical output authority.
  * The 5-point physical QA + operator confirm still live in the output router. */
 export function safeProjectionPreflight(c:SafeProjectionInput):SafeProjectionPreflight{
- const softwareOnly=c.source==='video'||c.source==='simulator';
- const sourceReady=!!c.source&&c.source!=='video'&&c.source!=='simulator'&&
-  c.cameraOn&&c.bodySelected;
- const identityReady=sourceReady&&c.frameFresh&&
-  !c.identityAmbiguous&&c.identities>=c.performers&&
-  (c.performers===1||c.matchedFrame);
- const floorReady=identityReady&&c.floorConfirmed&&c.cameraMatched;
+ const offline=c.source==='video'||c.source==='simulator';
+ const sourceReady=!!c.source&&(offline?c.frameFresh:c.cameraOn&&c.bodySelected);
+ const identityReady=sourceReady&&(offline||(
+  c.frameFresh&&!c.identityAmbiguous&&c.identities>=c.performers&&
+  (c.performers===1||c.matchedFrame)));
+ const floorReady=identityReady&&(offline||(c.floorConfirmed&&c.cameraMatched));
  const connected=c.floorOutput.connected;
  const qaReady=c.floorOutput.qa==='within-provisional-target';
  const physicalReady=!!(floorReady&&c.hardwareEnabled&&connected&&qaReady&&
@@ -35,10 +34,10 @@ export function safeProjectionPreflight(c:SafeProjectionInput):SafeProjectionPre
  const result=(step:SafeProjectionStep,action:SafeProjectionAction,
   label:string,detail:string,fault=false):SafeProjectionPreflight=>({
    step,action,label,detail,progress,total:4,physicalReady:false,
-   softwareOnly:softwareOnly||!c.hardwareEnabled,fault
+   softwareOnly:!c.hardwareEnabled,fault
   });
- if(softwareOnly)return result('software-only','open-output-qa','Preview software',
-  'Video MP4 dan Simulasi 3D tidak bisa mengaktifkan proyektor fisik. Gunakan kamera live.');
+ if(!sourceReady&&offline)return result('tracking','inspect-tracking','Muat MP4 / 3D',
+  'Buka Track dan pastikan frame video atau simulasi sudah tampil.');
  if(!sourceReady)return result('source','choose-camera',
   c.cameraBusy?'Menunggu kamera':'Hubungkan kamera',
   c.cameraBusy?'Permintaan izin kamera sedang berlangsung.':

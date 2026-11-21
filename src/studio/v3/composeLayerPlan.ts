@@ -38,9 +38,9 @@ export function composerLayerOrder<T extends ComposerSourceLayer>(
   const kind=composerSourceKind(layer,surface);
   if(kind==='empty')return [];
   // The previous physical-output safety gate still owns stage authorisation.
-  if(physical&&experiment)return [];
-  if(physical&&(kind==='input'))return [];
-  if(physical&&kind==='body'&&surface==='FLOOR')return [];
+
+  if(physical&&kind==='input'&&!experiment)return [];
+
   return [{layer,kind}];
  });
 }

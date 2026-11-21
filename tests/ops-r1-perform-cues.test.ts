@@ -39,11 +39,11 @@ test('OPS-R1: malformed and stale cue profiles do not carry arbitrary scenes or 
  assert.equal('releaseApproved' in safe,false);
  assert.throws(()=>updatePerformCueSlot(grid,99,{view:'split'}));
 });
-test('OPS-R1: MP4/3D remain software preview with no hardware-ready state',()=>{
+test('OPS-R1: MP4/3D require QA when source frames are ready',()=>{
  for(const source of ['video','simulator'] as const){
   const result=evaluatePerformReadiness({source,cameraOk:true,identityOk:true,floorOk:true,bodyOutputQa:true,floorOutputQa:true});
-  assert.equal(result.state,'preview');
-  assert.match(result.reason,/fisik terkunci/);
+  assert.equal(result.state,'qa-required');
+  assert.match(result.reason,/pemeriksaan fisik|blackout nyata/i);
  }
 });
 test('OPS-R1: loss of tracking/identity blocks operator preview recovery',()=>{
@@ -84,6 +84,6 @@ test('OPS-R1: cue recall never activates projector, and Map QA remains separate'
  assert.match(stage,/setMappingOpen\(true\);setComposerStartQA\(true\)/);
  assert.match(map,/samples\.length<5/);
  assert.match(map,/blackoutObserved/);
- assert.match(map,/experimentLocked&&mode!=='blackout'/);
+ assert.match(map,/assessment\(id\)\.status!=='within-provisional-target'/);
  assert.ok(!read('../src/studio/v3/performCueModel.ts').includes('setTransport('));
 });

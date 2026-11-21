@@ -94,18 +94,6 @@ export function evaluatePerformOutputSummary(input:PerformOutputSummaryInput):{
   };
  }
 
- if(softwareOnly){
-  return {
-   globalStatus:{label:'Preview siap',tone:'preview'},
-   floorBadge,bodyBadge,canOpenOutput:false,
-   primaryAction:{
-    kind:'preview-only',
-    label:'Mode Simulasi · Output Fisik Terkunci',
-    detail:'Video MP4 dan Simulasi 3D hanya untuk latihan preview. Pilih kamera live di Track untuk proyektor.',
-    surface:'floor'
-   }
-  };
- }
 
  if(!input.cameraOk||!input.identityOk||!input.floorOk){
   const detail=!input.cameraOk

@@ -57,12 +57,12 @@ test('RESET-00: no gallery, visual Inspector or Hydra GPU engine in Stage/Compos
  assert.match(stage,/FloorInteractionEngine/);
  assert.match(stage,/useSharedAssetRegistry/);
 });
-test('RESET-00: MP4 projector output remains fail-closed; original FLOOR retained',()=>{
+test('RESET-00: MP4 preview can feed QA-gated output while legacy FLOOR remains available',()=>{
  const layers=[
   {name:'MP4',mediaId:'@stage:input',visible:true,opacity:100,blend:'source-over'},
   {name:'FLOOR',mediaId:'@stage:floor',visible:true,opacity:100,blend:'source-over'}
  ];
- assert.deepEqual(composerLayerOrder(layers,'FLOOR',true,true),[]);
+ assert.deepEqual(composerLayerOrder(layers,'FLOOR',true,true).map(x=>x.kind),['input','floor']);
  assert.deepEqual(composerLayerOrder(layers,'FLOOR',true,false).map(x=>x.kind),['floor']);
 });
 test('RESET-00: old Perform visual scenes normalize to diagnostic FLOOR, retaining cue layouts',()=>{

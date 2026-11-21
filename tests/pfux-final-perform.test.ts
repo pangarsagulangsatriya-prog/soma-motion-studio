@@ -30,7 +30,7 @@ test('PF-UX-04: production lock never claims open, ready or LIVE',()=>{
  assert.equal(locked.kind,'info');
  assert.equal(locked.tone,'locked');
  assert.equal(locked.state,'Terkunci · build');
- assert.equal(view('soma',state(true,'video')).tone,'locked');
+ assert.equal(view('soma',state(true,'video')).state,'Siap dibuka');
 });
 test('PF-UX-04: direct output follows setup -> open -> QA -> explicit arm -> LIVE',()=>{
  const base=state(true);
@@ -82,11 +82,11 @@ test('PF-UX-05: TD receiver handles disconnect and releases physical permission 
  assert.match(client,/this\.control\('blackout'\)/);
 });
 
-test('PF-UX-04: secondary FLOOR/BODY open is disabled for locked or MP4 sources',()=>{
+test('PF-UX-04: secondary FLOOR/BODY open remains disabled only for build locks',()=>{
  const console=read('../src/studio/v3/OperatorStageConsole.tsx');
  assert.match(console,/disabled=\{!isResolume&&!summary\.canOpenOutput\}/);
  assert.match(console,/if\(!isResolume&&!summary\.canOpenOutput\)/);
  assert.equal(state(false).canOpenOutput,false);
- assert.equal(state(true,'video').canOpenOutput,false);
+ assert.equal(state(true,'video').canOpenOutput,true);
  assert.equal(state(true,'webcam').canOpenOutput,true);
 });

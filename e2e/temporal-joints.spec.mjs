@@ -33,13 +33,17 @@ test('S6.8.8.3 temporal inspector exposes all 33 joints, metrics, and safe expor
  await expect(page.locator('.fp-preview-floor')).toHaveCount(1);
 });
 
-test('S6.8.8.3 video temporal diagnostics never bypass physical projector safety',async({page})=>{
+test('S6.8.8.3 video temporal diagnostics require operator confirmation and physical QA',async({page})=>{
  await page.goto('/');
  await selectStageSource(page,'Video MP4');
  await openStageMap(page);
  const gate=page.locator('.stage-dual');
- await expect(gate).toContainText('Dua output fisik terkunci');
+ await expect(gate).toContainText('QA Fisik 5 Titik');
  const buttons=gate.getByRole('button',{name:'Buka output'});
  await expect(buttons).toHaveCount(2);
  for(const button of await buttons.all())await expect(button).toBeDisabled();
+ await page.locator('.stage-dual-check input[type=checkbox]').check();
+ for(const button of await buttons.all())await expect(button).toBeEnabled();
+ for(const live of await gate.locator('.stage-dual-output').getByRole('button',{name:'LIVE'}).all())
+  await expect(live).toBeDisabled();
 });

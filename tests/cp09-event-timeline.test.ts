@@ -49,5 +49,5 @@ test('RESET-00 CP09: Composer timeline remains independent of retired visual sce
  assert.match(s,/timelineModeRef\.current==='replay'&&!physical\?null/);
  assert.doesNotMatch(s,/ComposedSceneRuntime|sceneReplaySeen|HydraEffectInspector/);
  const physical=readFileSync(new URL('../src/studio/v3/composeLayerPlan.ts',import.meta.url),'utf8');
- assert.match(physical,/if\(physical&&experiment\)return \[\]/);
+ assert.match(physical,/if\(physical&&kind==='input'&&!experiment\)return \[\]/);
 });

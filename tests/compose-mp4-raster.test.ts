@@ -9,17 +9,17 @@ test('MP4 preview chooses shared INPUT, FLOOR, BODY without camera calibration',
  assert.equal(composeExperimentRaster({source:'video',view:'surface',selected:'BODY A',physical:false}),'body');
  assert.equal(composeExperimentRaster({source:'video',view:'surface',selected:'BODY B',physical:false}),'body');
 });
-test('3D preview reuses source canvases while physical output stays blocked',()=>{
+test('3D preview reuses the exact canvas that can feed a calibrated output',()=>{
  assert.equal(composeExperimentRaster({source:'simulator',view:'surface',selected:'FLOOR',physical:false}),'floor');
  for(const source of ['video','simulator'] as const){
-  assert.equal(composeExperimentRaster({source,view:'surface',selected:'FLOOR',physical:true}),'none');
-  assert.equal(composeExperimentAllowsPhysicalOutput(source),false);
+  assert.equal(composeExperimentRaster({source,view:'surface',selected:'FLOOR',physical:true}),'floor');
+  assert.equal(composeExperimentAllowsPhysicalOutput(source),true);
  }
  assert.equal(composeExperimentAllowsPhysicalOutput(null),true);
 });
 test('Offline MP4 readiness is explicit and avoids live camera error',()=>{
  assert.match(composeExperimentStatus('video',false,'FLOOR'),/MP4 belum menghasilkan frame/);
- assert.match(composeExperimentStatus('video',true,'FLOOR'),/preview software/);
+ assert.match(composeExperimentStatus('video',true,'FLOOR'),/LIVE.*QA/);
 });
 test('Track passes original MP4 decoded raster to Compose; no separate decoder',()=>{
  const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
@@ -27,7 +27,7 @@ test('Track passes original MP4 decoded raster to Compose; no separate decoder',
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(stage,/experimentInputCanvas=\{cameraCanvas\} experimentFloorCanvas=\{floorCanvas\}/);
  assert.match(stage,/experimentSource=\{experimentalKind\}/);
- assert.match(composer,/kind==='floor'\?\(timelineModeRef\.current==='replay'&&!physical\?null:experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+ assert.match(composer,/experiment\?experimentFloorCanvas/);
  assert.match(composer,/composerLayerOrder\(/);
  assert.doesNotMatch(composer,/>CAM · \{experimentSource/);
  assert.match(composer,/paintComposeSkeletonMonitor/);

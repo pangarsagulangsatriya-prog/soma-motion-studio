@@ -2,17 +2,17 @@ import type {BodyMask} from '../../studio/bodyField.ts';
 import {SURFACE_TARGETS,type StageSurface} from './DualSurfaceCalibration.ts';
 
 export function drawSurfaceTestPattern(canvas:HTMLCanvasElement,surface:StageSurface,
- targetId:string,bodyMask:BodyMask|null):boolean{
+ targetId:string,bodyMask:BodyMask|null,allowSyntheticBodyTarget=false):boolean{
  const ctx=canvas.getContext('2d');
  if(!ctx)return false;
  const w=canvas.width,h=canvas.height;
  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
  const target=SURFACE_TARGETS[surface].find(t=>t.id===targetId);
  if(!target)return false;
- if(surface==='floor'){
+ if(surface==='floor'||(allowSyntheticBodyTarget&&surface==='body'&&!bodyMask)){
   // Only a small target cross is illuminated at any time, never a full
   // unbounded white projector field.
-  const x=target.uv.x*w,y=target.uv.y*h,size=Math.min(w,h)*.045;
+  const x=target.uv.x*w,y=target.uv.y*h,size=Math.min(w,h)*(surface==='body'?.025:.045);
   ctx.strokeStyle='#b0b0b0';ctx.lineWidth=Math.max(1,w/600);
   ctx.beginPath();ctx.moveTo(x-size,y);ctx.lineTo(x+size,y);
   ctx.moveTo(x,y-size);ctx.lineTo(x,y+size);ctx.stroke();

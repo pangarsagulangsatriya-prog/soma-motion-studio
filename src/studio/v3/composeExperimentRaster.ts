@@ -8,7 +8,7 @@ export function composeExperimentRaster(input:{
  source:ComposeExperimentSource;view:ComposeExperimentView;
  selected:ComposeExperimentSurface;physical:boolean;
 }):'input'|'body'|'floor'|'none'{
- if(!input.source||input.physical)return 'none';
+ if(!input.source)return 'none';
  if(input.view==='input')return 'input';
  return input.selected==='FLOOR'?'floor':'body';
 }
@@ -17,8 +17,8 @@ export function composeExperimentStatus(source:ComposeExperimentSource,ready:boo
  if(!source)return '';
  if(!ready)return source==='video'?'MP4 belum menghasilkan frame video. Buka Track untuk memutar video.':'Simulasi 3D belum siap.';
  return (source==='video'?'MP4':'3D')+' · '+selected+
-  ' · preview software, kalibrasi proyektor belum berlaku';
+  ' · siap dikomposisi; LIVE memerlukan QA proyektor';
 }
 export function composeExperimentAllowsPhysicalOutput(source:ComposeExperimentSource):boolean{
- return source===null;
+ return source===null||source==='video'||source==='simulator';
 }
