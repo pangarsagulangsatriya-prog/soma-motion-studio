@@ -1,0 +1,48 @@
+name: Perform Final Preview QA
+on:
+  pull_request:
+    paths:
+      - 'src/studio/v3/FootprintsStageWorkspace.tsx'
+      - 'src/studio/v3/SurfaceComposer.tsx'
+      - 'src/studio/v3/PerformFinalPreview.tsx'
+      - 'src/studio/v3/perform-final-preview.css'
+      - 'src/studio/v3/performFinalPreviewModel.ts'
+      - 'e2e/perform-final-preview.spec.mjs'
+      - 'tests/perform-final-preview.test.ts'
+      - '.github/workflows/perform-final-preview.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/studio/v3/FootprintsStageWorkspace.tsx'
+      - 'src/studio/v3/SurfaceComposer.tsx'
+      - 'src/studio/v3/PerformFinalPreview.tsx'
+      - 'src/studio/v3/perform-final-preview.css'
+      - 'src/studio/v3/performFinalPreviewModel.ts'
+      - 'e2e/perform-final-preview.spec.mjs'
+      - 'tests/perform-final-preview.test.ts'
+      - '.github/workflows/perform-final-preview.yml'
+permissions:
+  contents: read
+jobs:
+  final-preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build -- --mode githubpages
+      - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Perform final preview desktop and mobile
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 perform-final-preview.spec.mjs
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perform-final-preview-failure
+          path: e2e/test-results/
+          if-no-files-found: ignore
