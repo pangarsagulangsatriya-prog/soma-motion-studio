@@ -153,10 +153,10 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  const editor=read('../src/studio/v3/MapFourCornerEditor.tsx');
 
  // Single dominant Stage Map Monitor with 4 view modes & empty-state CTA
- assert.match(monitor,/Gunakan simulasi/);
+ assert.match(monitor,/<Users size=\{11\}\/> Simulasi/);
  assert.match(monitor,/\['stage','Panggung'\]/);
  assert.match(monitor,/\['camera','Kamera'\]/);
- assert.match(monitor,/\['output','Hasil Proyektor'\]/);
+ assert.match(monitor,/\['output','Output'\]/);
  assert.match(monitor,/\['split','Split'\]/);
  assert.match(monitor,/paintAuthenticFootprint/);
 
@@ -200,4 +200,26 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  assert.ok(!panel.includes('getUserMedia('));
  assert.ok(!monitor.includes('getUserMedia('));
  assert.ok(!editor.includes('getUserMedia('));
+});
+
+test('MAP-R7: compact Map keeps one Perform handoff and a readable primary monitor',()=>{
+ const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
+ const nav=read('../src/studio/v3/StageModuleNav.tsx');
+ const monitor=read('../src/studio/v3/MapStageMonitor.tsx');
+ const styles=read('../src/footprints/stage-optics/dual-surface-routing.css');
+ assert.match(panel,/map-r2-status-inline map-r7-status/);
+ assert.match(panel,/className="map-r7-perform-cta"/);
+ assert.match(panel,/onClick=\{handleEnterPerform\}/);
+ assert.match(panel,/QA Fisik 5 Titik/);
+ assert.match(panel,/map-r7-qa-count/);
+ assert.match(panel,/urgentBlackout\(id\)/);
+ assert.match(panel,/stage-dual-check map-r7-safety-check/);
+ assert.doesNotMatch(panel,/className="map-r5-next-action"/);
+ assert.doesNotMatch(panel,/map-r2-perform-link/);
+ assert.match(nav,/active!=='map'&&<button/);
+ assert.match(monitor,/\['camera','Kamera'\]/);
+ assert.match(monitor,/\['output','Output'\]/);
+ assert.match(monitor,/\['align','Bandingkan'\]/);
+ assert.doesNotMatch(monitor,/Lebar \$\{stageDimensions\.widthM\.toFixed/);
+ assert.match(styles,/MAP-R7 — compact operator map/);
 });

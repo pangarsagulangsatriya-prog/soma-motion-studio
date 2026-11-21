@@ -6,7 +6,8 @@ test('MAP-R3: full screen can show camera+stage and uses meter spacing',async({p
  const monitor=page.locator('.map-r2-monitor');
  await expect(monitor).toBeVisible();
  await expect(monitor.getByRole('button',{name:'Fullscreen Map Monitor'})).toBeVisible();
- await monitor.getByRole('button',{name:'Kamera + Panggung'}).click();
+ await monitor.locator('.map-r5-other-views > summary').click();
+ await monitor.getByRole('button',{name:'Bandingkan'}).click();
  await expect(monitor.locator('canvas[aria-label="Tampilan feed kamera Map"]')).toBeVisible();
  await expect(monitor.locator('canvas[aria-label="Kanvas kalibrasi panggung Map"]')).toBeVisible();
  await monitor.locator('.map-r5-pattern-options > summary').click();
@@ -26,7 +27,7 @@ test('MAP-R3: advanced diagnostics remain accessible, separate from physical QA'
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const rail=page.locator('.map-r2-rail');
- await expect(rail.getByText('Uji proyektor & QA')).toBeVisible();
+ await expect(rail.getByText('Uji proyektor',{exact:true})).toBeVisible();
  await expect(rail.locator('.stage-dual-qa-disclosure')).toBeVisible();
  const advanced=rail.locator('details.map-r2-advanced');
  await advanced.locator('summary').first().click();

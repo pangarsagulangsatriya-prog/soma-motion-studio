@@ -56,6 +56,7 @@ test('Projector WYSIWYG: surface brightness and corners adjust local matrix whil
  await quad.first().fill('0.1');
  await expect.poll(()=>body.evaluate(el=>el.style.transform)).not.toBe(before.transform);
  await page.locator('.stage-dual-qa-disclosure > summary').click();
- await expect(page.locator('.stage-dual-qa')).toContainText('Catat ΔX dan ΔY');
+ await expect(page.locator('.stage-dual-qa')).toContainText('Selisih cahaya terukur');
+ await expect(page.locator('.stage-dual-qa > p').first()).toHaveAttribute('title',/Sistem tidak mengukur cahaya secara otomatis/);
  await expect(page.locator('.stage-dual')).toContainText('Blackout');
 });

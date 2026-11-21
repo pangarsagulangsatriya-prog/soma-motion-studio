@@ -459,18 +459,19 @@ export function DualSurfaceRoutingPanel({
   <header className="map-r2-topbar">
    <div className="map-r2-brand">
     <h2>Map</h2>
-    <div className="map-r2-status-inline" data-status={dominantStatus.id} role="status">
-     <span>{dominantStatus.sourceLabel}</span>
-     <span aria-hidden="true">·</span>
+    <div className="map-r2-status-inline map-r7-status" data-status={dominantStatus.id}
+     role="status" aria-label={dominantStatus.sourceLabel+' · '+dominantStatus.label}
+     title={dominantStatus.sourceLabel+' · '+dominantStatus.label}>
+     <span className="map-r7-status-dot" aria-hidden="true"/>
      <strong>{dominantStatus.label}</strong>
-     <span aria-hidden="true">·</span>
-     <span>Ruang {stageDimensions.widthM}×{stageDimensions.depthM} m</span>
     </div>
    </div>
    <div className="map-r2-top-right">
     <div className="stage-dual-surface-tabs" role="group" aria-label="Pilih bidang kalibrasi">
      <button type="button" aria-pressed={selected==='floor'} onClick={()=>{setSelected('floor');setDx('');setDy('');}}>Lantai</button>
-     <button type="button" aria-pressed={selected==='body'} onClick={()=>{setSelected('body');setDx('');setDy('');}}>Tubuh</button>
+     <button type="button" aria-pressed={selected==='body'}
+      title="Satu output BODY mencakup mask tubuh bawah Performer A dan B."
+      onClick={()=>{setSelected('body');setDx('');setDy('');}}>Tubuh</button>
     </div>
     <button type="button" className="stage-dual-emergency map-r2-blackout" onClick={allBlackout}
      title="Padamkan proyektor Lantai dan Tubuh segera">
@@ -487,9 +488,10 @@ export function DualSurfaceRoutingPanel({
       <span className="map-r2-step-num">1</span>
       <strong>Ukuran ruang</strong>
      </div>
-     {selected==='body'&&<p className="map-r2-step-note">Satu output BODY mencakup mask tubuh bawah Performer A dan B.</p>}
      <details className="map-r4-disclosure map-r4-room-extra">
-      <summary className="map-r5-room-summary"><b>{stageDimensions.widthM}×{stageDimensions.depthM} m</b><span>Ubah ukuran</span></summary>
+      <summary className="map-r5-room-summary" aria-label="Ubah ukuran panggung">
+       <b>{stageDimensions.widthM} × {stageDimensions.depthM} m</b><span>Ubah</span>
+      </summary>
      <div className="map-r2-presets map-r4-main-presets" role="group" aria-label="Preset ukuran ruang panggung">
       {STAGE_DIMENSION_PRESETS.filter(preset=>['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
        const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
@@ -530,9 +532,12 @@ export function DualSurfaceRoutingPanel({
       <strong>Cocokkan sudut</strong>
      </div>
 
-     <p className="map-r4-inline-hint">Tarik titik 1–4 di monitor. Pilih sudut untuk penyesuaian halus.</p>
+     <p className="map-r7-sr-only" id="map-corner-help">Tarik titik 1–4 di monitor. Pilih sudut untuk penyesuaian halus.</p>
      <details className="map-r4-disclosure map-r4-precision">
-      <summary>Penyetelan halus <span>Geser · Snap · Undo</span></summary>
+      <summary title="Geser halus, Snap, Undo, Redo, dan Reset"
+        aria-label={'Penyetelan halus · titik '+(activeCorner+1)}>
+        Presisi <span>Titik {activeCorner+1}</span>
+       </summary>
      <div className="map-r2-corner-picks" role="group" aria-label="Pilih sudut aktif kalibrasi">
       {CORNER_TAGS.map((tag,idx)=><button type="button" key={tag}
        aria-pressed={activeCorner===idx}
@@ -588,15 +593,16 @@ export function DualSurfaceRoutingPanel({
       </button>}
     </section>
 
-    <section className="map-r2-step">
+    <section className="map-r2-step map-r7-qa-step">
      <div className="map-r2-step-head">
       <span className="map-r2-step-num">3</span>
-      <strong>Uji proyektor &amp; QA</strong>
+      <strong>Uji proyektor</strong>
      </div>
-     <label className="stage-dual-check">
+     <label className="stage-dual-check map-r7-safety-check" title="Pastikan cahaya tidak mengenai mata/wajah; operator siap menjalankan Blackout fisik.">
       <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
+       aria-label="Area aman dari sorot mata/wajah; operator siap Blackout fisik"
        onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
-      Area aman dari sorot mata/wajah; operator siap Blackout fisik
+      <span>Area aman <small>Mata/wajah · Blackout siap</small></span>
      </label>
      <div className="map-r2-test-row">
       <button type="button" className="map-r2-test-btn" disabled={projectorTestDisabled}
@@ -604,18 +610,19 @@ export function DualSurfaceRoutingPanel({
        <Target size={12}/> {projectorTestLabel}
       </button>
      </div>
-     <p className="map-r5-next-action" role="status">
-      {!STAGE_HARDWARE_ENABLED?'Output fisik tidak tersedia pada build ini. Pratinjau tetap bisa dipakai.':
-       !operatorConfirm?'Centang pemeriksaan keamanan untuk membuka jendela proyektor.':
-       !devices[selected].connected?'Buka output dalam Blackout, pindahkan ke layar proyektor, lalu tekan F.':
-       qa.status!=='within-provisional-target'?'Jalankan pola uji dan selesaikan QA fisik 5 titik.':
-       experimentLocked?'Periksa hasil MP4/3D dan QA fisik, lalu lanjut ke Perform.':'Kalibrasi siap. Lanjutkan pengaturan LIVE di Perform.'}
-     </p>
+     {!STAGE_HARDWARE_ENABLED&&
+      <p className="map-r7-output-hint" role="status" title="Output fisik tidak tersedia pada build ini. Pratinjau software tetap bisa dipakai.">Pratinjau saja · output terkunci</p>}
+     {STAGE_HARDWARE_ENABLED&&operatorConfirm&&devices[selected].connected&&
+      <p className="map-r7-output-hint" role="status">
+       {qa.status==='within-provisional-target'?'QA selesai · lanjut Perform':'Uji cahaya lalu lengkapi QA'}
+      </p>}
 
      <details className="stage-dual-qa-disclosure">
-      <summary><ShieldAlert size={13}/> QA Fisik 5 Titik · {selected==='floor'?'Lantai':'Tubuh'} <span>{qaBadge}</span></summary>
+      <summary title={'QA Fisik 5 Titik · '+qaBadge} aria-label={'QA Fisik 5 Titik · '+(selected==='floor'?'Lantai':'Tubuh')+' · '+qaBadge}>
+        <ShieldAlert size={13}/><span>QA fisik</span><span className="map-r7-qa-count">{qa.count}/5</span>
+       </summary>
       <div className="stage-dual-qa">
-       <p>Catat ΔX dan ΔY (cm) dari tanda fisik di panggung. Sistem tidak mengukur foton secara otomatis.</p>
+       <p title="Catat ΔX dan ΔY dari tanda fisik di panggung. Sistem tidak mengukur cahaya secara otomatis.">Selisih cahaya terukur, dalam cm.</p>
        <label>Titik uji ({selected.toUpperCase()})
         <select value={target[selected]} onChange={e=>setTarget(prev=>({...prev,[selected]:e.target.value}))}>
          {SURFACE_TARGETS[selected].map(t=><option key={t.id} value={t.id}>{t.id} · {t.label}</option>)}
@@ -647,10 +654,16 @@ export function DualSurfaceRoutingPanel({
         <button type="button" onClick={signOff}>Selesaikan QA manual</button>
         <button type="button" onClick={exportReport}><Download size={13}/> Ekspor QA JSON</button>
        </div>
-       <p>Status: <b>{qa.status}</b>. {qa.missing.join(' ')}</p>
+       <details className="map-r7-qa-result">
+         <summary>Detail hasil QA</summary>
+         <p>Status: <b>{qa.status}</b>. {qa.missing.join(' ')}</p>
+        </details>
       </div>
      </details>
-
+     {onEnterPerform&&<button type="button" className="map-r7-perform-cta"
+      onClick={handleEnterPerform} title="Lanjutkan pengaturan LIVE di Perform">
+      Lanjut Perform <ArrowRight size={13}/>
+     </button>}
     </section>
 
     <details className="map-r2-advanced">
@@ -866,11 +879,12 @@ export function DualSurfaceRoutingPanel({
    </div>
   </div>
 
-  <footer className="map-r2-footer">
-   <p className="map-r2-blocker" role="status">{message||dominantStatus.blocker}</p>
-   {onEnterPerform&&<button type="button" className="map-r2-perform-link" onClick={handleEnterPerform}>
-    Ke Perform <ArrowRight size={13}/>
-   </button>}
-  </footer>
+  {message&&<footer className="map-r2-footer map-r7-footer" role="status"
+    aria-label={message} title={message}>
+    <span className="map-r7-feedback-dot" aria-hidden="true"/>
+    <span className="map-r2-blocker">
+     {message.includes('Dua output diperintah Blackout')?'Blackout aktif':message}
+    </span>
+   </footer>}
  </section>;
 }

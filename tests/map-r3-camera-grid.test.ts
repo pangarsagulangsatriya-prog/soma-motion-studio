@@ -21,7 +21,7 @@ test('MAP-R3 Camera and Stage share monitor, and fullscreen does not open physic
  assert.match(monitor,/requestFullscreen\?\.\(\)/);
  assert.match(monitor,/document\.fullscreenElement===monitorRef\.current/);
  assert.match(monitor,/Fullscreen Map Monitor/);
- assert.match(monitor,/\['align','Kamera \+ Panggung'\]/);
+ assert.match(monitor,/\['align','Bandingkan'\]/);
  assert.match(monitor,/view==='align'&&<div className="map-r2-split map-r2-alignment"/);
  assert.match(monitor,/sourceKind==='camera'&&vid&&vid\.readyState>=2/);
  assert.match(monitor,/frameRef\?\.current\?\.pose\?\.length/);
