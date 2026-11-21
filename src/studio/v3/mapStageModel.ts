@@ -90,7 +90,7 @@ export function deriveMapStageStatus(params:{
   };
  }
 
- if(params.experimentLocked||params.source==='demo-sim'||params.source==='video'||params.source==='simulator'){
+ if(params.source==='demo-sim'){
   return {
    id:'ready-to-test',
    label:'Siap diuji',
