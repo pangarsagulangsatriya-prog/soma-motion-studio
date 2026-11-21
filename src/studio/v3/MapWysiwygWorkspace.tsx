@@ -398,7 +398,7 @@ export function MapWysiwygWorkspace({
       <button type="button" className="soma-map-v3-link" onClick={onOpenTrack}>
        {sourceInterrupted?'Periksa Track':'Pilih kamera di Track'}
       </button>
-     </div>
+     </div>}
     </div>
     {simulating&&<div className="soma-map-wysiwyg-controls soma-map-v3-sim-controls">
      <button type="button" onClick={onToggleSimPlay}>{simState.playing?<Pause size={14}/>:<Play size={14}/>}
