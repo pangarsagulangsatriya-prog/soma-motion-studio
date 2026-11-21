@@ -147,17 +147,17 @@ test('MAP-06 / MAP-07 / MAP-14: quad snap, undo/redo history, and degenerate qua
  });
 });
 
-test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collapsed Advanced, single BODY output, and zero extra camera streams',()=>{
+test('MAP-09..MAP-13 / MAP-16: Map has direct four-corner editing, minimal views and safe optional hardware QA',()=>{
  const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const monitor=read('../src/studio/v3/MapStageMonitor.tsx');
  const editor=read('../src/studio/v3/MapFourCornerEditor.tsx');
 
  // Single dominant Stage Map Monitor with 4 view modes & empty-state CTA
- assert.match(monitor,/<Users size=\{11\}\/> Simulasi/);
- assert.match(monitor,/\['stage','Panggung'\]/);
- assert.match(monitor,/\['camera','Kamera'\]/);
- assert.match(monitor,/\['output','Output'\]/);
- assert.match(monitor,/\['split','Split'\]/);
+ assert.match(monitor,/<Users size=\{11\}\/> Coba simulasi/);
+ assert.match(monitor,/\['stage','Atur'\]/);
+ assert.match(monitor,/\['align','Bandingkan'\]/);
+ assert.match(monitor,/\['output','Hasil'\]/);
+ assert.doesNotMatch(monitor,/\['split','Split'\]/);
  assert.match(monitor,/paintAuthenticFootprint/);
 
  // 3-step rail + single BODY output covering A and B + collapsed Advanced drawer
@@ -166,7 +166,7 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  assert.match(panel,/Cocokkan sudut/);
  assert.match(panel,/Uji proyektor/);
  assert.match(panel,/Satu output BODY mencakup mask tubuh bawah Performer A dan B/);
- assert.match(panel,/<details className="map-r2-advanced">/);
+ assert.doesNotMatch(panel,/<details className="map-r2-advanced">/);
  assert.ok(!panel.includes('<details className="map-r2-advanced" open'));
 
  // No permanent 4-card UV grid clutter in MapFourCornerEditor
@@ -174,16 +174,16 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  assert.match(editor,/map-r1-corner-bar/);
 
  // Calibration-first default: corner handles active immediately on Map entry
- assert.match(panel,/useState\(true\)/);
+ assert.match(panel,/const editingCorners=true/);
  assert.match(panel,/STAGE_DIMENSION_PRESETS/);
- assert.match(panel,/map-r2-nudge-pad/);
- assert.match(panel,/className="map-r4-disclosure map-r4-precision"/);
+ assert.doesNotMatch(panel,/map-r2-nudge-pad/);
+ assert.doesNotMatch(panel,/className="map-r4-disclosure map-r4-precision"/);
  assert.match(panel,/Tarik empat sudut pada gambar/);
- assert.match(panel,/Teknis &amp; diagnostik/);
+ assert.doesNotMatch(panel,/Teknis &amp; diagnostik/);
  assert.doesNotMatch(panel,/Grid homografi 3 × 3/);
- assert.match(panel,/Lanjutkan pengaturan LIVE di Perform/);
- assert.match(panel,/map-r5-model-diagnostics/);
- assert.match(panel,/map-r5-output-diagnostics/);
+ assert.match(panel,/title="Buka ruang Perform"/);
+ assert.doesNotMatch(panel,/map-r5-model-diagnostics/);
+ assert.doesNotMatch(panel,/map-r5-output-diagnostics/);
  assert.doesNotMatch(panel,/stage-dual-perform-quick/);
 
  // Track-unified botanical-forest palette & centered 1252px layout across Compose & Map
@@ -214,11 +214,14 @@ test('MAP-R7: compact Map keeps one Perform handoff and a readable primary monit
  assert.match(panel,/map-r7-qa-count/);
  assert.match(panel,/urgentBlackout\(id\)/);
  assert.match(panel,/stage-dual-check map-r7-safety-check/);
+ assert.match(panel,/STAGE_HARDWARE_ENABLED&&<section className="map-r2-step map-r7-qa-step"/);
+ assert.doesNotMatch(panel,/stage-dual-setup-uat|stage-dual-profile|map-r2-nudge-pad/);
+ assert.doesNotMatch(panel,/stage-dual-emergency map-r2-blackout/);
  assert.doesNotMatch(panel,/className="map-r5-next-action"/);
  assert.doesNotMatch(panel,/map-r2-perform-link/);
  assert.match(nav,/active!=='map'&&<button/);
- assert.match(monitor,/\['camera','Kamera'\]/);
- assert.match(monitor,/\['output','Output'\]/);
+ assert.match(monitor,/\['stage','Atur'\]/);
+ assert.match(monitor,/\['output','Hasil'\]/);
  assert.match(monitor,/\['align','Bandingkan'\]/);
  assert.doesNotMatch(monitor,/Lebar \$\{stageDimensions\.widthM\.toFixed/);
  assert.match(styles,/MAP-R7 — compact operator map/);
