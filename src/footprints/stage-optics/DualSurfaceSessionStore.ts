@@ -248,10 +248,7 @@ export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;messa
  if(!STAGE_HARDWARE_ENABLED){
   return {ok:false,message:'Output fisik dinonaktifkan pada build ini.'};
  }
- if(sources.experimentLocked){
-  urgentBlackoutDualSurface(id);
-  return {ok:false,message:'Sumber simulasi/MP4 tidak dapat mengaktifkan proyektor fisik.'};
- }
+ 
  const links=ensurePorts();
  const link=links[id];
  if(!link.connected){
@@ -260,7 +257,7 @@ export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;messa
  }
  const stage=sources.frameRef?.current??null;
  const now=performance.now();
- const fresh=!!stage&&stage.mode==='live'&&stage.frameAtMs>0&&
+ const fresh=!!stage&&(stage.mode==='live'||stage.mode==='simulation')&&stage.frameAtMs>0&&
   stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
   now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
  if(!stage||!stage.cameraSafe||!fresh){
@@ -305,7 +302,7 @@ function sendTick(now:number){
    windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]:'',
    viewport
   });
-  const fresh=!!stage&&stage.mode==='live'&&stage.frameAtMs>0&&
+  const fresh=!!stage&&(stage.mode==='live'||stage.mode==='simulation')&&stage.frameAtMs>0&&
    stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
    now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
   const safe=dualPhysicalOutputAllowed(
@@ -382,13 +379,13 @@ export function syncDualSurfaceRuntime(next:{
  sources.floorCanvas=next.floorCanvas;
  sources.legacyProjection=next.legacyProjection;
  sources.experimentLocked=next.experimentLocked;
- if(next.experimentLocked&&!prevLocked&&ports){
+ if(next.experimentLocked!==prevLocked&&ports){
   blackoutAllDualSurfaces();
   patchDualSurfaceState({operatorConfirm:false});
  }
  ensurePorts();
  if(pumpTimer===null&&typeof window!=='undefined'){
-  pumpTimer=window.setInterval(()=>sendTick(performance.now()),75);
+  pumpTimer=window.setInterval(()=>sendTick(performance.now()),1000/30);
  }
 }
 
