@@ -43,7 +43,8 @@ test('IA-R1: no second Footprints source picker or stage tabs underneath the glo
  assert.ok(!nav.includes('<details className="soma-uxr1-source"'));
  assert.match(stage,/<details className="soma-ux01-source-switch soma-track-source-select"/);
  assert.doesNotMatch(stage,/<QuickStageSetup/);
- assert.match(stage,/<MapCameraCalibration/);
+ assert.doesNotMatch(stage,/<MapCameraCalibration/);
+ assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen&&!operatorMode\}/);
  assert.match(stage,/experimentalKind&&<FootprintsExperimentalSource/);
  assert.match(stage,/data-workspace=\{operatorMode\?'perform':composerOpen\?/);
 });

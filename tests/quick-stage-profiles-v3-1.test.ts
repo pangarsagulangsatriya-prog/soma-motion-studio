@@ -72,6 +72,7 @@ test('V3.1 remains a local UI transaction and preserves original physical-output
  assert.doesNotMatch(ui,/tracker\.confirm\(true\)/);
  assert.match(app,/onSelectCameraDevice=\{selectFootprintsCameraDevice\}/);
  assert.doesNotMatch(stage,/<QuickStageSetup/);
- assert.match(stage,/<MapCameraCalibration/);
+ assert.doesNotMatch(stage,/<MapCameraCalibration/);
+ assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen&&!operatorMode\}/);
  assert.match(ui,/profil lantai|Profil lantai/);
 });

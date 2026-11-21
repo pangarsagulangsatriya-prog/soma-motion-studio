@@ -134,6 +134,7 @@ test('V3.5: implementation preserves manual opt-in and distinct clean output',()
  assert.match(dual,/setProofs\(\{body:null,floor:null\}\)/);
  assert.match(dual,/ids\.forEach\(urgentBlackout\)/);
  assert.match(stage,/safeProjectionPreflight/);
- assert.match(stage,/onBlackout=\{onBlackout\} onClose=\{\(\)=>setMapCameraOpen\(false\)\}/);
+ assert.match(dual,/onBeginCameraEdit/);
+ assert.doesNotMatch(stage,/<MapCameraCalibration/);
  assert.match(projection,/Output proyeksi bersih/);
 });

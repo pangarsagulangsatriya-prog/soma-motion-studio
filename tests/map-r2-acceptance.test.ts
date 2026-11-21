@@ -147,65 +147,32 @@ test('MAP-06 / MAP-07 / MAP-14: quad snap, undo/redo history, and degenerate qua
  });
 });
 
-test('MAP-09..MAP-13 / MAP-16: Map has direct four-corner editing, minimal views and safe optional hardware QA',()=>{
+test('MAP-V2: one camera overlay, one mapped result, four corners and hardware-gated QA',()=>{
  const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
- const monitor=read('../src/studio/v3/MapStageMonitor.tsx');
- const editor=read('../src/studio/v3/MapFourCornerEditor.tsx');
-
- // Single dominant Stage Map Monitor with 4 view modes & empty-state CTA
- assert.match(monitor,/<Users size=\{11\}\/> Coba simulasi/);
- assert.match(monitor,/\['stage','Atur'\]/);
- assert.match(monitor,/\['align','Bandingkan'\]/);
- assert.match(monitor,/\['output','Hasil'\]/);
- assert.doesNotMatch(monitor,/\['split','Split'\]/);
- assert.match(monitor,/paintAuthenticFootprint/);
-
- // 3-step rail + single BODY output covering A and B + collapsed Advanced drawer
- assert.match(panel,/<strong>Ukuran ruang<\/strong>/);
- assert.match(panel,/className="map-r4-room-extra"|className="map-r4-disclosure map-r4-room-extra"/);
- assert.match(panel,/Cocokkan sudut/);
- assert.match(panel,/Uji proyektor/);
- assert.match(panel,/Satu output BODY mencakup mask tubuh bawah Performer A dan B/);
- assert.doesNotMatch(panel,/<details className="map-r2-advanced">/);
- assert.ok(!panel.includes('<details className="map-r2-advanced" open'));
-
- // No permanent 4-card UV grid clutter in MapFourCornerEditor
- assert.ok(!editor.includes('map-r1-corner-card'));
- assert.match(editor,/map-r1-corner-bar/);
-
- // Calibration-first default: corner handles active immediately on Map entry
- assert.match(panel,/const editingCorners=true/);
- assert.match(panel,/STAGE_DIMENSION_PRESETS/);
- assert.doesNotMatch(panel,/map-r2-nudge-pad/);
- assert.doesNotMatch(panel,/className="map-r4-disclosure map-r4-precision"/);
- assert.match(panel,/Tarik empat sudut pada gambar/);
- assert.doesNotMatch(panel,/Teknis &amp; diagnostik/);
- assert.doesNotMatch(panel,/Grid homografi 3 × 3/);
- assert.match(panel,/title="Buka ruang Perform"/);
- assert.doesNotMatch(panel,/map-r5-model-diagnostics/);
- assert.doesNotMatch(panel,/map-r5-output-diagnostics/);
- assert.doesNotMatch(panel,/stage-dual-perform-quick/);
-
- // Track-unified botanical-forest palette & centered 1252px layout across Compose & Map
- const composeCss=read('../src/studio/v3/mapping-studio-v4.css');
- const mapCss=read('../src/footprints/stage-optics/dual-surface-routing.css');
- assert.match(composeCss,/--msv4-rail:#121c16/);
- assert.match(composeCss,/--msv4-line:#38503e/);
- assert.match(composeCss,/max-width:1252px/);
- assert.match(mapCss,/#121c16/);
- assert.match(mapCss,/#38503e/);
- assert.match(mapCss,/max-width:1252px/);
-
- // Architecture boundary: Map modules never open their own camera stream
+ const editor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
+ const model=read('../src/studio/v3/mapWysiwygModel.ts');
+ assert.match(panel,/<MapWysiwygWorkspace/);
+ assert.match(panel,/router\?\.reset\(\)/);
+ assert.match(panel,/floorTracker\.configure\(config,binding\)/);
+ assert.match(panel,/floorTracker\.confirm\(true\)/);
+ assert.match(panel,/STAGE_HARDWARE_ENABLED&&<details/);
+ assert.match(panel,/className="soma-map-v2-room"/);
+ assert.match(editor,/mapOverlay\('source'\)/);
+ assert.match(editor,/mapOverlay\('output'\)/);
+ assert.match(editor,/Bekukan gambar/);
+ assert.match(editor,/Coba simulasi/);
+ assert.match(editor,/paintAuthenticFootprint/);
+ assert.match(model,/correspondence\(identityQuad\(\),destinationQuad\)/);
+ assert.match(model,/pointerInSource/);
  assert.ok(!panel.includes('getUserMedia('));
- assert.ok(!monitor.includes('getUserMedia('));
  assert.ok(!editor.includes('getUserMedia('));
+ assert.doesNotMatch(panel,/map-r2-advanced|stage-dual-profile|Teknis &amp; diagnostik/);
 });
 
 test('MAP-R7: compact Map keeps one Perform handoff and a readable primary monitor',()=>{
  const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const nav=read('../src/studio/v3/StageModuleNav.tsx');
- const monitor=read('../src/studio/v3/MapStageMonitor.tsx');
+ const monitor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
  const styles=read('../src/footprints/stage-optics/dual-surface-routing.css');
  assert.match(panel,/map-r2-status-inline map-r7-status/);
  assert.match(panel,/className="map-r7-perform-cta"/);
@@ -220,9 +187,9 @@ test('MAP-R7: compact Map keeps one Perform handoff and a readable primary monit
  assert.doesNotMatch(panel,/className="map-r5-next-action"/);
  assert.doesNotMatch(panel,/map-r2-perform-link/);
  assert.match(nav,/active!=='map'&&<button/);
- assert.match(monitor,/\['stage','Atur'\]/);
- assert.match(monitor,/\['output','Hasil'\]/);
- assert.match(monitor,/\['align','Bandingkan'\]/);
+ assert.match(monitor,/mapOverlay\('source'\)/);
+ assert.match(monitor,/mapOverlay\('output'\)/);
+ assert.match(monitor,/Coba simulasi/);
  assert.doesNotMatch(monitor,/Lebar \$\{stageDimensions\.widthM\.toFixed/);
  assert.match(styles,/MAP-R7 — compact operator map/);
 });

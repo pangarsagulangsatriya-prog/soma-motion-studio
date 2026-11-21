@@ -80,7 +80,7 @@ test('UX-BENCHMARK: MadMapper-class 4-corner warp editor (live backdrop, pattern
  assert.match(editor,/Reset Quad/);
  assert.match(editor,/map-r1-backdrop/);
  assert.doesNotMatch(panel,/stage-dual-stepper/);
- assert.match(panel,/Cocokkan sudut/);
+ assert.match(panel,/<MapWysiwygWorkspace/);
  assert.match(panel,/onCommitProjectorQuad=\{commitMonitorQuad\}/);
  assert.doesNotMatch(panel,/MapFourCornerEditor key/);
  assert.match(consoleSrc,/ops-r1-next-cue/);

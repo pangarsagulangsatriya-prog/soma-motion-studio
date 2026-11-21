@@ -14,20 +14,18 @@ test('MAP-R3 grid is measured in physical meters rather than percent of canvas',
  assert.ok(mapGridFractions(20,0.25).length<=80);
 });
 
-test('MAP-R3 Camera and Stage share monitor, and fullscreen does not open physical output',()=>{
+test('MAP-R3 camera and projector are always visible together with no physical output opened by fullscreen',()=>{
  const read=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8');
- const monitor=read('../src/studio/v3/MapStageMonitor.tsx');
+ const editor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
  const router=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
- assert.match(monitor,/requestFullscreen\?\.\(\)/);
- assert.match(monitor,/document\.fullscreenElement===monitorRef\.current/);
- assert.match(monitor,/Fullscreen Map Monitor/);
- assert.match(monitor,/\['align','Bandingkan'\]/);
- assert.match(monitor,/view==='align'&&<div className="map-r2-split map-r2-alignment"/);
- assert.match(monitor,/sourceKind==='camera'&&vid&&vid\.readyState>=2/);
- assert.match(monitor,/frameRef\?\.current\?\.pose\?\.length/);
- assert.match(monitor,/cal\.cameraQuad\.length===4/);
- assert.match(router,/useState<MapMonitorView>\('stage'\)/);
- assert.doesNotMatch(router,/className="map-r2-advanced"/);
+ assert.match(editor,/requestFullscreen\?\.\(\)/);
+ assert.match(editor,/document\.fullscreenElement===wrapper\.current/);
+ assert.match(editor,/containedImageRect/);
+ assert.match(editor,/pointerInSource/);
+ assert.match(editor,/mapOverlay\('source'\)/);
+ assert.match(editor,/mapOverlay\('output'\)/);
+ assert.match(editor,/onCommitCameraQuad\(cameraDraftRef\.current\)/);
+ assert.match(router,/<MapWysiwygWorkspace/);
  assert.match(router,/className="stage-dual-qa-disclosure"/);
  assert.match(router,/allBlackout/);
  assert.match(router,/STAGE_HARDWARE_ENABLED/);

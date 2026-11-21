@@ -5,7 +5,9 @@ import {
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Quad} from '../../projection/geometry.ts';
 import type {Projection} from '../../projection/useProjection.ts';
-import type {LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
+import {cameraBinding,type LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
+import type {MultiPoseGaitRouter} from '../live/MultiPoseGaitRouter.ts';
+import {defaultFloorSpace,validateCameraFloorCalibration} from '../spatial/coordinates.ts';
 import type {FootMotionEventV2} from '../scenes/FootMotionEventV2.ts';
 import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {type PreviewView} from './projectorWysiwygModel.ts';
@@ -22,7 +24,7 @@ import {
  type RequestedMode,type StageRouteInput
 } from './DualSurfaceSessionStore.ts';
 import './dual-surface-routing.css';
-import {MapStageMonitor,type MapMonitorView} from '../../studio/v3/MapStageMonitor.tsx';
+import {MapWysiwygWorkspace} from '../../studio/v3/MapWysiwygWorkspace.tsx';
 import {moveMapCorner,type MapCornerIndex} from '../../studio/v3/mapCornerModel.ts';
 import {
  DEFAULT_STAGE_DIMENSIONS,STAGE_DIMENSION_PRESETS,clampStageDimensions,createDefaultMapSim,
@@ -46,21 +48,21 @@ type Props={
  videoRef?:RefObject<HTMLVideoElement|null>;
  motionFrameRef?:RefObject<MotionFrame>;
  floorTracker?:LiveFloorTrackingEngine;
+ router?:MultiPoseGaitRouter;
  motionEvents?:()=>readonly FootMotionEventV2[];
  cameraOn?:boolean;
  floorReady?:boolean;
  performerCount?:1|2;
  identitySafe?:boolean;
  experimentSource?:'video'|'simulator'|null;
- onOpenCameraCalibration?:(size:MapStageDimensions)=>void;
  onEnterPerform?:()=>void;
 };
 
 export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
- liquidCanvas,experimentInputCanvas,videoRef,motionFrameRef,floorTracker,motionEvents,
+ liquidCanvas,experimentInputCanvas,videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
- onOpenCameraCalibration,onEnterPerform
+ onEnterPerform
 }:Props){
  // Keep shouldLatchProjectionBlackout referenced here and enforced in DualSurfaceSessionStore.
  void shouldLatchProjectionBlackout;
@@ -103,7 +105,7 @@ export function DualSurfaceRoutingPanel({
 
  const [dx,setDx]=useState(''),[dy,setDy]=useState('');
  // Calibration-first state: handles ready immediately on Map open
- const [monitorView,setMonitorView]=useState<MapMonitorView>('stage');
+ const [monitorView,setMonitorView]=useState<'stage'>('stage');
  const editingCorners=true;
  const [activeCorner,setActiveCorner]=useState<MapCornerIndex>(0);
  const snapEnabled=true;
@@ -170,7 +172,6 @@ export function DualSurfaceRoutingPanel({
   setStageDimensions(next);
   setMessage('Ukuran lantai diubah. Tandai ulang bidang pada kamera sebelum menguji proyektor.');
  };
- const openMapCameraCalibration=()=>onOpenCameraCalibration?.(stageDimensions);
  const commitMonitorQuad=(quad:Quad)=>{
   try{
    validateStageSurfacePlan({...getDualSurfaceState().plans[selected],projectorQuad:quad});
@@ -312,6 +313,20 @@ export function DualSurfaceRoutingPanel({
     </div>
    </div>
    <div className="map-r2-top-right">
+ <details className="soma-map-v2-room" aria-label="Ubah ukuran ruang">
+  <summary>{stageDimensions.widthM} × {stageDimensions.depthM} m</summary>
+  <div className="soma-map-v2-room-options">
+   {STAGE_DIMENSION_PRESETS.map(preset=><button type="button" key={preset.id}
+    aria-pressed={stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM}
+    onClick={()=>changeRoomSize({widthM:preset.widthM,depthM:preset.depthM})}>{preset.label}</button>)}
+   <label>Lebar (m)<input type="number" min={1} max={20} step={.5}
+    value={stageDimensions.widthM}
+    onChange={e=>changeRoomSize({...stageDimensions,widthM:Number(e.target.value)})}/></label>
+   <label>Dalam (m)<input type="number" min={1} max={20} step={.5}
+    value={stageDimensions.depthM}
+    onChange={e=>changeRoomSize({...stageDimensions,depthM:Number(e.target.value)})}/></label>
+  </div>
+ </details>
     <div className="stage-dual-surface-tabs" role="group" aria-label="Pilih bidang kalibrasi">
      <button type="button" aria-pressed={selected==='floor'} onClick={()=>{setSelected('floor');setDx('');setDy('');}}>Lantai</button>
      <button type="button" aria-pressed={selected==='body'}
@@ -321,70 +336,47 @@ export function DualSurfaceRoutingPanel({
    </div>
   </header>
 
-  {/* Track-aligned center-centric 2-column layout: Left Calibration Rail + Right-Center Calibration Monitor */}
-  <div className="map-r2-workbench">
-   <aside className="map-r2-rail" aria-label="Atur bidang dan empat sudut">
-    <section className="map-r2-step">
-     <div className="map-r2-step-head">
-      <span className="map-r2-step-num">1</span>
-      <strong>Ukuran ruang</strong>
-     </div>
-     <details className="map-r4-disclosure map-r4-room-extra">
-      <summary className="map-r5-room-summary" aria-label="Ubah ukuran panggung">
-       <b>{stageDimensions.widthM} × {stageDimensions.depthM} m</b><span>Ubah</span>
-      </summary>
-     <div className="map-r2-presets map-r4-main-presets" role="group" aria-label="Preset ukuran ruang panggung">
-      {STAGE_DIMENSION_PRESETS.filter(preset=>['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
-       const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
-       return <button type="button" key={preset.id} aria-pressed={isMatch}
-        onClick={()=>{
-         changeRoomSize({widthM:preset.widthM,depthM:preset.depthM});
-         setMessage(`Ukuran ruang kalibrasi diatur ke ${preset.label}.`);
-        }}>{preset.label}</button>;
-      })}
-     </div>
-     <p className="map-r5-extra-size-title">Ukuran lain / kustom</p>
-      <div className="map-r2-presets" role="group" aria-label="Ukuran ruang tambahan">
-       {STAGE_DIMENSION_PRESETS.filter(preset=>!['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
-        const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
-        return <button type="button" key={preset.id} aria-pressed={isMatch}
-         onClick={()=>{
-          changeRoomSize({widthM:preset.widthM,depthM:preset.depthM});
-          setMessage(`Ukuran ruang kalibrasi diatur ke ${preset.label}.`);
-         }}>{preset.label}</button>;
-       })}
-      </div>
-      <div className="map-r2-dims" role="group" aria-label="Ukuran ruang kustom (meter)">
-       <label>Lebar (m)
-        <input type="number" min={1} max={20} step={0.5} value={stageDimensions.widthM}
-         onChange={e=>changeRoomSize({...stageDimensions,widthM:Number(e.target.value)})}/>
-       </label>
-       <label>Dalam (m)
-        <input type="number" min={1} max={20} step={0.5} value={stageDimensions.depthM}
-         onChange={e=>changeRoomSize({...stageDimensions,depthM:Number(e.target.value)})}/>
-       </label>
-      </div>
-     </details>
-    </section>
-
-    <section className="map-r2-step">
-     <div className="map-r2-step-head">
-      <span className="map-r2-step-num">2</span>
-      <strong>Cocokkan sudut</strong>
-     </div>
-
-     <p className="soma-map-hint" id="map-corner-help">Tarik empat sudut pada gambar.</p>
-     <button type="button" className="map-r2-link-action" onClick={resetMonitorQuad}
-       title="Kembalikan ke empat sudut awal">
-       <RotateCcw size={13}/> {resetArmed?'Klik lagi untuk reset':'Ulangi sudut'}
-      </button>
-     {cameraOn&&onOpenCameraCalibration&&
-      <button type="button" className="map-r2-link-action" onClick={openMapCameraCalibration}>
-       {floorReady?'Ubah bidang kamera':'Tandai lantai pada kamera'}
-      </button>}
-    </section>
-
-    {STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step map-r8-projector-setup">
+  <main className="soma-map-v2-main">
+ <MapWysiwygWorkspace selected={selected} stageDimensions={stageDimensions} plan={activePlan}
+  sourceKind={sourceKind} hasLiveSource={hasLiveSource}
+  videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
+  floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
+  simState={simState}
+  onStartSim={()=>{setSimState(prev=>({...prev,active:true,playing:true}));setMessage('Simulasi jejak berjalan di Map.');}}
+  onStopSim={()=>{setSimState(prev=>({...prev,active:false,playing:false}));setMessage('Simulasi berhenti.');}}
+  onToggleSimPlay={()=>setSimState(prev=>({...prev,playing:!prev.playing}))}
+  onBeginCameraEdit={()=>{
+   allBlackout();setProofs({body:null,floor:null});
+   setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
+   if(floorTracker?.isCalibrated)floorTracker.revoke('Bidang kamera berubah. Terapkan ulang empat sudut.');
+   router?.reset();
+  }}
+  onBeginProjectorEdit={()=>{
+   allBlackout();setProofs({body:null,floor:null});
+   setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
+  }}
+  onCommitCameraQuad={quad=>{
+   try{
+    const binding=cameraBinding(videoRef?.current??null);
+    if(!binding||!floorTracker)throw Error('Hubungkan kamera aktif di Track sebelum menerapkan bidang.');
+    const config=validateCameraFloorCalibration({
+     schema:'soma.footprints.camera-floor',version:1,
+     floor:defaultFloorSpace(stageDimensions.widthM,stageDimensions.depthM),cameraQuad:quad
+    });
+    allBlackout();
+    floorTracker.configure(config,binding);floorTracker.confirm(true);
+    router?.reset();
+    setProofs({body:null,floor:null});
+    setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
+    setMessage('Bidang kamera disimpan. Uji output fisik perlu diulang.');
+    return {ok:true,message:'Bidang kamera tersimpan. Coba gerakkan kaki di lantai.'};
+   }catch(err){return {ok:false,message:err instanceof Error?err.message:'Titik kamera belum valid.'};}
+  }}
+  onCommitProjectorQuad={commitMonitorQuad} onMessage={setMessage}
+ />
+</main>
+<div className="soma-map-v2-foot">
+ {STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step map-r8-projector-setup">
      <summary className="map-r2-step-head">
       <span className="map-r2-step-num">3</span>
       <strong>Uji proyektor fisik</strong>
@@ -446,61 +438,12 @@ export function DualSurfaceRoutingPanel({
      </details>
      
     </details>}
-     {onEnterPerform&&<button type="button" className="map-r7-perform-cta"
-      onClick={handleEnterPerform} title="Buka ruang Perform">
-      Lanjut Perform <ArrowRight size={13}/>
-     </button>}
-
-     </aside>
-
-   <div className="map-r2-monitor-col">
-    <MapStageMonitor
-     view={monitorView}
-     onChangeView={setMonitorView}
-     selected={selected}
-     plan={activePlan}
-     editingCorners={editingCorners}
-     activeCorner={activeCorner}
-     onSelectCorner={setActiveCorner}
-     snapEnabled={snapEnabled}
-     stageDimensions={stageDimensions}
-     hasLiveSource={hasLiveSource}
-     sourceKind={sourceKind}
-     simState={simState}
-     onStartSim={()=>{
-      setSimState(prev=>({...prev,active:true,playing:true}));
-      setMonitorView('stage');setMessage('Simulasi berjalan. Geser sudut untuk melihat hasil.');
-     }}
-     onStopSim={()=>{
-      setSimState(prev=>({...prev,active:false}));
-      setMessage('Simulasi selesai.');
-     }}
-     onToggleSimPlay={()=>setSimState(prev=>({...prev,playing:!prev.playing}))}
-     onMoveSimPerformer={(actorId,pos)=>setSimState(prev=>moveMapSimPerformer(prev,actorId,pos))}
-     onCommitProjectorQuad={commitMonitorQuad}
-     onOpenCameraCalibration={openMapCameraCalibration}
-     previewView={previewView}
-     onChangePreviewView={setPreviewView}
-     softwareMode={devices[selected].mode}
-     connected={devices[selected].connected}
-     qa={qa}
-     viewport={devices[selected].viewport}
-     bodyCanvas={bodyCanvas}
-     floorCanvas={floorCanvas}
-     liquidCanvas={liquidCanvas}
-     experimentInputCanvas={experimentInputCanvas}
-     videoRef={videoRef}
-     frameRef={motionFrameRef}
-     floorTracker={floorTracker}
-     motionEvents={motionEvents}
-     testCanvases={testCanvasesRef}
-     performerCount={performerCount}
-     identitySafe={identitySafe}
-    />
-   </div>
-  </div>
-
-  {message&&<footer className="map-r2-footer map-r7-footer" role="status"
+ {onEnterPerform&&<button type="button" className="map-r7-perform-cta"
+  onClick={handleEnterPerform} title="Buka ruang Perform">
+  Lanjut Perform <ArrowRight size={13}/>
+ </button>}
+</div>
+ {message&&<footer className="map-r2-footer map-r7-footer" role="status"
     aria-label={message} title={message}>
     <span className="map-r7-feedback-dot" aria-hidden="true"/>
     <span className="map-r2-blocker">
