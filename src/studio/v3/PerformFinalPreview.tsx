@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
 import {Maximize2,Minimize2} from 'lucide-react';
 import {cueToFinalSurface,type FinalPreviewSurface} from './performFinalPreviewModel.ts';
+import type {PerformView} from './performCueModel.ts';
 import './perform-final-preview.css';
 
 type Props={
@@ -62,7 +63,7 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
     }
    }
    if(cg&&cam){
-    cg.setTransform(1,0,0,1,0);cg.globalAlpha=1;cg.globalCompositeOperation='source-over';
+    cg.setTransform(1,0,0,1,0,0);cg.globalAlpha=1;cg.globalCompositeOperation='source-over';
     cg.fillStyle='#000';cg.fillRect(0,0,cam.width,cam.height);
     const src=inputRaster.current;
     if(sourceReady&&src&&src.width>0&&src.height>0){
