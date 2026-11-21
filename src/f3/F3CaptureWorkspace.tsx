@@ -83,7 +83,8 @@ export function F3CaptureWorkspace(){
    const area=framing.current.crop(v.videoWidth,v.videoHeight,1.36);
    await archive.current.capture({video:v,crop:area,cameraId:b.id,frameId:b.frameId,
     sourceTimestamp:b.lastFrameAt,preset:presetValue,consent:settings.consent,
-    replace:settings.replacement,eventId,fresh:registry.current.fresh('B',performance.now())});
+    replace:settings.replacement,eventId,fresh:registry.current.fresh('B',performance.now()),
+    stillValid:()=>control.current.consent&&registry.current.fresh('B',performance.now())&&registry.current.status('B').id===b.id});
    const count=archive.current.count;setStageCount(count);setReplacement(null);
    setFlash(performance.now()+220);
    setMessage('Foto '+count+'/4 tersimpan dari Kamera B.');
