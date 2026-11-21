@@ -430,3 +430,54 @@
 @media(prefers-reduced-motion:reduce){
  .map-r2-fullscreen-btn{transition:none!important}
 }
+
+
+/* MAP-R4 — compact operator rail, with optional controls on demand. */
+.map-r2-rail{gap:8px}
+.map-r2-rail>.map-r2-step{padding:11px;gap:8px}
+.map-r4-inline-hint{margin:0;font-size:10.5px;line-height:1.35;color:#92a796}
+.map-r4-main-presets{grid-template-columns:repeat(3,minmax(0,1fr))}
+.map-r4-main-presets button{min-height:34px}
+.map-r4-disclosure{
+ padding:0;border:1px solid #344c3a;border-radius:7px;background:#0d1711;
+ min-width:0;
+}
+.map-r4-disclosure>summary{
+ display:flex;align-items:center;justify-content:space-between;gap:6px;
+ padding:8px 9px;min-height:32px;box-sizing:border-box;
+ cursor:pointer;list-style:none;color:#c5d7c3;font-size:11px;font-weight:600;
+}
+.map-r4-disclosure>summary::-webkit-details-marker{display:none}
+.map-r4-disclosure>summary::before{content:"+";font-size:14px;line-height:1;color:#9ab6a0}
+.map-r4-disclosure[open]>summary::before{content:"−"}
+.map-r4-disclosure>summary>span{
+ margin-left:auto;color:#8fa694;font-size:10px;font-weight:500;text-align:right;
+}
+.map-r4-disclosure[open]>summary{
+ border-bottom:1px solid #304334;margin-bottom:8px;
+}
+.map-r4-disclosure>.map-r2-dims,
+.map-r4-disclosure>.map-r2-presets,
+.map-r4-disclosure>.map-r2-nudge-row,
+.map-r4-disclosure>.map-r2-corner-actions{
+ margin:0 9px 9px;
+}
+.map-r4-room-extra>.map-r2-presets{grid-template-columns:repeat(2,minmax(0,1fr))}
+.map-r4-room-extra>.map-r2-dims{margin-top:7px}
+.map-r4-active-corner{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:6px;padding:5px 0;font-size:10px;color:#92a796;
+}
+.map-r4-active-corner output{font-size:11px}
+.map-r4-nudge-hint{font-size:10px;color:#92a796}
+.map-r4-precision .map-r2-corner-actions{gap:5px}
+.map-r4-precision .map-r2-primary-toggle{flex:1 1 110px}
+.map-r2-rail .stage-dual-check{font-size:11px;line-height:1.42}
+.map-r2-rail .stage-dual-qa-disclosure>summary{gap:5px}
+.map-r2-advanced .stage-dual-profile{padding:8px}
+@media(max-width:520px){
+ .map-r2-rail>.map-r2-step{padding:10px}
+ .map-r4-disclosure>summary{min-height:40px}
+ .map-r4-main-presets button{min-height:40px}
+ .map-r2-corner-picks button{min-height:38px}
+}
