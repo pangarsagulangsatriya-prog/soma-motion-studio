@@ -53,13 +53,13 @@ export function StageModuleNav({active,onNavigate,status}:{
     </span>;
    })}
   </div>
-  <button type="button"
+  {active!=='map'&&<button type="button"
    className="soma-stage-next-cta"
    data-primary={nextPrimary||undefined}
    onClick={()=>onNavigate(next.target)}
    aria-label={next.label}>
    <span>{next.label}</span>
    <ArrowRight size={13} aria-hidden="true"/>
-  </button>
+  </button>}
  </nav>;
 }
