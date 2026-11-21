@@ -253,10 +253,6 @@ export function DualSurfaceRoutingPanel({
  };
 
  const open=(id:StageSurface)=>{
-  if(experimentLocked){
-   urgentBlackout(id);
-   setMessage('MP4/3D hanya untuk preview lokal. Output fisik BODY/FLOOR dikunci.');return;
-  }
   if(!STAGE_HARDWARE_ENABLED){
    setMessage('Output proyektor fisik terkunci pada rilis Production. Gunakan preview lokal untuk QA.');
    return;
@@ -293,10 +289,6 @@ export function DualSurfaceRoutingPanel({
  },[]);
 
  const changeMode=(id:StageSurface,mode:Requested)=>{
-  if(experimentLocked&&mode!=='blackout'){
-   urgentBlackout(id);
-   setMessage('Eksperimen MP4/3D tidak boleh mengaktifkan output fisik.');return;
-  }
   if(!STAGE_HARDWARE_ENABLED&&mode!=='blackout'){
    urgentBlackout(id);
    setMessage('Build Production ini belum mengizinkan output fisik.');
@@ -449,7 +441,7 @@ export function DualSurfaceRoutingPanel({
   selected
  });
  const activeHistory=quadHistory[selected];
- const projectorTestDisabled=!STAGE_HARDWARE_ENABLED||experimentLocked||!operatorConfirm;
+ const projectorTestDisabled=!STAGE_HARDWARE_ENABLED||!operatorConfirm;
  const projectorTestLabel=
   devices[selected].mode==='test'?'Hentikan uji':
   devices[selected].connected?'Uji pola proyektor':'Uji proyektor';
