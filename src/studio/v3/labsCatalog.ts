@@ -1,7 +1,7 @@
 /** SOMA Labs groups. Primary navigation remains Footprints + Projector. */
 export const LABS_GROUPS=[
  {id:'visual',label:'Visual experiments',description:'Scene gambar dan tipografi',items:[
-  {id:'liquid',title:'Teks Cair',detail:'Huruf mengikuti gerak',kind:'Legacy'},
+  {id:'liquid',title:'Textaire · Teks Cair',detail:'Huruf mengikuti gerak',kind:'Legacy'},
   {id:'echo',title:'Jejak Berulang',detail:'Lapisan gambar yang kembali',kind:'Legacy'},
   {id:'cut',title:'Potongan',detail:'Pecahan ritmis',kind:'Legacy'},
   {id:'body',title:'Siluet × Teks',detail:'Tubuh dan tipografi',kind:'Legacy'},
@@ -23,7 +23,7 @@ export type LabsGroupId=(typeof LABS_GROUPS)[number]['id'];
 const canonical=(input:string)=>input.normalize('NFKD')
  .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('id-ID').trim();
 const extraTerms:Record<LabsId,string>={
- liquid:'teks huruf letter liquid',echo:'jejak ulang repeat echo',
+ liquid:'textaire teks cair huruf letter liquid',echo:'jejak ulang repeat echo',
  cut:'potong cut rhythm',body:'siluet tubuh body text',
  hydra:'generatif visual graphic synth',sound:'suara audio musik synth theremin',
  capture:'foto photo kamera gestur',archive:'arsip pustaka',
@@ -38,3 +38,19 @@ export function searchLabs(query:string){
  })).filter(group=>group.items.length>0);
 }
 export const LABS_ITEM_COUNT=LABS_GROUPS.reduce((count,group)=>count+group.items.length,0);
+
+/** Stage 2 reuses the legacy visual/sound/archive engines. Gait tools stay in Stage 1. */
+export const STAGE_TWO_LAB_IDS=['liquid','echo','cut','body','hydra','sound','capture','archive'] as const;
+export type StageTwoLabId=typeof STAGE_TWO_LAB_IDS[number];
+export function isStageTwoLab(value:LabsId):value is StageTwoLabId{
+ return STAGE_TWO_LAB_IDS.some(id=>id===value);
+}
+type LabsItem=(typeof LABS_GROUPS)[number]['items'][number];
+export const STAGE_TWO_ITEMS=LABS_GROUPS.flatMap<LabsItem>(group=>group.items)
+ .filter(item=>isStageTwoLab(item.id));
+export const STAGE_TWO_ITEM_COUNT=STAGE_TWO_ITEMS.length;
+export function searchStageTwoLabs(query:string){
+ return searchLabs(query).map(group=>({
+  ...group,items:group.items.filter(item=>isStageTwoLab(item.id))
+ })).filter(group=>group.items.length>0);
+}
