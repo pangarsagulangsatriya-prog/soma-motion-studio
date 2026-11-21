@@ -43,7 +43,7 @@ test('OPS-R1: MP4/3D require QA when source frames are ready',()=>{
  for(const source of ['video','simulator'] as const){
   const result=evaluatePerformReadiness({source,cameraOk:true,identityOk:true,floorOk:true,bodyOutputQa:true,floorOutputQa:true});
   assert.equal(result.state,'qa-required');
-  assert.match(result.reason,/pemeriksaan fisik|Blackout nyata/);
+  assert.match(result.reason,/pemeriksaan fisik|blackout nyata/i);
  }
 });
 test('OPS-R1: loss of tracking/identity blocks operator preview recovery',()=>{
