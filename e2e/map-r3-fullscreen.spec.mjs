@@ -9,8 +9,9 @@ test('MAP-R3: full screen can show camera+stage and uses meter spacing',async({p
  await monitor.getByRole('button',{name:'Kamera + Panggung'}).click();
  await expect(monitor.locator('canvas[aria-label="Tampilan feed kamera Map"]')).toBeVisible();
  await expect(monitor.locator('canvas[aria-label="Kanvas kalibrasi panggung Map"]')).toBeVisible();
+ await monitor.locator('.map-r5-pattern-options > summary').click();
  await monitor.getByRole('button',{name:'0,25 m'}).click();
- await expect(monitor.getByRole('button',{name:'0,25 m'})).toHaveAttribute('aria-pressed','true');
+ await expect(monitor.locator('.map-r5-pattern-options > summary')).toContainText('Grid 0,25 m');
  await monitor.getByRole('button',{name:'Fullscreen Map Monitor'}).click();
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.getAttribute('aria-label')??''))
   .toBe('Stage Map Monitor');

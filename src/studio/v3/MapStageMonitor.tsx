@@ -206,6 +206,8 @@ export function MapStageMonitor({
  const [draggingPerformer,setDraggingPerformer]=useState<'A'|'B'|null>(null);
  const [snapGuides,setSnapGuides]=useState<{x:number|null;y:number|null}>({x:null,y:null});
  const [pattern,setPattern]=useState<CalibrationGuidePattern>('grid');
+ const patternMenuRef=useRef<HTMLDetailsElement>(null);
+ const viewMenuRef=useRef<HTMLDetailsElement>(null);
  const [showPoseOverlay,setShowPoseOverlay]=useState(true);
  const [quadError,setQuadError]=useState('');
  const draftRef=useRef(draftQuad);draftRef.current=draftQuad;
@@ -777,17 +779,22 @@ export function MapStageMonitor({
     {simState.active&&!hasLiveSource&&<span className="map-r2-sim-tag">SIMULASI</span>}
    </div>
    <div className="map-r2-monitor-tools">
+    {view!=='output'&&<details ref={patternMenuRef} className="map-r5-pattern-options">
+     <summary>Pola · {pattern==='grid'?'Grid '+String(gridStepM).replace('.',',')+' m':pattern==='crosshair'?'Cross':pattern==='diagonal'?'Diagonal':'Off'}</summary>
+     <div className="map-r5-pattern-popover">
     {(view==='stage'||view==='split'||view==='align')&&
      <div className="map-r2-seg-mini" role="group" aria-label="Pola bantu kalibrasi">
       {([['grid','Grid'],['crosshair','Cross'],['diagonal','Diag'],['off','Off']] as const).map(([id,lbl])=>
-       <button type="button" key={id} aria-pressed={pattern===id} onClick={()=>setPattern(id)}>{lbl}</button>)}
+       <button type="button" key={id} aria-pressed={pattern===id} onClick={()=>{setPattern(id);if(patternMenuRef.current)patternMenuRef.current.open=false;}}>{lbl}</button>)}
      </div>}
     {(view==='stage'||view==='camera'||view==='align')&&<div className="map-r2-grid-step" role="group" aria-label="Jarak grid dalam meter">
      {([1,0.5,0.25] as const).map(m=><button type="button" key={m}
-      aria-pressed={gridStepM===m} onClick={()=>{setGridStepM(m);setPattern('grid');}}>
+      aria-pressed={gridStepM===m} onClick={()=>{setGridStepM(m);setPattern('grid');if(patternMenuRef.current)patternMenuRef.current.open=false;}}>
       {m===1?'1 m':m===0.5?'0,5 m':'0,25 m'}
      </button>)}
     </div>}
+     </div>
+    </details>}
     {!hasLiveSource&&(
      simState.active
       ?<>
@@ -828,11 +835,19 @@ export function MapStageMonitor({
     {([
      ['stage','Panggung'],
      ['align','Kamera + Panggung'],
-     ['camera','Kamera'],
-     ['output','Hasil Proyektor'],
-     ['split','Split']
+     ['output','Hasil Proyektor']
     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
-     onClick={()=>onChangeView(id)}>{label}</button>)}
+     onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
+    <details ref={viewMenuRef} className="map-r5-other-views">
+     <summary>{view==='camera'?'Kamera':view==='split'?'Split':'Lainnya'}</summary>
+     <div className="map-r5-other-view-popover">
+     {([
+      ['camera','Kamera'],
+      ['split','Split']
+     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
+      onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
+     </div>
+    </details>
    </div>
    <span className="map-r2-parity-note">
     {connected?'Transformasi sama dengan jendela output':'Pratinjau perkiraan software · uji fisik diperlukan'}

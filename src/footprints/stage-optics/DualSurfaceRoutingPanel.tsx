@@ -452,7 +452,7 @@ export function DualSurfaceRoutingPanel({
  const projectorTestDisabled=!STAGE_HARDWARE_ENABLED||!operatorConfirm;
  const projectorTestLabel=
   devices[selected].mode==='test'?'Hentikan uji':
-  devices[selected].connected?'Uji pola proyektor':'Uji proyektor';
+  devices[selected].connected?'Uji pola proyektor':'Buka output';
  const activeCornerPt=activePlan.projectorQuad[activeCorner];
 
  return <section className="stage-dual map-r2-shell" aria-label="Map — kalibrasi ruang dan uji proyektor">
@@ -489,6 +489,8 @@ export function DualSurfaceRoutingPanel({
       <strong>Ukuran ruang</strong>
      </div>
      {selected==='body'&&<p className="map-r2-step-note">Satu output BODY mencakup mask tubuh bawah Performer A dan B.</p>}
+     <details className="map-r4-disclosure map-r4-room-extra">
+      <summary className="map-r5-room-summary"><b>{stageDimensions.widthM}×{stageDimensions.depthM} m</b><span>Ubah ukuran</span></summary>
      <div className="map-r2-presets map-r4-main-presets" role="group" aria-label="Preset ukuran ruang panggung">
       {STAGE_DIMENSION_PRESETS.filter(preset=>['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
        const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
@@ -499,8 +501,7 @@ export function DualSurfaceRoutingPanel({
         }}>{preset.label}</button>;
       })}
      </div>
-     <details className="map-r4-disclosure map-r4-room-extra">
-      <summary>Ukuran lain / kustom <span>{stageDimensions.widthM}×{stageDimensions.depthM} m</span></summary>
+     <p className="map-r5-extra-size-title">Ukuran lain / kustom</p>
       <div className="map-r2-presets" role="group" aria-label="Ukuran ruang tambahan">
        {STAGE_DIMENSION_PRESETS.filter(preset=>!['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
         const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
@@ -530,7 +531,9 @@ export function DualSurfaceRoutingPanel({
       <strong>Cocokkan sudut</strong>
      </div>
 
-     <p className="map-r4-inline-hint">Tarik titik 1–4 di monitor, atau pilih titik di sini.</p>
+     <p className="map-r4-inline-hint">Tarik titik 1–4 di monitor. Pilih sudut untuk penyesuaian halus.</p>
+     <details className="map-r4-disclosure map-r4-precision">
+      <summary>Penyetelan halus <span>Geser · Snap · Undo</span></summary>
      <div className="map-r2-corner-picks" role="group" aria-label="Pilih sudut aktif kalibrasi">
       {CORNER_TAGS.map((tag,idx)=><button type="button" key={tag}
        aria-pressed={activeCorner===idx}
@@ -544,8 +547,6 @@ export function DualSurfaceRoutingPanel({
        {(activeCornerPt.x*stageDimensions.widthM).toFixed(2)}m, {(activeCornerPt.y*stageDimensions.depthM).toFixed(2)}m
       </output>
      </div>
-     <details className="map-r4-disclosure map-r4-precision">
-      <summary>Penyetelan halus <span>Geser · Snap · Undo</span></summary>
       <div className="map-r2-nudge-row">
        <div className="map-r2-nudge-pad" role="group" aria-label="Geser halus sudut aktif">
         <button type="button" aria-label="Geser sudut ke kiri" onClick={()=>nudgeActiveCorner(-0.005,0)}><ArrowLeft size={12}/></button>
@@ -610,12 +611,13 @@ export function DualSurfaceRoutingPanel({
         {devices[selected].mode==='live'?'Hentikan':'LIVE'}
        </button>}
      </div>
-     {(!STAGE_HARDWARE_ENABLED||experimentLocked)&&
-      <p className="map-r2-lock-note">
-       {experimentLocked
-        ?'MP4/3D: output bisa dibuka setelah konfirmasi operator. LIVE memerlukan QA fisik lima titik.'
-        :'Build Production: kalibrasi lokal aktif, output proyektor fisik terkunci.'}
-      </p>}
+     <p className="map-r5-next-action" role="status">
+      {!STAGE_HARDWARE_ENABLED?'Output fisik tidak tersedia pada build ini. Pratinjau tetap bisa dipakai.':
+       !operatorConfirm?'Centang pemeriksaan keamanan untuk membuka jendela proyektor.':
+       !devices[selected].connected?'Buka output, pindahkan jendela ke layar proyektor, lalu tekan F.':
+       qa.status!=='within-provisional-target'?'Jalankan pola uji dan catat QA fisik 5 titik sebelum LIVE.':
+       experimentLocked?'Periksa hasil MP4/3D dan QA fisik sebelum LIVE.':'QA tercatat. Periksa kembali cahaya fisik sebelum LIVE.'}
+     </p>
 
      <details className="stage-dual-qa-disclosure">
       <summary><ShieldAlert size={13}/> QA Fisik 5 Titik · {selected==='floor'?'Lantai':'Tubuh'} <span>{qaBadge}</span></summary>
@@ -659,7 +661,7 @@ export function DualSurfaceRoutingPanel({
     </section>
 
     <details className="map-r2-advanced">
-     <summary><SlidersHorizontal size={12}/> Pengaturan lengkap</summary>
+     <summary><SlidersHorizontal size={12}/> Pengaturan teknis</summary>
      <div className="map-r2-advanced-body">
      <details className="stage-dual-profile">
       <summary>Simpan profil ({savedDrafts.length})</summary>
@@ -701,6 +703,8 @@ export function DualSurfaceRoutingPanel({
         onReset={group=>editPlan(selected,p=>({...p,[group]:defaultStageSurfacePlan(selected)[group]}))}
         onCommit={(group,quad)=>editPlan(selected,p=>({...p,[group]:quad}))}/>
        </details>
+       <details className="map-r5-model-diagnostics">
+        <summary>Diagnostik geometri · teknisi</summary>
        <div className="stage-dual-advanced-row">
         {selected==='floor'&&<details className="stage-dual-grid-qa">
          <summary>Grid homografi 3 × 3 (9 titik)</summary>
@@ -734,10 +738,11 @@ export function DualSurfaceRoutingPanel({
          </div>
         </details>
        </div>
+       </details>
       </div>
 
       <details className="map-r2-aux-details">
-       <summary>Output ganda, status layar &amp; diagnostik</summary>
+       <summary>Status layar &amp; perangkat</summary>
        <ol className="stage-dual-stepper" aria-label={'Alur kesiapan proyektor '+selected.toUpperCase()}>
        {([
         {id:'display',label:'1. Layar',done:displayInfo.extended===true},
@@ -756,28 +761,8 @@ export function DualSurfaceRoutingPanel({
        <span>{displayInfo.label}</span>
       </div>
 
-      <div className="stage-dual-perform-quick" role="group" aria-label="Keluaran FLOOR setelah QA">
-       <div>
-        <b>KELUARAN FLOOR</b>
-        <small>{!STAGE_HARDWARE_ENABLED?'Build Production: output fisik terkunci.':
-         experimentLocked?'MP4/3D: buka output lalu selesaikan QA sebelum LIVE.':
-         !devices.floor.connected?'Buka output FLOOR dan pindahkan ke layar proyektor (tekan F).':
-         assessment('floor').status!=='within-provisional-target'?
-          'Lengkapi QA fisik 5 titik di bawah sebelum LIVE.':
-          devices.floor.mode==='live'?'Sinyal LIVE aktif; pantau cahaya fisik.':
-          'QA 5 titik tercatat; siap diaktifkan ke proyektor.'}</small>
-       </div>
-       <div className="stage-dual-quick-actions">
-        <button type="button" className="stage-dual-perform-go"
-         disabled={devices.floor.mode!=='live'&&
-          (!STAGE_HARDWARE_ENABLED||!operatorConfirm||
-           !devices.floor.connected||assessment('floor').status!=='within-provisional-target')}
-         onClick={()=>changeMode('floor',devices.floor.mode==='live'?'blackout':'live')}>
-         {devices.floor.mode==='live'?'Hentikan FLOOR':'Aktifkan FLOOR'}
-        </button>
-       </div>
-      </div>
-
+      <details className="map-r5-output-diagnostics">
+       <summary>Kontrol kedua proyektor · teknisi</summary>
       <div className="stage-dual-outputs">
        {ids.map(id=>{
         const s=devices[id],a=assessment(id);
@@ -821,6 +806,7 @@ export function DualSurfaceRoutingPanel({
          testCanvases={testCanvasesRef} viewport={devices[id].viewport}/>)}
        </div>
       </section>
+      </details>
 
       <details className="stage-dual-setup-uat">
        <summary>Uji setup panggung (&lt;10 menit)</summary>

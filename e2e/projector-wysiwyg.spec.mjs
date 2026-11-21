@@ -3,8 +3,11 @@ import {test,expect} from '@playwright/test';
 
 test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',async({page})=>{
  await page.goto('/');
- await expect(page.locator('.soma-uxr1-source > summary')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Map workspace'})).toBeVisible();
  await openStageMap(page);
+ await page.locator('.map-r2-advanced > summary').click();
+ await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
+ await page.locator('.map-r5-output-diagnostics > summary').click();
 
  const panel=page.locator('.stage-wysiwyg');
  await expect(panel).toBeVisible();
@@ -25,12 +28,16 @@ test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',as
  await panel.getByRole('button',{name:'Draf lokal'}).click();
  await expect(body).toHaveAttribute('data-preview-signal','artwork');
  await expect(floor).toHaveAttribute('data-preview-signal','artwork');
- await expect(panel).toContainText('belum mengukur cahaya');
+ await expect(panel).toContainText('DRAF LOKAL · tidak dikirim ke proyektor');
 });
 
 test('Projector WYSIWYG: surface brightness and corners adjust local matrix while output stays blocked',async({page})=>{
  await page.goto('/');
  await openStageMap(page);
+ await page.locator('.map-r2-advanced > summary').click();
+ await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
+ await page.locator('.map-r5-output-diagnostics > summary').click();
+ await page.getByRole('button',{name:'Tubuh',exact:true}).click();
  const body=page.locator('[data-surface="body"] canvas.stage-wysiwyg-artwork');
  const before=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
 
@@ -38,17 +45,17 @@ test('Projector WYSIWYG: surface brightness and corners adjust local matrix whil
  const brightness=page.locator('.stage-dual-calibration input[type=range]').first();
  await brightness.fill('0.2');
  await expect(body).toHaveJSProperty('tagName','CANVAS');
- const after=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
- expect(after.opacity).not.toBe(before.opacity);
+ await expect.poll(()=>body.evaluate(el=>el.style.opacity)).toBe('0.2');
  await expect(page.locator('[data-surface="body"]')).toContainText('20% kecerahan software');
 
  // Operator-only four corner calibration must keep the same preview surface.
- await page.locator('.stage-dual-calibration details').first().locator('summary').click();
- const quad=page.locator('.stage-dual-quad input[type=number]');
+ await page.locator('.map-r5-model-diagnostics > summary').click();
+ await page.locator('.map-r5-model-diagnostics .stage-dual-advanced-row > details').last().locator('summary').click();
+ const quad=page.locator('.stage-dual-quad > div').nth(1).locator('input[type=number]');
  await expect(quad.first()).toBeVisible();
  await quad.first().fill('0.1');
- const transformed=await body.evaluate(el=>el.style.transform);
- expect(transformed).not.toBe(before.transform);
- await expect(page.locator('.stage-dual-qa')).toContainText('Five-Point Physical QA');
+ await expect.poll(()=>body.evaluate(el=>el.style.transform)).not.toBe(before.transform);
+ await page.locator('.stage-dual-qa-disclosure > summary').click();
+ await expect(page.locator('.stage-dual-qa')).toContainText('Catat ΔX dan ΔY');
  await expect(page.locator('.stage-dual')).toContainText('Blackout');
 });
