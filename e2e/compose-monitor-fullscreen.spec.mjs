@@ -28,7 +28,7 @@ test('Fullscreen Stage Monitor is a preview and does not arm physical output',as
  await monitor.getByRole('button',{name:'Fullscreen Stage Monitor'}).click();
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.id??'')).toBe('soma-compose-monitor');
  await expect(monitor.locator('canvas[aria-label^="Visual preview composer"]')).toBeVisible();
- await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
+ await expect(page.locator('button[aria-label="Kirim perintah blackout SOMA"]')).toHaveCount(1);
  await monitor.getByRole('button',{name:'Keluar fullscreen Stage Monitor'}).click();
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
 });
