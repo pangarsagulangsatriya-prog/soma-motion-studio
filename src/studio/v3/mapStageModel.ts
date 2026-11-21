@@ -18,6 +18,13 @@ export type MapDominantStatus={
  physicalReady:boolean;
 };
 
+/** Fractions for physically spaced calibration lines; never percentages of the preview. */
+export const mapGridFractions=(meters:number,stepM:number):number[]=>{
+ if(!Number.isFinite(meters)||!Number.isFinite(stepM)||meters<=0||stepM<=0)return [];
+ return Array.from({length:Math.min(80,Math.max(0,Math.ceil(meters/stepM)-1))},
+  (_,i)=>(i+1)*stepM/meters).filter(t=>t>0&&t<1-1e-6);
+};
+
 export type MapStageDimensions={
  widthM:number;
  depthM:number;
