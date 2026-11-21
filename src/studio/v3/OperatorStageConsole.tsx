@@ -195,31 +195,41 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <span>{item.label}</span>
      </button>)}
     </div>
-    <p className="ops-r1-route-contract" data-route={outputRouteMode}>
-      {isTouchDesigner?'Data kaki A/B → TouchDesigner':getPerformRouteDescription(outputRouteMode==='resolume'?'resolume':'soma')}
-     </p>
+    <div className="ops-r1-route-contract" data-route={outputRouteMode}>
+      <span className="ops-r1-route-type" aria-hidden="true">{isTouchDesigner?'DATA':isResolume?'FEED':'LIVE'}</span>
+      <span>{routePurpose}</span>
+     </div>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
      <>
-      <div key={outputRouteMode+destination.state} className="ops-r1-destination-status"
-       data-tone={destination.tone} role="status" aria-live="polite">
-       <span className="ops-r1-status-indicator" aria-hidden="true"/>
-       <strong>{destination.state}</strong>
-       <button type="button" className="ops-r1-mini-help" aria-label="Penjelasan status output"
-        title={destination.hint} aria-expanded={outputDetailsOpen}
-        onClick={()=>setOutputDetailsOpen(value=>!value)}>
-        <Info size={15} aria-hidden="true"/>
-       </button>
-      </div>
-      {outputRouteMode==='soma'&&(destination.tone==='attention'||destination.tone==='locked')&&
-       <p className="ops-r1-direct-reason" role="status">{destination.hint}</p>}
-      {held&&!isTouchDesigner&&<button type="button" className="ops-r1-preview-resume"
-        disabled={!canResume} onClick={onResume}>Lanjutkan Visual</button>}
+      <div className="ops-r1-destination-status ops-r1-compact-state"
+        data-tone={destination.tone} role="status" aria-live="polite">
+        <span className="ops-r1-status-indicator" aria-hidden="true"/>
+        <div className="ops-r1-status-copy">
+         <strong>{destination.state}</strong>
+         <small>{shortStatus}</small>
+        </div>
+        <button type="button" className="ops-r1-mini-help" aria-label="Penjelasan status output"
+         title={destination.hint} aria-expanded={outputDetailsOpen}
+         onClick={()=>setOutputDetailsOpen(value=>!value)}>
+         <Info size={15} aria-hidden="true"/>
+        </button>
+       </div>
+       <div className="ops-r1-route-steps" role="list"
+        aria-label={isResolume?'Alur menyambungkan Resolume':'Persiapan output proyektor'}>
+        {routeSteps.map((step,i)=><div key={step.label} className="ops-r1-route-step"
+         role="listitem" data-complete={step.done} title={step.detail}>
+         <span className="ops-r1-step-marker">{step.done?<Check size={12} aria-hidden="true"/>:String(i+1)}</span>
+         <span>{step.label}</span>
+        </div>)}
+       </div>
+      {held&&canResume&&<button type="button" className="ops-r1-preview-resume"
+        onClick={onResume}>Lanjutkan Visual</button>}
        {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
        data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
        onClick={handlePrimaryAction}>
-       <Tv size={14}/>{destination.action}
+       <Tv size={14}/>{destination.kind==='setup'?(!cameraOk||!identityOk?'Buka Track':'Buka Map'):destination.action}
       </button>}
       {isResolume&&<details className="ops-r1-bridge-guide" aria-label="Cara hubungkan Resolume">
        <summary>Hubungkan ke Resolume <ChevronDown size={14}/></summary>
