@@ -31,7 +31,7 @@ test('IA-R1: each local destination routes into the one Stage session',()=>{
  assert.match(stage,/case 'tracking':setView\('stage'\)/);
  assert.match(stage,/case 'composer':setView\('stage'\)/);
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
- assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen\}/);
+ assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen&&!operatorMode\}/);
 });
 
 test('IA-R1: no second Footprints source picker or stage tabs underneath the global navigation',()=>{
