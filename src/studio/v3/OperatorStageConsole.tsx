@@ -232,24 +232,24 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        <Tv size={14}/>{destination.kind==='setup'?(!cameraOk||!identityOk?'Buka Track':'Buka Map'):destination.action}
       </button>}
       {isResolume&&<details className="ops-r1-bridge-guide" aria-label="Cara hubungkan Resolume">
-       <summary>Hubungkan ke Resolume <ChevronDown size={14}/></summary>
+       <summary><span>Cara sambungkan · {bridge.transport}</span><ChevronDown size={14}/></summary>
        <div className="ops-r1-bridge-steps">
-        <div className="ops-r1-bridge-protocol">{bridge.transport} · {hostPlatform==='mac'?'Mac':hostPlatform==='windows'?'Windows':'Sistem belum dikenali'}</div>
-        <ol>
-         <li>Buka Feed FLOOR atau BODY di SOMA. Biarkan jendelanya tetap terbuka.</li>
-         <li>Di OBS: {bridge.obsCapture}. Pilih <b>SOMA / RESOLUME FEED · FLOOR</b> atau BODY.</li>
-         <li>{bridge.obsOutput}. Lalu {bridge.resolumeSource}.</li>
-        </ol>
-        <p>Gunakan Window Capture. OBS Browser Source dengan URL feed tidak berbagi sesi SOMA.</p>
+        <div className="ops-r1-visual-instructions">
+         <div><b>01 · SOMA</b><span>Buka Feed FLOOR / BODY</span></div>
+         <div><b>02 · OBS</b><span>{bridge.obsCapture}</span></div>
+         <div><b>03 · Resolume</b><span>{bridge.resolumeSource}</span></div>
+        </div>
+        <p className="ops-r1-bridge-confirm">Aktifkan {bridge.obsOutput}. Periksa gambar bergerak di Resolume.</p>
         <div className="ops-r1-bridge-links">
          {bridge.pluginUrl&&<a href={bridge.pluginUrl} target="_blank" rel="noopener noreferrer">
-          Pasang {bridge.pluginName} <ExternalLink size={12}/></a>}
+          Plugin {bridge.pluginName} <ExternalLink size={12}/></a>}
          <a href={RESOLUME_BRIDGE_DOCS.resolume} target="_blank" rel="noopener noreferrer">
-          Panduan Resolume <ExternalLink size={12}/></a>
+          Manual Resolume <ExternalLink size={12}/></a>
         </div>
-        <small>Status Feed SOMA hanya mengukur frame sampai popup. Periksa Sources → Syphon/Spout di Resolume untuk memastikan gambar diterima.</small>
+        <small>OBS Browser Source dengan URL feed tidak berbagi sesi SOMA. Pakai Window Capture.</small>
+        <small className="ops-r1-bridge-caution">SOMA hanya melihat status popup. Pastikan gambar diterima di Resolume.</small>
        </div>
-      </details>}
+       </details>}
       {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
        role={popupBlocked?'alert':'status'}>
        <span>{outputNotice}</span>
