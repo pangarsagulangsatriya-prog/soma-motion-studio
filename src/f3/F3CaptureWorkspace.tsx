@@ -113,7 +113,7 @@ export function F3CaptureWorkspace(){
  };
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{
-   if(event.key==='Escape'&&stageMode==='inline'){event.preventDefault();leaveStage();}
+   if(event.key==='Escape'&&stageMode!=='setup'){event.preventDefault();leaveStage();}
    if(stageMode!=='setup'&&event.key.toLowerCase()==='d'&&!event.metaKey&&!event.ctrlKey)disarm();
   };
   document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey);
