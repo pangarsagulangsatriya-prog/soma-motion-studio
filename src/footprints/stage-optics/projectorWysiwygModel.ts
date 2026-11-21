@@ -4,11 +4,11 @@ import {stageSurfaceState,type StageSurfacePlan} from './DualSurfaceCalibration.
 export type PreviewView='draft'|'sent';
 export type PreviewSignal='artwork'|'test'|'blackout';
 export type SurfaceTransport='live'|'test'|'blackout';
-/** Neither development mode nor operator confirmation can unlock MP4/3D experiments. */
+/** Every source needs build opt-in, measured Map QA, and deliberate LIVE. */
 export function dualPhysicalOutputAllowed(
- hardwareEnabled:boolean,experimentLocked:boolean,operatorConfirm:boolean
+ hardwareEnabled:boolean,_experimentLocked:boolean,operatorConfirm:boolean
 ):boolean{
- return hardwareEnabled&&!experimentLocked&&operatorConfirm;
+ return hardwareEnabled&&operatorConfirm;
 }
 
 /**
