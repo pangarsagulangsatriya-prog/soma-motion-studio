@@ -383,13 +383,12 @@ export function DualSurfaceRoutingPanel({
    router?.reset();setMessage('Sumber kamera terputus. Buka Track untuk menyambungkan kembali.');
   }}
   onCommitProjectorQuad={commitMonitorQuad} onMessage={setMessage}
- />
-</main>
-<div className="soma-map-v2-foot">
+ >
  {STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step map-r8-projector-setup">
-     <summary className="map-r2-step-head">
-      <strong>Uji proyektor fisik</strong>
+     <summary className="map-r2-step-head" aria-label="Uji proyektor fisik">
+      <strong>Uji proyektor</strong>
      </summary>
+     <div className="soma-map-v4-qa-popover">
      <label className="stage-dual-check map-r7-safety-check" title="Pastikan cahaya tidak mengenai mata/wajah; operator siap menjalankan Blackout fisik.">
       <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
        aria-label="Area aman dari sorot mata/wajah; operator siap Blackout fisik"
@@ -445,13 +444,14 @@ export function DualSurfaceRoutingPanel({
         </details>
       </div>
      </details>
-     
+     </div>
     </details>}
  {onEnterPerform&&<button type="button" className="map-r7-perform-cta"
   onClick={handleEnterPerform} title="Buka ruang Perform">
   Lanjut Perform <ArrowRight size={13}/>
  </button>}
-</div>
+ </MapWysiwygWorkspace>
+ </main>
  {message&&<footer className="map-r2-footer map-r7-footer" role="status"
     aria-label={message} title={message}>
     <span className="map-r7-feedback-dot" aria-hidden="true"/>
