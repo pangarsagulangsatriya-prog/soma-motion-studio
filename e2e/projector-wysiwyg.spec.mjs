@@ -5,6 +5,9 @@ test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',as
  await page.goto('/');
  await expect(page.locator('.soma-uxr1-source > summary')).toBeVisible();
  await openStageMap(page);
+ await page.locator('.map-r2-advanced > summary').click();
+ await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
+ await page.locator('.map-r5-output-diagnostics > summary').click();
 
  const panel=page.locator('.stage-wysiwyg');
  await expect(panel).toBeVisible();
@@ -31,6 +34,9 @@ test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',as
 test('Projector WYSIWYG: surface brightness and corners adjust local matrix while output stays blocked',async({page})=>{
  await page.goto('/');
  await openStageMap(page);
+ await page.locator('.map-r2-advanced > summary').click();
+ await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
+ await page.locator('.map-r5-output-diagnostics > summary').click();
  const body=page.locator('[data-surface="body"] canvas.stage-wysiwyg-artwork');
  const before=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
 
@@ -43,12 +49,14 @@ test('Projector WYSIWYG: surface brightness and corners adjust local matrix whil
  await expect(page.locator('[data-surface="body"]')).toContainText('20% kecerahan software');
 
  // Operator-only four corner calibration must keep the same preview surface.
- await page.locator('.stage-dual-calibration details').first().locator('summary').click();
+ await page.locator('.map-r5-model-diagnostics > summary').click();
+ await page.locator('.map-r5-model-diagnostics .stage-dual-advanced-row > details').last().locator('summary').click();
  const quad=page.locator('.stage-dual-quad input[type=number]');
  await expect(quad.first()).toBeVisible();
  await quad.first().fill('0.1');
  const transformed=await body.evaluate(el=>el.style.transform);
  expect(transformed).not.toBe(before.transform);
- await expect(page.locator('.stage-dual-qa')).toContainText('Five-Point Physical QA');
+ await page.locator('.stage-dual-qa-disclosure > summary').click();
+ await expect(page.locator('.stage-dual-qa')).toContainText('Catat ΔX dan ΔY');
  await expect(page.locator('.stage-dual')).toContainText('Blackout');
 });
