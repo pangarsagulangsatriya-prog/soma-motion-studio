@@ -45,8 +45,8 @@ export function evaluatePerformReadiness(input:{
  cameraOk:boolean;identityOk:boolean;floorOk:boolean;
  bodyOutputQa:boolean;floorOutputQa:boolean;
 }):{state:PerformReadiness;reason:string}{
- if(input.source==='video'||input.source==='simulator')
-  return {state:'preview',reason:'MP4/3D hanya mengendalikan preview. Output fisik terkunci.'};
+ if((input.source==='video'||input.source==='simulator')&&!input.cameraOk)
+  return {state:'attention',reason:'MP4/3D belum menghasilkan frame yang siap ditampilkan.'};
  if(!input.cameraOk)return {state:'attention',reason:'Kamera atau frame tracking belum siap.'};
  if(!input.identityOk)return {state:'attention',reason:'Identitas performer belum stabil.'};
  if(!input.floorOk)return {state:'attention',reason:'Lantai perlu kalibrasi dan pencocokan kamera.'};
