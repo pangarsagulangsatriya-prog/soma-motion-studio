@@ -973,8 +973,8 @@ export function FootprintsStageWorkspace({
    initialReference={rehearsalReference}
    onStartCamera={onStartBody} onCalibrate={onOpenLiveFloor}
    onClose={()=>{onBlackout();setRehearsalOpen(false);}}/>}
-  {mappingOpen&&!operatorMode&&(!sourceStatus.selection||sourceStatus.phase==='error'||(!experimentalKind&&!cameraOn)||(experimentalKind==='video'&&!experimentClip))&&<div className="soma-map-input-notice" role="status">
-   <span>Input belum siap. Periksa sumber di Track.</span>
+  {mappingOpen&&!operatorMode&&sourceStatus.selection!==null&&sourceStatus.phase==='error'&&<div className="soma-map-input-notice" role="status">
+   <span>Input terputus. Periksa sambungan di Track.</span>
    <button type="button" onClick={()=>onNavigateStageWorkspace('track')}>Periksa input</button>
   </div>}
   {mapCameraOpen&&mappingOpen&&!operatorMode&&<MapCameraCalibration floorSize={mapCameraSize}
