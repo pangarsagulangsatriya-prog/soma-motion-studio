@@ -18,6 +18,7 @@ import {useComposeMonitorLayout,type ComposeLayoutPreset} from './useComposeMoni
 import {StageModuleNav,type StageModuleWorkspace} from './StageModuleNav.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2,ChevronDown} from 'lucide-react';
+import {PerformFinalPreview} from './PerformFinalPreview.tsx';
 import {cameraDeviceLabel} from '../../engine/universalCamera.ts';
 import {STAGE_PREVIEW_MODES,parseStagePreviewMode,previewLabel,type StagePreviewMode} from './stagePreviewModel.ts';
 import {isDismissEscape,shouldOpenInspector} from './interactionPolicy.ts';
@@ -131,6 +132,8 @@ export function FootprintsStageWorkspace({
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
  const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
+ const performBodyRaster=useRef<HTMLCanvasElement>(null);
+ const performFloorRaster=useRef<HTMLCanvasElement>(null);
  const interactionCanvas=useRef<HTMLCanvasElement>(null);
  const interactionEngineRef=useRef(new FloorInteractionEngine());
  const touchPointers=useRef(new Set<number>());
@@ -329,7 +332,10 @@ export function FootprintsStageWorkspace({
   // Archive unmounts when entering Perform; its dual windows are also
   // disarmed by the App-level global Blackout before the mode is changed.
   setCalibrationOpen(false);
-  setComposerOpen(false);setMappingOpen(false);
+  // Keep the Compose renderer mounted while Perform shows its final raster.
+  // Map's editor closes, but the art recipe, media and event timeline remain alive.
+  setMappingOpen(false);
+  setSkeletonVisible(false); // Perform input defaults to the original camera image.
   setView('stage');setOperatorCue(0);setActivePerformSlot(0);
   if(performUnsafeRef.current||softwareBlackout){
    setPerformBlackout(true);updateFootprint({hold:true});
@@ -975,7 +981,7 @@ export function FootprintsStageWorkspace({
        Resume preview
       </button>}
      </div>}
-    {view==='stage'&&<div className="soma-composer-host" hidden={!composerOpen||operatorMode} aria-hidden={!composerOpen||operatorMode}><SurfaceComposer embedded mapMode={mappingOpen} workspaceHidden={!composerOpen||operatorMode}
+    {view==='stage'&&(composerOpen||operatorMode)&&<div className="soma-composer-host" hidden={!composerOpen||operatorMode} aria-hidden={!composerOpen||operatorMode}><SurfaceComposer embedded mapMode={mappingOpen&&!operatorMode} workspaceHidden={!composerOpen&&!operatorMode}
      footprint={footprint} updateFootprint={updateFootprint}
      sharedAssets={sharedAssetRegistry.assets} onImportAssets={sharedAssetRegistry.addFiles}
      onRemoveAsset={sharedAssetRegistry.removeAsset} assetNotice={sharedAssetRegistry.notice}
@@ -983,6 +989,7 @@ export function FootprintsStageWorkspace({
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput}
+     outputBodyRaster={performBodyRaster} outputFloorRaster={performFloorRaster}
      composePreviewCanvas={composeFloorOverlay}
      previewResumeRevision={previewResumeRevision} previewBlackout={softwareBlackout}
      frameRef={frameRef} videoRef={videoRef}
@@ -999,6 +1006,17 @@ export function FootprintsStageWorkspace({
      }}
      onEnterPerform={()=>onNavigateStageWorkspace('perform')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
+    {operatorMode&&<PerformFinalPreview
+     floorRaster={performFloorRaster} bodyRaster={performBodyRaster}
+     inputRaster={cameraCanvas}
+     sourceLabel={SOURCE_CHOICES.find(item=>item.id===sourceStatus.selection)?.label??'Belum dipilih'}
+     sourceReady={experimentalKind?Boolean(selectedExperimentFrame&&
+      (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
+      cameraOn&&sourceStatus.phase==='ready'}
+     mapReady={floorStatus.confirmed&&cameraMatched}
+     skeletonVisible={skeletonVisible} onSkeletonChange={setSkeletonVisible}
+     cueView={performGrid.slots[activePerformSlot]?.view??'floor'}
+     cueIndex={activePerformSlot}/>}
     <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" data-camera-setup={sourceStatus.selection==='phone'&&phonePanelOpen?'open':'closed'} hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
