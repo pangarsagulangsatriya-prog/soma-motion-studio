@@ -66,7 +66,7 @@
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
  .soma-setup-pair-tabs{
  display:grid!important;
- grid-template-columns:repeat(3,minmax(0,1fr));
+ grid-template-columns:repeat(2,minmax(0,1fr));
  gap:3px!important;
  background:#0d1910;
  border:1px solid #334c39;
@@ -519,7 +519,7 @@
 .soma-camera-pairing-compact{position:relative;gap:9px!important}
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
  .soma-camera-pairing-compact>.soma-setup-pair-tabs{
- grid-template-columns:repeat(3,minmax(0,1fr)) 38px!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
  gap:3px!important;align-items:center;
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
@@ -686,7 +686,7 @@
 }
 .fp-stage-workspace.fp-persistent-layout.soma-ia-four-workspaces[data-workspace=track]
  .soma-camera-method-row>.soma-setup-pair-tabs{
- display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
  min-width:0!important;width:100%!important;max-width:100%!important;
  align-items:stretch;gap:3px!important;margin:0!important;
  border-radius:10px!important;padding:3px!important;
