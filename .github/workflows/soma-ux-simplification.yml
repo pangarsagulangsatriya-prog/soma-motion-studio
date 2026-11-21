@@ -20,7 +20,7 @@ jobs:
       - run: npm run build -- --mode githubpages
       - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 simplified-stage.spec.mjs
+      - run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 simplified-stage.spec.mjs tools-secondary-sidebar.spec.mjs
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@v4
