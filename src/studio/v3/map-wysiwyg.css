@@ -162,86 +162,45 @@
   transition:none!important;transform:none!important}
 }
 
-/* MAP-V4 — one integrated footer; no floating safety card or distant Perform CTA. */
-.stage-dual.map-r2-shell{max-width:1440px;gap:6px}
-.stage-dual.map-r2-shell .soma-map-v2-main{margin-top:1px!important}
+/* MAP-V5 — Track navigation is the golden layout standard.
+   Map owns its two monitors and a narrow status/reset row; the shared StageModuleNav
+   owns all next-step calls to action. */
+.stage-dual.map-r2-shell{
+ max-width:1252px;
+ width:100%;
+ gap:8px;
+}
+.stage-dual.map-r2-shell .soma-map-v2-main{margin-top:0!important}
 .soma-map-wysiwyg{gap:8px;padding:10px}
-.soma-map-wysiwyg-pane{padding:8px;gap:6px}
+.soma-map-wysiwyg-pane{gap:6px;padding:8px}
 .soma-map-wysiwyg-head{min-height:30px}
 .soma-map-wysiwyg-bottom{
- display:flex;justify-content:space-between;align-items:center;gap:14px;
- flex-wrap:nowrap;min-height:48px;padding:9px 2px 0;
- border-top:1px solid #304336;
+ display:flex;align-items:center;justify-content:space-between;
+ gap:8px;flex-wrap:wrap;border-top:1px solid #304336;
+ min-height:30px;padding:8px 2px 0;
 }
-.soma-map-v4-status{display:flex;align-items:center;gap:9px;flex:1 1 250px;
- min-width:0;color:#a8b9aa;font:11px/1.4 system-ui}
-.soma-map-v4-status-dot{display:block;flex:none;width:7px;height:7px;
- background:#91b59a;border-radius:50%}
-.soma-map-v4-status [role="status"]{display:block;min-width:0;overflow:hidden;
- text-overflow:ellipsis;white-space:nowrap}
-.soma-map-v4-actions{display:flex;align-items:center;justify-content:flex-end;
- gap:8px;min-width:0;flex:none}
-.soma-map-v4-actions>.soma-map-v4-reset{min-height:36px;white-space:nowrap;
- background:transparent;border-color:#304937;color:#a6c4a9}
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r7-perform-cta{
- width:auto;min-width:152px;min-height:37px;margin:0;
- justify-content:center;gap:11px;white-space:nowrap;padding:8px 15px;
- border-radius:7px;font-size:12px;flex:none;
+.soma-map-v4-status{
+ display:flex;align-items:center;gap:9px;flex:1 1 250px;
+ min-width:0;color:#a8b9aa;font:11px/1.4 system-ui;
 }
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup{
- flex:none;position:relative;display:block;min-width:0;max-width:none;
- margin:0;padding:0;border:0;border-radius:0;background:transparent;
+.soma-map-v4-status-dot{
+ display:block;flex:none;width:7px;height:7px;
+ border-radius:50%;background:#91b59a;
 }
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup>summary{
- display:flex;align-items:center;justify-content:center;gap:8px;
- min-height:37px;box-sizing:border-box;border:1px solid #3d5943;border-radius:7px;
- background:#17251c;color:#c6d8c4;font:600 11.5px system-ui;
- padding:8px 12px;white-space:nowrap;list-style:none;cursor:pointer;
- transition:background .15s ease,border-color .15s ease;
+.soma-map-v4-status [role="status"]{
+ display:block;min-width:0;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap;
 }
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup>summary:hover{
- background:#213829;border-color:#729777;
+.soma-map-v4-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex:none}
+.soma-map-v4-actions>.soma-map-v4-reset{
+ background:transparent;border-color:#304937;color:#a6c4a9;
+ min-height:32px;white-space:nowrap;
 }
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup>summary:focus-visible{
- outline:2px solid #cbe9a7;outline-offset:3px;
-}
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup>summary::after{
- content:"⌄";font-size:14px;font-weight:500;margin:0;color:#9eb79f;
-}
-.stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup[open]>summary::after{
- content:"⌃";
-}
-.soma-map-v4-qa-popover{
- position:absolute;right:0;bottom:calc(100% + 9px);z-index:30;
- width:min(345px,calc(100vw - 34px));max-height:min(65vh,530px);
- box-sizing:border-box;display:flex;flex-direction:column;gap:11px;
- overflow:auto;padding:15px;background:#111f17;border:1px solid #517159;
- border-radius:10px;box-shadow:0 20px 52px #000b;
- animation:map-v3-appear .16s ease-out both;
-}
-.soma-map-v4-qa-popover .map-r7-safety-check{margin:0}
-.soma-map-v4-qa-popover .stage-dual-qa-disclosure{width:100%;box-sizing:border-box}
-.soma-map-v4-qa-popover :is(input,select){max-width:100%}
-.soma-map-v4-qa-popover .map-r2-test-row{width:100%}
-.soma-map-v4-qa-popover .map-r2-test-btn{width:100%;min-height:38px}
-@media(max-width:850px){
- .soma-map-wysiwyg-bottom{flex-wrap:wrap;gap:8px}
- .soma-map-v4-status{order:2;flex:1 1 100%;padding:0 1px}
- .soma-map-v4-actions{order:1;width:100%;justify-content:flex-end;gap:7px}
-}
-@media(max-width:460px){
- .soma-map-wysiwyg-bottom{position:relative}
- .soma-map-v4-actions{flex-wrap:wrap;justify-content:flex-start}
- .stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup{position:static}
- .stage-dual.map-r2-shell .soma-map-v4-actions>.map-r7-perform-cta{
-  flex:1 1 125px;min-width:125px
- }
- .soma-map-v4-status [role="status"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
- .soma-map-v4-qa-popover{
-  left:0;right:0;bottom:calc(100% + 8px);width:100%;max-height:min(65vh,520px)
- }
+@media(max-width:580px){
+ .soma-map-wysiwyg-bottom{align-items:flex-start}
+ .soma-map-v4-status{order:2;flex:1 1 100%;padding:2px 1px}
+ .soma-map-v4-actions{order:1;justify-content:flex-end;width:100%}
 }
 @media(prefers-reduced-motion:reduce){
- .soma-map-v4-qa-popover{animation:none}
- .stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup>summary{transition:none}
+ .soma-map-wysiwyg-bottom button{transition:none}
 }
