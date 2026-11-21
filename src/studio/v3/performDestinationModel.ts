@@ -28,12 +28,15 @@ export function presentPerformDestination(input:{
  if(route==='resolume'){
   const open=floor.opened||body.opened;
   const connected=floor.connected||body.connected;
+  const streaming=floor.status==='Feed'||body.status==='Feed';
   return open?{
-   state:connected?'Feed terbuka':'Jendela feed dibuka',
-   hint:'Periksa penerimaan dan mapping di Resolume secara terpisah.',
-   tone:'open',action:floor.opened?'Lihat Feed FLOOR':'Buka Feed FLOOR',kind:'review'
+   state:streaming?'Feed mengalir':connected?'Feed Blackout / HOLD':'Menunggu sambungan',
+   hint:streaming?'Frame komposisi sedang dikirim. Periksa penerimaan di Resolume.':
+    'Feed terbuka, namun frame belum mengalir. Periksa video dan klik Lanjutkan Visual.',
+   tone:streaming?'live':'open',
+   action:floor.opened?'Lihat / Aktifkan Feed FLOOR':'Buka Feed FLOOR',kind:'review'
   }:{
-   state:'Feed belum dibuka',hint:'Clean feed visual 16:9; Resolume perlu menangkapnya.',
+   state:'Feed belum dibuka',hint:'Clean feed 16:9 perlu menangkap jendela yang dibuka SOMA.',
    tone:'idle',action:'Buka Feed FLOOR',kind:'open'
   };
  }
