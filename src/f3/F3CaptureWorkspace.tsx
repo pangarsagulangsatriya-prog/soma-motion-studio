@@ -41,7 +41,6 @@ export function F3CaptureWorkspace(){
    if(list)setDevices(list.filter(d=>d.kind==='videoinput'));}
   catch{setMessage('Daftar kamera belum tersedia. Periksa izin browser.');}
  },[]);
- const onExit=useCallback(()=>setStageMode('setup'),[]);
  useEffect(()=>{
   if(!videoA.current||!videoB.current)return;
   const reg=registry.current;reg.attach('A',videoA.current);reg.attach('B',videoB.current);
@@ -287,7 +286,8 @@ export function F3CaptureWorkspace(){
     <button type="button" onClick={enterFullscreen} disabled={!readyA||!readyB}><Maximize2 size={14}/> Coba Fullscreen</button></div>
   </div>
   <F3StageView hostRef={stageHost} frameRef={stageFrame} videoRef={videoB}
-   stageActive={screenActive} onExit={onExit}/>
+   stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
+   onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
   {stageMode==='inline'&&<div className="f3-inline-tools">
    <button type="button" onClick={leaveStage}>Kembali Setup (Esc)</button>
    <button type="button" onClick={disarm}>Disarm</button>
