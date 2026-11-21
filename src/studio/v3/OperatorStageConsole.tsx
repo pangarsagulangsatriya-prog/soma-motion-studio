@@ -7,7 +7,7 @@ import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
-import {PERFORM_DESTINATIONS,PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
+import {PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
 import {detectResolumeHostPlatform,getResolumeBridgeRecipe,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
@@ -292,14 +292,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        </div>
       </details>
      </>}
-     {isTouchDesigner?
-      <button type="button" className="ops-r1-back-visual" onClick={()=>handleRouteChange('soma')}>
-       <ArrowLeft size={12}/> Kembali ke output visual
-      </button>:
-      <details className="ops-r1-advanced-route">
-       <summary>Lanjutan · TouchDesigner</summary>
-       <button type="button" onClick={()=>handleRouteChange('touchdesigner')}>Buka jalur data TouchDesigner</button>
-      </details>}
+     {isTouchDesigner&&<small className="ops-r1-route-endnote">Proyektor TouchDesigner diatur di aplikasi TouchDesigner.</small>}
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}
