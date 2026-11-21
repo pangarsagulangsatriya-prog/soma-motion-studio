@@ -455,6 +455,15 @@ export default function App(){
      setClean(false);selectScene('footprints');
      setSelectedStageTool('composer');
      setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'composer'}));}}
+    onStageTwo={()=>{
+     // A full workspace transition unmounts Stage 1's camera and renderer.
+     // Always request software blackout before navigating to the isolated module.
+     requestStageBlackout(()=>projection.setTransport('blackout'));
+     requestSoftwarePreviewBlackout();
+     const url=new URL(window.location.href);
+     url.searchParams.set('stage','2');
+     window.location.assign(url.toString());
+    }}
     onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
