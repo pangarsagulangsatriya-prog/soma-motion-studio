@@ -486,15 +486,11 @@ export function DualSurfaceRoutingPanel({
     <section className="map-r2-step">
      <div className="map-r2-step-head">
       <span className="map-r2-step-num">1</span>
-      <strong>Pilih bidang &amp; ukuran ruang</strong>
+      <strong>Ukuran ruang</strong>
      </div>
-     <p className="map-r2-step-note">
-      {selected==='floor'
-       ?'Kalibrasi bidang proyeksi lantai sesuai ukuran ruang.'
-       :'Satu output BODY mencakup mask tubuh bawah Performer A dan B.'}
-     </p>
-     <div className="map-r2-presets" role="group" aria-label="Preset ukuran ruang panggung">
-      {STAGE_DIMENSION_PRESETS.map(preset=>{
+     {selected==='body'&&<p className="map-r2-step-note">Satu output BODY mencakup mask tubuh bawah Performer A dan B.</p>}
+     <div className="map-r2-presets map-r4-main-presets" role="group" aria-label="Preset ukuran ruang panggung">
+      {STAGE_DIMENSION_PRESETS.filter(preset=>['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
        const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
        return <button type="button" key={preset.id} aria-pressed={isMatch}
         onClick={()=>{
@@ -503,16 +499,29 @@ export function DualSurfaceRoutingPanel({
         }}>{preset.label}</button>;
       })}
      </div>
-     <div className="map-r2-dims" role="group" aria-label="Ukuran ruang kustom (meter)">
-      <label>Lebar (m)
-       <input type="number" min={1} max={20} step={0.5} value={stageDimensions.widthM}
-        onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,widthM:Number(e.target.value)}))}/>
-      </label>
-      <label>Dalam (m)
-       <input type="number" min={1} max={20} step={0.5} value={stageDimensions.depthM}
-        onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,depthM:Number(e.target.value)}))}/>
-      </label>
-     </div>
+     <details className="map-r4-disclosure map-r4-room-extra">
+      <summary>Ukuran lain / kustom <span>{stageDimensions.widthM}×{stageDimensions.depthM} m</span></summary>
+      <div className="map-r2-presets" role="group" aria-label="Ukuran ruang tambahan">
+       {STAGE_DIMENSION_PRESETS.filter(preset=>!['3x2','3x4','5x5'].includes(preset.id)).map(preset=>{
+        const isMatch=stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM;
+        return <button type="button" key={preset.id} aria-pressed={isMatch}
+         onClick={()=>{
+          setStageDimensions({widthM:preset.widthM,depthM:preset.depthM});
+          setMessage(`Ukuran ruang kalibrasi diatur ke ${preset.label}.`);
+         }}>{preset.label}</button>;
+       })}
+      </div>
+      <div className="map-r2-dims" role="group" aria-label="Ukuran ruang kustom (meter)">
+       <label>Lebar (m)
+        <input type="number" min={1} max={20} step={0.5} value={stageDimensions.widthM}
+         onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,widthM:Number(e.target.value)}))}/>
+       </label>
+       <label>Dalam (m)
+        <input type="number" min={1} max={20} step={0.5} value={stageDimensions.depthM}
+         onChange={e=>setStageDimensions(prev=>clampStageDimensions({...prev,depthM:Number(e.target.value)}))}/>
+       </label>
+      </div>
+     </details>
     </section>
 
     <section className="map-r2-step">
@@ -521,7 +530,7 @@ export function DualSurfaceRoutingPanel({
       <strong>Cocokkan sudut</strong>
      </div>
 
-     {/* Direct corner selector + precision nudge micro-interaction */}
+     <p className="map-r4-inline-hint">Tarik titik 1–4 di monitor, atau pilih titik di sini.</p>
      <div className="map-r2-corner-picks" role="group" aria-label="Pilih sudut aktif kalibrasi">
       {CORNER_TAGS.map((tag,idx)=><button type="button" key={tag}
        aria-pressed={activeCorner===idx}
@@ -529,46 +538,50 @@ export function DualSurfaceRoutingPanel({
        {tag}
       </button>)}
      </div>
-
-     <div className="map-r2-nudge-row">
-      <div className="map-r2-nudge-pad" role="group" aria-label="Geser halus sudut aktif">
-       <button type="button" aria-label="Geser sudut ke kiri" onClick={()=>nudgeActiveCorner(-0.005,0)}><ArrowLeft size={12}/></button>
-       <button type="button" aria-label="Geser sudut ke atas" onClick={()=>nudgeActiveCorner(0,-0.005)}><ArrowUp size={12}/></button>
-       <button type="button" aria-label="Geser sudut ke bawah" onClick={()=>nudgeActiveCorner(0,0.005)}><ArrowDown size={12}/></button>
-       <button type="button" aria-label="Geser sudut ke kanan" onClick={()=>nudgeActiveCorner(0.005,0)}><ArrowRight size={12}/></button>
-      </div>
-      <span className="map-r2-corner-readout" aria-live="polite">
+     <div className="map-r4-active-corner" role="status">
+      <span>Titik {activeCorner+1}</span>
+      <output className="map-r2-corner-readout">
        {(activeCornerPt.x*stageDimensions.widthM).toFixed(2)}m, {(activeCornerPt.y*stageDimensions.depthM).toFixed(2)}m
-      </span>
+      </output>
      </div>
-
-     <div className="map-r2-corner-actions" role="group" aria-label="Kontrol sudut proyektor">
-      <button type="button" className="map-r2-primary-toggle" aria-pressed={editingCorners}
-       onClick={()=>{
-        const next=!editingCorners;
-        setEditingCorners(next);
-        if(next&&monitorView==='output')setMonitorView('stage');
-       }}>
-       <Crosshair size={12}/> {editingCorners?'Handle aktif':'Atur sudut'}
-      </button>
-      <button type="button" aria-pressed={snapEnabled} onClick={()=>setSnapEnabled(v=>!v)}
-       title="Tempel sudut ke grid 5%">
-       <Grid2x2 size={12}/> Snap
-      </button>
-      <button type="button" disabled={activeHistory.past.length===0} onClick={undoMonitorQuad}
-       aria-label="Batalkan perubahan sudut" title="Undo">
-       <Undo2 size={12}/>
-      </button>
-      <button type="button" disabled={activeHistory.future.length===0} onClick={redoMonitorQuad}
-       aria-label="Ulangi perubahan sudut" title="Redo">
-       <Redo2 size={12}/>
-      </button>
-      <button type="button" className={resetArmed?'map-r2-reset-armed':undefined} onClick={resetMonitorQuad}
-       title="Kembalikan 4 sudut ke posisi awal">
-       <RotateCcw size={12}/> {resetArmed?'Yakin?':'Reset'}
-      </button>
-     </div>
-
+     <details className="map-r4-disclosure map-r4-precision">
+      <summary>Penyetelan halus <span>Geser · Snap · Undo</span></summary>
+      <div className="map-r2-nudge-row">
+       <div className="map-r2-nudge-pad" role="group" aria-label="Geser halus sudut aktif">
+        <button type="button" aria-label="Geser sudut ke kiri" onClick={()=>nudgeActiveCorner(-0.005,0)}><ArrowLeft size={12}/></button>
+        <button type="button" aria-label="Geser sudut ke atas" onClick={()=>nudgeActiveCorner(0,-0.005)}><ArrowUp size={12}/></button>
+        <button type="button" aria-label="Geser sudut ke bawah" onClick={()=>nudgeActiveCorner(0,0.005)}><ArrowDown size={12}/></button>
+        <button type="button" aria-label="Geser sudut ke kanan" onClick={()=>nudgeActiveCorner(0.005,0)}><ArrowRight size={12}/></button>
+       </div>
+       <span className="map-r4-nudge-hint">Langkah 0,5%</span>
+      </div>
+      <div className="map-r2-corner-actions" role="group" aria-label="Kontrol sudut proyektor">
+       <button type="button" className="map-r2-primary-toggle" aria-pressed={editingCorners}
+        onClick={()=>{
+         const next=!editingCorners;
+         setEditingCorners(next);
+         if(next&&monitorView==='output')setMonitorView('stage');
+        }}>
+        <Crosshair size={12}/> {editingCorners?'Handle aktif':'Atur sudut'}
+       </button>
+       <button type="button" aria-pressed={snapEnabled} onClick={()=>setSnapEnabled(v=>!v)}
+        title="Tempel sudut ke grid 5%">
+        <Grid2x2 size={12}/> Snap
+       </button>
+       <button type="button" disabled={activeHistory.past.length===0} onClick={undoMonitorQuad}
+        aria-label="Batalkan perubahan sudut" title="Undo">
+        <Undo2 size={12}/>
+       </button>
+       <button type="button" disabled={activeHistory.future.length===0} onClick={redoMonitorQuad}
+        aria-label="Ulangi perubahan sudut" title="Redo">
+        <Redo2 size={12}/>
+       </button>
+       <button type="button" className={resetArmed?'map-r2-reset-armed':undefined} onClick={resetMonitorQuad}
+        title="Kembalikan 4 sudut ke posisi awal">
+        <RotateCcw size={12}/> {resetArmed?'Yakin?':'Reset'}
+       </button>
+      </div>
+     </details>
      {cameraOn&&!floorReady&&onOpenCameraCalibration&&
       <button type="button" className="map-r2-link-action" onClick={onOpenCameraCalibration}>
        Kalibrasi kamera ke lantai di Track →
@@ -583,7 +596,7 @@ export function DualSurfaceRoutingPanel({
      <label className="stage-dual-check">
       <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
        onChange={e=>{setOperatorConfirm(e.target.checked);if(!e.target.checked)allBlackout();}}/>
-      Area proyeksi aman, bebas sorot mata/wajah, dan operator siap Blackout fisik
+      Area aman dari sorot mata/wajah; operator siap Blackout fisik
      </label>
      <div className="map-r2-test-row">
       <button type="button" className="map-r2-test-btn" disabled={projectorTestDisabled}
@@ -643,6 +656,11 @@ export function DualSurfaceRoutingPanel({
       </div>
      </details>
 
+    </section>
+
+    <details className="map-r2-advanced">
+     <summary><SlidersHorizontal size={12}/> Pengaturan lengkap</summary>
+     <div className="map-r2-advanced-body">
      <details className="stage-dual-profile">
       <summary>Simpan profil ({savedDrafts.length})</summary>
       <p>Menyimpan geometri BODY/FLOOR untuk kamera dan lantai yang sama. QA 5 titik dan izin LIVE selalu diulang.</p>
@@ -665,11 +683,6 @@ export function DualSurfaceRoutingPanel({
        <button type="button" onClick={removeOutputDraft} disabled={!draftId}>Hapus</button>
       </div>
      </details>
-    </section>
-
-    <details className="map-r2-advanced">
-     <summary><SlidersHorizontal size={12}/> Advanced · presisi UV, output ganda &amp; diagnostik</summary>
-     <div className="map-r2-advanced-body">
       <div className="stage-dual-calibration">
        <div className="stage-dual-cal-controls">
         <label>Kecerahan {selected.toUpperCase()} · {Math.round(activePlan.brightness*100)}%
