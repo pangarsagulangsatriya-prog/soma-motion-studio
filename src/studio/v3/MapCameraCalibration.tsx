@@ -2,7 +2,9 @@ import {useCallback,useEffect,useRef,useState,type ComponentProps} from 'react';
 import {Modal} from '../../components';
 import {InlineFloorCalibration,type InlineCalibrationOverlay} from './InlineFloorCalibration';
 type Props=Pick<ComponentProps<typeof InlineFloorCalibration>,
- 'videoRef'|'tracker'|'router'|'cameraOn'|'bodySelected'|'videoReady'|'cameraMatched'|'onBlackout'|'onClose'>;
+ 'videoRef'|'tracker'|'router'|'cameraOn'|'bodySelected'|'videoReady'|'cameraMatched'|'onBlackout'|'onClose'> & {
+ floorSize:{widthM:number;depthM:number};
+};
 /** Calibrate the existing stream in Map without remounting the input or composer. */
 export function MapCameraCalibration(props:Props){
  const canvas=useRef<HTMLCanvasElement>(null);
