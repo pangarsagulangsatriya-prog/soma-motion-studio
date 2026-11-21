@@ -28,6 +28,8 @@ jobs:
       - name: Universal camera regression gate
         run: node --experimental-strip-types --test tests/universal-camera.test.ts tests/usb-phone-camera.test.ts
       - run: npm run build -- --mode githubpages
+        env:
+          VITE_SOMA_STAGE_OUTPUTS: enabled
       # Publish only the self-contained MAT-03 research lab from a pinned,
       # tested feature commit. The main Studio app and projector output
       # continue to come from main and are not replaced by the draft PR.
