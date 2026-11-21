@@ -30,6 +30,8 @@ jobs:
         run: npm test
       - name: Build F3 prototype
         run: npm run build
+      - name: Install local video fixture encoder
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Generate distinct synthetic MP4 fixtures A/B
         run: node scripts/f3-generate-fixtures.mjs
       - name: Install browser QA dependencies
