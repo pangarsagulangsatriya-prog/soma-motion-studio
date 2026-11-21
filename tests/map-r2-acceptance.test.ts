@@ -179,7 +179,9 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  assert.match(panel,/map-r2-nudge-pad/);
  assert.match(panel,/className="map-r4-disclosure map-r4-precision"/);
  assert.match(panel,/Tarik titik 1–4 di monitor/);
- assert.match(panel,/Pengaturan teknis/);
+ assert.match(panel,/Teknis &amp; diagnostik/);
+ assert.doesNotMatch(panel,/Grid homografi 3 × 3/);
+ assert.match(panel,/Lanjutkan pengaturan LIVE di Perform/);
  assert.match(panel,/map-r5-model-diagnostics/);
  assert.match(panel,/map-r5-output-diagnostics/);
  assert.doesNotMatch(panel,/stage-dual-perform-quick/);
