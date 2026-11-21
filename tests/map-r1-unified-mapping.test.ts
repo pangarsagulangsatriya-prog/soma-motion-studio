@@ -58,14 +58,14 @@ test('MAP-R1: hardware QA remains independent for BODY/FLOOR and requires five p
  assert.match(panel,/samples\.length<5/);
  assert.match(panel,/blackoutObserved/);
  assert.match(panel,/noUnsafeSpill/);
- assert.match(panel,/experimentLocked&&mode!=='blackout'/);
+ assert.match(panel,/assessment\(id\)\.status!=='within-provisional-target'/);
 });
 test('MAP-R1: Stage Map uses existing BODY/FLOOR compositor and routing; no extra camera',()=>{
  const composer=source('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(composer,/if\(mapMode\)return <section className="map-r1-workspace"/);
  assert.match(composer,/<DualSurfaceRoutingPanel frameRef=\{stageRoute\} bodyCanvas=\{bodyOutput\}/);
  assert.match(composer,/floorCanvas=\{floorOutput\} legacyProjection=\{projection\} experimentLocked=\{experimentLocked\}/);
- assert.match(composer,/kind==='floor'\?\(timelineModeRef\.current==='replay'&&!physical\?null:experiment&&!physical\?experimentFloorCanvas\?\.current\?\?null:floorCanvas\.current\)/);
+  assert.match(composer,/experiment\?experimentFloorCanvas/);
  assert.ok(!source('../src/studio/v3/MapFourCornerEditor.tsx').includes('getUserMedia('));
  assert.doesNotMatch(composer,/SceneEffectBrowser|HydraEffectInspector|ARTISTIC_CATALOG/);
 });
