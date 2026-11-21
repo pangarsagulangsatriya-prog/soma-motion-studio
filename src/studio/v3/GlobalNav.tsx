@@ -20,9 +20,9 @@ const labsIcons:Record<LabsId,typeof Footprints>={
  sound:AudioLines,capture:Camera,archive:BookOpen,video:Film,rehearsal:Activity,simulator:Box
 };
 
-export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
+export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,onArchive,
  onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
- workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;
+ workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;onStageTwo:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
  onStageTool:(tool:StageNavigationTool)=>void;
@@ -108,8 +108,6 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
    }
   };
   const outside=(e:PointerEvent)=>{
-   // Wide screens use a persistent second sidebar, not an outside-dismiss popover.
-   if(window.matchMedia('(min-width: 1360px)').matches)return;
    if(e.target instanceof Node&&!labsPanelRef.current?.contains(e.target)&&
     !labsRef.current?.contains(e.target))setLabsOpen(false);
   };
@@ -146,9 +144,7 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
   simulator:()=>onStageTool('simulator')
  };
  const launch=(id:LabsId)=>{
-  setActiveLab(id);
-  setLabsOpen(window.matchMedia('(min-width: 1360px)').matches);
-  clearTip();
+  setActiveLab(id);setLabsOpen(false);clearTip();
   if(mobile)setExpanded(false);
   action[id]();
   requestAnimationFrame(()=>{
@@ -207,6 +203,16 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
      <Monitor size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Stage 1</b></span>
     </button>
+    <button type="button" className="soma-rail-item soma-primary-destination soma-stage-module-launch"
+     aria-label="Stage 2" title={expanded?'Stage 2 · Ruang terpisah':undefined}
+     onMouseEnter={e=>showTip('Stage 2',e.currentTarget,'hover')}
+     onMouseLeave={clearTip}
+     onFocus={e=>showTip('Stage 2',e.currentTarget,'focus')}
+     onBlur={clearTip}
+     onClick={()=>{setLabsOpen(false);clearTip();onStageTwo();}}>
+     <Layers3 size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>Stage 2</b></span>
+    </button>
    </div>
    <div className="soma-primary-labs-launch">
     <button ref={labsRef} type="button" className="soma-rail-item soma-labs-trigger"
@@ -230,8 +236,7 @@ export function GlobalNav({workspace,scene,onFootprints,onInstrument,onArchive,
   </div>}
   {labsOpen&&mobile&&<button type="button" className="soma-labs-backdrop"
    aria-label="Tutup SOMA Labs" onClick={()=>{setLabsOpen(false);labsRef.current?.focus({preventScroll:true});}}/>}
-  {labsOpen&&<section id="soma-labs-panel" ref={labsPanelRef}
-   role={mobile?'dialog':'navigation'}
+  {labsOpen&&<section id="soma-labs-panel" ref={labsPanelRef} role="dialog"
    aria-modal={mobile?true:undefined} aria-labelledby="soma-labs-title"
    className="soma-labs-panel" data-expanded={expanded}>
    <header className="soma-labs-head">
