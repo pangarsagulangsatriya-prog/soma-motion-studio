@@ -38,7 +38,6 @@ import {
  redoQuadHistory,stepMapSimState,undoQuadHistory,
  type MapQuadHistory,type MapSimState,type MapStageDimensions
 } from '../../studio/v3/mapStageModel.ts';
-import {diagnosticNinePointGrid} from './floorNinePointGrid.ts';
 
 export type {StageRouteInput};
 
@@ -604,12 +603,6 @@ export function DualSurfaceRoutingPanel({
        onClick={triggerProjectorTest}>
        <Target size={12}/> {projectorTestLabel}
       </button>
-      {devices[selected].connected&&
-       <button type="button" className="map-r2-live-btn"
-        disabled={!STAGE_HARDWARE_ENABLED||!operatorConfirm||qa.status!=='within-provisional-target'}
-        onClick={()=>changeMode(selected,devices[selected].mode==='live'?'blackout':'live')}>
-        {devices[selected].mode==='live'?'Hentikan':'LIVE'}
-       </button>}
      </div>
      <p className="map-r5-next-action" role="status">
       {!STAGE_HARDWARE_ENABLED?'Output fisik tidak tersedia pada build ini. Pratinjau tetap bisa dipakai.':
@@ -661,7 +654,7 @@ export function DualSurfaceRoutingPanel({
     </section>
 
     <details className="map-r2-advanced">
-     <summary><SlidersHorizontal size={12}/> Pengaturan teknis</summary>
+     <summary><SlidersHorizontal size={12}/> Teknis &amp; diagnostik</summary>
      <div className="map-r2-advanced-body">
      <details className="stage-dual-profile">
       <summary>Simpan profil ({savedDrafts.length})</summary>
@@ -706,20 +699,6 @@ export function DualSurfaceRoutingPanel({
        <details className="map-r5-model-diagnostics">
         <summary>Diagnostik geometri · teknisi</summary>
        <div className="stage-dual-advanced-row">
-        {selected==='floor'&&<details className="stage-dual-grid-qa">
-         <summary>Grid homografi 3 × 3 (9 titik)</summary>
-         {(()=>{const grid=diagnosticNinePointGrid(activePlan.sourceQuad,activePlan.projectorQuad);
-          return <div>
-           <p role="status">Model homografi: {grid.valid?'konsisten':'perlu diperbaiki'} · {grid.samples.length} titik.</p>
-           <div className="stage-dual-grid-points" aria-label="Grid kalibrasi model">
-            {grid.samples.map(s=><span key={s.id} title={'Projector U '+s.projector.x.toFixed(3)+' V '+s.projector.y.toFixed(3)}>
-             {s.id} · {s.projector.x.toFixed(2)}, {s.projector.y.toFixed(2)}
-            </span>)}
-           </div>
-           <small>{grid.reason} Data ini tidak menghitung selisih optik dalam sentimeter.</small>
-          </div>;
-         })()}
-        </details>}
         <details>
          <summary>Advanced · angka presisi empat titik</summary>
          <p>Urutan: kiri atas, kanan atas, kanan bawah, kiri bawah (0–1). Ulangi uji fisik jika proyektor bergeser.</p>
@@ -742,7 +721,7 @@ export function DualSurfaceRoutingPanel({
       </div>
 
       <details className="map-r2-aux-details">
-       <summary>Status layar &amp; perangkat</summary>
+       <summary>Status perangkat &amp; output teknisi</summary>
        <ol className="stage-dual-stepper" aria-label={'Alur kesiapan proyektor '+selected.toUpperCase()}>
        {([
         {id:'display',label:'1. Layar',done:displayInfo.extended===true},
@@ -762,7 +741,7 @@ export function DualSurfaceRoutingPanel({
       </div>
 
       <details className="map-r5-output-diagnostics">
-       <summary>Kontrol kedua proyektor · teknisi</summary>
+       <summary>Kontrol output BODY / FLOOR</summary>
       <div className="stage-dual-outputs">
        {ids.map(id=>{
         const s=devices[id],a=assessment(id);
@@ -778,9 +757,7 @@ export function DualSurfaceRoutingPanel({
           <button type="button" disabled={!s.opened} onClick={()=>close(id)}>Tutup</button>
           <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm}
            onClick={()=>changeMode(id,'test')}><Target size={13}/> Pola uji</button>
-          <button type="button" disabled={!STAGE_HARDWARE_ENABLED||!s.connected||!operatorConfirm||a.status!=='within-provisional-target'}
-           onClick={()=>changeMode(id,'live')}>LIVE</button>
-         </div>
+          </div>
          <small>{s.reason}</small>
         </div>;
        })}
@@ -788,7 +765,7 @@ export function DualSurfaceRoutingPanel({
 
       <section className="stage-wysiwyg" aria-label="Preview proyektor ganda WYSIWYG">
        <div className="stage-wysiwyg-head">
-        <div><b>Preview Ganda (BODY + FLOOR)</b>
+        <div><b>Pratinjau output BODY + FLOOR</b>
          <small>Transformasi kalibrasi sama dengan jendela output</small>
         </div>
         <div className="stage-wysiwyg-switch" role="group" aria-label="Mode preview proyektor">
