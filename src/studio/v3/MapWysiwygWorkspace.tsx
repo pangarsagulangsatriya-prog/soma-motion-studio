@@ -354,38 +354,73 @@ export function MapWysiwygWorkspace({
   </svg>;
  };
  const isSourceMode=sourceKind==='camera'||sourceKind==='video'||sourceKind==='simulator';
- const sourceLabel=isSourceMode?(sourceKind==='camera'?'Kamera langsung':sourceKind==='video'?'Video MP4':'Simulasi 3D'):'Belum ada sumber';
+ const sourceLabel=sourceKind==='demo-sim'?'Panggung simulasi':isSourceMode?(sourceKind==='camera'?'Kamera langsung':sourceKind==='video'?'Video MP4':'Simulasi 3D'):'Sumber';
  const calibrated=!!floorTracker?.isConfirmed&&!cameraDirty;
+ const simulating=sourceKind==='demo-sim'&&simState.active;
+ const visibleSource=sourceAvailable||simulating;
+ const waitingForSource=sourceKind!=='none'&&!simulating&&!sourceAvailable;
+ const idleMessage=sourceInterrupted?'Sumber terputus. Periksa sambungan di Track.':
+  simulating?'SIMULASI · Dua performer dan jejak kaki aktif.':
+  !visibleSource?'Coba simulasi atau sambungkan kamera.':
+  cameraDirty||outputDirty?'Pratinjau perubahan · belum tersimpan.':
+  calibrated?'Bidang kamera tersimpan.':'Tarik titik 1–4 di atas gambar.';
+ const resultText=sourceInterrupted?'Sumber terputus. Periksa Track.':
+  waitingForSource?'Menunggu gambar sumber':
+  'Hasil muncul setelah simulasi atau input aktif';
  return <section className="soma-map-wysiwyg" ref={wrapper} aria-label="Kalibrasi Map langsung">
   <div className="soma-map-wysiwyg-head">
-   <div><strong>Bidang {selected==='floor'?'lantai':'tubuh'}</strong><span>{stageDimensions.widthM} × {stageDimensions.depthM} m</span></div>
+   <div><strong>Bidang {selected==='floor'?'lantai':'tubuh'}</strong></div>
    <button type="button" onClick={changeFullscreen} aria-label={fullScreen?'Tutup layar penuh':'Layar penuh Map'}>
     {fullScreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
    </button>
   </div>
   <div className="soma-map-wysiwyg-grid">
    <div className="soma-map-wysiwyg-pane">
-    <div className="soma-map-wysiwyg-pane-head"><b>{sourceLabel}</b><small>{sourceAvailable?(frozen?'Gambar dibekukan':'Gambar aktif'):'Pratinjau sumber'}</small></div>
+    <div className="soma-map-wysiwyg-pane-head"><b>{sourceLabel}</b>
+     <small data-live={visibleSource}>{simulating?'SIMULASI':sourceInterrupted?'TERPUTUS':sourceAvailable?(frozen?'DIBEKUKAN':'LIVE'):'Pratinjau sumber'}</small></div>
     <div className="soma-map-wysiwyg-image">
      <canvas ref={sourceCanvas} width={W} height={H} aria-label="Gambar input kamera atau video"/>
-     {sourceAvailable&&mapOverlay('source')}
+     {visibleSource&&mapOverlay('source')}
+     {!visibleSource&&<div className="soma-map-v3-empty" role="status">
+      <div className="soma-map-v3-empty-mark" aria-hidden="true">⌗</div>
+      <strong>{sourceInterrupted?'Sumber terputus':waitingForSource?'Menunggu gambar':'Belum ada sumber'}</strong>
+      <span>{sourceInterrupted?'Sambungkan kembali kamera lewat Track.':
+       waitingForSource?'Periksa kamera di Track.':'Gunakan simulasi, atau hubungkan kamera.'}</span>
+      {!waitingForSource&&!sourceInterrupted&&<button type="button" className="soma-map-v3-cta" onClick={onStartSim}>
+       <Play size={14}/> Coba simulasi
+      </button>}
+      <button type="button" className="soma-map-v3-link" onClick={onOpenTrack}>
+       {sourceInterrupted?'Periksa Track':'Pilih kamera di Track'}
+      </button>
+     </div>
     </div>
+    {simulating&&<div className="soma-map-wysiwyg-controls soma-map-v3-sim-controls">
+     <button type="button" onClick={onToggleSimPlay}>{simState.playing?<Pause size={14}/>:<Play size={14}/>}
+      {simState.playing?'Jeda':'Lanjutkan'}</button>
+     <button type="button" onClick={onStopSim}>Hentikan</button>
+    </div>}
     {sourceAvailable&&<div className="soma-map-wysiwyg-controls">
      <button type="button" onClick={()=>setFrozen(v=>!v)}>{frozen?'Lanjutkan gambar':'Bekukan gambar'}</button>
      {cameraDirty&&sourceKind==='camera'&&<button type="button" onClick={applyCamera}><Check size={14}/> Terapkan bidang</button>}
     </div>}
     <p className="soma-map-wysiwyg-caption">
-     {sourceKind==='camera'?(calibrated?'Bidang kamera tersimpan.':cameraDirty?'Periksa sudut, lalu terapkan.':'Tarik empat sudut mengikuti lantai pada gambar.'):
-     'Kalibrasi kamera hanya tersedia untuk input kamera aktif.'}
+     {simulating?'Simulasi dua performer · output fisik tetap Blackout.':
+     sourceKind==='camera'?(calibrated?'Bidang kamera tersimpan.':cameraDirty?'Tarik titik 1–4, lalu terapkan.':'Tarik titik 1–4 mengikuti lantai.'):
+     sourceInterrupted?'Periksa Track untuk menyambungkan sumber.':''}
     </p>
    </div>
    <div className="soma-map-wysiwyg-pane">
-    <div className="soma-map-wysiwyg-pane-head"><b>Hasil visual {selected==='floor'?'lantai':'tubuh'}</b><small>{simState.active&&!hasLiveSource?'SIMULASI JEJAK':'Pratinjau Compose'}</small></div>
+    <div className="soma-map-wysiwyg-pane-head"><b>Hasil visual {selected==='floor'?'lantai':'tubuh'}</b>
+    <small data-live={visibleSource}>{simulating?'SIMULASI':visibleSource?'Pratinjau Compose':'Belum ada hasil'}</small></div>
     <div className="soma-map-wysiwyg-image">
      <canvas ref={outputCanvas} width={W} height={H} aria-label="Hasil visual Compose dengan perspektif proyeksi"/>
-     {mapOverlay('output')}
+     {visibleSource&&mapOverlay('output')}
+     {!visibleSource&&<div className="soma-map-v3-result-empty" role="status">
+      <span className="soma-map-v3-result-mark" aria-hidden="true">▱</span>
+      <span>{resultText}</span>
+     </div>}
     </div>
-    <div className="soma-map-wysiwyg-controls">
+    {visibleSource&&<div className="soma-map-wysiwyg-controls">
      <button type="button" aria-pressed={projectorEdit} onClick={()=>{
       if(projectorEdit&&outputDirty){
        onCommitProjectorQuad(outputDraftRef.current);
@@ -397,20 +432,16 @@ export function MapWysiwygWorkspace({
       <ScanLine size={14}/> {projectorEdit?'Simpan bidang':'Sesuaikan proyektor'}
      </button>
      {(cameraDirty||outputDirty)&&<button type="button" onClick={cancel}>Batalkan</button>}
-    </div>
-    <p className="soma-map-wysiwyg-caption">{projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':cameraDirty?'Posisi kaki mengikuti sudut kamera yang sedang digeser. Terapkan untuk menyimpan.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
+    </div>}
+    <p className="soma-map-wysiwyg-caption">{!visibleSource?'':projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':cameraDirty?'Posisi kaki mengikuti sudut kamera yang sedang digeser. Terapkan untuk menyimpan.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
    </div>
   </div>
   <div className="soma-map-wysiwyg-bottom">
    <div className="soma-map-wysiwyg-actions">
-    {!hasLiveSource&&(simState.active?
-     <><button type="button" onClick={onToggleSimPlay}>{simState.playing?<Pause size={14}/>:<Play size={14}/>} {simState.playing?'Jeda':'Jalankan'}</button>
-     <button type="button" onClick={onStopSim}>Akhiri simulasi</button></>:
-     <button type="button" onClick={onStartSim}><Play size={14}/> Coba simulasi</button>)}
     {(projectorEdit||(sourceKind==='camera'&&sourceAvailable))&&
      <button type="button" onClick={reset} title="Reset bidang aktif"><RotateCcw size={14}/> {resetArmed?'Konfirmasi reset':'Ulangi sudut'}</button>}
    </div>
-   <span>{status||'Geser sudut pada gambar. Hasil diperbarui langsung.'}</span>
+   <span role="status" aria-live="polite">{status||idleMessage}</span>
   </div>
  </section>;
 }
