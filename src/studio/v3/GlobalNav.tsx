@@ -5,7 +5,7 @@ import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCir
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
 import type {FootprintsInputChoice} from './sourceSwitchModel.ts';
-import {LABS_ITEM_COUNT,searchLabs,type LabsId} from './labsCatalog.ts';
+import {searchStageTwoLabs,STAGE_TWO_ITEM_COUNT,isStageTwoLab,type LabsId,type StageTwoLabId} from './labsCatalog.ts';
 import {isDismissEscape,RAIL_TOOLTIP_DELAY_MS} from './interactionPolicy.ts';
 import './workspace-navigation.css';
 import './projector-shell.css';
@@ -20,9 +20,10 @@ const labsIcons:Record<LabsId,typeof Footprints>={
  sound:AudioLines,capture:Camera,archive:BookOpen,video:Film,rehearsal:Activity,simulator:Box
 };
 
-export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,onArchive,
+export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
  onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
- workspace:Workspace;scene:SceneId;perform:boolean;onFootprints:()=>void;onStageTwo:()=>void;
+ workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
+ onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
  onStageTool:(tool:StageNavigationTool)=>void;
@@ -45,8 +46,8 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
  const railRef=useRef<HTMLElement>(null);
  const tipTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  useEffect(()=>()=>{if(tipTimer.current!==null)clearTimeout(tipTimer.current);},[]);
- const labsContext=workspace==='archive'||(workspace==='studio'&&scene!=='footprints');
- const stageModuleActive=workspace==='studio'&&scene==='footprints';
+ const labsContext=stageTwo;
+ const stageModuleActive=!stageTwo&&workspace==='studio'&&scene==='footprints';
  useEffect(()=>{
   const media=window.matchMedia(mobileQuery);
   const update=()=>{
@@ -146,7 +147,8 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
  const launch=(id:LabsId)=>{
   setActiveLab(id);setLabsOpen(false);clearTip();
   if(mobile)setExpanded(false);
-  action[id]();
+  if(stageTwo&&isStageTwoLab(id))onStageTwoLab?.(id);
+  else action[id]();
   requestAnimationFrame(()=>{
    const target=mobile?toggleRef.current:labsRef.current;
    target?.focus({preventScroll:true});
@@ -155,8 +157,8 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
  const toggleLabs=()=>{
   setLabsQuery('');clearTip();setLabsOpen(value=>!value);
  };
- const filtered=searchLabs(labsQuery);
- const selectedLab=labsContext?(activeLab??(workspace==='archive'?'archive':scene)):null;
+ const filtered=searchStageTwoLabs(labsQuery);
+ const selectedLab=labsContext?stageTwoLab:(activeLab??null);
  return <>
   <header className="v3-global-nav v3-primary-nav soma-nav-header soma-primary-header">
    <div className="soma-nav-brand-row">
@@ -168,7 +170,7 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
      {expanded?<PanelLeftClose size={17}/>:<PanelLeftOpen size={17}/>}
     </button>
     <div className="v3-brand"><b>SOMA</b>
-     <span> / {stageModuleActive?'STAGE 1':'TOOLS'}</span>
+     <span> / {stageTwo?'STAGE 2':stageModuleActive?'STAGE 1':'TOOLS'}</span>
     </div>
    </div>
    {stageModuleActive&&<div className="soma-uxr1-health" role="status" aria-label="Ringkasan status Stage 1">
@@ -177,7 +179,7 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
     <span title="Status koneksi output">{outputLabel}</span>
    </div>}
    <div className="v3-global-actions">
-    {scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
+    {stageTwo&&scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
      type="button" title="Preset instrumen SOMA Labs" onClick={onPreset}>
      <Save size={15}/><span>{preset}</span></button>}
     <button type="button" className="soma-ia-blackout" onClick={onBlackout}
@@ -204,7 +206,8 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
      <span className="soma-rail-item-copy"><b>Stage 1</b></span>
     </button>
     <button type="button" className="soma-rail-item soma-primary-destination soma-stage-module-launch"
-     aria-label="Stage 2" title={expanded?'Stage 2 · Ruang terpisah':undefined}
+     aria-label="Stage 2" aria-current={stageTwo?'page':undefined}
+     title={expanded?'Stage 2 · Teks, visual & suara':undefined}
      onMouseEnter={e=>showTip('Stage 2',e.currentTarget,'hover')}
      onMouseLeave={clearTip}
      onFocus={e=>showTip('Stage 2',e.currentTarget,'focus')}
@@ -214,9 +217,9 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
      <span className="soma-rail-item-copy"><b>Stage 2</b></span>
     </button>
    </div>
-   <div className="soma-primary-labs-launch">
+   {stageTwo&&<div className="soma-primary-labs-launch">
     <button ref={labsRef} type="button" className="soma-rail-item soma-labs-trigger"
-     aria-label="Tools · SOMA Labs" aria-describedby={tip?.label==='SOMA Labs'?'soma-rail-tooltip':undefined}
+     aria-label="Instrumen Stage 2" aria-describedby={tip?.label==='SOMA Labs'?'soma-rail-tooltip':undefined}
      title={expanded?'Eksperimen dan instrumen lama':undefined}
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
      aria-current={labsContext?'page':undefined}
@@ -226,10 +229,10 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
      onBlur={clearTip}
      onClick={toggleLabs}>
      <FlaskConical size={19} aria-hidden="true"/>
-     <span className="soma-rail-item-copy"><b>Tools</b></span>
+     <span className="soma-rail-item-copy"><b>Instrumen</b></span>
      {expanded&&<ChevronRight className="soma-labs-launch-chevron" size={15} aria-hidden="true"/>}
     </button>
-   </div>
+   </div>}
   </nav>
   {tip&&<div id="soma-rail-tooltip" className="soma-rail-tooltip" role="tooltip" style={{top:tip.top}}>
    {tip.label}
@@ -240,7 +243,7 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
    aria-modal={mobile?true:undefined} aria-labelledby="soma-labs-title"
    className="soma-labs-panel" data-expanded={expanded}>
    <header className="soma-labs-head">
-    <div><h2 id="soma-labs-title">Tools</h2></div>
+    <div><h2 id="soma-labs-title">Instrumen Stage 2</h2></div>
     <button type="button" onClick={()=>{setLabsOpen(false);labsRef.current?.focus({preventScroll:true});}}
      aria-label="Tutup SOMA Labs" title="Tutup (Esc)"><X size={17}/></button>
    </header>
@@ -249,13 +252,13 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
     <input ref={searchRef} type="search" value={labsQuery} maxLength={90}
      onChange={e=>setLabsQuery(e.target.value)} placeholder="Cari eksperimen..."
      aria-label="Cari modul SOMA Labs"/>
-    <span>{filtered.reduce((sum,group)=>sum+group.items.length,0)}/{LABS_ITEM_COUNT}</span>
+    <span>{filtered.reduce((sum,group)=>sum+group.items.length,0)}/{STAGE_TWO_ITEM_COUNT}</span>
    </div>
    <div className="soma-labs-scroll">
     {filtered.length===0&&<div className="soma-labs-empty">
      <Search size={21} aria-hidden="true"/>
      <strong>Tidak ada modul yang cocok</strong>
-     <p>Gunakan kata kunci lain, seperti video, suara, atau siluet.</p>
+     <p>Cari teks, suara, visual, atau arsip.</p>
      <button type="button" onClick={()=>{setLabsQuery('');searchRef.current?.focus();}}>Lihat semua</button>
     </div>}
     {filtered.map(group=><div className="soma-labs-group" key={group.id}>
@@ -274,7 +277,7 @@ export function GlobalNav({workspace,scene,onFootprints,onStageTwo,onInstrument,
     </div>)}
    </div>
    <footer className="soma-labs-footer">
-    <span>Alat tambahan · output fisik terkunci</span>
+    <span>Stage 2 · instrumen eksperimental</span>
    </footer>
   </section>}
  </>;
