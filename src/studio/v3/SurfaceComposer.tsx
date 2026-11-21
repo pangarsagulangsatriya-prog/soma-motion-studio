@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {Maximize2,Minimize2} from 'lucide-react';
 import type {ChangeEvent,PointerEvent,RefObject,KeyboardEvent} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
@@ -109,6 +110,27 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const mapModeRef=useRef(mapMode);mapModeRef.current=mapMode;
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [monitorView,setMonitorView]=useState<ComposeMonitorView>('FLOOR');
+ const monitorFullscreenRef=useRef<HTMLElement|null>(null);
+ const [monitorFullscreen,setMonitorFullscreen]=useState(false);
+ const [fullscreenNotice,setFullscreenNotice]=useState('');
+ useEffect(()=>{
+  const sync=()=>setMonitorFullscreen(document.fullscreenElement===monitorFullscreenRef.current);
+  document.addEventListener('fullscreenchange',sync);
+  return()=>document.removeEventListener('fullscreenchange',sync);
+ },[]);
+ const toggleMonitorFullscreen=()=>{
+  const monitor=monitorFullscreenRef.current;
+  if(!monitor)return;
+  setFullscreenNotice('');
+  const promise=document.fullscreenElement===monitor
+   ?document.exitFullscreen()
+   :monitor.requestFullscreen?.();
+  if(!promise){
+   setFullscreenNotice('Fullscreen tidak didukung pada browser ini.');
+   return;
+  }
+  void promise.catch(()=>setFullscreenNotice('Fullscreen diblokir browser. Periksa izin tampilan layar.'));
+ };
  const monitorViewRef=useRef(monitorView);monitorViewRef.current=monitorView;
  const [lowerBody,setLowerBody]=useState<LowerBodyComposerState>(()=>defaultLowerBodyState());
  const lowerBodyRef=useRef(lowerBody);lowerBodyRef.current=lowerBody;
@@ -747,6 +769,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   consume();return()=>clearTimeout(id);
  },[previewLive,blackout,!!motionEvents]);
  const points=(e:PointerEvent<HTMLCanvasElement>)=>{
+  if(monitorFullscreen)return; // Presentation mode must not select or edit objects.
   const rect=e.currentTarget.getBoundingClientRect();
   if(editMask&&layer){
    const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
@@ -844,7 +867,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  {media.some(m=>m.origin==='track')&&<small>MP4 Track dipakai langsung dari decoder Track. Tidak perlu unggah ulang.</small>}
  {assetNotice&&<small role="status">{assetNotice}</small>}
  </details></aside>
-   <section className="s64-center cp02-editor">
+   <section id="soma-compose-monitor" ref={monitorFullscreenRef} className="s64-center cp02-editor">
     <div className="cp-compose-monitor-heading cpux-monitor-title" role="heading" aria-level={3}>
       <strong>Stage Monitor</strong>
       {(()=>{
@@ -877,6 +900,15 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       {skeletonBackdrop==='input'&&skeletonInputId!=='track'&&
        <small className="cp-compose-skeleton-info" title="Gambar ini belum diproses oleh tracking">Belum dilacak</small>}
      </div>}
+     <button type="button" className="cp-compose-fullscreen-button"
+      aria-label={monitorFullscreen?'Keluar fullscreen Stage Monitor':'Fullscreen Stage Monitor'}
+      aria-pressed={monitorFullscreen}
+      title={monitorFullscreen?'Kembali ke Compose (Esc)':'Perbesar Stage Monitor ke layar penuh'}
+      onClick={toggleMonitorFullscreen}>
+      {monitorFullscreen?<Minimize2 size={16} aria-hidden="true"/>:<Maximize2 size={16} aria-hidden="true"/>}
+      <span>{monitorFullscreen?'Keluar':'Layar penuh'}</span>
+     </button>
+     {fullscreenNotice&&<small className="cp-compose-fullscreen-notice" role="status">{fullscreenNotice}</small>}
     </div>
     <div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&

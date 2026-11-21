@@ -33,3 +33,63 @@
 @media(max-width:720px){.uxr3-compose-status{display:none}.s64-embedded .s64-layout{display:flex;flex-direction:column}.s64-embedded .s64-center{order:-1}.s64-embedded .uxr3-scene-library{grid-template-columns:repeat(4,minmax(0,1fr));max-height:170px}.s64-embedded .s64-layout>.s64-column:last-child{display:flex}.s64-embedded .s64-heading p{display:none}}
 @media(max-width:440px){.s64-embedded .uxr3-scene-library{grid-template-columns:repeat(3,minmax(0,1fr))}.uxr3-compose-switcher{gap:4px;padding:6px}.uxr3-compose-switcher button{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.s64-embedded *{scroll-behavior:auto}}
+
+
+/* Stage Monitor fullscreen — software preview only, shares the Compose renderer. */
+#soma-compose-monitor .cp-compose-fullscreen-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ margin-left:auto;padding:7px 11px;min-height:36px;border-radius:7px;
+ border:1px solid #4b6653;background:#1e3025;color:#e6f2df;
+ cursor:pointer;white-space:nowrap;font-size:12px;font-weight:600;
+}
+#soma-compose-monitor .cp-compose-fullscreen-button:hover{
+ background:#304b37;border-color:#bbd6a5;
+}
+#soma-compose-monitor .cp-compose-fullscreen-button:focus-visible{
+ outline:2px solid #d7eead;outline-offset:2px;
+}
+#soma-compose-monitor .cp-compose-fullscreen-notice{
+ color:#e4c493;font-size:11px;max-width:300px;
+}
+#soma-compose-monitor:fullscreen{
+ box-sizing:border-box;width:100vw;height:100dvh;
+ min-height:100dvh;max-height:100dvh;padding:16px;
+ margin:0;border:0;border-radius:0;background:#020403;color:#e9f2e6;
+ display:flex!important;flex-direction:column!important;
+ align-items:stretch;gap:10px;overflow:hidden;
+}
+#soma-compose-monitor:fullscreen::backdrop{background:#020403}
+#soma-compose-monitor:fullscreen .cp-compose-monitor-heading{
+ flex:0 0 auto;margin:0;padding:0 2px;
+}
+#soma-compose-monitor:fullscreen .uxr3-compose-preview-bar{
+ flex:0 0 auto;display:flex!important;align-items:center;
+ justify-content:space-between;gap:9px;
+ margin:0!important;padding:3px 0 6px!important;
+}
+#soma-compose-monitor:fullscreen .s64-stage{
+ display:flex!important;align-items:center;justify-content:center;
+ flex:1 1 auto!important;width:100%!important;
+ height:auto!important;min-height:0!important;
+ aspect-ratio:auto!important;max-height:none!important;
+ overflow:hidden;border-radius:4px!important;background:black!important;
+}
+#soma-compose-monitor:fullscreen .s64-stage>canvas{
+ display:block!important;width:100%!important;height:100%!important;
+ max-width:100%!important;max-height:100%!important;
+ min-height:0!important;aspect-ratio:auto!important;
+ object-fit:contain!important;cursor:default!important;
+}
+#soma-compose-monitor:fullscreen .cpux-timeline-drawer,
+#soma-compose-monitor:fullscreen .soma-ia-layers,
+#soma-compose-monitor:fullscreen .s64-bar,
+#soma-compose-monitor:fullscreen .lb-event-test-bar,
+#soma-compose-monitor:fullscreen .cp07-stage-selected,
+#soma-compose-monitor:fullscreen .s64-stage>svg{
+ display:none!important;
+}
+@media(max-width:610px){
+ #soma-compose-monitor:fullscreen{padding:9px;gap:6px}
+ #soma-compose-monitor:fullscreen .uxr3-compose-preview-bar{gap:5px}
+ #soma-compose-monitor .cp-compose-fullscreen-button{min-height:40px}
+}
