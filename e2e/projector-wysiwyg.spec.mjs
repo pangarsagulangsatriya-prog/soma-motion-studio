@@ -1,62 +1,47 @@
-import {selectStageSource,openStageMap} from './ia-ux-helpers.mjs';
+import {openStageMap} from './ia-ux-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
-test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',async({page})=>{
+test('Projector WYSIWYG: FLOOR and BODY share the real Compose output and global Blackout',async({page})=>{
  await page.goto('/');
- await expect(page.getByRole('button',{name:'Map workspace'})).toBeVisible();
  await openStageMap(page);
- await page.locator('.map-r2-advanced > summary').click();
- await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
- await page.locator('.map-r5-output-diagnostics > summary').click();
-
- const panel=page.locator('.stage-wysiwyg');
- await expect(panel).toBeVisible();
- await expect(panel.locator('.stage-wysiwyg-card')).toHaveCount(2);
- const body=panel.locator('[data-surface="body"]');
- const floor=panel.locator('[data-surface="floor"]');
- await expect(body).toHaveAttribute('data-preview-view','draft');
- await expect(floor).toHaveAttribute('data-preview-signal','artwork');
- await expect(body.locator('canvas.stage-wysiwyg-artwork')).toBeVisible();
-
- await panel.getByRole('button',{name:'Sinyal dikirim'}).click();
- await expect(body).toHaveAttribute('data-preview-view','sent');
- await expect(body).toHaveAttribute('data-preview-signal','blackout');
- await expect(floor).toHaveAttribute('data-preview-signal','blackout');
- await expect(body).toContainText('BLACKOUT');
- await expect(floor).toContainText('BLACKOUT');
-
- await panel.getByRole('button',{name:'Draf lokal'}).click();
- await expect(body).toHaveAttribute('data-preview-signal','artwork');
- await expect(floor).toHaveAttribute('data-preview-signal','artwork');
- await expect(panel).toContainText('DRAF LOKAL · tidak dikirim ke proyektor');
+ const map=page.locator('.soma-map-wysiwyg');
+ await expect(map).toBeVisible();
+ await expect(map.locator('canvas[aria-label="Hasil visual Compose dengan perspektif proyeksi"]')).toBeVisible();
+ await expect(map.getByText('Hasil visual lantai')).toBeVisible();
+ await page.getByRole('button',{name:'Tubuh',exact:true}).click();
+ await expect(map.getByText('Hasil visual tubuh')).toBeVisible();
+ await page.getByRole('button',{name:'Lantai',exact:true}).click();
+ await expect(map.getByText('Hasil visual lantai')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
+ await expect(page.locator('.map-r2-advanced')).toHaveCount(0);
+ const qa=page.locator('.map-r8-projector-setup');
+ if(await qa.count()){
+  await expect(qa).not.toHaveAttribute('open');
+  await qa.locator(':scope > summary').click();
+  await expect(qa.locator('.map-r7-qa-count')).toContainText('0/5');
+ }
 });
 
-test('Projector WYSIWYG: surface brightness and corners adjust local matrix while output stays blocked',async({page})=>{
+test('Projector WYSIWYG: quad preview can be cancelled or saved without arming physical output',async({page})=>{
  await page.goto('/');
  await openStageMap(page);
- await page.locator('.map-r2-advanced > summary').click();
- await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
- await page.locator('.map-r5-output-diagnostics > summary').click();
- await page.getByRole('button',{name:'Tubuh',exact:true}).click();
- const body=page.locator('[data-surface="body"] canvas.stage-wysiwyg-artwork');
- const before=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
-
- // Editing the plan does not arm the physical output or fabricate QA approval.
- const brightness=page.locator('.stage-dual-calibration input[type=range]').first();
- await brightness.fill('0.2');
- await expect(body).toHaveJSProperty('tagName','CANVAS');
- await expect.poll(()=>body.evaluate(el=>el.style.opacity)).toBe('0.2');
- await expect(page.locator('[data-surface="body"]')).toContainText('20% kecerahan software');
-
- // Operator-only four corner calibration must keep the same preview surface.
- await page.locator('.map-r5-model-diagnostics > summary').click();
- await page.locator('.map-r5-model-diagnostics .stage-dual-advanced-row > details').last().locator('summary').click();
- const quad=page.locator('.stage-dual-quad > div').nth(1).locator('input[type=number]');
- await expect(quad.first()).toBeVisible();
- await quad.first().fill('0.1');
- await expect.poll(()=>body.evaluate(el=>el.style.transform)).not.toBe(before.transform);
- await page.locator('.stage-dual-qa-disclosure > summary').click();
- await expect(page.locator('.stage-dual-qa')).toContainText('Selisih cahaya terukur');
- await expect(page.locator('.stage-dual-qa > p').first()).toHaveAttribute('title',/Sistem tidak mengukur cahaya secara otomatis/);
- await expect(page.locator('.stage-dual')).toContainText('Blackout');
+ const map=page.locator('.soma-map-wysiwyg');
+ const output=map.locator('.soma-map-wysiwyg-pane').last();
+ const overlay=output.locator('svg.soma-map-wysiwyg-overlay');
+ await output.getByRole('button',{name:'Sesuaikan proyektor'}).click();
+ const before=await overlay.locator('polygon').getAttribute('points');
+ const handle=overlay.locator('.soma-map-wysiwyg-handle').first();
+ const rect=await handle.boundingBox();
+ expect(rect).toBeTruthy();
+ const x=rect.x+rect.width/2,y=rect.y+rect.height/2;
+ await page.mouse.move(x,y);
+ await page.mouse.down();
+ await page.mouse.move(x+26,y+16,{steps:6});
+ await page.mouse.up();
+ await expect.poll(()=>overlay.locator('polygon').getAttribute('points')).not.toBe(before);
+ await output.getByRole('button',{name:'Batalkan'}).click();
+ await expect.poll(()=>overlay.locator('polygon').getAttribute('points')).toBe(before);
+ await output.getByRole('button',{name:'Simpan bidang'}).click();
+ await expect(output.locator('.soma-map-wysiwyg-handle')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
 });
