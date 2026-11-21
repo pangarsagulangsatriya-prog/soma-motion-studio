@@ -169,6 +169,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <span>{item.label}</span>
      </button>)}
     </div>
+    <p className="ops-r1-route-contract" data-route={outputRouteMode}>
+      {isTouchDesigner?'Data kaki A/B → TouchDesigner':getPerformRouteDescription(outputRouteMode)}
+     </p>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
@@ -190,6 +193,25 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        onClick={handlePrimaryAction}>
        <Tv size={14}/>{destination.action}
       </button>}
+      {isResolume&&<details className="ops-r1-bridge-guide" aria-label="Cara hubungkan Resolume">
+       <summary>Hubungkan ke Resolume <ChevronDown size={14}/></summary>
+       <div className="ops-r1-bridge-steps">
+        <div className="ops-r1-bridge-protocol">{bridge.transport} · {hostPlatform==='mac'?'Mac':hostPlatform==='windows'?'Windows':'Sistem belum dikenali'}</div>
+        <ol>
+         <li>Buka Feed FLOOR atau BODY di SOMA. Biarkan jendelanya tetap terbuka.</li>
+         <li>Di OBS: {bridge.obsCapture}. Pilih <b>SOMA / RESOLUME FEED · FLOOR</b> atau BODY.</li>
+         <li>{bridge.obsOutput}. Lalu {bridge.resolumeSource}.</li>
+        </ol>
+        <p>Gunakan Window Capture. OBS Browser Source dengan URL feed tidak berbagi sesi SOMA.</p>
+        <div className="ops-r1-bridge-links">
+         {bridge.pluginUrl&&<a href={bridge.pluginUrl} target="_blank" rel="noopener noreferrer">
+          Pasang {bridge.pluginName} <ExternalLink size={12}/></a>}
+         <a href={RESOLUME_BRIDGE_DOCS.resolume} target="_blank" rel="noopener noreferrer">
+          Panduan Resolume <ExternalLink size={12}/></a>
+        </div>
+        <small>Status Feed SOMA hanya mengukur frame sampai popup. Periksa Sources → Syphon/Spout di Resolume untuk memastikan gambar diterima.</small>
+       </div>
+      </details>}
       {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
        role={popupBlocked?'alert':'status'}>
        <span>{outputNotice}</span>
@@ -201,6 +223,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        <div className="ops-r1-detail-content">
        <p className="ops-r1-destination-explain">{destination.hint}</p>
        <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
+       {isResolume&&<p>Feed browser memerlukan OBS dan plugin lokal agar tampil pada Sources Resolume.</p>}
        {!isResolume&&<p>{summary.primaryAction.detail}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
         {(['floor','body'] as const).map(surface=>{
@@ -216,11 +239,6 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
             onClick={()=>handleOpenSurface(surface)}>
             <ExternalLink size={11}/>{badge.opened?'Lihat':isResolume?'Buka Feed':'Buka'}
            </button>
-           {isResolume&&<button type="button" className="ops-r1-copy-btn"
-            aria-label={`Salin URL Feed Resolume ${isFloor?'FLOOR':'BODY'}`}
-            title="Salin URL Clean Feed" onClick={()=>handleCopyFeedUrl(surface)}>
-            <Copy size={11}/>URL
-           </button>}
            {badge.opened&&<button type="button"
             aria-label={`Tutup output ${badge.label}`}
             onClick={()=>handleCloseSurface(surface)}><X size={11}/></button>}
@@ -238,6 +256,14 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        </div>
       </details>
      </>}
+     {isTouchDesigner?
+      <button type="button" className="ops-r1-back-visual" onClick={()=>handleRouteChange('soma')}>
+       <ArrowLeft size={12}/> Kembali ke output visual
+      </button>:
+      <details className="ops-r1-advanced-route">
+       <summary>Lanjutan · TouchDesigner</summary>
+       <button type="button" onClick={()=>handleRouteChange('touchdesigner')}>Buka jalur data TouchDesigner</button>
+      </details>}
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}
