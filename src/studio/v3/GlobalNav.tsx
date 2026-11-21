@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Activity,AudioLines,BookOpen,Camera,Film,FlaskConical,Footprints,HelpCircle,
+import {Activity,AudioLines,BookOpen,Camera,Film,Footprints,HelpCircle,
  Layers3,Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Save,ScanFace,Search,
  Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
@@ -179,6 +179,10 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
     <span title="Status koneksi output">{outputLabel}</span>
    </div>}
    <div className="v3-global-actions">
+    {stageTwo&&<button ref={labsRef} type="button" className="soma-header-labs-btn"
+     aria-label="Instrumen Stage 2" title="Cari semua instrumen Stage 2"
+     aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
+     onClick={toggleLabs}><Search size={17} aria-hidden="true"/></button>}
     {stageTwo&&scene!=='footprints'&&workspace==='studio'&&<button className="v3-preset"
      type="button" title="Preset instrumen SOMA Labs" onClick={onPreset}>
      <Save size={15}/><span>{preset}</span></button>}
@@ -212,27 +216,12 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
      onMouseLeave={clearTip}
      onFocus={e=>showTip('Stage 2',e.currentTarget,'focus')}
      onBlur={clearTip}
-     onClick={()=>{setLabsOpen(false);clearTip();onStageTwo();}}>
+     onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onStageTwo();}}>
      <Layers3 size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Stage 2</b></span>
     </button>
    </div>
-   {stageTwo&&<div className="soma-primary-labs-launch">
-    <button ref={labsRef} type="button" className="soma-rail-item soma-labs-trigger"
-     aria-label="Instrumen Stage 2" aria-describedby={tip?.label==='SOMA Labs'?'soma-rail-tooltip':undefined}
-     title={expanded?'Eksperimen dan instrumen lama':undefined}
-     aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
-     aria-current={labsContext?'page':undefined}
-     onMouseEnter={e=>showTip('SOMA Labs',e.currentTarget,'hover')}
-     onMouseLeave={clearTip}
-     onFocus={e=>showTip('SOMA Labs',e.currentTarget,'focus')}
-     onBlur={clearTip}
-     onClick={toggleLabs}>
-     <FlaskConical size={19} aria-hidden="true"/>
-     <span className="soma-rail-item-copy"><b>Instrumen</b></span>
-     {expanded&&<ChevronRight className="soma-labs-launch-chevron" size={15} aria-hidden="true"/>}
-    </button>
-   </div>}
+
   </nav>
   {tip&&<div id="soma-rail-tooltip" className="soma-rail-tooltip" role="tooltip" style={{top:tip.top}}>
    {tip.label}
