@@ -38,3 +38,18 @@ export function searchLabs(query:string){
  })).filter(group=>group.items.length>0);
 }
 export const LABS_ITEM_COUNT=LABS_GROUPS.reduce((count,group)=>count+group.items.length,0);
+
+/** Stage 2 reuses the legacy visual/sound/archive engines. Gait tools stay in Stage 1. */
+export const STAGE_TWO_LAB_IDS=['liquid','echo','cut','body','hydra','sound','capture','archive'] as const;
+export type StageTwoLabId=typeof STAGE_TWO_LAB_IDS[number];
+export function isStageTwoLab(value:LabsId):value is StageTwoLabId{
+ return STAGE_TWO_LAB_IDS.some(id=>id===value);
+}
+export const STAGE_TWO_ITEMS=LABS_GROUPS.flatMap(group=>group.items)
+ .filter(item=>isStageTwoLab(item.id));
+export const STAGE_TWO_ITEM_COUNT=STAGE_TWO_ITEMS.length;
+export function searchStageTwoLabs(query:string){
+ return searchLabs(query).map(group=>({
+  ...group,items:group.items.filter(item=>isStageTwoLab(item.id))
+ })).filter(group=>group.items.length>0);
+}
