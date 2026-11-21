@@ -1,39 +1,36 @@
 import {test,expect} from '@playwright/test';
 
-test('MAP-R3: full screen can show camera+stage and uses meter spacing',async({page})=>{
+test('MAP-V2: source and projected result stay side by side in fullscreen',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
- const monitor=page.locator('.map-r2-monitor');
- await expect(monitor).toBeVisible();
- await expect(monitor.getByRole('button',{name:'Fullscreen Map Monitor'})).toBeVisible();
- await monitor.locator('.map-r5-other-views > summary').click();
- await monitor.getByRole('button',{name:'Bandingkan'}).click();
- await expect(monitor.locator('canvas[aria-label="Tampilan feed kamera Map"]')).toBeVisible();
- await expect(monitor.locator('canvas[aria-label="Kanvas kalibrasi panggung Map"]')).toBeVisible();
- await monitor.locator('.map-r5-pattern-options > summary').click();
- await monitor.getByRole('button',{name:'0,25 m'}).click();
- await expect(monitor.locator('.map-r5-pattern-options > summary')).toContainText('Grid 0,25 m');
- await monitor.getByRole('button',{name:'Fullscreen Map Monitor'}).click();
- await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.getAttribute('aria-label')??''))
-  .toBe('Stage Map Monitor');
- await expect(monitor.getByRole('button',{name:'Keluar fullscreen Map Monitor'})).toBeVisible();
- await expect(monitor.locator('canvas[aria-label="Tampilan feed kamera Map"]')).toBeVisible();
- await monitor.getByRole('button',{name:'Keluar fullscreen Map Monitor'}).click();
+ const map=page.locator('.soma-map-wysiwyg');
+ await expect(map).toBeVisible();
+ await expect(map.locator('canvas[aria-label="Gambar input kamera atau video"]')).toBeVisible();
+ await expect(map.locator('canvas[aria-label="Hasil visual Compose dengan perspektif proyeksi"]')).toBeVisible();
+ await expect(map.getByRole('button',{name:'Coba simulasi'})).toBeVisible();
+ await map.getByRole('button',{name:'Coba simulasi'}).click();
+ await expect(map.getByText('SIMULASI JEJAK')).toBeVisible();
+ await expect(map.getByRole('button',{name:'Jeda'})).toBeVisible();
+ await map.getByRole('button',{name:'Layar penuh Map'}).click();
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.getAttribute('aria-label'))).toBe('Kalibrasi Map langsung');
+ await expect(map.locator('canvas[aria-label="Gambar input kamera atau video"]')).toBeVisible();
+ await map.getByRole('button',{name:'Tutup layar penuh'}).click();
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
  await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
 });
 
-test('MAP-R3: advanced diagnostics remain accessible, separate from physical QA',async({page})=>{
+test('MAP-V2: no duplicate technical panel; projector QA is opt-in',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
- const rail=page.locator('.map-r2-rail');
- await expect(rail.getByText('Uji proyektor',{exact:true})).toBeVisible();
- await expect(rail.locator('.stage-dual-qa-disclosure')).toBeVisible();
- const advanced=rail.locator('details.map-r2-advanced');
- await advanced.locator('summary').first().click();
- await expect(advanced.locator('.stage-dual-cal-controls')).toBeVisible();
- await expect(advanced.locator('.map-r1-editor')).toBeHidden();
- await advanced.locator('details.map-r2-aux-details').first().locator('summary').click();
- await expect(advanced.locator('.map-r1-editor')).toBeVisible();
- await expect(page.locator('.map-r2-monitor')).toBeVisible();
+ const map=page.locator('.stage-dual.map-r2-shell');
+ await expect(map.locator('.soma-map-v2-main')).toBeVisible();
+ await expect(map.locator('.map-r2-advanced')).toHaveCount(0);
+ await expect(map.getByText('Teknis & diagnostik')).toHaveCount(0);
+ const qa=map.locator('.map-r8-projector-setup');
+ if(await qa.count()){
+  await expect(qa).not.toHaveAttribute('open');
+  await qa.locator('summary').click();
+  await expect(qa.locator('.stage-dual-qa-disclosure')).toBeVisible();
+ }
+ await expect(map.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
 });
