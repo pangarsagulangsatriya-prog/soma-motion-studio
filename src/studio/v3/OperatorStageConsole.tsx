@@ -188,7 +188,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
         <Info size={15} aria-hidden="true"/>
        </button>
       </div>
-      {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
+      {held&&!isTouchDesigner&&<button type="button" className="ops-r1-preview-resume"
+        disabled={!canResume} onClick={onResume}>Lanjutkan Visual</button>}
+       {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
        data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
        onClick={handlePrimaryAction}>
        <Tv size={14}/>{destination.action}
