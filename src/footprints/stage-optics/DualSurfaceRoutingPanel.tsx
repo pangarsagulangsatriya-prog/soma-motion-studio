@@ -62,7 +62,7 @@ export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
  liquidCanvas,experimentInputCanvas,videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
- onOpenCameraCalibration,onEnterPerform
+ onEnterPerform
 }:Props){
  // Keep shouldLatchProjectionBlackout referenced here and enforced in DualSurfaceSessionStore.
  void shouldLatchProjectionBlackout;
