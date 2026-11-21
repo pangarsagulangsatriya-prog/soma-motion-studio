@@ -9,7 +9,7 @@ import {stageHardwareAvailable} from './StageHardwareGate.ts';
 import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
 import {defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceState,
- assessSurfaceProof,outputSurfaceDecision,
+ assessSurfaceProof,outputSurfaceDecision,cleanFeedSurfaceState,
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext}
  from './DualSurfaceCalibration.ts';
 
@@ -376,19 +376,23 @@ let canvas:HTMLCanvasElement|null=null;
    if(!ok)canvas=null;
   }
   if(canvas&&canvas.width>=16&&canvas.height>=16){
-   link.sendArtwork(stageSurfaceState(plan,mode==='feed'?'live':mode,true),canvas,now);
+   link.sendArtwork(mode==='feed'?cleanFeedSurfaceState(plan):stageSurfaceState(plan,mode,true),canvas,now);
   }else link.send(stageSurfaceState(plan,'blackout',false),now);
+
   if(now-lastUI>240){
+   const reportedMode=mode==='feed'&&link.receivedFrames<1?'blackout':mode;
+   const reportedReason=mode==='feed'&&link.receivedFrames<1?
+    'Feed terhubung, menunggu frame pertama diterima jendela.':reason;
    reportDualOutputStatus(telemetryOwner,{
     surface:id,reported:true,opened:link.opened,connected:link.connected,
-    mode:canvas&&link.connected?mode:'blackout',
+    mode:canvas&&link.connected?reportedMode:'blackout',
     qa:decision.assessment.status,
-    sampledAtMs:now,reason
+    sampledAtMs:now,reason:reportedReason
    });
    const next:SurfaceDeviceState={
     connected:link.connected,opened:link.opened,viewport,
-    mode:canvas&&link.connected?mode:'blackout',
-    reason
+    mode:canvas&&link.connected?reportedMode:'blackout',
+    reason:reportedReason
    };
    const prior=state.devices[id];
    if(prior.connected!==next.connected||prior.opened!==next.opened||
