@@ -66,3 +66,15 @@
  .pf-final-fullscreen{min-height:39px}
  .pf-final-input-strip{grid-template-columns:minmax(0,42%) minmax(0,1fr);gap:7px}
 }
+
+/* Keep original camera preview controls readable on small phones. */
+.pf-final-input-strip,.pf-final-camera-controls,.pf-final-tools,.pf-final-title{min-width:0;max-width:100%}
+.pf-final-camera-controls small,.pf-final-title span{overflow-wrap:anywhere;white-space:normal}
+@media(max-width:420px){
+ .pf-final-top{align-items:flex-start}
+ .pf-final-tools{gap:6px}
+ .pf-final-tabs{min-width:0;max-width:100%}
+ .pf-final-tabs button{padding-inline:7px}
+ .pf-final-fullscreen{padding:7px 8px}
+ .pf-final-input-strip{grid-template-columns:minmax(0,40%) minmax(0,1fr)}
+}
