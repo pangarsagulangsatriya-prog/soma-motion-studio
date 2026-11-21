@@ -154,7 +154,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-output-top">
      <strong>Output</strong>
      <button type="button" className="ops-r1-mini-help" aria-label="Bantuan tujuan output"
-      title="Jenis keluaran SOMA, Resolume, dan TouchDesigner"
+      title="SOMA Direct ke proyektor atau Clean Feed ke Resolume"
       aria-expanded={outputDetailsOpen} onClick={()=>setOutputDetailsOpen(value=>!value)}>
       <Info size={15} aria-hidden="true"/>
      </button>
@@ -170,7 +170,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      </button>)}
     </div>
     <p className="ops-r1-route-contract" data-route={outputRouteMode}>
-      {isTouchDesigner?'Data kaki A/B → TouchDesigner':getPerformRouteDescription(outputRouteMode)}
+      {isTouchDesigner?'Data kaki A/B → TouchDesigner':getPerformRouteDescription(outputRouteMode==='resolume'?'resolume':'soma')}
      </p>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
@@ -232,12 +232,12 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
          return <div key={surface} className="ops-r1-channel" data-tone={badge.tone}>
           <div className="ops-r1-channel-meta">
            <b>{isFloor?'FLOOR':'BODY'}</b>
-           <span>{isResolume?(badge.status==='Feed'?'Frame mengalir':badge.opened?'Blackout / menunggu frame':'Belum dibuka'):badge.status}</span>
+           <span>{isResolume?(badge.status==='Feed'?'Feed SOMA aktif':badge.opened?'Blackout / menunggu frame':'Belum dibuka'):badge.status}</span>
           </div>
           <div className="ops-r1-channel-btns">
            <button type="button" disabled={!isResolume&&!summary.canOpenOutput}
             onClick={()=>handleOpenSurface(surface)}>
-            <ExternalLink size={11}/>{badge.opened?'Lihat':isResolume?'Buka Feed':'Buka'}
+            <ExternalLink size={11}/>{isResolume?(badge.opened?'Lihat / Aktifkan':'Buka Feed'):(badge.opened?'Lihat':'Buka')}
            </button>
            {badge.opened&&<button type="button"
             aria-label={`Tutup output ${badge.label}`}
