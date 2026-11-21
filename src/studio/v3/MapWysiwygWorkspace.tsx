@@ -3,7 +3,6 @@ import {useEffect,useRef,useState,type PointerEvent,type RefObject,type Keyboard
 import {Check,Maximize2,Minimize2,Pause,Play,RotateCcw,ScanLine} from 'lucide-react';
 import type {Quad,Point} from '../../projection/geometry.ts';
 import {identityQuad,transform,homography} from '../../projection/geometry.ts';
-import {cameraBinding} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
@@ -35,7 +34,6 @@ type Props={
 };
 const W=640,H=360;
 const numericPoint=(p:Point)=>({x:p.x*W,y:p.y*H});
-const square=(p:Point)=>([p.x*W,p.y*H] as const);
 const pointsString=(quad:Quad,box:{x:number;y:number;width:number;height:number})=>
  quad.map(p=>String(box.x+p.x*box.width)+','+String(box.y+p.y*box.height)).join(' ');
 const validSource=(mode:Props['sourceKind'],video:HTMLVideoElement|null|undefined,exp:HTMLCanvasElement|null|undefined)=>{
@@ -154,9 +152,9 @@ export function MapWysiwygWorkspace({
   const x=(e.clientX-rect.left)/rect.width*W,y=(e.clientY-rect.top)/rect.height*H;
   return pointerInSource(x,y,where==='source'?currentBox:projectorBox);
  };
- const startMove=(e:PointerEvent<SVGSVGElement>,where:'source'|'output',index:number)=>{
+ const startMove=(e:PointerEvent<SVGGElement>,where:'source'|'output',index:number)=>{
   if(where==='source'&&!sourceAvailable)return;
-  e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);
+  e.preventDefault();e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId);
   setPointer({target:where,index,id:e.pointerId});activePoint.current=index;
   if(where==='source'){
    if(!cameraDirty)onBeginCameraEdit();setCameraDirty(true);
@@ -191,7 +189,7 @@ export function MapWysiwygWorkspace({
   }
   const deltas:Record<string,[number,number]>={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
   const d=deltas[e.key];if(!d)return;e.preventDefault();
-  const value=overlayQuad(where),p=value[activePoint.current],step=e.shiftKey?.01:.002;
+  const value=overlayQuad(where),p=value[activePoint.current],step=e.shiftKey ? 0.01 : 0.002;
   const next=replaceValidCorner(value,activePoint.current,{
    x:Math.max(0,Math.min(1,p.x+d[0]*step)),y:Math.max(0,Math.min(1,p.y+d[1]*step))
   });
@@ -229,7 +227,7 @@ export function MapWysiwygWorkspace({
  };
  const mapOverlay=(where:'source'|'output')=>{
   const box=where==='source'?currentBox:projectorBox,q=overlayQuad(where);
-  const canEdit=where==='source'?sourceAvailable:projectorEdit;
+  const canEdit=where==='source'?sourceAvailable&&sourceKind==='camera':projectorEdit;
   return <svg className="soma-map-wysiwyg-overlay" viewBox="0 0 640 360"
    role="group" aria-label={where==='source'?'Empat sudut lantai pada gambar sumber':'Empat sudut proyeksi'}
    tabIndex={canEdit?0:-1}
