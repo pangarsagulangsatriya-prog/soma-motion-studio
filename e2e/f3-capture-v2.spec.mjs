@@ -49,7 +49,8 @@ async function enterStage(page){
  const box=await stage.locator('canvas').boundingBox();
  expect(box).not.toBeNull();
  expect(Math.abs(box.width/box.height-2)).toBeLessThan(.03);
- await expect(page.getByRole('button',{name:'F3 Capture'})).not.toBeVisible();
+ expect(await page.evaluate(()=>document.fullscreenElement?.querySelector('.soma-app-sidebar, .f3-setup, .soma-stage-module-nav')===null)).toBe(true);
+ // CSS visibility checks see other DOM nodes even though native fullscreen excludes them.
  return stage;
 }
 test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; B-only pixels and Esc keep sources alive',async({page},testInfo)=>{
