@@ -401,6 +401,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  }
  function selectStageTwoLab(id:StageTwoLabId){
   if(!stageTwo)return;
+  const showInspector=window.innerWidth>=1360; // Small screens keep the instrument rail accessible.
   requestStageBlackout(()=>projection.setTransport('blackout'));
   requestSoftwarePreviewBlackout();
   setStageTwoActive(id);
@@ -409,11 +410,11 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   if(id==='archive'){setArchiveActive(true);return;}
   setArchiveActive(false);
   if(id==='liquid'||id==='echo'||id==='cut'||id==='body'){
-   selectScene(id);setTab('visual');setInspectorOpen(true);return;
+   selectScene(id);setTab('visual');setInspectorOpen(showInspector);return;
   }
-  selectScene('liquid');setInspectorOpen(true);
-  if(id==='sound'){setTab('sound');setControlsOpen(true);}
-  else if(id==='hydra'){setTab('visual');setControlsOpen(true);}
+  selectScene('liquid');setInspectorOpen(showInspector);
+  if(id==='sound'){setTab('sound');setControlsOpen(showInspector);}
+  else if(id==='hydra'){setTab('visual');setControlsOpen(showInspector);}
   else if(id==='capture'){setCaptureTab('photo');setCaptureOpen(true);}
  }
  function openStageOneFromTwo(){
