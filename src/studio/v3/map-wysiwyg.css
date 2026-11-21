@@ -236,7 +236,7 @@
  .stage-dual.map-r2-shell .soma-map-v4-actions>.map-r7-perform-cta{
   flex:1 1 125px;min-width:125px
  }
- .soma-map-v4-status [role="status"]{white-space:normal;overflow:visible}
+ .soma-map-v4-status [role="status"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .soma-map-v4-qa-popover{
   left:0;right:0;bottom:calc(100% + 8px);width:100%;max-height:min(65vh,520px)
  }
