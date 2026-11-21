@@ -87,6 +87,7 @@ test('Stage E2E: four workspaces keep one camera source and one session',async({
 test('Resolume Clean Feed opens the proper receiver, never silently reuses SOMA Direct',async({page})=>{
  await page.goto('/');
  await choose(page,'Simulasi 3D','simulator');
+ await page.getByRole('button',{name:'Langkah kiri'}).click();
  await page.getByRole('button',{name:'Perform workspace'}).click();
  await page.getByRole('button',{name:'Resolume',exact:true}).click();
  const popupPromise=page.waitForEvent('popup');
@@ -95,8 +96,24 @@ test('Resolume Clean Feed opens the proper receiver, never silently reuses SOMA 
  await expect(popup).toHaveURL(/stageSurface=floor/);
  await expect(popup).toHaveURL(/feed=resolume/);
  await expect(popup.locator('canvas[aria-label="Output Footprints berwarna"]')).toHaveCount(1);
- // Connection alone cannot advertise transmitted artwork.
- await expect(page.locator('.ops-r1-destination-status')).toContainText(/Feed mengalir|Feed Blackout \/ HOLD/);
+ // A connected popup alone is insufficient: require an ACK and visible canvas.
+ await expect(page.locator('.ops-r1-destination-status')).toContainText('Feed mengalir',{timeout:20000});
+ const artwork=popup.locator('canvas[aria-label="Output Footprints berwarna"]');
+ await expect(artwork).toHaveCSS('display','block',{timeout:20000});
+ const raster=await artwork.evaluate(canvas=>{
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  if(!ctx)return {ok:false,width:0,height:0};
+  const w=canvas.width,h=canvas.height;
+  const data=ctx.getImageData(0,0,w,h).data;
+  let nonBlack=0;
+  for(let y=0;y<h;y+=32)for(let x=0;x<w;x+=32){
+   const index=(y*w+x)*4;
+   if(data[index]+data[index+1]+data[index+2]>12)nonBlack++;
+  }
+  return {ok:nonBlack>0,width:w,height:h};
+ });
+ expect(raster.width).toBeGreaterThanOrEqual(640);
+ expect(raster.ok).toBe(true);
  await page.getByRole('button',{name:'SOMA Direct',exact:true}).click();
  await expect(page.locator('.ops-r1-destination-status')).not.toContainText('Feed mengalir');
 });
