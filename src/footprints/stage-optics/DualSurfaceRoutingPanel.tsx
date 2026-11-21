@@ -384,11 +384,11 @@ export function DualSurfaceRoutingPanel({
       </button>}
     </section>
 
-    {STAGE_HARDWARE_ENABLED&&<section className="map-r2-step map-r7-qa-step">
-     <div className="map-r2-step-head">
+    {STAGE_HARDWARE_ENABLED&&<details className="map-r2-step map-r7-qa-step map-r8-projector-setup">
+     <summary className="map-r2-step-head">
       <span className="map-r2-step-num">3</span>
-      <strong>Uji proyektor</strong>
-     </div>
+      <strong>Uji proyektor fisik</strong>
+     </summary>
      <label className="stage-dual-check map-r7-safety-check" title="Pastikan cahaya tidak mengenai mata/wajah; operator siap menjalankan Blackout fisik.">
       <input type="checkbox" disabled={!STAGE_HARDWARE_ENABLED} checked={operatorConfirm}
        aria-label="Area aman dari sorot mata/wajah; operator siap Blackout fisik"
@@ -445,7 +445,7 @@ export function DualSurfaceRoutingPanel({
       </div>
      </details>
      
-    </section>}
+    </details>}
      {onEnterPerform&&<button type="button" className="map-r7-perform-cta"
       onClick={handleEnterPerform} title="Buka ruang Perform">
       Lanjut Perform <ArrowRight size={13}/>
