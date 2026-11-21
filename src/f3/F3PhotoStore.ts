@@ -23,7 +23,7 @@ export class F3PhotoStore{
  get busy(){return this.inFlight;}
  nextSlot(replace:number|null=null){return replace!==null?replace:this.slots.findIndex(item=>!item);}
  async capture(params:{video:HTMLVideoElement;crop:F3Rect;cameraId:string;frameId:number;sourceTimestamp:number;
-  preset:F3PunchPreset|'manual';consent:boolean;replace?:number|null;eventId:string;fresh:boolean}):Promise<F3Photo>{
+  preset:F3PunchPreset|'manual';consent:boolean;replace?:number|null;eventId:string;fresh:boolean;stillValid?:()=>boolean}):Promise<F3Photo>{
   if(!params.consent)throw Error('Persetujuan penonton diperlukan.');
   if(!params.fresh)throw Error('Kamera B tidak mengirim frame segar.');
   if(!params.cameraId)throw Error('Sumber B tidak diketahui.');
@@ -37,6 +37,7 @@ export class F3PhotoStore{
    // Reuse legacy camera pixel capture; fixture MP4 needs the same drawImage ROI without MediaStream gating.
    const isStream=typeof MediaStream!=='undefined'&&params.video.srcObject instanceof MediaStream;
    const blob=isStream?(await capturePhoto(params.video,slot,false,crop)).blob:await captureFixture(params.video,crop);
+   if(params.stillValid&&!params.stillValid())throw Error('Consent dicabut atau Kamera B terputus sebelum foto selesai.');
    const url=URL.createObjectURL(blob);
    const item:F3Photo={id:params.eventId,slot,blob,url,createdAt:new Date().toISOString(),
     cameraId:sourceId,frameId,sourceTimestamp:params.sourceTimestamp,crop:{...crop},preset:params.preset,consent:true};
