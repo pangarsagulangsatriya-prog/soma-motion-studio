@@ -1,4 +1,4 @@
-name: Map R3 Camera Grid Fullscreen QA
+name: Map R3/R4 Calibration UX QA
 on:
   pull_request:
     paths:
@@ -7,6 +7,7 @@ on:
       - 'src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx'
       - 'src/footprints/stage-optics/dual-surface-routing.css'
       - 'e2e/map-r3-fullscreen.spec.mjs'
+      - 'e2e/map-r4-compact.spec.mjs'
       - 'tests/map-r3-camera-grid.test.ts'
       - '.github/workflows/map-r3-release.yml'
   push:
@@ -17,6 +18,7 @@ on:
       - 'src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx'
       - 'src/footprints/stage-optics/dual-surface-routing.css'
       - 'e2e/map-r3-fullscreen.spec.mjs'
+      - 'e2e/map-r4-compact.spec.mjs'
       - 'tests/map-r3-camera-grid.test.ts'
       - '.github/workflows/map-r3-release.yml'
 permissions:
@@ -35,8 +37,8 @@ jobs:
       - run: npm run build
       - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
       - run: npx playwright install --with-deps chromium
-      - name: Map R3 fullscreen and calibration UX desktop + mobile
-        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 map-r3-fullscreen.spec.mjs
+      - name: Map R3/R4 fullscreen and compact calibration UX desktop + mobile
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 map-r3-fullscreen.spec.mjs map-r4-compact.spec.mjs
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

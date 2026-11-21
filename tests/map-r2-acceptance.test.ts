@@ -161,7 +161,8 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  assert.match(monitor,/paintAuthenticFootprint/);
 
  // 3-step rail + single BODY output covering A and B + collapsed Advanced drawer
- assert.match(panel,/Pilih bidang/);
+ assert.match(panel,/<strong>Ukuran ruang<\/strong>/);
+ assert.match(panel,/className="map-r4-room-extra"|className="map-r4-disclosure map-r4-room-extra"/);
  assert.match(panel,/Cocokkan sudut/);
  assert.match(panel,/Uji proyektor/);
  assert.match(panel,/Satu output BODY mencakup mask tubuh bawah Performer A dan B/);
@@ -176,6 +177,9 @@ test('MAP-09..MAP-13 / MAP-16: Map workspace structure keeps 3-step flow, collap
  assert.match(panel,/useState\(true\)/);
  assert.match(panel,/STAGE_DIMENSION_PRESETS/);
  assert.match(panel,/map-r2-nudge-pad/);
+ assert.match(panel,/className="map-r4-disclosure map-r4-precision"/);
+ assert.match(panel,/Tarik titik 1–4 di monitor/);
+ assert.match(panel,/Pengaturan lengkap/);
 
  // Track-unified botanical-forest palette & centered 1252px layout across Compose & Map
  const composeCss=read('../src/studio/v3/mapping-studio-v4.css');
