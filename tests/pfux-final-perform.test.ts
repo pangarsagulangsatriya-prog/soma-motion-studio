@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PERFORM_DESTINATIONS,presentPerformDestination,routeChangeRequiresBlackout,performCueScope} from '../src/studio/v3/performDestinationModel.ts';
+import {PERFORM_DESTINATIONS,PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,routeChangeRequiresBlackout,performCueScope} from '../src/studio/v3/performDestinationModel.ts';
 import {evaluatePerformOutputSummary,deriveSurfaceBadge} from '../src/studio/v3/performOutputModel.ts';
 import {canStreamCleanFeed} from '../src/footprints/stage-optics/DualSurfaceSessionStore.ts';
 import type {SurfaceDeviceState} from '../src/footprints/stage-optics/DualSurfaceSessionStore.ts';
@@ -21,6 +21,7 @@ const view=(route:'soma'|'resolume'|'touchdesigner',summary:ReturnType<typeof st
 
 test('PF-UX-01: three output contracts distinguish visual feeds from local TD data',()=>{
  assert.deepEqual(PERFORM_DESTINATIONS.map(x=>x.id),['soma','resolume','touchdesigner']);
+ assert.deepEqual(PRIMARY_PERFORM_DESTINATIONS.map(x=>x.id),['soma','resolume']);
  assert.match(PERFORM_DESTINATIONS[0].description,/LIVE.*QA/);
  assert.match(PERFORM_DESTINATIONS[1].description,/belum membuktikan penerimaan/);
  assert.match(PERFORM_DESTINATIONS[2].description,/WebSocket lokal/);
@@ -58,7 +59,11 @@ test('PF-UX-04: changing route always orders blackout and never silently opens o
  const console=read('../src/studio/v3/OperatorStageConsole.tsx');
  assert.match(console,/blackoutAllDualSurfaces\('Tujuan output diganti/);
  assert.match(console,/window.dispatchEvent\(new Event\('soma:td-blackout'\)\)/);
- assert.match(console,/getDualSurfaceFeedUrl/);
+ assert.doesNotMatch(console,/getDualSurfaceFeedUrl/);
+ assert.match(console,/closeDualSurfaceOutputWindow\('floor'\)/);
+ assert.match(console,/PRIMARY_PERFORM_DESTINATIONS\.map/);
+ assert.match(console,/className="ops-r1-bridge-guide"/);
+ assert.match(console,/OBS Browser Source dengan URL feed tidak berbagi sesi SOMA/);
  assert.match(console,/STAGE_HARDWARE_ENABLED/);
  assert.doesNotMatch(console,/new ProjectionLink|getUserMedia\(/);
 });
@@ -103,7 +108,7 @@ test('PF-UX: Clean Feed reports actual frames, not just an open popup',()=>{
   floorQaOk:false,bodyQaOk:false,operatorConfirm:false
  });
  assert.equal(deriveSurfaceBadge('floor',feedDevice).status,'Feed');
- assert.equal(view('resolume',model).state,'Feed mengalir');
+ assert.equal(view('resolume',model).state,'Feed SOMA aktif');
  assert.notEqual(view('soma',model).state,'LIVE');
 });
 test('PF-UX: a feed needs explicit opening, a fresh source and a live raster; no QA is fabricated',()=>{
