@@ -96,7 +96,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    setPopupBlocked(false);setOutputNotice(summary.primaryAction.detail);return;
   }
   const res=openDualSurfaceOutputWindow(surface,isResolume?'resolume':'soma');
-  setPopupBlocked(res.popupBlocked);
+   if(res.ok&&isResolume&&held&&canResume)onResume();
+   setPopupBlocked(res.popupBlocked);
   setOutputNotice(res.message);
  };
 
@@ -214,7 +215,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
          return <div key={surface} className="ops-r1-channel" data-tone={badge.tone}>
           <div className="ops-r1-channel-meta">
            <b>{isFloor?'FLOOR':'BODY'}</b>
-           <span>{isResolume?(badge.opened?'Jendela terbuka':'Belum dibuka'):badge.status}</span>
+           <span>{isResolume?(badge.status==='Feed'?'Frame mengalir':badge.opened?'Blackout / menunggu frame':'Belum dibuka'):badge.status}</span>
           </div>
           <div className="ops-r1-channel-btns">
            <button type="button" disabled={!isResolume&&!summary.canOpenOutput}
