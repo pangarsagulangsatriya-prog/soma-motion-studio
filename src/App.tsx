@@ -74,7 +74,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const stageSession=useStageSession();
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
- const [footprintsActive,setFootprintsActive]=useState(stageTwo?false:defaultFootprintsWorkspace);
+ const [footprintsActive,setFootprintsActive]=useState<boolean>(()=>stageTwo?false:defaultFootprintsWorkspace());
  const [stageTwoActive,setStageTwoActive]=useState<StageTwoLabId>('liquid');
  const [footprintsOperator,setFootprintsOperator]=useState(false);
  const [softwareBlackout,setSoftwareBlackout]=useState(false);
