@@ -20,7 +20,7 @@ test('RESET-00: V5 storage uses a distinct namespace',()=>{
 test('RESET-00: original Stage embeds one Composer with no gallery or parallel source decoder',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
- assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen\}/);
+ assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen&&!operatorMode\}/);
  assert.match(stage,/className="fp-stage-overview" ref=\{composeLayout\.overview\}/);
  assert.match(stage,/hidden=\{view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
  assert.doesNotMatch(composer,/SceneEffectBrowser|ARTISTIC_CATALOG|HydraEffectInspector|FlagshipInspector/);
