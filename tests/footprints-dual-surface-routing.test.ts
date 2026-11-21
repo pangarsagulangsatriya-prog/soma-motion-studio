@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {identityQuad} from '../src/projection/geometry.ts';
 import {assessSurfaceProof,defaultStageSurfacePlan,emptySurfaceProof,outputSurfaceDecision,
- recordSurfaceSample,stageSurfaceReport,stageSurfaceSignature,stageSurfaceState,
+ recordSurfaceSample,stageSurfaceReport,stageSurfaceSignature,stageSurfaceState,cleanFeedSurfaceState,
  SURFACE_TARGETS,validateStageSurfacePlan,type StageSurface,type StageOutputContext,
  type SurfaceProof} from '../src/footprints/stage-optics/DualSurfaceCalibration.ts';
 
@@ -130,4 +130,18 @@ test('report includes manual evidence and provisional result only, never Product
  assert.match(report.caveat,/Tidak menyatakan penerimaan Production/);
  assert.equal(report.proof?.samples.length,5);
  assert.equal(report.plan.surface,'floor');
+});
+
+// Resolume/OBS receives unwarped, full-brightness source art; Map warp stays physical.
+test('Clean Feed stays unwarped 16:9 and avoids physical mapping state',()=>{
+ const plan=defaultStageSurfacePlan('floor');
+ const s=cleanFeedSurfaceState(plan);
+ assert.equal(s.transport,'live');
+ assert.equal(s.blank,false);
+ assert.equal(s.config.registration.enabled,false);
+ assert.equal(s.config.mirror,false);
+ assert.equal(s.config.brightness,1);
+ assert.equal(s.config.resolution,plan.resolution);
+ assert.deepEqual(s.config.quad,identityQuad());
+ assert.equal(s.config.placement.scale,1);
 });
