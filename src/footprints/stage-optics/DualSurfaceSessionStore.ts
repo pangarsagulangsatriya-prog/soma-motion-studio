@@ -331,8 +331,8 @@ function sendTick(now:number){
   if(decision.mode==='test'&&testCanvases){
    canvas=testCanvases[id];
    const ok=drawSurfaceTestPattern(canvas,id,
-    id==='body'?'B1':state.epoch[id]>=0?state.target[id]:'F1',
-    stage?.mask??null);
+    state.target[id]||(id==='body'?'B1':'F1'),
+    stage?.mask??null,stage?.mode==='simulation');
    if(!ok)canvas=null;
   }
   if(canvas&&canvas.width>=16&&canvas.height>=16){
