@@ -295,10 +295,10 @@ export function MapWysiwygWorkspace({
      <canvas ref={sourceCanvas} width={W} height={H} aria-label="Gambar input kamera atau video"/>
      {sourceAvailable&&mapOverlay('source')}
     </div>
-    <div className="soma-map-wysiwyg-controls">
-     <button type="button" disabled={!sourceAvailable} onClick={()=>setFrozen(v=>!v)}>{frozen?'Lanjutkan gambar':'Bekukan gambar'}</button>
-     <button type="button" disabled={!cameraDirty||sourceKind!=='camera'} onClick={applyCamera}><Check size={14}/> Terapkan bidang</button>
-    </div>
+    {sourceAvailable&&<div className="soma-map-wysiwyg-controls">
+     <button type="button" onClick={()=>setFrozen(v=>!v)}>{frozen?'Lanjutkan gambar':'Bekukan gambar'}</button>
+     {cameraDirty&&sourceKind==='camera'&&<button type="button" onClick={applyCamera}><Check size={14}/> Terapkan bidang</button>}
+    </div>}
     <p className="soma-map-wysiwyg-caption">
      {sourceKind==='camera'?(calibrated?'Bidang kamera tersimpan.':cameraDirty?'Periksa sudut, lalu terapkan.':'Tarik empat sudut mengikuti lantai pada gambar.'):
      'Kalibrasi kamera hanya tersedia untuk input kamera aktif.'}
@@ -321,7 +321,7 @@ export function MapWysiwygWorkspace({
      }}>
       <ScanLine size={14}/> {projectorEdit?'Simpan bidang':'Sesuaikan proyektor'}
      </button>
-     <button type="button" onClick={cancel} disabled={!cameraDirty&&!outputDirty}>Batalkan</button>
+     {(cameraDirty||outputDirty)&&<button type="button" onClick={cancel}>Batalkan</button>}
     </div>
     <p className="soma-map-wysiwyg-caption">{projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':cameraDirty?'Posisi kaki mengikuti sudut kamera yang sedang digeser. Terapkan untuk menyimpan.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
    </div>
@@ -332,7 +332,8 @@ export function MapWysiwygWorkspace({
      <><button type="button" onClick={onToggleSimPlay}>{simState.playing?<Pause size={14}/>:<Play size={14}/>} {simState.playing?'Jeda':'Jalankan'}</button>
      <button type="button" onClick={onStopSim}>Akhiri simulasi</button></>:
      <button type="button" onClick={onStartSim}><Play size={14}/> Coba simulasi</button>)}
-    <button type="button" onClick={reset} title="Reset bidang aktif"><RotateCcw size={14}/> {resetArmed?'Konfirmasi reset':'Ulangi sudut'}</button>
+    {(projectorEdit||(sourceKind==='camera'&&sourceAvailable))&&
+     <button type="button" onClick={reset} title="Reset bidang aktif"><RotateCcw size={14}/> {resetArmed?'Konfirmasi reset':'Ulangi sudut'}</button>}
    </div>
    <span>{status||'Geser sudut pada gambar. Hasil diperbarui langsung.'}</span>
   </div>
