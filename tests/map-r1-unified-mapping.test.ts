@@ -41,11 +41,11 @@ test('MAP-R1: navigation goes to Stage Map instead of opening legacy Projector w
  assert.match(stage,/case 'mapping':setView\('stage'\)/);
  assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen&&!operatorMode\}/);
 });
-test('MAP-R1: 4-point editor reuses safety-critical editPlan and numerical controls as advanced',()=>{
+test('MAP-R1: direct 4-point Map monitor uses safe editPlan without duplicate technical editor',()=>{
  const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
- assert.match(panel,/<MapFourCornerEditor key=\{selected\}/);
- assert.match(panel,/onCommit=\{\(group,quad\)=>editPlan\(selected,p=>\(\{\.\.\.p,\[group\]:quad\}\)\)\}/);
- assert.match(panel,/Advanced · angka presisi empat titik/);
+ assert.match(panel,/onCommitProjectorQuad=\{commitMonitorQuad\}/);
+ assert.match(panel,/editPlan\(selected,p=>\(\{\.\.\.p,projectorQuad:quad\}\)\)/);
+ assert.doesNotMatch(panel,/Advanced · angka presisi empat titik/);
  assert.match(panel,/urgentBlackout\(id\);/);
 });
 test('MAP-R1: hardware QA remains independent for BODY/FLOOR and requires five physical measurements',()=>{
@@ -63,13 +63,13 @@ test('MAP-R1: hardware QA remains independent for BODY/FLOOR and requires five p
 test('MAP-R6: Map stays focused on calibration and physical QA; LIVE handoff belongs to Perform',()=>{
  const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const css=source('../src/footprints/stage-optics/dual-surface-routing.css');
- assert.match(panel,/<summary><SlidersHorizontal size=\{12\}\/> Teknis &amp; diagnostik<\/summary>/);
+ assert.doesNotMatch(panel,/Teknis &amp; diagnostik/);
  assert.doesNotMatch(panel,/Grid homografi 3 × 3/);
  assert.doesNotMatch(panel,/className="map-r2-live-btn"/);
  assert.doesNotMatch(panel,/changeMode\(id,'live'\)/);
  assert.match(panel,/QA Fisik 5 Titik/);
  assert.match(panel,/samples\.length<5/);
- assert.match(panel,/Lanjutkan pengaturan LIVE di Perform/);
+ assert.match(panel,/title="Buka ruang Perform"/);
  assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
 test('MAP-R1: Stage Map uses existing BODY/FLOOR compositor and routing; no extra camera',()=>{
