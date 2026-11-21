@@ -329,6 +329,9 @@ export function FootprintsStageWorkspace({
  };
  useEffect(()=>{
   if(!operatorMode)return;
+  // Stage 1 local navigation may bypass App's global nav. Always fail closed
+  // for physical projector transport, without blacking out software preview.
+  onBlackout();
   // Archive unmounts when entering Perform; its dual windows are also
   // disarmed by the App-level global Blackout before the mode is changed.
   setCalibrationOpen(false);
