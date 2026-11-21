@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {cueToFinalSurface} from '../src/studio/v3/PerformFinalPreview.tsx';
+import {cueToFinalSurface} from '../src/studio/v3/performFinalPreviewModel.ts';
 
 const read=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8');
 
