@@ -1,4 +1,4 @@
-import {STAGE_TWO_ITEMS,type StageTwoLabId} from './labsCatalog.ts';
+import {STAGE_TWO_ITEMS,isStageTwoLab,type StageTwoLabId} from './labsCatalog.ts';
 
 /** Stage 2's local instrument selector. All controls operate the existing legacy engines. */
 export function StageTwoInstrumentNav({active,onSelect}:{
@@ -16,7 +16,7 @@ export function StageTwoInstrumentNav({active,onSelect}:{
    {STAGE_TWO_ITEMS.map(item=><button type="button" key={item.id}
     aria-current={active===item.id?'page':undefined}
     className="soma-stage2-instrument-tab"
-    onClick={()=>{if(active!==item.id)onSelect(item.id);}}>
+    onClick={()=>{if(active!==item.id&&isStageTwoLab(item.id))onSelect(item.id);}}>
     {item.title}
    </button>)}
   </nav>
