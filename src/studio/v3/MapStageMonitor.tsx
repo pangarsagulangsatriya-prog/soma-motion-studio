@@ -622,10 +622,7 @@ export function MapStageMonitor({
  };
 
  const screenQuad=draftQuad.map(p=>stageFloorToScreen(p.x,p.y,W,H,stageDimensions));
- const activePt=draftQuad[activeCorner];
  const activeScreen=screenQuad[activeCorner];
- const meterX=(activePt.x*stageDimensions.widthM).toFixed(2);
- const meterY=(activePt.y*stageDimensions.depthM).toFixed(2);
  const accentHex=selected==='floor'?'#cbe9a7':'#80cfd8';
 
  const renderStagePane=()=>(
@@ -827,7 +824,7 @@ export function MapStageMonitor({
      ['stage','Panggung'],
      ['camera','Kamera'],
      ['output','Output']
-    ] as const).map(([id,label)=><button type="button" key={id}
+    ] as const).map(([id,label])=><button type="button" key={id}
       aria-label={id==='output'?'Hasil Proyektor':label} aria-pressed={view===id}
       onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
     <details ref={viewMenuRef} className="map-r5-other-views">
@@ -836,7 +833,7 @@ export function MapStageMonitor({
      {([
       ['align','Bandingkan'],
       ['split','Split']
-     ] as const).map(([id,label)=><button type="button" key={id} aria-pressed={view===id}
+     ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
       onClick={()=>{onChangeView(id);if(viewMenuRef.current)viewMenuRef.current.open=false;}}>{label}</button>)}
      </div>
     </details>
