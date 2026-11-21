@@ -1,14 +1,14 @@
 import {useState,useSyncExternalStore} from 'react';
 import {
- ArrowLeft,ArrowRight,Circle,ExternalLink,MonitorOff,Pause,Play,
+ ArrowLeft,ArrowRight,Circle,ExternalLink,MonitorOff,Pause,Play,Check,
  Settings2,ShieldAlert,Tv,X,Monitor,Clapperboard,Waypoints,Info,ChevronDown
 } from 'lucide-react';
 import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
-import {PERFORM_DESTINATIONS,PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
-import {detectResolumeHostPlatform,getResolumeBridgeRecipe,getPerformRouteDescription,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
+import {PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
+import {detectResolumeHostPlatform,getResolumeBridgeRecipe,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
 import type {StageSurface} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import './ops-r1-perform.css';
+import './perform-three-routes.css';
 
 type Props={
  index:number;onPrevious:()=>void;onNext:()=>void;
@@ -73,10 +74,31 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  const isTouchDesigner=outputRouteMode==='touchdesigner';
  const hostPlatform=detectResolumeHostPlatform(typeof navigator==='undefined'?'':navigator.userAgent);
  const bridge=getResolumeBridgeRecipe(hostPlatform);
+ const sourceReady=!!sourceKind&&cameraOk;
  const destination=presentPerformDestination({
-  route:outputRouteMode,primary:summary.primaryAction,
+  route:outputRouteMode,primary:summary.primaryAction,sourceReady,
   floor:summary.floorBadge,body:summary.bodyBadge
  });
+ const feedFrameReady=summary.floorBadge.tone==='feed'||summary.bodyBadge.tone==='feed';
+ const directLive=summary.floorBadge.tone==='live'||summary.bodyBadge.tone==='live';
+ const routeSteps=isResolume?[
+  {label:'Feed SOMA',done:feedFrameReady,detail:'Frame sampai ke jendela feed'},
+  {label:'OBS',done:false,detail:'Tangkap jendela dan kirim melalui '+bridge.transport},
+  {label:'Resolume',done:false,detail:'Pilih sender '+bridge.transport+' pada clip'}
+ ]:[
+  {label:'Track',done:sourceReady&&identityOk,detail:'Sumber gerak siap'},
+  {label:'Map QA',done:floorQaOk||bodyQaOk,detail:'Lulus pemeriksaan fisik'},
+  {label:'LIVE',done:directLive,detail:'Proyektor menerima perintah LIVE'}
+ ];
+ const routePurpose=isTouchDesigner?'Gerak kaki A/B · WebSocket lokal':
+  isResolume?'Visual · lewat OBS '+bridge.transport:'Visual · langsung ke proyektor';
+ const shortStatus=!sourceReady?'Pilih sumber di Track':
+  !identityOk?'Periksa aktor A/B di Track':
+  outputRouteMode==='soma'&&!floorOk?'Periksa kalibrasi Map':
+  isResolume?'Periksa gambar di OBS dan Resolume':
+  destination.kind==='info'?'Periksa pengaturan output':
+  destination.kind==='qa'?'Selesaikan uji 5 titik di Map':
+  destination.kind==='arm'?'QA selesai · konfirmasi LIVE':destination.hint;
  const handleRouteChange=(next:PerformOutputRouteMode)=>{
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
   // Switching destinations cannot silently leave prior output illuminating the stage.
@@ -114,7 +136,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
  const handlePrimaryAction=()=>{
   if(destination.kind==='info'){setOutputDetailsOpen(true);return;}
-  if(isResolume){handleOpenSurface('floor');return;}
+  if(isResolume){
+   if(destination.kind==='setup'){onGoTrack?.();return;}
+   handleOpenSurface('floor');return;
+  }
   const act=summary.primaryAction;
   if(act.kind==='open-output'||act.kind==='monitor-live'){
    handleOpenSurface(act.surface);return;
@@ -155,7 +180,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
     <div className="ops-r1-output-top">
      <strong>Output</strong>
      <button type="button" className="ops-r1-mini-help" aria-label="Bantuan tujuan output"
-      title="SOMA Direct ke proyektor atau Clean Feed ke Resolume"
+      title="Pilih proyektor SOMA, video Resolume, atau data TouchDesigner"
       aria-expanded={outputDetailsOpen} onClick={()=>setOutputDetailsOpen(value=>!value)}>
       <Info size={15} aria-hidden="true"/>
      </button>
@@ -170,51 +195,61 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <span>{item.label}</span>
      </button>)}
     </div>
-    <p className="ops-r1-route-contract" data-route={outputRouteMode}>
-      {isTouchDesigner?'Data kaki A/B → TouchDesigner':getPerformRouteDescription(outputRouteMode==='resolume'?'resolume':'soma')}
-     </p>
+    <div className="ops-r1-route-contract" data-route={outputRouteMode}>
+      <span className="ops-r1-route-type" aria-hidden="true">{isTouchDesigner?'DATA':isResolume?'FEED':'LIVE'}</span>
+      <span>{routePurpose}</span>
+     </div>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
      <>
-      <div key={outputRouteMode+destination.state} className="ops-r1-destination-status"
-       data-tone={destination.tone} role="status" aria-live="polite">
-       <span className="ops-r1-status-indicator" aria-hidden="true"/>
-       <strong>{destination.state}</strong>
-       <button type="button" className="ops-r1-mini-help" aria-label="Penjelasan status output"
-        title={destination.hint} aria-expanded={outputDetailsOpen}
-        onClick={()=>setOutputDetailsOpen(value=>!value)}>
-        <Info size={15} aria-hidden="true"/>
-       </button>
-      </div>
-      {outputRouteMode==='soma'&&(destination.tone==='attention'||destination.tone==='locked')&&
-       <p className="ops-r1-direct-reason" role="status">{destination.hint}</p>}
-      {held&&!isTouchDesigner&&<button type="button" className="ops-r1-preview-resume"
-        disabled={!canResume} onClick={onResume}>Lanjutkan Visual</button>}
+      <div className="ops-r1-destination-status ops-r1-compact-state"
+        data-tone={destination.tone} role="status" aria-live="polite">
+        <span className="ops-r1-status-indicator" aria-hidden="true"/>
+        <div className="ops-r1-status-copy">
+         <strong>{destination.state}</strong>
+         <small>{shortStatus}</small>
+        </div>
+        <button type="button" className="ops-r1-mini-help" aria-label="Penjelasan status output"
+         title={destination.hint} aria-expanded={outputDetailsOpen}
+         onClick={()=>setOutputDetailsOpen(value=>!value)}>
+         <Info size={15} aria-hidden="true"/>
+        </button>
+       </div>
+       <div className="ops-r1-route-steps" role="list"
+        aria-label={isResolume?'Alur menyambungkan Resolume':'Persiapan output proyektor'}>
+        {routeSteps.map((step,i)=><div key={step.label} className="ops-r1-route-step"
+         role="listitem" data-complete={step.done} title={step.detail}>
+         <span className="ops-r1-step-marker">{step.done?<Check size={12} aria-hidden="true"/>:String(i+1)}</span>
+         <span>{step.label}</span>
+        </div>)}
+       </div>
+      {held&&canResume&&<button type="button" className="ops-r1-preview-resume"
+        onClick={onResume}>Lanjutkan Visual</button>}
        {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
        data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
        onClick={handlePrimaryAction}>
-       <Tv size={14}/>{destination.action}
+       <Tv size={14}/>{destination.kind==='setup'?(!cameraOk||!identityOk?'Buka Track':'Buka Map'):destination.action}
       </button>}
       {isResolume&&<details className="ops-r1-bridge-guide" aria-label="Cara hubungkan Resolume">
-       <summary>Hubungkan ke Resolume <ChevronDown size={14}/></summary>
+       <summary><span>Cara sambungkan · {bridge.transport}</span><ChevronDown size={14}/></summary>
        <div className="ops-r1-bridge-steps">
-        <div className="ops-r1-bridge-protocol">{bridge.transport} · {hostPlatform==='mac'?'Mac':hostPlatform==='windows'?'Windows':'Sistem belum dikenali'}</div>
-        <ol>
-         <li>Buka Feed FLOOR atau BODY di SOMA. Biarkan jendelanya tetap terbuka.</li>
-         <li>Di OBS: {bridge.obsCapture}. Pilih <b>SOMA / RESOLUME FEED · FLOOR</b> atau BODY.</li>
-         <li>{bridge.obsOutput}. Lalu {bridge.resolumeSource}.</li>
-        </ol>
-        <p>Gunakan Window Capture. OBS Browser Source dengan URL feed tidak berbagi sesi SOMA.</p>
+        <div className="ops-r1-visual-instructions">
+         <div><b>01 · SOMA</b><span>Buka Feed FLOOR / BODY</span></div>
+         <div><b>02 · OBS</b><span>{bridge.obsCapture}</span></div>
+         <div><b>03 · Resolume</b><span>{bridge.resolumeSource}</span></div>
+        </div>
+        <p className="ops-r1-bridge-confirm">Aktifkan {bridge.obsOutput}. Periksa gambar bergerak di Resolume.</p>
         <div className="ops-r1-bridge-links">
          {bridge.pluginUrl&&<a href={bridge.pluginUrl} target="_blank" rel="noopener noreferrer">
-          Pasang {bridge.pluginName} <ExternalLink size={12}/></a>}
+          Plugin {bridge.pluginName} <ExternalLink size={12}/></a>}
          <a href={RESOLUME_BRIDGE_DOCS.resolume} target="_blank" rel="noopener noreferrer">
-          Panduan Resolume <ExternalLink size={12}/></a>
+          Manual Resolume <ExternalLink size={12}/></a>
         </div>
-        <small>Status Feed SOMA hanya mengukur frame sampai popup. Periksa Sources → Syphon/Spout di Resolume untuk memastikan gambar diterima.</small>
+        <small>OBS Browser Source dengan URL feed tidak berbagi sesi SOMA. Pakai Window Capture.</small>
+        <small className="ops-r1-bridge-caution">SOMA hanya melihat status popup. Pastikan gambar diterima di Resolume.</small>
        </div>
-      </details>}
+       </details>}
       {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
        role={popupBlocked?'alert':'status'}>
        <span>{outputNotice}</span>
@@ -225,10 +260,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        <summary><span>Pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
        <div className="ops-r1-detail-content">
        <p className="ops-r1-destination-explain">{destination.hint}</p>
-       <p>{PERFORM_DESTINATIONS.find(item=>item.id===outputRouteMode)?.description}</p>
-       {!isResolume&&<p className="ops-r1-build-meta">Build output: {STAGE_HARDWARE_ENABLED?'diizinkan · tetap perlu QA Map':'terkunci'} · revisi {import.meta.env.VITE_SOMA_BUILD_ID?.slice(0,8)||'lokal'}</p>}
-       {isResolume&&<p>Feed browser memerlukan OBS dan plugin lokal agar tampil pada Sources Resolume.</p>}
-       {!isResolume&&<p>{summary.primaryAction.detail}</p>}
+       {!isResolume&&<p className="ops-r1-build-meta">Build: {STAGE_HARDWARE_ENABLED?'output tersedia, QA wajib':'proyektor terkunci'} · {import.meta.env.VITE_SOMA_BUILD_ID?.slice(0,8)||'lokal'}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
         {(['floor','body'] as const).map(surface=>{
          const badge=surface==='floor'?summary.floorBadge:summary.bodyBadge;
@@ -260,14 +292,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        </div>
       </details>
      </>}
-     {isTouchDesigner?
-      <button type="button" className="ops-r1-back-visual" onClick={()=>handleRouteChange('soma')}>
-       <ArrowLeft size={12}/> Kembali ke output visual
-      </button>:
-      <details className="ops-r1-advanced-route">
-       <summary>Lanjutan · TouchDesigner</summary>
-       <button type="button" onClick={()=>handleRouteChange('touchdesigner')}>Buka jalur data TouchDesigner</button>
-      </details>}
+     {isTouchDesigner&&<small className="ops-r1-route-endnote">Proyektor TouchDesigner diatur di aplikasi TouchDesigner.</small>}
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}

@@ -7,8 +7,8 @@ export const PERFORM_DESTINATIONS=[
  {id:'resolume',label:'Resolume',medium:'Visual · Clean Feed',description:'Jendela 16:9 → OBS → Syphon/Spout → Resolume. Feed terbuka belum membuktikan penerimaan di Resolume.'},
  {id:'touchdesigner',label:'TouchDesigner',medium:'Data · Kaki A/B',description:'Posisi kaki, kontak, slide, pivot dan cue melalui WebSocket lokal. Visual dan izin proyektor dikelola di TouchDesigner.'}
 ] as const satisfies ReadonlyArray<{id:PerformOutputRouteMode;label:string;medium:string;description:string}>;
-/** Keep the experimental TouchDesigner tool in advanced controls, not in the two primary routes. */
-export const PRIMARY_PERFORM_DESTINATIONS=PERFORM_DESTINATIONS.filter(item=>item.id!=='touchdesigner');
+/** All three output destinations are visible and equally selectable in Perform. */
+export const PRIMARY_PERFORM_DESTINATIONS=PERFORM_DESTINATIONS;
 
 export type DestinationTone='locked'|'attention'|'idle'|'open'|'live';
 export type DestinationPresentation={
@@ -19,6 +19,7 @@ export type DestinationPresentation={
 export function presentPerformDestination(input:{
  route:PerformOutputRouteMode;
  primary:PerformPrimaryAction;
+ sourceReady?:boolean;
  floor:PerformSurfaceBadge;
  body:PerformSurfaceBadge;
 }):DestinationPresentation{
@@ -28,6 +29,11 @@ export function presentPerformDestination(input:{
   tone:'idle',action:'Atur koneksi',kind:'td-panel'
  };
  if(route==='resolume'){
+  // A feed can be opened without any source; never call that a usable connection.
+  if(input.sourceReady===false)return {
+   state:'Sumber belum siap',hint:'Buka Track dan pilih sumber gerak sebelum membuka Feed SOMA.',
+   tone:'attention',action:'Buka Track',kind:'setup'
+  };
   const open=floor.opened||body.opened;
   const connected=floor.connected||body.connected;
   const streaming=floor.status==='Feed'||body.status==='Feed';

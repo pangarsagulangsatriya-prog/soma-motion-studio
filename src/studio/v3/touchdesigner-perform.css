@@ -78,3 +78,35 @@
  .fp-operator-mode .soma-td-details>summary svg,
  .fp-operator-mode .soma-td-info-button,.fp-operator-mode .soma-td-primary{transition:none;transform:none!important}
 }
+
+/* The receiver walkthrough stays behind setup; no walls of text in Perform. */
+.fp-operator-mode .soma-td-route-steps{margin:1px 0 2px}
+.fp-operator-mode .soma-td-status strong{min-width:0;overflow-wrap:anywhere;text-align:right}
+.fp-operator-mode .soma-td-feedback{font-size:10.5px;line-height:1.4;margin:6px 0;color:#b9d1ba}
+.fp-operator-mode .soma-td-setup-visual{display:grid;gap:5px;margin-top:9px}
+.fp-operator-mode .soma-td-setup-visual>div{
+ display:grid;grid-template-columns:minmax(0,114px) minmax(0,1fr);
+ align-items:start;gap:7px;padding:8px;border:1px solid #39503e;
+ border-radius:7px;background:#101e15;
+}
+.fp-operator-mode .soma-td-setup-visual b{font-size:10px;color:#d8edcf}
+.fp-operator-mode .soma-td-setup-visual span{font-size:10.5px;line-height:1.35;color:#b4cbb7;overflow-wrap:anywhere}
+.fp-operator-mode .soma-td-script-links{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.fp-operator-mode .soma-td-script-links a{
+ display:inline-flex;padding:7px 9px;border:1px solid #527659;border-radius:6px;
+ color:#d8e9d3;text-decoration:none;font-size:10.5px;font-weight:650;
+}
+.fp-operator-mode .soma-td-script-links a:hover{background:#284231}
+.fp-operator-mode .soma-td-help>summary{
+ display:flex;align-items:center;justify-content:space-between;gap:7px;
+ min-height:34px;list-style:none;
+}
+.fp-operator-mode .soma-td-help>summary::-webkit-details-marker{display:none}
+.fp-operator-mode .soma-td-help[open]>summary svg{transform:rotate(180deg)}
+.fp-operator-mode .soma-td-help small{display:flex;align-items:flex-start;gap:6px;margin-top:8px;font-size:10px;line-height:1.4;color:#abc1af}
+.fp-operator-mode .soma-td-help code{display:inline-block;max-width:100%;padding:2px 4px;background:#09150d;border-radius:3px}
+@media(max-width:410px){
+ .fp-operator-mode .soma-td-setup-visual>div{grid-template-columns:1fr;gap:3px}
+ .fp-operator-mode .soma-td-status span{font-size:10px}
+ .fp-operator-mode .soma-td-status strong{font-size:10px}
+}

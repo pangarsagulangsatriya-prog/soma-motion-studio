@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Link2,Unplug,Activity,FlaskConical,ShieldAlert,Info,ChevronDown} from 'lucide-react';
+import {Link2,Unplug,Activity,FlaskConical,ShieldAlert,Info,ChevronDown,Check} from 'lucide-react';
 import {TouchDesignerClient,type TdBridgeStatus} from './touchDesignerClient.ts';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {STAGE_BLACKOUT_EVENT} from '../../footprints/stage-optics/StageBlackout.ts';
@@ -57,11 +57,20 @@ export function TouchDesignerPerformPanel({getSnapshot,activeSlot,cueLabel,held}
    {streaming?'Hentikan Data':connected?'Mulai Kirim Data':
     /^[A-Za-z0-9_-]{12,128}$/.test(code.trim())?'Hubungkan TouchDesigner':'Atur Koneksi'}
   </button>
+  <div className="ops-r1-route-steps soma-td-route-steps" role="list" aria-label="Langkah sambungan TouchDesigner">
+   {([{label:'Receiver',done:false,help:'Jalankan Web Server DAT dan Script CHOP'},
+     {label:'Hubungkan',done:connected,help:'Handshake WebSocket dengan kode sesi'},
+     {label:'Kirim data',done:streaming,help:'State kaki dikirim, periksa CHOP di TD'}] as const).map((step,i)=>
+    <div key={step.label} className="ops-r1-route-step" role="listitem"
+     data-complete={step.done} title={step.help}>
+     <span className="ops-r1-step-marker">{step.done?<Check size={12} aria-hidden="true"/>:i+1}</span>
+     <span>{step.label}</span>
+    </div>)}
+  </div>
   <details className="soma-td-details" open={settingsOpen}
    onToggle={event=>setSettingsOpen(event.currentTarget.open)}>
    <summary><span>Koneksi &amp; pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
    <div className="soma-td-detail-body">
-   <p className="soma-td-contract">Kirim posisi kaki dan event ke TouchDesigner. Output proyektor diatur di TouchDesigner.</p>
    <div className="soma-td-connection-fields">
     <label>Alamat lokal<input aria-label="Alamat WebSocket TouchDesigner" value={address}
      disabled={connected||connecting} spellCheck={false} placeholder="127.0.0.1:8765"
@@ -80,12 +89,22 @@ export function TouchDesignerPerformPanel({getSnapshot,activeSlot,cueLabel,held}
      <Unplug size={13}/>Putus
     </button>}
    </div>
-   <p className="soma-td-info">A/B · contact, slide, pivot · {status.fps.toFixed(0)} Hz · {status.sentEvents} event</p>
-   <p className="soma-td-warning"><ShieldAlert size={13}/> Gunakan gate proyektor dan Blackout terpisah di TouchDesigner.</p>
-   <details className="soma-td-help"><summary>Setup TouchDesigner</summary>
-    <p>Web Server DAT di 127.0.0.1:8765, callbacks DAT dan Script CHOP.
-     Ambil kode sesi melalui <code>op('webserver1').fetch('soma_token')</code>
-     pada Textport TouchDesigner. Izin jaringan lokal mungkin diperlukan.</p>
+   {connected&&<p className="soma-td-feedback" role="status">{status.message}</p>}
+   {streaming&&<p className="soma-td-info">Dikirim {status.fps.toFixed(0)} Hz · {status.sentEvents} event · cek hasil di Script CHOP</p>}
+   <details className="soma-td-help"><summary>Pasang receiver di TouchDesigner <ChevronDown size={14}/></summary>
+    <div className="soma-td-setup-visual">
+     <div><b>01 · Web Server DAT</b><span>127.0.0.1 · port 8765 · Active ON</span></div>
+     <div><b>02 · Callbacks DAT</b><span>Tempel skrip receiver dan aktifkan ulang server</span></div>
+     <div><b>03 · Script CHOP</b><span>Tempel skrip CHOP untuk kanal kaki A/B</span></div>
+    </div>
+    <p>Kode sesi dari Textport: <code>op('webserver1').fetch('soma_token')</code></p>
+    <div className="soma-td-script-links">
+     <a href="https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/blob/main/touchdesigner/soma_webserver_callbacks.py"
+      target="_blank" rel="noopener noreferrer">Skrip Web Server</a>
+     <a href="https://github.com/pangarsagulangsatriya-prog/soma-motion-studio/blob/main/touchdesigner/soma_script_chop.py"
+      target="_blank" rel="noopener noreferrer">Skrip CHOP</a>
+    </div>
+    <small><ShieldAlert size={12} aria-hidden="true"/> Output proyektor memerlukan gate manual di TouchDesigner.</small>
    </details>
    </div>
   </details>

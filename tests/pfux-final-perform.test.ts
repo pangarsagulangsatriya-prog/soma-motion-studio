@@ -21,7 +21,7 @@ const view=(route:'soma'|'resolume'|'touchdesigner',summary:ReturnType<typeof st
 
 test('PF-UX-01: three output contracts distinguish visual feeds from local TD data',()=>{
  assert.deepEqual(PERFORM_DESTINATIONS.map(x=>x.id),['soma','resolume','touchdesigner']);
- assert.deepEqual(PRIMARY_PERFORM_DESTINATIONS.map(x=>x.id),['soma','resolume']);
+ assert.deepEqual(PRIMARY_PERFORM_DESTINATIONS.map(x=>x.id),['soma','resolume','touchdesigner']);
  assert.match(PERFORM_DESTINATIONS[0].description,/LIVE.*QA/);
  assert.match(PERFORM_DESTINATIONS[1].description,/belum membuktikan penerimaan/);
  assert.match(PERFORM_DESTINATIONS[2].description,/WebSocket lokal/);
@@ -61,7 +61,9 @@ test('PF-UX-04: changing route always orders blackout and never silently opens o
  assert.match(console,/window.dispatchEvent\(new Event\('soma:td-blackout'\)\)/);
  assert.doesNotMatch(console,/getDualSurfaceFeedUrl/);
  assert.match(console,/closeDualSurfaceOutputWindow\('floor'\)/);
- assert.match(console,/PRIMARY_PERFORM_DESTINATIONS\.map/);
+ assert.ok(console.includes('PRIMARY_PERFORM_DESTINATIONS.map('));
+ assert.doesNotMatch(console,/ops-r1-advanced-route/);
+ assert.match(console,/ops-r1-route-steps/);
  assert.match(console,/className="ops-r1-bridge-guide"/);
  assert.match(console,/OBS Browser Source dengan URL feed tidak berbagi sesi SOMA/);
  assert.match(console,/STAGE_HARDWARE_ENABLED/);
@@ -121,4 +123,21 @@ test('PF-UX: a feed needs explicit opening, a fresh source and a live raster; no
  assert.match(src,/outputMode\[id\]==='resolume'/);
  assert.match(src,/feedEnabled\[id\]=false/);
  assert.match(src,/cleanFeedSurfaceState\(plan\)/);
+});
+
+test('three routes remain visible and unresolved bridges report limits accurately',()=>{
+ const console=read('../src/studio/v3/OperatorStageConsole.tsx');
+ const td=read('../src/studio/v3/TouchDesignerPerformPanel.tsx');
+ const notReady=presentPerformDestination({
+  route:'resolume',primary:state(true).primaryAction,sourceReady:false,
+  floor:state(true).floorBadge,body:state(true).bodyBadge
+ });
+ assert.equal(notReady.kind,'setup');
+ assert.equal(notReady.state,'Sumber belum siap');
+ assert.match(console,/SOMA hanya melihat status popup/);
+ assert.match(console,/data-complete=\{step\.done\}/);
+ assert.match(td,/Pasang receiver di TouchDesigner/);
+ assert.match(td,/soma_webserver_callbacks\.py/);
+ assert.match(td,/soma_script_chop\.py/);
+ assert.doesNotMatch(td,/openDualSurfaceOutputWindow|armDualSurfaceLiveFromPerform/);
 });
