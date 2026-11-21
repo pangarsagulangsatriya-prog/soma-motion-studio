@@ -187,10 +187,10 @@ export function DualSurfaceRoutingPanel({
   </div>
  </details>
     <div className="stage-dual-surface-tabs" role="group" aria-label="Pilih bidang kalibrasi">
-     <button type="button" aria-pressed={selected==='floor'} onClick={()=>{setSelected('floor');setDx('');setDy('');}}>Lantai</button>
+     <button type="button" aria-pressed={selected==='floor'} onClick={()=>setSelected('floor')}>Lantai</button>
      <button type="button" aria-pressed={selected==='body'}
       title="Satu output BODY mencakup mask tubuh bawah Performer A dan B."
-      onClick={()=>{setSelected('body');setDx('');setDy('');}}>Tubuh</button>
+      onClick={()=>setSelected('body')}>Tubuh</button>
     </div>
    </div>
   </header>
