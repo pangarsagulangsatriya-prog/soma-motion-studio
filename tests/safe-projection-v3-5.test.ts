@@ -54,13 +54,13 @@ test('V3.5: projector preflight advances camera → tracking → floor → QA',(
  assert.equal(preflight.physicalReady,false);
  assert.equal(preflight.progress,4);
 });
-test('V3.5: MP4/3D and production build never pass optical preflight',()=>{
+test('V3.5: MP4/3D pass optical preflight only with ready frames, build opt-in and QA',()=>{
  for(const source of ['video','simulator'] as const){
   const state=safeProjectionPreflight({...ready(),source,
    floorOutput:{...output(),mode:'live'}});
-  assert.equal(state.step,'software-only');
-  assert.equal(state.physicalReady,false);
-  assert.equal(state.action,'open-output-qa');
+  assert.equal(state.step,'ready');
+  assert.equal(state.physicalReady,true);
+  assert.equal(state.action,'monitor-output');
  }
  const noPhysical=safeProjectionPreflight({...ready(),hardwareEnabled:false,
   floorOutput:{...output(),mode:'live'}});
