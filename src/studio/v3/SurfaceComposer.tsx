@@ -84,6 +84,9 @@ type Props={
  assetNotice:string;
  updateFootprint?:(patch:Partial<FootprintConfig>)=>void;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;floorCanvas:RefObject<HTMLCanvasElement|null>;
+ /** Shared output rasters survive the Compose / Map -> Perform transition. */
+ outputBodyRaster?:RefObject<HTMLCanvasElement|null>;
+ outputFloorRaster?:RefObject<HTMLCanvasElement|null>;
  experimentSource?:ComposeExperimentSource;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
@@ -103,7 +106,7 @@ type Props={
  onOpenCameraCalibration?:()=>void;
  onEnterPerform?:()=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenCameraCalibration,onEnterPerform}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenCameraCalibration,onEnterPerform}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const workspaceHiddenRef=useRef(workspaceHidden);workspaceHiddenRef.current=workspaceHidden;
@@ -254,8 +257,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const activeMotionSession=useRef<string|null>(null);
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
  const previewLayerAlpha=useRef(new Map<string,number>());
- const bodyOutput=useRef<HTMLCanvasElement>(null);
- const floorOutput=useRef<HTMLCanvasElement>(null);
+ const ownBodyOutput=useRef<HTMLCanvasElement>(null);
+ const ownFloorOutput=useRef<HTMLCanvasElement>(null);
+ const bodyOutput=outputBodyRaster??ownBodyOutput;
+ const floorOutput=outputFloorRaster??ownFloorOutput;
  const stageRoute=useRef<StageRouteInput|null>(null);
  const maskCache=useRef<{at:number;A:HTMLCanvasElement|null;B:HTMLCanvasElement|null;safe:boolean;reason:string;union:ReturnType<typeof buildLowerBodyMask>['mask']|null}>({at:-1,A:null,B:null,safe:false,reason:'Tracking belum siap.',union:null});
  const maskScratch=useRef<{A:HTMLCanvasElement;B:HTMLCanvasElement}|null>(null);
