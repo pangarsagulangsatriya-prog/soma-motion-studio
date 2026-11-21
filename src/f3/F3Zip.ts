@@ -24,5 +24,5 @@ export async function f3Zip(items:F3Photo[]){
  const dirSize=central.reduce((a,b)=>a+b.length,0);
  const end=new Uint8Array([80,75,5,6,...u16(0),...u16(0),...u16(central.length),...u16(central.length),
  ...u32(dirSize),...u32(offset),...u16(0)]);
- const all=[...parts,...central,end];return new Blob(all,{type:'application/zip'});
+ const all=[...parts,...central,end];return new Blob(all.map(part=>part.slice().buffer as ArrayBuffer),{type:'application/zip'});
 }
