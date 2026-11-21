@@ -17,10 +17,11 @@ export type InlineCalibrationOverlay={marks:Array<Point|null>;editing:number};
 /** Uses the existing FloorSession + camera binding; no new capture or tracker.
  * S6.8.3 editor lives in Tracking Inspector and marks the main camera canvas. */
 export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySelected,
- videoReady,cameraMatched,onBlackout,onClose,onOpenQA,onOverlay,onTap}:{
+ videoReady,cameraMatched,floorSize,onBlackout,onClose,onOpenQA,onOverlay,onTap}:{
  videoRef:RefObject<HTMLVideoElement|null>;tracker:LiveFloorTrackingEngine;
  router:MultiPoseGaitRouter;cameraOn:boolean;bodySelected:boolean;
  videoReady:boolean;cameraMatched:boolean;
+ floorSize?:{widthM:number;depthM:number};
  onBlackout:()=>void;onClose:()=>void;onOpenQA:()=>void;
  onOverlay:(state:InlineCalibrationOverlay|null)=>void;
  onTap:(handler:((x:number,y:number)=>void)|null)=>void;
@@ -28,8 +29,10 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
  const [marks,setMarks]=useState<Array<Point|null>>(()=>
   tracker.calibrationData?.cameraQuad.map(p=>({...p}))??emptyCorners());
  const [editing,setEditing]=useState(0);
- const [widthM,setWidthM]=useState(()=>tracker.floor?.widthM??8);
- const [depthM,setDepthM]=useState(()=>tracker.floor?.depthM??6);
+ const [localWidthM,setWidthM]=useState(()=>tracker.floor?.widthM??5);
+ const [localDepthM,setDepthM]=useState(()=>tracker.floor?.depthM??5);
+ const widthM=floorSize?.widthM??localWidthM;
+ const depthM=floorSize?.depthM??localDepthM;
  const [message,setMessage]=useState('');
  const cameraReady=cameraOn&&bodySelected&&videoReady;
  const allMarked=marks.every(p=>p!==null);
@@ -105,7 +108,7 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
     </button>)}
    </div>
    <p className="fp-inline-floor-note">Klik sudut di monitor kamera. Pastikan keempat titik mengikuti urutan searah jarum jam. Video tidak dicerminkan.</p>
-   <label className="fp-inline-floor-size">Ukuran lantai
+   {!floorSize&&<label className="fp-inline-floor-size">Ukuran lantai
     <select value={sizes.find(s=>s.w===widthM&&s.d===depthM)?.label??'custom'}
      onChange={event=>{
       const size=sizes.find(s=>s.label===event.target.value);
@@ -114,7 +117,8 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
      {sizes.map(size=><option value={size.label} key={size.label}>{size.label}</option>)}
      <option value="custom" disabled>Ukuran khusus</option>
     </select>
-   </label>
+   </label>}
+   {floorSize&&<p className="fp-inline-floor-note">Bidang {widthM} × {depthM} m · ubah ukurannya di Map.</p>}
    <div className="fp-inline-floor-actions">
     <button type="button" onClick={reset}><RotateCcw size={14}/>Ulangi</button>
     <button type="button" className="fp-inline-floor-primary" disabled={!cameraReady||!allMarked}
