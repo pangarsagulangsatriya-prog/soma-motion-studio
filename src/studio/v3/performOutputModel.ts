@@ -74,7 +74,6 @@ export function evaluatePerformOutputSummary(input:PerformOutputSummaryInput):{
 }{
  const floorBadge=deriveSurfaceBadge('floor',input.floorDevice);
  const bodyBadge=deriveSurfaceBadge('body',input.bodyDevice);
- const softwareOnly=input.source==='video'||input.source==='simulator';
  const anyConnected=floorBadge.connected||bodyBadge.connected;
  const anyLive=floorBadge.tone==='live'||bodyBadge.tone==='live';
  const floorReadyForLive=floorBadge.connected&&input.floorQaOk;
