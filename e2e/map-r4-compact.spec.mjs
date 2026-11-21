@@ -33,29 +33,23 @@ test('MAP-V2: projector edit is contextual and no UV technical editor remains',a
  await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
 });
 
-test('MAP-V4: QA, status and Perform share one bottom dock, no detached foot cards',async({page})=>{
+test('MAP-V5: compact footer retains only inline status and top navigation owns Perform',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const dock=map.locator('.soma-map-wysiwyg-bottom');
- await expect(dock).toBeVisible();
- await expect(page.locator('.soma-map-v2-foot')).toHaveCount(0);
- await expect(dock.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
+ const nav=page.locator('.soma-stage-module-nav');
  await expect(dock.locator('.soma-map-v4-status [role="status"]')).toBeVisible();
- const qa=dock.locator('.map-r8-projector-setup');
- if(await qa.count()){
-  await expect(qa.locator(':scope > summary')).toBeVisible();
-  await qa.locator(':scope > summary').click();
-  await expect(qa.locator('.soma-map-v4-qa-popover')).toBeVisible();
-  const screen=page.viewportSize();
-  const popup=await qa.locator('.soma-map-v4-qa-popover').boundingBox();
-  expect(popup).toBeTruthy();
-  expect(popup.x).toBeGreaterThanOrEqual(-2);
-  expect(popup.x+popup.width).toBeLessThanOrEqual(screen.width+2);
-  await qa.locator(':scope > summary').click();
- }
- const box=await dock.boundingBox();
- expect(box).toBeTruthy();
- // Touch screens use two stacked action/status rows with accessible targets.
- expect(box.height).toBeLessThan(page.viewportSize().width<600?135:85);
+ await expect(dock.locator('.map-r8-projector-setup')).toHaveCount(0);
+ await expect(dock.getByRole('button',{name:'Lanjut Perform'})).toHaveCount(0);
+ await expect(nav.getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
+ const dockBox=await dock.boundingBox();
+ expect(dockBox).toBeTruthy();
+ expect(dockBox.height).toBeLessThan(page.viewportSize().width<600?85:65);
+ const navBox=await nav.boundingBox();
+ const mapBox=await page.locator('.stage-dual.map-r2-shell').boundingBox();
+ expect(navBox&&mapBox).toBeTruthy();
+ expect(Math.abs(navBox.x-mapBox.x)).toBeLessThan(12);
+ await nav.getByRole('button',{name:'Lanjut Perform'}).click();
+ await expect(page.locator('[data-workspace="perform"]')).toBeVisible();
 });

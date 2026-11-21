@@ -61,7 +61,7 @@ test('UX-BENCHMARK: Sequential pipeline CTA, Track Motion HUD, and Compose direc
  assert.match(nav,/soma-stage-next-cta/);
  assert.match(nav,/track:\{target:'map',label:'Lanjut Map'\}/);
  assert.match(nav,/Lanjut Map/);
- assert.match(nav,/Masuk Perform/);
+ assert.match(nav,/Lanjut Perform/);
  assert.match(stage,/soma-track-motion-hud/);
  assert.match(stage,/onPerformerCount\(n\)/);
  assert.doesNotMatch(stage,/Kalibrasi Lantai 4 Sudut/);

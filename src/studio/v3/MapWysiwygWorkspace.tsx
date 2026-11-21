@@ -1,5 +1,5 @@
 
-import {useEffect,useRef,useState,type PointerEvent,type RefObject,type KeyboardEvent,type ReactNode} from 'react';
+import {useEffect,useRef,useState,type PointerEvent,type RefObject,type KeyboardEvent} from 'react';
 import {Check,Maximize2,Minimize2,Pause,Play,RotateCcw,ScanLine} from 'lucide-react';
 import type {Quad,Point} from '../../projection/geometry.ts';
 import type {MotionFrame} from '../../engine/types.ts';
@@ -36,8 +36,7 @@ type Props={
  onOpenTrack:()=>void;
  onOpenCompose:()=>void;
  onSourceLost:()=>void;
- /** In-workspace actions: physical QA and Perform live in the same quiet dock. */
- children?:ReactNode;
+ externalNotice?:string;
 };
 const W=640,H=360;
 const SIM_CAMERA_QUAD:Quad=[{x:.18,y:.2},{x:.82,y:.2},{x:.98,y:.92},{x:.02,y:.92}];
@@ -88,7 +87,7 @@ export function MapWysiwygWorkspace({
  selected,stageDimensions,plan,sourceKind,hasLiveSource,videoRef,motionFrameRef,experimentInputCanvas,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
- onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,children
+ onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice=''
 }:Props){
  const [cameraDraft,setCameraDraft]=useState<Quad>(()=>floorTracker?.calibrationData?.cameraQuad??initialCameraQuad());
  const [outputDraft,setOutputDraft]=useState<Quad>(()=>plan.projectorQuad);
@@ -372,6 +371,7 @@ export function MapWysiwygWorkspace({
   !visibleSource?'Coba simulasi atau sambungkan kamera.':
   cameraDirty||outputDirty?'Pratinjau perubahan · belum tersimpan.':
   calibrated?'Bidang kamera tersimpan.':'Tarik titik 1–4 di atas gambar.';
+ const externalStatus=(sourceInterrupted||/tidak valid|gagal|diblokir/i.test(externalNotice))?externalNotice:'';
  const resultText=sourceInterrupted?'Sumber terputus. Periksa Track.':
   waitingForSource?'Menunggu gambar sumber':
   'Hasil muncul setelah simulasi atau input aktif';
@@ -450,14 +450,13 @@ export function MapWysiwygWorkspace({
   <div className="soma-map-wysiwyg-bottom" aria-label="Kontrol akhir Map">
    <div className="soma-map-v4-status">
     <span className="soma-map-v4-status-dot" aria-hidden="true"/>
-    <span role="status" aria-live="polite" title={status||idleMessage}>{status||idleMessage}</span>
+    <span role="status" aria-live="polite" title={status||externalStatus||idleMessage}>{status||externalStatus||idleMessage}</span>
    </div>
    <div className="soma-map-v4-actions">
     {(projectorEdit||(sourceKind==='camera'&&sourceAvailable))&&
      <button type="button" className="soma-map-v4-reset" onClick={reset} title="Atur ulang empat sudut">
       <RotateCcw size={14}/> {resetArmed?'Konfirmasi reset':'Ulangi sudut'}
      </button>}
-    {children}
    </div>
   </div>
  </section>;

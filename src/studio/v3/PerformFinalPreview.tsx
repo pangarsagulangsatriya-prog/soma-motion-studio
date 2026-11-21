@@ -92,7 +92,7 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
  return <section className="pf-final" aria-label="Perform Final Preview">
   <header className="pf-final-top">
    <div className="pf-final-title"><strong>Final Preview</strong>
-    <span>{sourceReady?mapReady?'Visual Compose · QA Map lengkap':'Visual Compose · QA Map diperlukan':'Menunggu sumber Track'}</span>
+    <span>{sourceReady?mapReady?'Visual Compose · bidang Map tersimpan':'Visual Compose · kalibrasi Map belum lengkap':'Menunggu sumber Track'}</span>
    </div>
    <div className="pf-final-tools">
     <div className="pf-final-tabs" role="group" aria-label="Pilih visual final">

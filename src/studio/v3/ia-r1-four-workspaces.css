@@ -184,7 +184,10 @@
  .soma-ia-four-workspaces .soma-stage-step-sep{display:none}
  .soma-ia-four-workspaces .soma-stage-module-tab{width:100%;min-width:0;min-height:42px;padding:6px 3px;font-size:11px;gap:3px}
  .soma-ia-four-workspaces .soma-stage-step-num{display:none}
- .soma-ia-four-workspaces .soma-stage-next-cta{display:none}
+ .soma-ia-four-workspaces .soma-stage-next-cta{
+  display:inline-flex;justify-content:center;min-height:38px;
+  margin-left:auto;padding:7px 13px;align-self:center;
+ }
 }
 
 /* Stage 1 recovery — no-source state is a usable selector, not three black panes. */

@@ -17,7 +17,7 @@ const workspaces:readonly {id:StageModuleWorkspace;label:string;step:string}[]=[
 const NEXT_STEP:Record<StageModuleWorkspace,{target:StageModuleWorkspace;label:string}>={
  track:{target:'map',label:'Lanjut Map'},
  compose:{target:'map',label:'Lanjut Map'},
- map:{target:'perform',label:'Masuk Perform'},
+ map:{target:'perform',label:'Lanjut Perform'},
  perform:{target:'map',label:'Kalibrasi Map'}
 };
 export function StageModuleNav({active,onNavigate,status}:{
@@ -53,7 +53,7 @@ export function StageModuleNav({active,onNavigate,status}:{
     </span>;
    })}
   </div>
-  {active!=='map'&&<button type="button"
+  {active!=='perform'&&<button type="button"
    className="soma-stage-next-cta"
    data-primary={nextPrimary||undefined}
    onClick={()=>onNavigate(next.target)}

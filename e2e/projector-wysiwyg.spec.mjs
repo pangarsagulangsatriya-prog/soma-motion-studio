@@ -14,12 +14,8 @@ test('Projector WYSIWYG: FLOOR and BODY share the real Compose output and global
  await expect(map.getByText('Hasil visual lantai')).toBeVisible();
  await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
  await expect(page.locator('.map-r2-advanced')).toHaveCount(0);
- const qa=page.locator('.map-r8-projector-setup');
- if(await qa.count()){
-  await expect(qa).not.toHaveAttribute('open');
-  await qa.locator(':scope > summary').click();
-  await expect(qa.locator('.map-r7-qa-count')).toContainText('0/5');
- }
+ await expect(page.locator('.map-r8-projector-setup')).toHaveCount(0);
+ await expect(page.locator('.soma-stage-module-nav').getByRole('button',{name:'Lanjut Perform'})).toBeVisible();
 });
 
 test('Projector WYSIWYG: quad preview can be cancelled or saved without arming physical output',async({page})=>{

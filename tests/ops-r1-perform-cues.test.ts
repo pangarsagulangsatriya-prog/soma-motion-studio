@@ -78,12 +78,13 @@ test('OPS-R1: cue layouts survive visual reset and blackout remains fail-closed'
  assert.match(console,/Tampilan berikutnya/);
  assert.ok(!console.includes('setTransport('));
 });
-test('OPS-R1: cue recall never activates projector, and Map QA remains separate',()=>{
+test('OPS-V5: cue recall never activates projector and physical authorization stays separate',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const map=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
+ const runtime=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
  assert.match(stage,/setMappingOpen\(true\);setComposerStartQA\(true\)/);
- assert.match(map,/samples\.length<5/);
- assert.match(map,/blackoutObserved/);
- assert.match(map,/assessment\(id\)\.status!=='within-provisional-target'/);
+ assert.doesNotMatch(map,/samples\.length|blackoutObserved|stage-dual-qa-disclosure/);
+ assert.match(runtime,/armDualSurfaceLiveFromPerform/);
+ assert.match(runtime,/qa.status!=='within-provisional-target'/);
  assert.ok(!read('../src/studio/v3/performCueModel.ts').includes('setTransport('));
 });

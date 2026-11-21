@@ -48,29 +48,27 @@ test('MAP-R1: direct 4-point Map monitor uses safe editPlan without duplicate te
  assert.doesNotMatch(panel,/Advanced · angka presisi empat titik/);
  assert.match(panel,/urgentBlackout\(id\);/);
 });
-test('MAP-R1: hardware QA remains independent for BODY/FLOOR and requires five physical measurements',()=>{
+test('MAP-V5: physical output interlock stays in the engine rather than Map controls',()=>{
  const body=defaultStageSurfacePlan('body'),floor=defaultStageSurfacePlan('floor');
- const bodyAssessment=assessSurfaceProof(body,null,null);
- const floorAssessment=assessSurfaceProof(floor,null,null);
- assert.equal(bodyAssessment.required,5);assert.equal(floorAssessment.required,5);
- assert.equal(bodyAssessment.status,'incomplete');assert.equal(floorAssessment.status,'incomplete');
- const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
- assert.match(panel,/samples\.length<5/);
- assert.match(panel,/blackoutObserved/);
- assert.match(panel,/noUnsafeSpill/);
- assert.match(panel,/assessment\(id\)\.status!=='within-provisional-target'/);
+ assert.equal(assessSurfaceProof(body,null,null).status,'incomplete');
+ assert.equal(assessSurfaceProof(floor,null,null).status,'incomplete');
+ const session=source('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
+ assert.match(session,/assessSurfaceProof/);
+ assert.match(session,/armDualSurfaceLiveFromPerform/);
+ assert.match(session,/qa.status!=='within-provisional-target'/);
+ assert.match(session,/urgentBlackoutDualSurface/);
+ const map=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
+ assert.doesNotMatch(map,/QA Fisik 5 Titik|samples\.length|blackoutObserved|STAGE_HARDWARE_ENABLED&&<details/);
 });
-test('MAP-R6: Map stays focused on calibration and physical QA; LIVE handoff belongs to Perform',()=>{
+test('MAP-V5: workbench has calibration only and navigation handoff lives at the top',()=>{
  const panel=source('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
- const css=source('../src/footprints/stage-optics/dual-surface-routing.css');
- assert.doesNotMatch(panel,/Teknis &amp; diagnostik/);
- assert.doesNotMatch(panel,/Grid homografi 3 × 3/);
- assert.doesNotMatch(panel,/className="map-r2-live-btn"/);
- assert.doesNotMatch(panel,/changeMode\(id,'live'\)/);
- assert.match(panel,/QA Fisik 5 Titik/);
- assert.match(panel,/samples\.length<5/);
- assert.match(panel,/title="Buka ruang Perform"/);
- assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+ const nav=source('../src/studio/v3/StageModuleNav.tsx');
+ assert.doesNotMatch(panel,/Teknis &amp; diagnostik|Uji proyektor|className="map-r7-perform-cta"/);
+ assert.doesNotMatch(panel,/changeMode\(id,'live'\)|handleEnterPerform/);
+ assert.match(nav,/map:\{target:'perform',label:'Lanjut Perform'\}/);
+ assert.match(nav,/active!=='perform'&&<button/);
+ const css=source('../src/studio/v3/map-wysiwyg.css');
+ assert.match(css,/max-width:1252px/);
 });
 test('MAP-R1: Stage Map uses existing BODY/FLOOR compositor and routing; no extra camera',()=>{
  const composer=source('../src/studio/v3/SurfaceComposer.tsx');
