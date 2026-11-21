@@ -128,10 +128,10 @@ test('V3.5: implementation preserves manual opt-in and distinct clean output',()
   '../src/projection/ProjectionOutput.tsx',import.meta.url),'utf8');
  assert.match(dual,/shouldLatchProjectionBlackout/);
  const store=readFileSync(new URL('../src/footprints/stage-optics/DualSurfaceSessionStore.ts',import.meta.url),'utf8');
- assert.match(store,/if\\(!STAGE_HARDWARE_ENABLED\\)/);
+ assert.match(store,/if\(!STAGE_HARDWARE_ENABLED\)/);
  assert.match(store,/qa.status!=='within-provisional-target'/);
  assert.match(store,/armDualSurfaceLiveFromPerform/);
- assert.doesNotMatch(dual,/Uji proyektor|title="Buka ruang Perform"|changeMode\\(id,'live'\\)/);
+ assert.doesNotMatch(dual,/Uji proyektor|title="Buka ruang Perform"|changeMode\(id,'live'\)/);
  assert.match(dual,/setProofs\(\{body:null,floor:null\}\)/);
  assert.match(dual,/ids\.forEach\(urgentBlackout\)/);
  assert.match(stage,/safeProjectionPreflight/);
