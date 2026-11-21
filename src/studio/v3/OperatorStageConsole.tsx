@@ -185,7 +185,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <Info size={15} aria-hidden="true"/>
      </button>
     </div>
-    <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
+    <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform" title={routePurpose}>
      {PRIMARY_PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
       aria-pressed={outputRouteMode===item.id} aria-label={item.label}
       onClick={()=>handleRouteChange(item.id)} title={item.description}>
@@ -195,10 +195,6 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <span>{item.label}</span>
      </button>)}
     </div>
-    <div className="ops-r1-route-contract" data-route={outputRouteMode}>
-      <span className="ops-r1-route-type" aria-hidden="true">{isTouchDesigner?'DATA':isResolume?'FEED':'LIVE'}</span>
-      <span>{routePurpose}</span>
-     </div>
     {isTouchDesigner?
      <TouchDesignerPerformPanel getSnapshot={getTouchDesignerSnapshot}
       activeSlot={activeSlot} cueLabel={cueGrid.slots[activeSlot].label} held={held}/>:
@@ -296,7 +292,14 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    </section>
 
    {/* 2. Cue & Operator View (Active -> Next + 4 nearby cues; full 8-slot + editor + rec in collapsed drawer) */}
-   <section className="ops-r1-cue-grid" aria-label="Cue presets · delapan slot">
+   <details className="ops-r1-cue-grid ops-r1-monitor-presets" aria-label="Preset monitor">
+    <summary className="ops-r1-monitor-summary">
+     <span className="ops-r1-monitor-title"><Monitor size={15} aria-hidden="true"/>Preset monitor</span>
+     <span className="ops-r1-monitor-count">{activeSlot+1}/{cueGrid.slots.length} · {currentSlot.label}</span>
+     <ChevronDown size={15} aria-hidden="true"/>
+    </summary>
+    <div className="ops-r1-monitor-body">
+     <p className="ops-r1-monitor-description">Hanya mengatur monitor operator. Output proyektor tetap mengikuti QA.</p>
     <div className="ops-r1-next-cue" aria-label="Ringkasan cue aktif dan berikutnya" title={cue.description}>
      <div className="ops-r1-cue-now">
       <small>AKTIF</small>
@@ -361,7 +364,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       <kbd className="ops-r1-kbd">B / Esc</kbd> Blackout</small>
      </div>
     </details>
-   </section>
+   </div>
+   </details>
 
    {/* Blackout remains persistently available in the global SOMA header.
        Physical switching, browser disconnect and TD all remain fail-closed. */}
