@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 
 test('Projector WYSIWYG: BODY/FLOOR draft and sent blackout share QA surface',async({page})=>{
  await page.goto('/');
- await expect(page.locator('.soma-uxr1-source > summary')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Map workspace'})).toBeVisible();
  await openStageMap(page);
  await page.locator('.map-r2-advanced > summary').click();
  await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
@@ -37,6 +37,7 @@ test('Projector WYSIWYG: surface brightness and corners adjust local matrix whil
  await page.locator('.map-r2-advanced > summary').click();
  await page.locator('.map-r2-advanced > .map-r2-advanced-body > details.map-r2-aux-details > summary').click();
  await page.locator('.map-r5-output-diagnostics > summary').click();
+ await page.getByRole('button',{name:'Tubuh',exact:true}).click();
  const body=page.locator('[data-surface="body"] canvas.stage-wysiwyg-artwork');
  const before=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
 
@@ -44,8 +45,7 @@ test('Projector WYSIWYG: surface brightness and corners adjust local matrix whil
  const brightness=page.locator('.stage-dual-calibration input[type=range]').first();
  await brightness.fill('0.2');
  await expect(body).toHaveJSProperty('tagName','CANVAS');
- const after=await body.evaluate(el=>({opacity:el.style.opacity,transform:el.style.transform}));
- expect(after.opacity).not.toBe(before.opacity);
+ await expect.poll(()=>body.evaluate(el=>el.style.opacity)).toBe('0.2');
  await expect(page.locator('[data-surface="body"]')).toContainText('20% kecerahan software');
 
  // Operator-only four corner calibration must keep the same preview surface.
