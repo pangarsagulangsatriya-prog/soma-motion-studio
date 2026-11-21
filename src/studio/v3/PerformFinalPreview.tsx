@@ -1,15 +1,7 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
 import {Maximize2,Minimize2} from 'lucide-react';
-import type {PerformView} from './performCueModel.ts';
+import {cueToFinalSurface,type FinalPreviewSurface} from './performFinalPreviewModel.ts';
 import './perform-final-preview.css';
-
-export type FinalPreviewSurface='floor'|'body'|'split';
-
-/** Operator-only view: source rasters are the same Compose buffers used by SOMA Direct.
- * It never opens a camera, popup, projection port, or enables physical transport. */
-export function cueToFinalSurface(view:PerformView):FinalPreviewSurface{
- return view==='body'?'body':view==='split'?'split':'floor';
-}
 
 type Props={
  floorRaster:RefObject<HTMLCanvasElement|null>;
