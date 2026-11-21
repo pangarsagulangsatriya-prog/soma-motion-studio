@@ -35,7 +35,7 @@ export class F3PhotoStore{
   this.inFlight=true;this.events.add(params.eventId);
   try{
    // Reuse legacy camera pixel capture; fixture MP4 needs the same drawImage ROI without MediaStream gating.
-   const isStream=params.video.srcObject instanceof MediaStream;
+   const isStream=typeof MediaStream!=='undefined'&&params.video.srcObject instanceof MediaStream;
    const blob=isStream?(await capturePhoto(params.video,slot,false,crop)).blob:await captureFixture(params.video,crop);
    const url=URL.createObjectURL(blob);
    const item:F3Photo={id:params.eventId,slot,blob,url,createdAt:new Date().toISOString(),
