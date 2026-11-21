@@ -838,11 +838,13 @@ export function MapStageMonitor({
      onClick={()=>onChangeView(id)}>{label}</button>)}
     <details className="map-r5-other-views">
      <summary>{view==='camera'?'Kamera':view==='split'?'Split':'Lainnya'}</summary>
+     <div className="map-r5-other-view-popover">
      {([
       ['camera','Kamera'],
       ['split','Split']
      ] as const).map(([id,label])=><button type="button" key={id} aria-pressed={view===id}
       onClick={()=>onChangeView(id)}>{label}</button>)}
+     </div>
     </details>
    </div>
    <span className="map-r2-parity-note">
