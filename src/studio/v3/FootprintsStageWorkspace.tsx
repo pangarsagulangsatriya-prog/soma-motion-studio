@@ -865,7 +865,7 @@ export function FootprintsStageWorkspace({
    onNavigate={onNavigateStageWorkspace}
    status={{
     trackReady:feedback.state==='ready'||feedback.state==='synthetic',
-    mapReady:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
+    mapReady:tracker.isConfirmed,
     outputLive:dual.floor.mode==='live'||dual.body.mode==='live'
    }}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<header className="soma-ia-track-head">
@@ -1004,7 +1004,6 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      identitySafe={!identityStatus.ambiguous}
-     onEnterPerform={()=>onNavigateStageWorkspace('perform')}
       onOpenMapTrack={()=>onNavigateStageWorkspace('track')}
       onOpenMapCompose={()=>onNavigateStageWorkspace('compose')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
