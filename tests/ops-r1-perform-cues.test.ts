@@ -82,8 +82,8 @@ test('OPS-V5: cue recall never activates projector and physical authorization st
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const map=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const runtime=read('../src/footprints/stage-optics/DualSurfaceSessionStore.ts');
- assert.match(stage,/setMappingOpen\\(true\\);setComposerStartQA\\(true\\)/);
- assert.doesNotMatch(map,/samples\\.length|blackoutObserved|stage-dual-qa-disclosure/);
+ assert.match(stage,/setMappingOpen\(true\);setComposerStartQA\(true\)/);
+ assert.doesNotMatch(map,/samples\.length|blackoutObserved|stage-dual-qa-disclosure/);
  assert.match(runtime,/armDualSurfaceLiveFromPerform/);
  assert.match(runtime,/qa.status!=='within-provisional-target'/);
  assert.ok(!read('../src/studio/v3/performCueModel.ts').includes('setTransport('));
