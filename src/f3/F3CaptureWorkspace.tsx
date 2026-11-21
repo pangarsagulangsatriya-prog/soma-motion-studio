@@ -10,7 +10,7 @@ import {f3Zip} from './F3Zip.ts';
 import {F3StageView} from './F3StageView.tsx';
 import {makeF3StageFrame} from './F3StageRenderer.ts';
 import {f3ProjectorGate,f3Blackout} from './F3OutputAdapter.ts';
-import type {F3Role,F3CameraStatus,F3PunchPreset,F3StageFrame} from './F3Types.ts';
+import type {F3Role,F3CameraStatus,F3PunchPreset,F3StageFrame,F3MotionFrame} from './F3Types.ts';
 import './f3.css';
 const emptyStatus=(role:F3Role):F3CameraStatus=>({role,id:'',kind:'camera',state:'idle',lastFrameAt:0,frameId:0,videoTime:-1,message:'Pilih sumber'});
 const startFrame=makeF3StageFrame({sourceId:'',frameId:0,timestamp:0,crop:{x:0,y:0,width:0,height:0},slots:[null,null,null,null],state:'BLACKOUT'});
@@ -118,6 +118,32 @@ export function F3CaptureWorkspace(){
   };
   document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey);
  },[stageMode,disarm]);
+ const processMotion=useCallback((motion:F3MotionFrame,now:number)=>{
+  const prev=framing.current.fraction;
+  const size=framing.current.step(motion,now);
+  if(Math.abs(size-prev)>.001)setZoom(size);
+  const cfg=control.current;
+  const result=punch.current.step(motion,now,cfg.armed||cfg.rehearsal);
+  if(result.kind==='capture'){
+   if(cfg.rehearsal){setPositive(n=>n+1);setMessage('Pukulan '+preset+' terdeteksi dalam latihan.');}
+   else if(cfg.armed&&cfg.consent&&!framing.current.resizing&&
+    registry.current.fresh('B',performance.now())&&result.eventId)void capture(preset,result.eventId);
+  }
+ },[capture,preset]);
+ const qaMode=import.meta.env.DEV&&new URL(window.location.href).searchParams.has('f3qa');
+ useEffect(()=>{
+  if(!qaMode)return;
+  const host=window as Window&{__SOMA_F3_QA__?:{inject:(frame:F3MotionFrame)=>boolean;registry:()=>object}};
+  host.__SOMA_F3_QA__={
+   inject:(frame:F3MotionFrame)=>{
+    const a=registry.current.status('A'),b=registry.current.status('B');
+    if(a.kind!=='fixture'||b.kind!=='fixture'||a.state!=='live'||b.state!=='live')return false;
+    processMotion(frame,performance.now());return true;
+   },
+   registry:()=>({A:registry.current.status('A'),B:registry.current.status('B')})
+  };
+  return()=>{delete host.__SOMA_F3_QA__;};
+ },[qaMode,processMotion]);
  const last=useRef({ui:0,inference:0,lastA:-1});
  useEffect(()=>{
   let raf=0,disposed=false;
@@ -135,22 +161,11 @@ export function F3CaptureWorkspace(){
     void fusion.current.init().then(()=>{if(!disposed)setModelState('Pose + Hands siap');})
      .catch(e=>{if(!disposed)setModelState('Model gestur gagal: '+String(e));});
    }
-   if(aLive&&fusion.current.status==='ready'&&now-last.current.inference>=95&&a.frameId!==last.current.lastA){
+   if(!qaMode&&aLive&&fusion.current.status==='ready'&&now-last.current.inference>=95&&a.frameId!==last.current.lastA){
     last.current.inference=now;last.current.lastA=a.frameId;
     try{
      const motion=fusion.current.sample(videoA.current!,a.frameId,now);
-     if(motion){
-      const prev=framing.current.fraction;
-      const size=framing.current.step(motion,now);
-      if(Math.abs(size-prev)>.001)setZoom(size);
-      const cfg=control.current;
-      const result=punch.current.step(motion,now,cfg.armed||cfg.rehearsal);
-      if(result.kind==='capture'){
-       if(cfg.rehearsal){setPositive(n=>n+1);setMessage('Pukulan '+preset+' terdeteksi dalam latihan.');}
-       else if(cfg.armed&&cfg.consent&&!framing.current.resizing&&bLive&&result.eventId)
-        void capture(preset,result.eventId);
-      }
-     }
+     if(motion)processMotion(motion,now);
     }catch(e){fusion.current.dispose();setModelState('Pelacakan berhenti: '+String(e));disarm();}
    }
    const v=videoB.current;
@@ -162,7 +177,7 @@ export function F3CaptureWorkspace(){
   };
   raf=requestAnimationFrame(loop);
   return()=>{disposed=true;cancelAnimationFrame(raf);};
- },[capture,disarm,flash,preset,refresh]);
+ },[disarm,flash,processMotion,qaMode,refresh]);
  const markConsent=(value:boolean)=>{
   setConsent(value);session.current.setConsent(value);
   if(!value){disarm();setVerified(false);session.current.setVerified(false);}
