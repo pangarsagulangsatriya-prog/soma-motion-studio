@@ -4,7 +4,7 @@
  * This store reports software state, never observed projector photons.
  */
 export type DualSurfaceId='body'|'floor';
-export type DualMode='offline'|'blackout'|'test'|'live';
+export type DualMode='offline'|'blackout'|'test'|'live'|'feed';
 export type DualQA='incomplete'|'needs-adjustment'|'within-provisional-target';
 export type DualSurfaceState={
  surface:DualSurfaceId;reported:boolean;opened:boolean;connected:boolean;
