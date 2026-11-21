@@ -27,9 +27,16 @@ jobs:
       # CAM-00–05: explicit unit gate before publishing camera picker.
       - name: Universal camera regression gate
         run: node --experimental-strip-types --test tests/universal-camera.test.ts tests/usb-phone-camera.test.ts
+      - name: Verify GitHub Pages SOMA Direct build opt-in
+        env:
+          VITE_SOMA_STAGE_OUTPUTS: enabled
+        run: |
+          test "$VITE_SOMA_STAGE_OUTPUTS" = enabled
+          echo "SOMA Direct optical build enabled; runtime still requires camera, QA and explicit LIVE."
       - run: npm run build -- --mode githubpages
         env:
           VITE_SOMA_STAGE_OUTPUTS: enabled
+          VITE_SOMA_BUILD_ID: ${{ github.sha }}
       # Publish only the self-contained MAT-03 research lab from a pinned,
       # tested feature commit. The main Studio app and projector output
       # continue to come from main and are not replaced by the draft PR.
