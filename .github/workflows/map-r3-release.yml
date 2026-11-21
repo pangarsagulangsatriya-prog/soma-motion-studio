@@ -1,0 +1,45 @@
+name: Map R3 Camera Grid Fullscreen QA
+on:
+  pull_request:
+    paths:
+      - 'src/studio/v3/MapStageMonitor.tsx'
+      - 'src/studio/v3/mapStageModel.ts'
+      - 'src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx'
+      - 'src/footprints/stage-optics/dual-surface-routing.css'
+      - 'e2e/map-r3-fullscreen.spec.mjs'
+      - 'tests/map-r3-camera-grid.test.ts'
+      - '.github/workflows/map-r3-release.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/studio/v3/MapStageMonitor.tsx'
+      - 'src/studio/v3/mapStageModel.ts'
+      - 'src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx'
+      - 'src/footprints/stage-optics/dual-surface-routing.css'
+      - 'e2e/map-r3-fullscreen.spec.mjs'
+      - 'tests/map-r3-camera-grid.test.ts'
+      - '.github/workflows/map-r3-release.yml'
+permissions:
+  contents: read
+jobs:
+  map-r3:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Map R3 fullscreen and calibration UX desktop + mobile
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 map-r3-fullscreen.spec.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-r3-e2e-failure
+          path: e2e/test-results/
+          if-no-files-found: ignore
