@@ -171,7 +171,7 @@ export function F3CaptureWorkspace(){
    const crop=v&&v.videoWidth&&v.videoHeight?framing.current.crop(v.videoWidth,v.videoHeight,1.36):
     {x:0,y:0,width:0,height:0};
    stageFrame.current=makeF3StageFrame({sourceId:b.id,frameId:b.frameId,timestamp:b.lastFrameAt,crop,
-    slots:archive.current.slots,state:bLive?(b.kind==='fixture'?'SIMULATION':'LIVE'):'BLACKOUT',flashUntil:flash});
+    slots:archive.current.slots,state:aLive&&bLive?(b.kind==='fixture'?'SIMULATION':'LIVE'):'FREEZE',flashUntil:flash});
    if(now-last.current.ui>130){last.current.ui=now;refresh();}
   };
   raf=requestAnimationFrame(loop);
