@@ -607,9 +607,9 @@ export function DualSurfaceRoutingPanel({
      <p className="map-r5-next-action" role="status">
       {!STAGE_HARDWARE_ENABLED?'Output fisik tidak tersedia pada build ini. Pratinjau tetap bisa dipakai.':
        !operatorConfirm?'Centang pemeriksaan keamanan untuk membuka jendela proyektor.':
-       !devices[selected].connected?'Buka output, pindahkan jendela ke layar proyektor, lalu tekan F.':
-       qa.status!=='within-provisional-target'?'Jalankan pola uji dan catat QA fisik 5 titik sebelum LIVE.':
-       experimentLocked?'Periksa hasil MP4/3D dan QA fisik sebelum LIVE.':'QA tercatat. Periksa kembali cahaya fisik sebelum LIVE.'}
+       !devices[selected].connected?'Buka output dalam Blackout, pindahkan ke layar proyektor, lalu tekan F.':
+       qa.status!=='within-provisional-target'?'Jalankan pola uji dan selesaikan QA fisik 5 titik.':
+       experimentLocked?'Periksa hasil MP4/3D dan QA fisik, lalu lanjut ke Perform.':'Kalibrasi siap. Lanjutkan pengaturan LIVE di Perform.'}
      </p>
 
      <details className="stage-dual-qa-disclosure">
