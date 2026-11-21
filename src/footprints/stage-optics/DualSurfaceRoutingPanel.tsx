@@ -63,7 +63,6 @@ export function DualSurfaceRoutingPanel({
  void shouldLatchProjectionBlackout;
  const session=useSyncExternalStore(subscribeDualSurface,getDualSurfaceState,getDualSurfaceState);
  const {plans,selected,message}=session;
- const {plans,proofs,requested,epoch,target,selected,message,devices,operatorConfirm,previewView}=session;
 
  const setPlans=(updater:Record<StageSurface,StageSurfacePlan>|((prev:Record<StageSurface,StageSurfacePlan>)=>Record<StageSurface,StageSurfacePlan>))=>{
   const next=typeof updater==='function'?updater(getDualSurfaceState().plans):updater;
@@ -241,6 +240,7 @@ export function DualSurfaceRoutingPanel({
    router?.reset();setMessage('Sumber kamera terputus. Buka Track untuk menyambungkan kembali.');
   }}
   onCommitProjectorQuad={commitMonitorQuad} onMessage={setMessage}
+  externalNotice={message}
  >
  </MapWysiwygWorkspace>
  </main>
