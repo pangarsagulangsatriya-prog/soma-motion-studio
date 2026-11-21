@@ -8,7 +8,7 @@ const fixtures=[
 ];
 for(const f of fixtures){
  const args=['-hide_banner','-loglevel','error','-y','-f','lavfi','-i',f.filter,
-  '-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart','-t','6',join(dir,f.name)];
+  '-c:v','libvpx-vp9','-b:v','240k','-pix_fmt','yuv420p','-movflags','+faststart','-t','6',join(dir,f.name)];
  const run=spawnSync('ffmpeg',args,{stdio:'inherit'});
  if(run.status!==0)throw Error('ffmpeg failed for '+f.name+': '+(run.error?.message??'exit '+run.status));
  console.log('SIMULASI generated',f.name);
