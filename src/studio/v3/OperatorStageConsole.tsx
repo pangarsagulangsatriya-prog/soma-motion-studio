@@ -1,18 +1,19 @@
 import {useState,useSyncExternalStore} from 'react';
 import {
- ArrowLeft,ArrowRight,Circle,Copy,ExternalLink,MonitorOff,Pause,Play,
+ ArrowLeft,ArrowRight,Circle,ExternalLink,MonitorOff,Pause,Play,
  Settings2,ShieldAlert,Tv,X,Monitor,Clapperboard,Waypoints,Info,ChevronDown
 } from 'lucide-react';
 import {operatorCueAt} from './OperatorStageModel.ts';
 import type {UnifiedUnit} from './unifiedStageStatus.ts';
 import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} from './performCueModel.ts';
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
-import {PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
+import {PERFORM_DESTINATIONS,PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
+import {detectResolumeHostPlatform,getResolumeBridgeRecipe,getPerformRouteDescription,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
  STAGE_HARDWARE_ENABLED,armDualSurfaceLiveFromPerform,blackoutAllDualSurfaces,
- closeDualSurfaceOutputWindow,getDualSurfaceFeedUrl,getDualSurfaceState,openDualSurfaceOutputWindow,
+ closeDualSurfaceOutputWindow,getDualSurfaceState,openDualSurfaceOutputWindow,
  subscribeDualSurface
 } from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
 import type {StageSurface} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
@@ -70,6 +71,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
  const isResolume=outputRouteMode==='resolume';
  const isTouchDesigner=outputRouteMode==='touchdesigner';
+ const hostPlatform=detectResolumeHostPlatform(typeof navigator==='undefined'?'':navigator.userAgent);
+ const bridge=getResolumeBridgeRecipe(hostPlatform);
  const destination=presentPerformDestination({
   route:outputRouteMode,primary:summary.primaryAction,
   floor:summary.floorBadge,body:summary.bodyBadge
@@ -78,6 +81,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
   // Switching destinations cannot silently leave prior output illuminating the stage.
   blackoutAllDualSurfaces('Tujuan output diganti; verifikasi sebelum membuka ulang.');
+  closeDualSurfaceOutputWindow('floor');
+  closeDualSurfaceOutputWindow('body');
   window.dispatchEvent(new Event('soma:td-blackout'));
   setOutputRouteMode(next);setOutputDetailsOpen(false);setPopupBlocked(false);
   setOutputNotice('');
@@ -99,17 +104,6 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
    if(res.ok&&isResolume&&held&&canResume)onResume();
    setPopupBlocked(res.popupBlocked);
   setOutputNotice(res.message);
- };
-
- const handleCopyFeedUrl=(surface:StageSurface)=>{
-  const url=getDualSurfaceFeedUrl(surface,'resolume');
-  if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText){
-   navigator.clipboard.writeText(url)
-    .then(()=>setOutputNotice(`URL Clean Feed ${surface==='floor'?'FLOOR':'BODY'} disalin untuk Resolume / OBS.`))
-    .catch(()=>setOutputNotice(`URL Feed ${surface==='floor'?'FLOOR':'BODY'}: ${url}`));
-   return;
-  }
-  setOutputNotice(`URL Feed ${surface==='floor'?'FLOOR':'BODY'}: ${url}`);
  };
 
  const handleCloseSurface=(surface:StageSurface)=>{
@@ -166,7 +160,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
      </button>
     </div>
     <div className="ops-r1-route-toggle" role="group" aria-label="Jalur Output Perform">
-     {PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
+     {PRIMARY_PERFORM_DESTINATIONS.map(item=><button key={item.id} type="button"
       aria-pressed={outputRouteMode===item.id} aria-label={item.label}
       onClick={()=>handleRouteChange(item.id)} title={item.description}>
       {item.id==='soma'?<Monitor size={16} aria-hidden="true"/>:
