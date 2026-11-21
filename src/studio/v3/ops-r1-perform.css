@@ -526,3 +526,55 @@
   .ops-r1-mini-help,.ops-r1-output-details>summary svg,.ops-r1-cue-editor>summary svg,
   .ops-r1-primary-cta,.ops-r1-cue-transport button){transition:none!important;transform:none!important}
 }
+
+/* PF-ROUTE-07 — two primary channels; Resolume bridge instructions stay folded. */
+.fp-operator-mode .ops-r1-route-toggle{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fp-operator-mode .ops-r1-route-contract{
+ margin:0;color:#a7c3ae;font-size:11px;line-height:1.45;
+ padding:3px 1px 6px;letter-spacing:.005em;
+}
+.fp-operator-mode .ops-r1-route-contract[data-route=resolume]{color:#bcd6bc}
+.fp-operator-mode .ops-r1-bridge-guide{
+ border:1px solid #334e39;border-radius:8px;background:#101c14;
+}
+.fp-operator-mode .ops-r1-bridge-guide>summary{
+ display:flex;align-items:center;justify-content:space-between;
+ min-height:36px;padding:8px 10px;color:#c7deca;font-size:11px;font-weight:600;
+ cursor:pointer;list-style:none;
+}
+.fp-operator-mode .ops-r1-bridge-guide>summary::-webkit-details-marker{display:none}
+.fp-operator-mode .ops-r1-bridge-guide>summary svg{transition:transform .16s ease}
+.fp-operator-mode .ops-r1-bridge-guide[open]>summary svg{transform:rotate(180deg)}
+.fp-operator-mode .ops-r1-bridge-steps{
+ padding:5px 10px 11px;border-top:1px solid #334e39;
+ color:#b4ccb9;font-size:11px;line-height:1.52;
+}
+.fp-operator-mode .ops-r1-bridge-protocol{font-weight:700;margin:4px 0 7px;color:#dfefd4}
+.fp-operator-mode .ops-r1-bridge-steps ol{margin:5px 0 10px;padding-left:18px;display:grid;gap:8px}
+.fp-operator-mode .ops-r1-bridge-steps li::marker{color:#a4c9a1}
+.fp-operator-mode .ops-r1-bridge-steps p{font-size:10.5px;margin:0 0 9px;color:#e6c8a3}
+.fp-operator-mode .ops-r1-bridge-steps small{display:block;margin-top:9px;color:#99b39c;line-height:1.5}
+.fp-operator-mode .ops-r1-bridge-links{display:flex;gap:8px;flex-wrap:wrap}
+.fp-operator-mode .ops-r1-bridge-links a{
+ display:inline-flex;align-items:center;gap:5px;border:1px solid #496e51;
+ padding:7px 9px;border-radius:7px;color:#d7eecb;
+ font-size:10.5px;text-decoration:none;
+}
+.fp-operator-mode .ops-r1-bridge-links a:hover{background:#24412b;color:#fff}
+.fp-operator-mode .ops-r1-advanced-route{
+ padding-top:4px;font-size:10px;color:#8ba894;
+}
+.fp-operator-mode .ops-r1-advanced-route>summary{cursor:pointer;list-style:none}
+.fp-operator-mode .ops-r1-advanced-route>summary::-webkit-details-marker{display:none}
+.fp-operator-mode .ops-r1-advanced-route button,
+.fp-operator-mode .ops-r1-back-visual{
+ display:inline-flex;align-items:center;gap:6px;
+ background:transparent;border:1px solid #40594a;
+ border-radius:7px;color:#b2cbb4;padding:8px 10px;margin-top:5px;
+ cursor:pointer;font-size:10.5px;
+}
+.fp-operator-mode .ops-r1-advanced-route button:hover,
+.fp-operator-mode .ops-r1-back-visual:hover{background:#25412c;color:#f0f8ee}
+@media(prefers-reduced-motion:reduce){
+ .fp-operator-mode .ops-r1-bridge-guide>summary svg{transition:none}
+}
