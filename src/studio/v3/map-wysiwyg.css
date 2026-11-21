@@ -230,12 +230,16 @@
  .soma-map-v4-actions{order:1;width:100%;justify-content:flex-end;gap:7px}
 }
 @media(max-width:460px){
+ .soma-map-wysiwyg-bottom{position:relative}
  .soma-map-v4-actions{flex-wrap:wrap;justify-content:flex-start}
+ .stage-dual.map-r2-shell .soma-map-v4-actions>.map-r8-projector-setup{position:static}
  .stage-dual.map-r2-shell .soma-map-v4-actions>.map-r7-perform-cta{
   flex:1 1 125px;min-width:125px
  }
  .soma-map-v4-status [role="status"]{white-space:normal;overflow:visible}
- .soma-map-v4-qa-popover{left:0;right:auto}
+ .soma-map-v4-qa-popover{
+  left:0;right:0;bottom:calc(100% + 8px);width:100%;max-height:min(65vh,520px)
+ }
 }
 @media(prefers-reduced-motion:reduce){
  .soma-map-v4-qa-popover{animation:none}
