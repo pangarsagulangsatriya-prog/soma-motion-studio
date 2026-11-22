@@ -95,7 +95,7 @@ export class PersistentInkStore{
   const value=JSON.parse(raw) as Record<string,unknown>;
   if(value.schema!=='soma.sumi.painting'||value.version!==1||
    value.width!==WIDTH||value.height!==HEIGHT||
-   typeof value.png!=='string'||!/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(value.png))
+   typeof value.png!=='string'||!value.png.startsWith('data:image/png;base64,'))
    throw Error('Format arsip Sumi tidak sesuai.');
   const lines=new Map<string,Array<[number,number]>>();
   if(Array.isArray(value.mediaIntervals)){
