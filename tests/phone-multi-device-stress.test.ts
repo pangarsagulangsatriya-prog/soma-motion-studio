@@ -174,7 +174,7 @@ for(const count of [3,10]){
      send('poll',{room:c.room,token:c.desktopToken}),
      send('poll',{room:c.room,token:c.phoneToken})
     ]));
-    assert.ok(replies.every(r=>r.status===200),'No healthy session should be throttled');
+    assert.ok(replies.every(r=>r.status===200),'No healthy session should be throttled at round '+round+' count '+count+' '+JSON.stringify(replies.map((r,i)=>({i,status:r.status,error:r.data.error})).filter(x=>x.status!==200))+' stats '+JSON.stringify(stats()));
     replies.forEach((r,i)=>{
      const c=cases[Math.floor(i/2)];
      assert.equal(r.data.epoch,1);
