@@ -130,7 +130,7 @@ export function LineTrailsV3Stage(props:StageProps){
        if(nextSumiMode&&!input.paused){
         const events=sumiMotion.ingest(batch.poses);
         for(const event of events){
-         const weight=p.painterly.sumiWeightPx??36;
+         const weight=p.painterly.sumiWeightPx??56;
          const expression=p.painterly.sumiExpression??'bold';
          const geometry=buildSumiStrokeGeometry(event,{weightPx:weight,expression});
          if(!geometry)continue;
@@ -244,13 +244,16 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
   <header><strong>Garis · Painterly</strong><span>{sumi?'V3.4 SUMI':painterly.painterlyEngine==='foot-brush-v33'?'V3.3 BETA':'V3.2 BETA'}</span></header>
   <div className="lt-painterly-material" role="group" aria-label="Engine lukisan">
    <button type="button" aria-pressed={sumi} onClick={()=>change({
-    painterlyEngine:'sumi-v34',sumiMaterial:'sumi',sumiWeightPx:painterly.sumiWeightPx??36,
-    sumiExpression:'bold',footprintLifeMs:6000,footprintKeep:false,trailKeep:true
+    painterlyEngine:'sumi-v34',sumiMaterial:'sumi',sumiWeightPx:painterly.sumiWeightPx??56,
+    sumiExpression:'bold',footprintLifeMs:6000,footprintKeep:false,trailKeep:true,
+    showTrails:true,showSoles:true
    })}>Sumi V3.4</button>
    <button type="button" aria-pressed={painterly.painterlyEngine==='foot-brush-v33'}
-    onClick={()=>change({painterlyEngine:'foot-brush-v33'})}>Kuas V3.3</button>
+    onClick={()=>change({painterlyEngine:'foot-brush-v33',footprintLifeMs:8000,trailLifeMs:4000,
+     footprintKeep:false,trailKeep:false})}>Kuas V3.3</button>
    <button type="button" aria-pressed={!sumi&&painterly.painterlyEngine!=='foot-brush-v33'}
-    onClick={()=>change({painterlyEngine:'legacy-v32'})}>V3.2</button>
+    onClick={()=>change({painterlyEngine:'legacy-v32',material:'ink',footprintLifeMs:8000,
+     trailLifeMs:4000,footprintKeep:false,trailKeep:false})}>V3.2</button>
   </div>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
   <div className="lt-painterly-material" role="group" aria-label="Material lukisan">
@@ -314,9 +317,9 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
      onClick={()=>onChange({...settings,styleMode:mode.value})}>{mode.label}</button>)}
   </div>
   </details>
-  {sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??36} px</output>
+  {sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??56} px</output>
    <input type="range" min={8} max={96} step={2}
-    aria-label="Bobot kuas Sumi" value={painterly.sumiWeightPx??36}
+    aria-label="Bobot kuas Sumi" value={painterly.sumiWeightPx??56}
     onChange={e=>change({sumiWeightPx:Number(e.target.value)})}/>
    </label>
    <label className="lt-painterly-stay"><input type="checkbox" aria-label="Komposisi preview" checked={!!painterly.previewFit}

@@ -10,6 +10,8 @@ async function openV3(page){
  await beta.click();
  const panel=page.getByRole('region',{name:'Kontrol Garis V3'});
  await expect(panel).toBeVisible();
+ // Legacy V3.2 painterly controls are intentionally selected for regression QA.
+ await panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'V3.2'}).click();
  await expect(monitor.locator('.lt-v3-stage canvas')).toHaveCount(1);
  return {beta,panel,monitor};
 }

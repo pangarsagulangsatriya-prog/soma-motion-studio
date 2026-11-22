@@ -7,9 +7,11 @@ async function openPainterly(page){
  await monitor.locator('button.lt-beta-trigger').click();
  const panel=page.getByRole('region',{name:'Kontrol Garis V3'});
  await expect(panel).toBeVisible();
+ // Legacy V3.2 regression coverage uses the explicit fallback selection.
+ await panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'V3.2'}).click();
  return {panel,monitor};
 }
-test('Painterly default: white canvas, Tinta, two independently configurable seconds sliders',async({page})=>{
+test('Painterly V3.2 fallback: white canvas, Tinta, two independent decay controls',async({page})=>{
  const {panel,monitor}=await openPainterly(page);
  await expect(panel.getByText('Garis · Painterly')).toBeVisible();
  await expect(panel.getByText('V3.2 BETA')).toBeVisible();

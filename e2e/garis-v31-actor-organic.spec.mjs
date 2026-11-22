@@ -7,6 +7,8 @@ async function openLines(page){
  await monitor.locator('.lt-beta-trigger').click();
  const panel=page.getByRole('region',{name:'Kontrol Garis V3'});
  await expect(panel).toBeVisible();
+ // Legacy V3.2 painterly controls are intentionally selected for regression QA.
+ await panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'V3.2'}).click();
  return {panel,monitor};
 }
 
