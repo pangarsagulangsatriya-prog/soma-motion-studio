@@ -25,7 +25,7 @@ async function inject(page,...frames){
 }
 async function startFixtures(page){
  await page.goto('/?f3=1&f3qa=1');
- await expect(page.getByRole('button',{name:'F3 Capture'})).toHaveAttribute('aria-current','page');
+ await expect(page.getByRole('heading',{name:'F3 Capture'})).toBeVisible();
  for(const role of ['A','B']){
   const card=page.locator('.f3-device-row[data-role="'+role+'"]');
   await card.locator('.f3-role-source-picker>summary').click();
@@ -180,4 +180,18 @@ test('F3 V3.1: operator sees actor camera and near-square stage slots without le
  expect(sources.every(v=>v.w>0&&v.h>0&&!v.paused)).toBe(true);
  await page.keyboard.press('Escape');
  await expect(page.locator('.f3-operator-preview')).toBeVisible();
+});
+
+test('Engine flyout opens complete F3; Camera Hub stays separate',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Engine',exact:true}).click();
+ const menu=page.getByRole('dialog',{name:'Pilih Stage'});
+ await expect(menu.getByRole('button',{name:/F3 Capture/})).toBeVisible();
+ await menu.getByRole('button',{name:/F3 Capture/}).click();
+ await expect(page.getByRole('heading',{name:'F3 Capture'})).toBeVisible();
+ await expect(page.getByRole('navigation',{name:'Langkah F3 Capture'})).toBeVisible();
+ await expect(page.locator('.f3-pipeline-tab')).toHaveCount(3);
+ await page.getByRole('button',{name:'Camera Hub',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Camera Hub'})).toBeVisible();
+ await expect(page.locator('.f3-workspace')).toHaveCount(0);
 });
