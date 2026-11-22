@@ -48,7 +48,11 @@ export class DualFootTrajectoryEngine{
  }
  private cut(key:string,reason:CutReason){
   const item=this.active.get(key);
-  if(item){item.stroke.cutReason=reason;this.active.delete(key);this.lastCutReason=reason;}
+  if(item){
+   item.stroke.cutReason=reason;this.active.delete(key);this.lastCutReason=reason;
+   this.note({id:key,accepted:false,reason,atMs:Math.max(0,this.lastFrameMs),
+    raw:{x:item.raw.x,y:item.raw.y}});
+  }
  }
  private note(x:V3Decision){
   this.notes.push(x);if(this.notes.length>120)this.notes.shift();
