@@ -23,9 +23,11 @@ export type PainterlySettings={
  sizePx:number;
 };
 export const DEFAULT_PAINTERLY_SETTINGS:PainterlySettings={
- enabled:true,painterlyEngine:'legacy-v32',material:'ink',showSoles:true,showTrails:true,
- footprintLifeMs:8000,trailLifeMs:4000,
- footprintKeep:false,trailKeep:false,sizePx:70
+ enabled:true,painterlyEngine:'sumi-v34',sumiMaterial:'sumi',
+ sumiWeightPx:56,sumiExpression:'bold',previewFit:false,
+ material:'ink',showSoles:true,showTrails:true,
+ footprintLifeMs:6000,trailLifeMs:4000,
+ footprintKeep:false,trailKeep:true,sizePx:70
 };
 const limit=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 function unitRandom(seed:number,i:number){

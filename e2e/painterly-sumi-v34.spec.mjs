@@ -6,15 +6,16 @@ async function openSumi(page){
  await monitor.locator('button.lt-beta-trigger').click();
  const panel=page.getByRole('region',{name:'Kontrol Garis V3'});
  await expect(panel).toBeVisible();
- await panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'Sumi V3.4'}).click();
+ await expect(panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'Sumi V3.4'}))
+  .toHaveAttribute('aria-pressed','true');
  return {panel,monitor};
 }
-test('Sumi V3.4 enables bold 36px, permanent ink and 6s footprints',async({page})=>{
+test('Sumi V3.4 starts by default with bold 56px, permanent ink and 6s footprints',async({page})=>{
  const {panel,monitor}=await openSumi(page);
  await expect(panel.getByText('V3.4 SUMI')).toBeVisible();
  await expect(panel.getByRole('group',{name:'Material lukisan'}).getByRole('button',{name:'Sumi'}))
   .toHaveAttribute('aria-pressed','true');
- await expect(panel.getByRole('slider',{name:'Bobot kuas Sumi'})).toHaveValue('36');
+ await expect(panel.getByRole('slider',{name:'Bobot kuas Sumi'})).toHaveValue('56');
  await expect(panel.getByRole('slider',{name:'Durasi tapak kaki'})).toHaveValue('6');
  await expect(panel.getByLabel('Garis tetap')).toBeChecked();
  await expect(panel.getByRole('slider',{name:'Durasi garis lintasan'})).toBeDisabled();

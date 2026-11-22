@@ -19,9 +19,14 @@ const event=(id:string,foot:'left'|'right',atMs:number):FootMotionEventV2=>({
  atMs,speed:0,confidence:.92,verified:true,
  verification:'video-estimate',coordinateBasis:'image-2d'
 });
-test('default white canvas, independent lifetime 8/4 seconds, actor identity survives',()=>{
+test('Sumi V3.4 is the visible default; legacy lifetime remains configurable',()=>{
  const p=DEFAULT_PAINTERLY_SETTINGS;
- assert.equal(p.footprintLifeMs,8000);assert.equal(p.trailLifeMs,4000);
+ assert.equal(p.painterlyEngine,'sumi-v34');
+ assert.equal(p.sumiWeightPx,56);
+ assert.equal(p.sumiMaterial,'sumi');
+ assert.equal(p.sumiExpression,'bold');
+ assert.equal(p.footprintLifeMs,6000);assert.equal(p.trailLifeMs,4000);
+ assert.equal(p.footprintKeep,false);assert.equal(p.trailKeep,true);
  assert.equal(p.material,'ink');assert.equal(p.enabled,true);
  assert.equal(p.showSoles&&p.showTrails,true);
  assert.equal(DEFAULT_V3_SETTINGS.actorColors.A,'#E44F32');
