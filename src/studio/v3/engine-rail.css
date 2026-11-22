@@ -1,0 +1,185 @@
+/* Engine rail — two destinations, permanent 60px width.
+   Floating Stage selector is rendered outside the rail to avoid clipping. */
+.soma-v3 .workspace:has(>.soma-primary-sidebar),
+.soma-v3 .workspace:has(>.soma-primary-sidebar[data-expanded=true]){
+ --soma-sidebar-width:60px;
+}
+.soma-v3 .soma-primary-sidebar{
+ width:60px;
+ transition:none;
+}
+.soma-v3 .soma-primary-sidebar .soma-rail-item-copy,
+.soma-v3 .soma-primary-sidebar .soma-labs-launch-chevron{
+ display:none!important;
+}
+.soma-v3 .soma-primary-sidebar .soma-primary-nav-list{
+ gap:9px;padding:16px 7px;
+}
+.soma-v3 .soma-primary-sidebar .soma-rail-item{
+ width:100%;
+ min-height:46px;
+ justify-content:center;
+ padding:9px;
+ gap:0;
+}
+.soma-v3 .soma-engine-brand-symbol{
+ display:inline-flex;
+ justify-content:center;
+ align-items:center;
+ width:36px;
+ height:36px;
+ border:1px solid #294334;
+ border-radius:8px;
+ background:#19291f;
+ color:#bed4b8;
+ flex:none;
+}
+.soma-v3 .soma-engine-flyout{
+ position:fixed;
+ z-index:390;
+ width:min(242px,calc(100vw - 80px));
+ padding:9px;
+ overflow:auto;
+ max-height:calc(100dvh - 75px);
+ background:#14241b;
+ border:1px solid #405a46;
+ border-radius:12px;
+ box-shadow:0 19px 55px #000b;
+ color:#e7f0e5;
+ box-sizing:border-box;
+}
+.soma-v3 .soma-engine-flyout *{box-sizing:border-box}
+.soma-v3 .soma-engine-flyout-label{
+ font:650 10px ui-monospace,monospace;
+ letter-spacing:.13em;
+ color:#a6c3ad;
+ padding:8px 9px 12px;
+ margin:0;
+ display:flex;
+ justify-content:space-between;
+}
+.soma-v3 .soma-engine-flyout-label span{
+ font-weight:500;
+ color:#6f8e7b;
+ letter-spacing:.05em;
+}
+.soma-v3 .soma-engine-choice{
+ width:100%;
+ min-height:67px;
+ background:#1d3025;
+ border:1px solid #34523c;
+ border-radius:8px;
+ padding:11px;
+ margin:0 0 6px;
+ display:flex;
+ align-items:center;
+ gap:10px;
+ color:#e3eee3;
+ text-align:left;
+ font:inherit;
+ cursor:pointer;
+ transition:background .15s ease,border-color .15s ease;
+}
+.soma-v3 .soma-engine-choice:last-child{margin-bottom:0}
+.soma-v3 .soma-engine-choice:hover,
+.soma-v3 .soma-engine-choice[aria-current=page]{
+ background:#2b4933;
+ border-color:#8ab38a;
+}
+.soma-v3 .soma-engine-choice:focus-visible{
+ outline:2px solid #d1e7a8;
+ outline-offset:2px;
+}
+.soma-v3 .soma-engine-choice-icon{
+ width:33px;
+ height:33px;
+ border-radius:8px;
+ background:#35503b;
+ color:#b8d6b6;
+ flex:0 0 33px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+}
+.soma-v3 .soma-engine-choice-text{
+ display:flex;
+ min-width:0;
+ flex:1;
+ flex-direction:column;
+ gap:4px;
+}
+.soma-v3 .soma-engine-choice-text strong{
+ font-size:13px;
+ font-weight:650;
+}
+.soma-v3 .soma-engine-choice-text small{
+ font-size:10px;
+ color:#98b39d;
+ line-height:1.35;
+}
+.soma-v3 .soma-engine-choice>svg:last-child{flex:none;color:#8eae98}
+.soma-v3 .soma-rail-tooltip{left:69px;z-index:400}
+.soma-v3.projection-mode{--soma-projector-rail-width:60px!important}
+.soma-v3.projection-mode .soma-engine-flyout{z-index:390}
+
+/* On narrow displays, keep the same compact rail visible at all times.
+   The menu floats over the stage; it does not reflow or narrow the canvas. */
+@media(max-width:760px){
+ .soma-v3 .workspace:has(>.soma-primary-sidebar),
+ .soma-v3 .workspace:has(>.soma-primary-sidebar[data-expanded=true]){
+  display:grid!important;
+  --soma-sidebar-width:56px!important;
+  grid-template-columns:56px minmax(0,1fr)!important;
+  grid-template-rows:58px minmax(0,auto)!important;
+ }
+ .soma-v3 .workspace:has(>.soma-primary-sidebar)>.soma-primary-header{
+  grid-column:1/-1!important;
+  grid-row:1!important;
+ }
+ .soma-v3 .workspace:has(>.soma-primary-sidebar)>main{
+  grid-column:2!important;
+  grid-row:2!important;
+  width:100%!important;
+  min-width:0;
+ }
+ .soma-v3 .workspace>.soma-primary-sidebar{
+  grid-column:1;
+  grid-row:2;
+  position:sticky!important;
+  top:58px!important;
+  bottom:auto;
+  left:auto;
+  height:calc(100dvh - 58px)!important;
+  width:56px!important;
+  transform:none!important;
+  transition:none!important;
+  box-shadow:none;
+  z-index:220;
+ }
+ .soma-v3 .soma-primary-sidebar[data-expanded=false] .soma-primary-nav-list{
+  padding:13px 5px;
+ }
+ .soma-v3 .soma-primary-sidebar[data-expanded=false] .soma-rail-item{
+  justify-content:center;
+  padding:8px;
+  gap:0;
+ }
+ .soma-v3 .soma-engine-flyout{z-index:400}
+ .soma-v3.projection-mode{
+  grid-template-columns:56px minmax(0,1fr)!important;
+  --soma-projector-rail-width:56px!important;
+ }
+ .soma-v3.projection-mode>.workspace>.soma-primary-sidebar{
+  position:fixed!important;
+  top:58px!important;
+  left:0;
+ }
+ .soma-v3.projection-mode>.projection-workspace{
+  grid-column:2;
+  grid-row:2;
+  min-width:0;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-v3 .soma-engine-choice{transition:none}
+}
