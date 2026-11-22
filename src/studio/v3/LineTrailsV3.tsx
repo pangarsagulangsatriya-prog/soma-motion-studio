@@ -38,6 +38,7 @@ type StageProps={
  onStatus:(text:string)=>void;
  onDiagnostics?:(text:string)=>void;
  onRegisterExportInk?:(fn:()=>string|null)=>void;
+ onRegisterInkArchive?:(api:{save:()=>string|null;load:(data:string)=>Promise<void>})=>void;
 };
 
 export function LineTrailsV3Stage(props:StageProps){
@@ -55,6 +56,9 @@ export function LineTrailsV3Stage(props:StageProps){
   const sumiStore=new PersistentInkStore();
   const viewFit=new PainterlyPreviewTransform();
   args.current.onRegisterExportInk?.(()=>sumiStore.exportPNG());
+  args.current.onRegisterInkArchive?.({save:()=>sumiStore.exportSessionJSON(),
+   load:async data=>{sumiMotion.cutMotionSegment('import');
+    await sumiStore.importSessionJSON(data);viewFit.reset();}});
   let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
   let brushSource='';
   let brushMode=false;
@@ -123,7 +127,7 @@ export function LineTrailsV3Stage(props:StageProps){
         input.frameMs,brushAdapter);
        brushAdapter=batch.state;
        if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');}
-       if(nextSumiMode){
+       if(nextSumiMode&&!input.paused){
         const events=sumiMotion.ingest(batch.poses);
         for(const event of events){
          const weight=p.painterly.sumiWeightPx??36;
@@ -194,7 +198,7 @@ export function LineTrailsV3Stage(props:StageProps){
    }
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');args.current.onRegisterExportInk?.(()=>null);};
+  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
  return <div ref={props.fullscreenRef} className="lt-beta-frame lt-v3-stage"
   aria-label="Kanvas Garis V3, lintasan dua kaki">
@@ -206,13 +210,14 @@ type PanelProps={
  settings:V3Settings;onChange:(next:V3Settings)=>void;
  painterly:PainterlySettings;onPainterlyChange:(next:PainterlySettings)=>void;
  impressions:PainterlyImpressionEngine;
- engine:DualFootTrajectoryEngine;onClear:()=>void;onExportPNG?:()=>void;demo:boolean;onDemo:()=>void;
+ engine:DualFootTrajectoryEngine;onClear:()=>void;onExportPNG?:()=>void;
+ onSaveSession?:()=>void;onLoadSession?:()=>void;demo:boolean;onDemo:()=>void;
  status:string;diagnostics:string;performerCount:1|2;
  onUseV2:()=>void;fullscreenDiagnostics:FullscreenDiagnostics;
  onFullscreenDiagnostics:(next:FullscreenDiagnostics)=>void;
 };
 export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange,
- impressions,engine,onClear,onExportPNG,demo,onDemo,status,diagnostics,
+ impressions,engine,onClear,onExportPNG,onSaveSession,onLoadSession,demo,onDemo,status,diagnostics,
  performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
  const actorColor=(actor:'A'|'B',value:string)=>onChange({
   ...settings,actorColors:{...settings.actorColors,[actor]:value}
@@ -329,6 +334,10 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
   <div className="lt-beta-actions">
    <button type="button" onClick={onClear}>{sumi?'Bersihkan Lukisan':'Bersihkan'}</button>
    {sumi&&<button type="button" onClick={onExportPNG} aria-label="Simpan lukisan PNG">Simpan PNG</button>}
+   {sumi&&<details className="lt-painterly-characters"><summary>Arsip lukisan</summary>
+    <button type="button" onClick={onSaveSession}>Simpan sesi JSON</button>
+    <button type="button" onClick={onLoadSession}>Pulihkan sesi JSON</button>
+   </details>}
    <button type="button" className="lt-beta-demo" aria-pressed={demo} onClick={onDemo}>
     {demo?'Hentikan Demo':'Coba Demo'}
    </button>
