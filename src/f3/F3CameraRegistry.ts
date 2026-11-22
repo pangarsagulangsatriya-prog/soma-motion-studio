@@ -4,7 +4,7 @@ import type {F3Role,F3CameraStatus} from './F3Types.ts';
 /** Owns exactly two independently selected sources; never borrows Track's video element. */
 export class F3CameraRegistry{
  private entries=new Map<F3Role,{video:HTMLVideoElement;stream:MediaStream|null;url:string|null;status:F3CameraStatus;liveness:CameraLiveness;lastArrival:number}>();
- private sequence=0;
+ private generation:Record<F3Role,number>={A:0,B:0};
  private listeners=new Set<()=>void>();
  subscribe=(listener:()=>void)=>{this.listeners.add(listener);return ()=>this.listeners.delete(listener);};
  private emit(){this.listeners.forEach(fn=>fn());}
@@ -29,26 +29,31 @@ export class F3CameraRegistry{
    throw Error('Kamera A dan B harus memakai perangkat berbeda.');
   if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser belum memberi akses kamera lewat HTTPS.');
   this.disconnect(role);
+  const generation=this.generation[role];
   e.status={...this.makeStatus(role),kind:'camera',state:'connecting',message:'Menghubungkan kamera…'};this.emit();
-  const connection=++this.sequence;e.status.id=deviceId||'default';
+  e.status.id=deviceId||'default';
   try{
    const stream=await navigator.mediaDevices.getUserMedia({video:{deviceId:deviceId?{exact:deviceId}:undefined},audio:false});
-   if(e.status.state!=='connecting'||e.status.id!==(deviceId||'default')){stream.getTracks().forEach(t=>t.stop());return;}
+   if(generation!==this.generation[role]||e.status.state!=='connecting'||e.status.id!==(deviceId||'default')){stream.getTracks().forEach(t=>t.stop());return;}
    e.stream=stream;
    e.video.removeAttribute('src');e.video.srcObject=stream;e.video.muted=true;e.video.playsInline=true;
    const track=stream.getVideoTracks()[0];
    track.addEventListener('ended',()=>{if(e.stream===stream){e.status.state='stale';e.status.message='Kamera terputus';this.emit();}});
    await e.video.play();
+   if(generation!==this.generation[role])return;
    e.status.state='connecting';e.status.message='Menunggu frame…';this.emit();
-   void connection;
-  }catch(err){this.disconnect(role);e.status={...this.makeStatus(role),state:'error',message:err instanceof Error?err.message:'Gagal membuka kamera'};this.emit();throw err;}
+  }catch(err){if(generation!==this.generation[role])return;
+   this.disconnect(role);e.status={...this.makeStatus(role),state:'error',message:err instanceof Error?err.message:'Gagal membuka kamera'};this.emit();throw err;}
  }
  async connectFixture(role:F3Role,file:File){
   const e=this.require(role);this.disconnect(role);
+  const generation=this.generation[role];
   const url=URL.createObjectURL(file);e.url=url;
   e.status={...this.makeStatus(role,'fixture'),id:role+'-'+file.name,kind:'fixture',state:'connecting',message:'Menyiapkan MP4 simulasi…'};
   e.video.src=url;e.video.srcObject=null;e.video.loop=true;e.video.muted=true;e.video.playsInline=true;this.emit();
-  try{await e.video.play();}catch(err){this.disconnect(role);throw err;}
+  try{await e.video.play();if(generation!==this.generation[role])return;}
+  catch(err){if(generation!==this.generation[role])return;
+   this.disconnect(role);e.status={...this.makeStatus(role,'fixture'),state:'error',message:'Format atau codec MP4 tidak didukung browser.'};this.emit();throw err;}
  }
  /** Called from one shared RAF. Liveness measures decoded frames, not pose detection. */
  poll(now:number){
@@ -70,6 +75,7 @@ export class F3CameraRegistry{
   }
  }
  disconnect(role:F3Role){
+  this.generation[role]++;
   const e=this.entries.get(role);if(!e)return;
   e.stream?.getTracks().forEach(t=>t.stop());e.stream=null;
   e.video.pause();e.video.srcObject=null;e.video.removeAttribute('src');
