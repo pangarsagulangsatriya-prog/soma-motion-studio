@@ -25,7 +25,7 @@ test('phone pairing opens inline in the left rail while preview remains visible'
  const rail=stage.slice(railStart,railEnd);
  assert.match(rail,/aria-expanded=\{phonePanelOpen\} aria-controls="soma-track-phone-pairing"/);
  assert.match(rail,/id="soma-track-phone-pairing"/);
- assert.match(rail,/<PhoneCameraReceiver onStream=\{onPhoneStream\} onDisconnect=\{onPhoneDisconnect\}\/>/);
+ assert.match(rail,/<PhoneCameraReceiver onStream=\{onPhoneStream\} onInterrupted=\{onPhoneInterrupted\} onDisconnect=\{onPhoneDisconnect\}\/>/);
  assert.equal((stage.match(/<PhoneCameraReceiver /g)||[]).length,1);
  assert.match(stage,/setInspectorOpen\(false\);\s*setPhonePanelOpen\(choice==='phone'\)/);
  assert.doesNotMatch(stage,/\|\|sourceStatus\.selection==='phone'\)\&\&<aside id="fp-context-panel"/);
