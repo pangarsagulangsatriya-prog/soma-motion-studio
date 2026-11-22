@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {Activity,AudioLines,BookOpen,Camera,Film,Footprints,HelpCircle,
- Layers3,Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Save,ScanFace,Search,
+ Layers3,Network,Monitor,MonitorOff,PanelLeftClose,PanelLeftOpen,Save,ScanFace,Search,
  Sparkles,Type,X,Box,ChevronRight} from 'lucide-react';
 import type {SceneId} from './ScenePicker.tsx';
 import type {StageNavigationTool} from './stageNavigation.ts';
@@ -21,11 +21,12 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,cameraHubActive=false,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
  onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
+ onCameraHub:()=>void;cameraHubActive?:boolean;
  onStageTool:(tool:StageNavigationTool)=>void;
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
@@ -219,6 +220,16 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
      onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onStageTwo();}}>
      <Layers3 size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Stage 2</b></span>
+    </button>
+    <button type="button" className="soma-rail-item soma-primary-destination soma-stage-module-launch"
+     aria-label="Camera Hub" aria-current={cameraHubActive?'page':undefined}
+     title={expanded?'Camera Hub · sumber dan sambungan':undefined}
+     onMouseEnter={e=>showTip('Camera Hub',e.currentTarget,'hover')}
+     onMouseLeave={clearTip} onFocus={e=>showTip('Camera Hub',e.currentTarget,'focus')}
+     onBlur={clearTip}
+     onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onCameraHub();}}>
+     <Network size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>Camera Hub</b></span>
     </button>
    </div>
 
