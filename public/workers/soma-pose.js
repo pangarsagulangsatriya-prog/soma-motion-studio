@@ -108,8 +108,8 @@ self.onmessage=async ({data:m})=>{
   if(m.targetCount===2&&!rescue&&!rescueLoading)void ensureRescue();
   const rescuedCount=m.targetCount===2?recoverSecond(m.bitmap,poses,world,m.time):0;
   const inferenceMs=performance.now()-begin;
-  const response={type:'result',landmarks:poses,worldLandmarks:world,
+  const response={type:'result',id:m.id,landmarks:poses,worldLandmarks:world,
    rescuedCount,segmentation,projectionMask,inferenceMs};
   self.postMessage(response,[segmentation?.data.buffer,projectionMask?.data.buffer].filter(Boolean));
- }catch(e){self.postMessage({type:'error',message:String(e.message||e)});}finally{result?.close();m.bitmap.close();}}
+ }catch(e){self.postMessage({type:'error',id:m.id,message:String(e.message||e)});}finally{result?.close();m.bitmap.close();}}
 };

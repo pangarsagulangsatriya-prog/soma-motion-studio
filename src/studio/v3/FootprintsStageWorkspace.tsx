@@ -33,7 +33,7 @@ import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts'
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {trackStatus} from './trackViewModel.ts';
-import {liveSkeletonPresentation} from './trackFeedbackModel.ts';
+import {liveSkeletonPresentation,observedLiveTorso} from './trackFeedbackModel.ts';
 import {useTrackFeedbackPulse} from './useTrackFeedbackPulse.ts';
 import {trackStatusOwnership} from './trackStatusOwnership.ts';
 import {deriveSourceScreenMode,showsSourcePicker,showsGaitPreviews} from './sourceScreenModel.ts';
@@ -402,7 +402,10 @@ export function FootprintsStageWorkspace({
     performerCount,visibleCount:identities.visible.length,
     identityAmbiguous:identities.ambiguous,matchedFrame:identities.observedFrameTime===f.time
    });
-   const fresh=cameraSourceReady&&bodySelected&&f.source==='camera'&&f.tracked&&
+   // Track 2P uses real raw torso observations even when the legacy
+   // single-pose aggregator says tracked=false. Projector gates stay separate.
+   const rawObserved=performerCount===2?observedLiveTorso(f):f.tracked;
+   const fresh=cameraSourceReady&&bodySelected&&f.source==='camera'&&rawObserved&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
    const videoAvailable=!!(cameraSourceReady&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight);
@@ -887,7 +890,7 @@ export function FootprintsStageWorkspace({
     onSaveCue={savePerformGrid} onResetCues={resetPerformGrid} cueMessage={performMessage}
     scene={floorScene} previewStatus={experimentalKind==='video'?
      (selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
-      selectedExperimentFrame.snapshot.visibleCount+'/2 · '+selectedExperimentFrame.snapshot.performance.poseFps.toFixed(1)+' FPS':'MP4 · menunggu pose'):
+      Math.min(selectedExperimentFrame.snapshot.visibleCount,performerCount)+'/'+performerCount+' · '+selectedExperimentFrame.snapshot.performance.poseFps.toFixed(1)+' FPS':'MP4 · menunggu pose'):
      experimentalKind==='simulator'?'Simulasi 3D':cameraLabel}
     sourceLabel={SOURCE_CHOICES.find(option=>option.id===sourceStatus.selection)?.label??'Belum dipilih'}
     hardwareStatus={'BODY '+(dual.body.mode==='live'?'LIVE':dual.body.connected?'Siaga':'Offline')+' · FLOOR '+(dual.floor.mode==='live'?'LIVE':dual.floor.connected?'Siaga':'Offline')}

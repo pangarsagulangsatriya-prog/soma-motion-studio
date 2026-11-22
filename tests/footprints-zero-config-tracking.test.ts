@@ -41,7 +41,7 @@ test('Tracking auto-starts muted looping MP4; technical knobs only in opt-in Lab
  const ui=readFileSync(new URL('../src/studio/v3/FootprintsExperimentalSource.tsx',import.meta.url),'utf8');
  const worker=readFileSync(new URL('../src/stage/replayInferenceWorker.ts',import.meta.url),'utf8');
  const stage=readFileSync(new URL('../src/studio/v3/FootprintsStageWorkspace.tsx',import.meta.url),'utf8');
- assert.match(ui,/engine\.setPerformers\(2\)/);
+ assert.match(ui,/engine\.setPerformers\(performerCount\)/);
  assert.match(ui,/el\.play\(\)/);
  assert.match(ui,/playsInline muted loop preload/);
  assert.match(ui,/TRACKING OTOMATIS/);

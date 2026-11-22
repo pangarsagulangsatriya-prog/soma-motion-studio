@@ -59,3 +59,16 @@ test('1P camera worker never starts extra crop inference',async()=>{
  assert.equal(h.messages[1].m.rescuedCount,0);
  assert.equal(h.messages[1].m.landmarks.length,1);
 });
+
+test('worker echoes frame request ID on success and failure, preventing stale cross-frame results',async()=>{
+ const good=harness();
+ await good.ctx.onmessage({data:{type:'init'}});
+ await good.ctx.onmessage({data:{type:'frame',id:71,bitmap:good.bitmap,time:100,projection:false,targetCount:1}});
+ assert.equal(good.messages[1].m.id,71);
+ assert.equal(good.messages[1].m.type,'result');
+ const bad=harness(true);
+ await bad.ctx.onmessage({data:{type:'init'}});
+ await bad.ctx.onmessage({data:{type:'frame',id:72,bitmap:bad.bitmap,time:100,projection:false,targetCount:2}});
+ assert.equal(bad.messages[1].m.id,72);
+ assert.equal(bad.messages[1].m.type,'error');
+});

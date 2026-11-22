@@ -15,7 +15,7 @@ export function trackStatus(input:{
  if(selection==='video'){
   if(!videoLoaded)return {label:'Belum ada video',detail:'Pilih MP4',kind:'idle'};
   if(videoVisible===null)return {label:'Video dimuat',detail:'Menunggu pose',kind:'busy'};
-  return {label:'Video aktif',detail:videoVisible+' / 2 aktor',kind:'ready'};
+  return {label:'Video aktif',detail:Math.min(videoVisible,performerCount)+' / '+performerCount+' aktor',kind:'ready'};
  }
  if(selection==='simulator')return {label:'Simulasi aktif',detail:'',kind:'ready'};
  if(!frameFresh)return {label:'Kamera aktif',detail:'Menunggu pose',kind:'busy'};

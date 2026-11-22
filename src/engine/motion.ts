@@ -26,8 +26,9 @@ export class MotionProcessor {
     point.x>=0&&point.x<=1&&point.y>=0&&point.y<=1?
     (point.visibility??0):0);
   },0);
-  f.pose=f.poses.reduce((best,body)=>torsoScore(body)>torsoScore(best)?body:best,
-   f.poses[0]??[] as Landmark[]);
+  const selectedPoseIndex=f.poses.reduce((bestIndex,body,index)=>
+   torsoScore(body)>torsoScore(f.poses[bestIndex]??[])?index:bestIndex,0);
+  f.pose=f.poses[selectedPoseIndex]??[];
   f.handCount=f.hands.length;f.face=face?.faceLandmarks[0]??[];
   const dt=this.previous?clamp((time-this.previous.time)/1000,.008,.25):.033;
   const screenX=(x:number)=>s.mirror?1-x:x;
@@ -53,7 +54,11 @@ export class MotionProcessor {
    f.quality=[11,12,23,24].reduce((a,i)=>a+(body[i].visibility??1),0)/4;
    f.features.lean=clamp(.5+(s.mirror?-1:1)*(sh.x-hip.x)/torso);
    f.features.armRaise=(visible(15)&&visible(16))?clamp(((sh.y-body[15].y)+(sh.y-body[16].y))/(2*torso)+.25):0;
-   const world=p?.worldLandmarks?.[0];
+   // A rescued IMAGE crop may have no valid worldLandmarks. Never use a
+   // different actor's 3D body or dereference an incomplete 3D pose.
+   const candidateWorld=p?.worldLandmarks?.[selectedPoseIndex];
+   const world=candidateWorld&&[11,12,23,24].every(i=>
+    Number.isFinite(candidateWorld[i]?.z))?candidateWorld:null;
    f.features.bend=world?clamp(Math.abs((world[11].z+world[12].z-world[23].z-world[24].z)/2)/.45):clamp(1-(hip.y-sh.y)/torso);
    f.features.leftElbow=visible(13)&&visible(15)?angle(body[11],body[13],body[15])/180:0;f.features.rightElbow=visible(14)&&visible(16)?angle(body[12],body[14],body[16])/180:0;f.features.leftKnee=visible(25)&&visible(27)?angle(body[23],body[25],body[27])/180:0;f.features.rightKnee=visible(26)&&visible(28)?angle(body[24],body[26],body[28])/180:0;
    f.features.squat=[25,26,27,28].every(visible)?clamp((170-(angle(body[23],body[25],body[27])+angle(body[24],body[26],body[28]))/2)/85):0;

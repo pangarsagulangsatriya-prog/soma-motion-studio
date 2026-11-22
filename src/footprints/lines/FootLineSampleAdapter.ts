@@ -34,7 +34,7 @@ export function footSamplesFromPose(pose:readonly Landmark[],meta:Metadata):Foot
 /** For 2P, only route a pose when identity router has assigned that precise frame. */
 export function footSamplesFromLive(frame:MotionFrame,status:MultiPoseStatus,count:1|2,
  source:'camera'|'phone',sessionId:string,generation:number,selected:'A'|'B'='A'):FootLineSample[]{
- if(!frame.tracked||frame.source!=='camera'||frame.time<=0)return [];
+ if(frame.source!=='camera'||frame.time<=0||(count===1&&!frame.tracked))return [];
  const meta={sessionId,generation,source,atMs:frame.time,coordinateBasis:'image-2d' as const};
  if(count===1)return footSamplesFromPose(frame.pose,{...meta,actorId:'performer-1'});
  if(status.ambiguous||status.observedFrameTime!==frame.time)return [];
@@ -48,14 +48,15 @@ export function footSamplesFromExperiment(frame:ExperimentalFrame|null,
  if(frame.kind==='video'){
   const snapshot=frame.snapshot;
   if(!frame.ready||frame.video?.seeking||!snapshot||Math.abs(frame.timeMs-snapshot.atMs)>450)return [];
-  const person=snapshot.people.find(p=>p.id===selected)??(selected==='A'?snapshot.people[0]:undefined);
+  // No silent A→B substitution after occlusion or MP4 identity recovery.
+  const person=snapshot.people.find(p=>p.id===selected);
   if(!person)return [];
   return footSamplesFromPose(person.landmarks,{
    sessionId,generation,source:'video',actorId:person.id,
    atMs:snapshot.atMs,coordinateBasis:'image-2d'
   });
  }
- const p=frame.performers.find(item=>item.id===selected)??(selected==='A'?frame.performers[0]:undefined);
+ const p=frame.performers.find(item=>item.id===selected);
  if(!p)return [];
  return (['left','right'] as const).map(foot=>{
   const uv=floorToUV(frame.session.floor,p[foot].positionM);

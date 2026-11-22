@@ -30,6 +30,20 @@ export function visiblePoseFeet(pose:readonly Landmark[]|null|undefined):0|1|2{
  return (Number(left)+Number(right)) as 0|1|2;
 }
 
+/** Two-person Track can observe a real partial torso even when legacy
+ * single-person motion tracking rejects pose[0]. This is diagnostic only. */
+export function observedLiveTorso(frame:MotionFrame|null|undefined):boolean{
+ if(!frame||frame.source!=='camera')return false;
+ return !!frame.poses?.some(pose=>{
+  if(pose.length!==33)return false;
+  const present=(i:number)=>{
+   const p=pose[i];return !!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
+    p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&(p.visibility??0)>=.52;
+  };
+  return [11,12,23,24].filter(present).length>=3&&
+   (present(23)||present(24));
+ });
+}
 const missing=(id:'A'|'B'):TrackActorFeedback=>({id,state:'missing',feet:0});
 const forPose=(id:'A'|'B',pose:readonly Landmark[]|null|undefined):TrackActorFeedback=>{
  if(!pose||pose.length<33)return missing(id);
@@ -93,7 +107,8 @@ export function deriveTrackFeedback(input:{
   return resultFor(actors,ambiguous);
  }
  if(phase!=='ready'||!cameraOn)return waiting('Menunggu kamera');
- if(!frameFresh||!liveFrame||liveFrame.source!=='camera'||!liveFrame.tracked)
+ if(!frameFresh||!liveFrame||liveFrame.source!=='camera'||
+   (performerCount===1?!liveFrame.tracked:!observedLiveTorso(liveFrame)))
   return waiting('Mencari tubuh');
  const actorIds:('A'|'B')[]=performerCount===1?['A']:['A','B'];
  if(performerCount===1){

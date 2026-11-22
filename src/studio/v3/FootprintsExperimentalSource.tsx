@@ -7,14 +7,14 @@ import {subscribeReplayFrames} from '../../stage/replayFrameClock.ts';
 import {validVideoLabFile} from '../../stage/videoMotionLabUtils.ts';
 import {DirectPuppetSession} from '../../footprints/simulator/puppet-controller.ts';
 import {initialCamera} from '../../footprints/simulator/scene3d.ts';
-import type {FootSide} from '../../footprints/spatial/events.ts';
+import {createFloorSession,type FootSide} from '../../footprints/spatial/events.ts';
 import type {ExperimentInputKind,ExperimentalFrame} from './experimentSourceModel.ts';
 import './footprints-experimental-source.css';
 
 export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,externalRevision,
- onAdvancedVideo,onAdvancedSimulator}:{
+ performerCount,onAdvancedVideo,onAdvancedSimulator}:{
  kind:ExperimentInputKind;clip:File|null;onClip:(file:File|null)=>void;
- model:DirectPuppetSession;externalRevision:number;
+ model:DirectPuppetSession;externalRevision:number;performerCount:1|2;
  onFrame:(frame:ExperimentalFrame|null)=>void;
  onAdvancedVideo:()=>void;onAdvancedSimulator:()=>void;
 }){
@@ -41,11 +41,13 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [simTime,setSimTime]=useState(0);
  const renderSimulation=useCallback(()=>{
   const model=sessionRef.current;
-  onFrame({kind:'simulator',session:model.session,
-   performers:model.performers.map(p=>({...p,left:{...p.left,positionM:{...p.left.positionM}},
-    right:{...p.right,positionM:{...p.right.positionM}}})),
+  const events=model.events.filter(e=>performerCount===2||e.performerId==='A');
+  onFrame({kind:'simulator',session:createFloorSession(model.floor,events),
+   performers:model.performers.filter(p=>performerCount===2||p.id==='A')
+    .map(p=>({...p,left:{...p.left,positionM:{...p.left.positionM}},
+     right:{...p.right,positionM:{...p.right.positionM}}})),
    orbit:orbit.current,timeMs:model.durationMs,name:'Direct Puppet'});
- },[onFrame]);
+ },[onFrame,performerCount]);
  useEffect(()=>{
   if(kind!=='simulator')return;
   renderSimulation();
@@ -70,9 +72,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     lastSnapshot.current=value;setSnapshot(value);
    }
   });
-  // Footprints stage is a two-performer rehearsal space. Keep both actor
-  // slots active, even when one person's pose is temporarily invisible.
-  engine.setPerformers(2);
+  // MP4 analysis shares the selected 1P/2P mode with Track.
+  engine.setPerformers(performerCount);
   videoEngine.current=engine;
   setAnalyzing(true);setAnalysisError('');
   void engine.init().then(()=>{
@@ -95,6 +96,15 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    engine.dispose();if(videoEngine.current===engine)videoEngine.current=null;
   };
  },[kind,clip,videoReady]);
+ // Count changes reset identity/gait without reopening video or reloading AI.
+ useEffect(()=>{
+  const engine=videoEngine.current;
+  if(!engine||kind!=='video')return;
+  engine.setPerformers(performerCount);
+  const player=video.current;
+  if(player&&player.readyState>=2&&!player.seeking)
+   engine.process(player,player.currentTime,18,true);
+ },[kind,performerCount]);
  useEffect(()=>{
   if(kind!=='video'||!videoReady)return;
   const el=video.current;if(!el)return;
@@ -212,7 +222,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     data-state={analysisError?'error':analyzing?'busy':snapshot?'ready':'idle'}
     title={analysisError||'Status deteksi frame saat ini'}>
     {analysisError?'Tracking gagal':analyzing?'Memuat AI…':
-     snapshot?`${snapshot.visibleCount}/2 tubuh`:
+     snapshot?`${Math.min(snapshot.visibleCount,performerCount)}/${performerCount} tubuh`:
      clip?'Menyiapkan AI':'Belum ada video'}
    </span>
    {snapshot&&<div className="fp-duet-engine-status" role="group"
@@ -221,12 +231,13 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
     <span className="fp-tracking-summary"
      title={snapshot.visibleCount===2?'Dua aktor terbaca':snapshot.visibleCount===1?
       'Satu aktor terbaca; menunggu aktor lainnya':'Menunggu tubuh yang dapat diatribusikan'}>
-     {snapshot.visibleCount===2?'2/2 aktif':
+     {performerCount===1?(snapshot.visibleCount>0?'1/1 aktif':'Mencari'):
+      snapshot.visibleCount===2?'2/2 aktif':
       snapshot.persistentActors?.filter(a=>a.registered).length===2?
        'Re-ID aktif':snapshot.visibleCount===1?'1/2 aktif':'Mencari'}
     </span>
     <span className="fp-video-actor-status" aria-label="Status masing-masing aktor MP4">
-     {snapshot.actorStates.map(actor=><span key={actor.id}
+     {snapshot.actorStates.filter(actor=>performerCount===2||actor.id==='A').map(actor=><span key={actor.id}
       data-actor={actor.id} data-presence={actor.presence}
       title={`Aktor ${actor.id}: ${videoActorPresenceLabel(actor.presence)}`}>
       <b>{actor.id}</b> {actor.presence==='visible'?'Aktif':
@@ -249,7 +260,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
        <div><dt>Lag video</dt><dd>{snapshot.performance.latestVideoLagMs.toFixed(0)} ms</dd></div>
        <div><dt>Registrasi</dt><dd>{snapshot.persistentActors?.filter(a=>a.registered).length??0}/2 tersimpan</dd></div>
       </dl>
-      {snapshot.actorStates.map(actor=><p key={actor.id}>
+      {snapshot.actorStates.filter(actor=>performerCount===2||actor.id==='A').map(actor=><p key={actor.id}>
        <b>{actor.id}</b> · {videoActorPresenceLabel(actor.presence)}
       </p>)}
       <small>Saat crossing, output BODY mengikuti pengaman identitas per aktor.</small>

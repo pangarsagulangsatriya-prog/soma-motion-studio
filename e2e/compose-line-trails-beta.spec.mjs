@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {selectStageSource} from './ia-ux-helpers.mjs';
 
 async function openBeta(page){
  await page.goto('/');
@@ -169,4 +170,20 @@ test('Fullscreen input and skeleton previews are OFF by default, opt-in via V/K,
  await monitor.getByRole('button',{name:'Fullscreen Stage Monitor'}).click();
  await expect.poll(async()=>(await pixel())[0]).toBeLessThan(100);
  await page.keyboard.press('Escape');
+});
+
+test('Source parity: 1P and 2P modes stay selectable when switching from camera to MP4',async({page})=>{
+ await page.goto('/');
+ const performers=page.getByRole('group',{name:'Jumlah performer'});
+ await expect(performers).toBeVisible();
+ await performers.getByRole('button',{name:'2P'}).click();
+ await expect(performers.getByRole('button',{name:'2P'})).toHaveAttribute('aria-pressed','true');
+ await selectStageSource(page,'Video MP4');
+ await expect(page.getByRole('region',{name:'Sumber video MP4 Footprints'})).toBeVisible();
+ await expect(performers.getByRole('button',{name:'2P'})).toHaveAttribute('aria-pressed','true');
+ await performers.getByRole('button',{name:'1P'}).click();
+ await expect(performers.getByRole('button',{name:'1P'})).toHaveAttribute('aria-pressed','true');
+ // Without a decoded MP4, no skeleton or actor may be claimed as valid.
+ await expect(page.getByText('Menganalisis video')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Map workspace'})).toBeVisible();
 });
