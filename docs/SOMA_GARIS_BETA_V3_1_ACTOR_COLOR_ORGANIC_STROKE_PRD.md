@@ -5,7 +5,7 @@
 **Tanggal:** 23 November 2026  
 **Area:** Stage 1 → Compose → Garis BETA  
 **Ruang lingkup:** pengelompokan warna per aktor, kualitas garis, simplifikasi panel, pengujian keterbacaan.  
-**Landasan:** implementasi Garis BETA V3 di \`src/studio/v3/LineTrailsV3.tsx\`, \`src/footprints/lines/v3/TrajectoryRenderer.ts\`, dan \`DualFootTrajectoryEngine.ts\`.  
+**Landasan:** implementasi Garis BETA V3 di `src/studio/v3/LineTrailsV3.tsx`, `src/footprints/lines/v3/TrajectoryRenderer.ts`, dan `DualFootTrajectoryEngine.ts`.  
 **Terkait:** [PRD V3](./SOMA_GARIS_BETA_V3_DUAL_FOOT_TRAJECTORY_PRD.md) · [Technical Architecture V3](./SOMA_GARIS_BETA_V3_TECHNICAL_ARCHITECTURE.md).
 
 > **Sasaran:** penonton mengikuti perjalanan **Aktor A** dan **Aktor B** dari jejak garis yang luwes. Kaki kiri dan kanan tetap terlacak terpisah, tetapi identitas warna utama mengikuti aktor. Garis berkarakter seperti sapuan tangan tanpa memalsukan arah, titik belok, diam, atau terputusnya pelacakan.
@@ -14,9 +14,9 @@
 
 ## 1. Masalah dari V3 saat ini
 
-1. **Warna dikunci per kaki.** \`V3Settings.colors.left/right\` dan \`paintOne()\` mengambil warna dari \`stroke.foot\`. Aktor A dan B akhirnya berbagi dua warna yang sama, padahal penonton perlu membedakan dua tubuh di panggung.
-2. **Rendering garis terlalu kaku.** \`TrajectoryRenderer.ts\` menggambar setiap segmen menggunakan \`moveTo/lineTo\` lurus. Hasil mengikuti data, tetapi pada jalur yang banyak perubahan kecil terlihat seperti plot koordinat.
-3. **Serpihan garis.** Screenshot V3 menunjukkan 57 titik dan 18 segmen, dengan status **\`MP4 · analisis tertunda\` / \`stale-frame\`**. Banyaknya putus kemungkinan berkaitan dengan ketersediaan frame yang lolos gate, selain cara render. **Wajib benahi observabilitas frame terlebih dahulu**; menyembunyikan serpihan saja tidak menyelesaikan penyebabnya.
+1. **Warna dikunci per kaki.** `V3Settings.colors.left/right` dan `paintOne()` mengambil warna dari `stroke.foot`. Aktor A dan B akhirnya berbagi dua warna yang sama, padahal penonton perlu membedakan dua tubuh di panggung.
+2. **Rendering garis terlalu kaku.** `TrajectoryRenderer.ts` menggambar setiap segmen menggunakan `moveTo/lineTo` lurus. Hasil mengikuti data, tetapi pada jalur yang banyak perubahan kecil terlihat seperti plot koordinat.
+3. **Serpihan garis.** Screenshot V3 menunjukkan 57 titik dan 18 segmen, dengan status **`MP4 · analisis tertunda` / `stale-frame`**. Banyaknya putus kemungkinan berkaitan dengan ketersediaan frame yang lolos gate, selain cara render. **Wajib benahi observabilitas frame terlebih dahulu**; menyembunyikan serpihan saja tidak menyelesaikan penyebabnya.
 4. **Panel memprioritaskan kaki.** Kontrol “Kaki kiri” dan “Kaki kanan” tampil sebagai warna utama; untuk operator 2P, struktur yang lebih tepat dimulai dari Aktor A dan Aktor B.
 
 **Keputusan V3.1:** data tracking V3 tetap sumber geometri; lapisan presentasi memutuskan warna per aktor dan karakter sapuan. Kaki kiri/kanan memiliki jalur data independen dan dapat di-custom melalui pengaturan lanjutan.
@@ -25,8 +25,8 @@
 
 ### Default
 
-- **Aktor A:** merah \`#E44F32\` — kedua kaki menggunakan warna ini.
-- **Aktor B:** hitam arang \`#242424\` pada latar terang; pada latar gelap warna tampil otomatis sebagai abu terang \`#D8D6D0\` agar tetap terbaca.
+- **Aktor A:** merah `#E44F32` — kedua kaki menggunakan warna ini.
+- **Aktor B:** hitam arang `#242424` pada latar terang; pada latar gelap warna tampil otomatis sebagai abu terang `#D8D6D0` agar tetap terbaca.
 - **Kaki kiri dan kanan:** warna utama sama menurut aktornya. Pembeda sekunder, jika diaktifkan: opacity, bentuk ujung, atau variasi dash yang sangat ringan; default **dua garis solid**.
 - **Karakter garis default:** **Luwes**. Mode **Presisi** tersedia untuk QA; **Lukis** untuk eksplorasi visual.
 - **Latar default:** putih tulang seperti V3 saat ini.
@@ -34,7 +34,7 @@
 
 ### Panel kanan — default ringkas
 
-\`\`\`text
+```text
 Garis · Lintasan                          V3.1
 
 ● MP4 / Kamera — status tracking
@@ -48,13 +48,13 @@ Durasi              [Tetap] [8 dtk] [20 dtk]
 ▸ Detail kaki
 ▸ Periksa jalur
 ▸ Pengaturan lanjutan
-\`\`\`
+```
 
-- Pada 1P hanya **Aktor A** muncul sebagai kontrol utama. Identitas \`performer-1\` harus dipetakan konsisten ke palet A; jangan merujuk warna default kaki kiri/kanan.
-- Pada 2P kedua aktor tampil; \`Aktor B\` tidak boleh terlihat aktif jika sumber hanya mengandung satu performer.
-- \`Detail kaki\`: override kiri/kanan per aktor, reset ke warna aktor, tampil/sembunyi per kaki, dash/opacity bila diperlukan. Seluruh override default **off**.
-- \`Periksa jalur\`: raw vs processed, source time, stale/gap/cut reason, actor, foot, jumlah segmen. Inspector tidak memenuhi layar utama.
-- \`Pengaturan lanjutan\`: latar, overlay kamera/skeleton, rollback V2, dan parameter artistik. Mode Pijakan tetap P1 disabled sampai gate kontak siap.
+- Pada 1P hanya **Aktor A** muncul sebagai kontrol utama. Identitas `performer-1` harus dipetakan konsisten ke palet A; jangan merujuk warna default kaki kiri/kanan.
+- Pada 2P kedua aktor tampil; `Aktor B` tidak boleh terlihat aktif jika sumber hanya mengandung satu performer.
+- `Detail kaki`: override kiri/kanan per aktor, reset ke warna aktor, tampil/sembunyi per kaki, dash/opacity bila diperlukan. Seluruh override default **off**.
+- `Periksa jalur`: raw vs processed, source time, stale/gap/cut reason, actor, foot, jumlah segmen. Inspector tidak memenuhi layar utama.
+- `Pengaturan lanjutan`: latar, overlay kamera/skeleton, rollback V2, dan parameter artistik. Mode Pijakan tetap P1 disabled sampai gate kontak siap.
 - Perubahan pilihan memberi umpan balik langsung pada preview; tidak menghapus trajectory history.
 
 ## 3. Tiga karakter garis
@@ -75,14 +75,14 @@ Durasi              [Tetap] [8 dtk] [20 dtk]
 
 ### Rancangan algoritme “Luwes”
 
-1. Baca daftar \`V3Stroke.points\` yang sudah diterima oleh \`DualFootTrajectoryEngine\` **tanpa memodifikasi data raw**.
+1. Baca daftar `V3Stroke.points` yang sudah diterima oleh `DualFootTrajectoryEngine` **tanpa memodifikasi data raw**.
 2. Hilangkan jitter sub-ambang yang tidak menunjukkan perpindahan; jangan hapus titik penentu belokan atau jeda.
 3. Resample **di antara pasangan titik valid pada segmen yang sama** untuk spacing visual stabil.
 4. Gunakan kurva interpolasi **lokal dan dibatasi** (mis. centripetal Catmull–Rom, atau kurva Bézier dengan kontrol terbatas). Implementasi dipilih setelah dibandingkan dengan fixture; hindari Chaikin berulang yang menggerus sudut tajam.
 5. **Corner guard:** titik dengan perubahan arah mendadak atau jeda harus tetap menjadi simpul penting. Pada 90° atau belok balik, kurangi smoothing hingga mendekati polyline asli.
 6. Jika hasil kurva terlalu jauh dari ruas yang teramati, turunkan tension atau kembali ke ruas lurus. Tidak boleh menyambungkan cut.
 7. Taper awal/ujung ringan, berbasis panjang arclength dan hanya memengaruhi visual, bukan posisi.
-8. Cache hasil presentasi per stroke/revision; jangan hitung ulang seluruh 30 menit jejak pada setiap \`requestAnimationFrame\`.
+8. Cache hasil presentasi per stroke/revision; jangan hitung ulang seluruh 30 menit jejak pada setiap `requestAnimationFrame`.
 
 ### “Lukis” secara bertanggung jawab
 
@@ -94,9 +94,9 @@ Durasi              [Tetap] [8 dtk] [20 dtk]
 ## 4. Serpihan, observasi stale, dan fallback
 
 **P0-A, sebelum polish:** ukur penyebab 18 segmen pada screenshot. Inspector menunjukkan:
-- \`source frame time\` vs \`media.currentTime\`; status seek/pause/lag;
-- frekuensi frame valid, jumlah reject dan cut reason \`stale-frame\`, \`time-gap\`, \`missing-foot\`;
-- \`actorId\`, \`foot\`, age frame, jumlah titik per segmen;
+- `source frame time` vs `media.currentTime`; status seek/pause/lag;
+- frekuensi frame valid, jumlah reject dan cut reason `stale-frame`, `time-gap`, `missing-foot`;
+- `actorId`, `foot`, age frame, jumlah titik per segmen;
 - apakah engine terus memutus segmen untuk snapshot video yang terlambat tetapi sumber masih memutar video.
 
 **Tindakan visual P0-B:**
@@ -108,7 +108,7 @@ Durasi              [Tetap] [8 dtk] [20 dtk]
 
 ## 5. Arsitektur perubahan (usulan)
 
-\`\`\`text
+```text
 Track / MP4 / Kamera HP
     → Foot observations + actor identity + source clock
     → DualFootTrajectoryEngine (V3, unchanged source of truth)
@@ -119,21 +119,21 @@ Track / MP4 / Kamera HP
              ├── SegmentEligibility (visual only)
              └── Style path: Presisi / Luwes / Lukis
                    → TrajectoryRenderer (Compose + fullscreen)
-\`\`\`
+```
 
 ### Modul terdampak
 
 | Kode | Rencana |
 | --- | --- |
-| \`src/footprints/lines/v3/TrajectoryRenderer.ts\` | Ganti \`colors.left/right\` menjadi skema actor-first, tambah \`styleMode\`, builder stroke dan pemetaan palet berdasarkan \`stroke.actorId\`. |
-| \`src/studio/v3/LineTrailsV3.tsx\` | UI actor-first, 3 mode garis, kontrol default ringkas, detail kaki dan QA di disclosure. |
-| \`src/studio/v3/line-trails-v3.css\` | Layout ringkas; hindari kontrol berulang / panel terlalu panjang. |
-| **Baru, bila diperlukan:** \`src/footprints/lines/v3/ActorPaletteResolver.ts\` | Pilih warna actor A/B dan override per kaki, aksesibilitas kontras latar. |
-| **Baru, bila diperlukan:** \`src/footprints/lines/v3/PresentationStrokeBuilder.ts\` | Penyederhanaan visual, segment eligibility, smoothing terbatas, taper, texture. |
-| \`src/footprints/lines/v3/DualFootTrajectoryEngine.ts\` | Pertahankan data mentah; hanya tambah metadata/telemetri jika dibutuhkan. Jangan ubah gate untuk menyiasati tampilan. |
+| `src/footprints/lines/v3/TrajectoryRenderer.ts` | Ganti `colors.left/right` menjadi skema actor-first, tambah `styleMode`, builder stroke dan pemetaan palet berdasarkan `stroke.actorId`. |
+| `src/studio/v3/LineTrailsV3.tsx` | UI actor-first, 3 mode garis, kontrol default ringkas, detail kaki dan QA di disclosure. |
+| `src/studio/v3/line-trails-v3.css` | Layout ringkas; hindari kontrol berulang / panel terlalu panjang. |
+| **Baru, bila diperlukan:** `src/footprints/lines/v3/ActorPaletteResolver.ts` | Pilih warna actor A/B dan override per kaki, aksesibilitas kontras latar. |
+| **Baru, bila diperlukan:** `src/footprints/lines/v3/PresentationStrokeBuilder.ts` | Penyederhanaan visual, segment eligibility, smoothing terbatas, taper, texture. |
+| `src/footprints/lines/v3/DualFootTrajectoryEngine.ts` | Pertahankan data mentah; hanya tambah metadata/telemetri jika dibutuhkan. Jangan ubah gate untuk menyiasati tampilan. |
 | Tests/E2E baru | Kontrak warna, mode, fidelity, cut, fullscreen, regresi V2/Camera Hub/F3. |
 
-**Kompatibilitas:** migrasi preset \`colors.left/right\` lama melalui fungsi versioned, dengan hasil deterministik dan opsi reset default; jangan diam-diam menafsirkan warna kiri sebagai Aktor A. Simpan kedua warna lama sebagai override per kaki pada jalur migrasi legacy. Pada preset baru, default pakai actor palette. V2 rollback tetap tersedia.
+**Kompatibilitas:** migrasi preset `colors.left/right` lama melalui fungsi versioned, dengan hasil deterministik dan opsi reset default; jangan diam-diam menafsirkan warna kiri sebagai Aktor A. Simpan kedua warna lama sebagai override per kaki pada jalur migrasi legacy. Pada preset baru, default pakai actor palette. V2 rollback tetap tersedia.
 
 ## 6. Acceptance criteria
 
@@ -148,7 +148,7 @@ Track / MP4 / Kamera HP
 | AC-07 | Belok 90°, balik arah, pivot | Luwes tetap mempertahankan lokasi belok; tidak membuat loop atau overshoot visual |
 | AC-08 | Kaki berhenti, video pause, MP4 seek, missing foot | Tidak muncul pertambahan garis palsu; seek/loss tidak membuat sambungan lintas segmen |
 | AC-09 | Segmen sangat pendek akibat frame stale | Main canvas tidak dipenuhi serpihan, inspector tetap memperlihatkan raw/cut count; tidak menggabungkan segmen |
-| AC-10 | MP4 menghasilkan banyak \`stale-frame\` | Diagnostik memperlihatkan timestamp, age, dan alasan cut; jangan mengklaim masalah tracking sudah terselesaikan hanya karena serpihan disembunyikan |
+| AC-10 | MP4 menghasilkan banyak `stale-frame` | Diagnostik memperlihatkan timestamp, age, dan alasan cut; jangan mengklaim masalah tracking sudah terselesaikan hanya karena serpihan disembunyikan |
 | AC-11 | Preview → fullscreen → kembali | Geometri, palet dan karakter garis sama; fullscreen tidak menampilkan UI, overlay default OFF |
 | AC-12 | Bandingkan latar putih/dark, ukuran 1366×768 dan 1440×900 | Identitas aktor dan warna tetap terbaca, kontrol utama tidak terpotong |
 | AC-13 | Rollback engine V2 dan buka lagi V3 | Brush/gaya lama tetap berfungsi, tidak kehilangan input kamera/MP4 |
