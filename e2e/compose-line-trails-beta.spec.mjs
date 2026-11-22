@@ -47,8 +47,12 @@ test('Line Trails Beta: two colored strokes in one editor canvas; clean fullscre
  await page.keyboard.press('Escape');
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
  await expect(panel.getByRole('button',{name:'Hentikan Demo'})).toBeVisible();
- await beta.click();
- await expect(beta).toHaveAttribute('aria-pressed','false');
+ await expect(beta).toHaveAttribute('aria-pressed','true');
+});
+test('Line Trails Beta: switch back to the previous Mineral Ink controls',async({page})=>{
+ const {beta}=await openBeta(page);
+ await beta.click({noWaitAfter:true});
+ await expect(beta).toHaveAttribute('aria-pressed','false',{timeout:8000});
  await expect(page.getByText('Style Library')).toBeVisible();
  await expect(page.locator('.lt-beta-frame')).toHaveCount(0);
 });
