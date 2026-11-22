@@ -36,6 +36,7 @@ test('changing actor color and character does not erase trajectory observations'
  const original=Number((await panel.locator('.lt-beta-count').innerText()).match(/\d+/)?.[0]??0);
  await panel.getByLabel('Warna Aktor A').fill('#ff0000');
  await expect(panel.getByLabel('Warna Aktor A')).toHaveValue('#ff0000');
+ await panel.locator('.lt-painterly-characters summary').click();
  const character=panel.getByRole('group',{name:'Karakter garis'});
  for(const mode of ['Presisi','Lukis','Luwes']){
   await character.getByRole('button',{name:mode}).click();
