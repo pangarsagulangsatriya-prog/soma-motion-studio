@@ -212,31 +212,40 @@ export function F3CaptureWorkspace(){
   {role==='A'?'A · GESTUR':'B · FOTO'} <b>{statuses[role].kind==='fixture'?'SIMULASI':statuses[role].state==='live'?'LIVE':statuses[role].message}</b>
  </span>;
  const cameraSelect=(role:F3Role)=><div className="f3-device-row">
-  <label htmlFor={'f3-device-'+role}>Kamera {role}</label>
-  <select id={'f3-device-'+role} value={chosen[role]}
-   onChange={e=>setChosen(old=>({...old,[role]:e.target.value}))}>
+  <div className="f3-device-title"><b>{role==='A'?'A · Aktor':'B · Penonton'}</b><span>{statuses[role].state==='live'?'LIVE':statuses[role].message}</span></div>
+  <label htmlFor={'f3-device-'+role}>Pilih kamera</label>
+  <select id={'f3-device-'+role} value={chosen[role]} onChange={e=>setChosen(old=>({...old,[role]:e.target.value}))}>
    <option value="">Pilih kamera…</option>
-   {devices.map((d,index)=><option value={d.deviceId} key={d.deviceId||index}>{d.label||'Kamera '+(index+1)}</option>)}
+   {devices.map((d,index)=><option value={d.deviceId} key={d.deviceId||index} disabled={!!d.deviceId&&chosen[role==='A'?'B':'A']===d.deviceId}>{d.label||'Kamera '+(index+1)}</option>)}
   </select>
-  <button type="button" onClick={()=>void connect(role)} disabled={!chosen[role]}>Sambungkan</button>
-  <button type="button" onClick={()=>{registry.current.disconnect(role);disarm();}}>Putuskan</button>
-  <label className="f3-file" aria-label={'Video simulasi '+role}>MP4 SIMULASI
-   <input type="file" accept="video/mp4,.mp4" onChange={e=>void connectFixture(role,e.target.files?.[0])}/>
-  </label>
+  <div className="f3-device-buttons"><button type="button" onClick={()=>void connect(role)} disabled={!chosen[role]}>{statuses[role].state==='live'?'Ganti':'Sambungkan'}</button>
+   <button type="button" onClick={()=>{registry.current.disconnect(role);disarm();}} disabled={statuses[role].state==='idle'}>Putus</button></div>
+  <details className="f3-simulation"><summary>Simulasi MP4</summary>
+   <label className="f3-file" aria-label={'Video simulasi '+role}>Pilih MP4 {role}<input type="file" accept="video/mp4,.mp4" onChange={e=>void connectFixture(role,e.target.files?.[0])}/></label>
+  </details>
  </div>;
  return <section className="f3-workspace" aria-label="F3 Capture" data-stage-active={screenActive}>
   <div className="f3-setup">
    <header className="f3-header">
     <div><small>UNPACKING / FRAGMEN 03</small><h1>F3 Capture</h1>
      <p>Dua kamera · satu Stage View · empat foto penonton</p></div>
-    <div className="f3-header-action">
-     <button type="button" className="f3-primary" onClick={enterFullscreen}
-      disabled={!readyA||!readyB}><Maximize2 size={15}/> Coba Fullscreen</button>
-     <span>{readyA&&readyB?'Kedua kamera siap untuk pratinjau.':'Hubungkan A dan B dahulu.'}</span>
-    </div>
+    <strong className="f3-header-count">{stageCount}/4 foto</strong>
+
    </header>
+   <nav className="f3-steps" aria-label="Langkah F3 Capture">
+    <span data-ready={readyA&&readyB}><b>01</b> Kamera</span>
+    <span data-ready={readyA&&readyB}><b>02</b> Stage View</span>
+    <span data-ready={stageCount===4}><b>03</b> Foto</span>
+   </nav>
    <div className="f3-status">{status('A')}{status('B')}<span className="f3-pill">{verified?'Gestur terverifikasi':'Rana belum diverifikasi'}</span>
     <span className="f3-pill">FOTO {stageCount}/4</span></div>
+   <div className="f3-step-heading"><b>01</b><div><h2>Hubungkan kamera</h2><p>Kamera A untuk gerak aktor. Kamera B untuk foto kaki penonton.</p></div></div>
+   <details className="f3-device-details" open={!readyA||!readyB}><summary>Input & perangkat <ChevronDown size={14}/></summary>
+    {cameraSelect('A')}{cameraSelect('B')}
+    <button type="button" onClick={()=>void refreshDevices()}><RotateCcw size={14}/> Cari kamera</button>
+    <p>Fixture MP4 untuk QA memakai dua rekaman berbeda. Foto dan video tidak diunggah.</p>
+   </details>
+   <details className="f3-monitor-details"><summary>Periksa gambar kamera <ChevronDown size={14}/></summary>
    <div className="f3-input-grid">
     <section className="f3-video-card f3-b-card"><div className="f3-card-head"><strong>KAMERA B — KAKI PENONTON</strong><small>Foto & crop</small></div>
      <div className="f3-video-frame"><video ref={videoB} autoPlay muted playsInline aria-label="Live video Kamera B"/>
@@ -253,11 +262,14 @@ export function F3CaptureWorkspace(){
       }}>Coba lagi model gestur</button>}
     </section>
    </div>
-   <details className="f3-device-details" open={!readyA||!readyB}><summary>Input & perangkat <ChevronDown size={14}/></summary>
-    {cameraSelect('A')}{cameraSelect('B')}
-    <button type="button" onClick={()=>void refreshDevices()}><RotateCcw size={14}/> Cari kamera</button>
-    <p>Fixture MP4 untuk QA memakai dua rekaman berbeda. Foto dan video tidak diunggah.</p>
    </details>
+   <div className="f3-preview-head"><div className="f3-step-heading"><b>02</b><div><h2>Coba Stage View</h2><p>Empat foto kiri, video kaki Kamera B kanan.</p></div></div>
+    <button type="button" onClick={enterFullscreen} disabled={!readyA||!readyB}><Maximize2 size={14}/> Coba Fullscreen</button></div>
+  </div>
+  <F3StageView hostRef={stageHost} frameRef={stageFrame} videoRef={videoB}
+   stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
+   onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
+  <div className="f3-step-heading f3-photo-heading"><b>03</b><div><h2>Ambil empat foto</h2><p>Gunakan rana manual atau latih pukulan aktor.</p></div></div>
    <div className="f3-operator-grid">
     <section className="f3-operator-card"><h2>Pukulan & rana</h2>
      <div className="f3-switch" role="group" aria-label="Preset pukulan">
@@ -293,22 +305,15 @@ export function F3CaptureWorkspace(){
      <p>Slot kosong berikutnya terisi otomatis. Ganti slot dipilih sebelum jepret.</p>
     </section>
    </div>
-   <div className="f3-preview-head"><div><strong>Stage View</strong><span>Pratinjau keluaran 2:1 · grid 30% / gutter 2% / live B 68%</span></div>
-    <button type="button" onClick={enterFullscreen} disabled={!readyA||!readyB}><Maximize2 size={14}/> Coba Fullscreen</button></div>
-  </div>
-  <F3StageView hostRef={stageHost} frameRef={stageFrame} videoRef={videoB}
-   stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
-   onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
-  {stageMode==='inline'&&<div className="f3-inline-tools">
-   <button type="button" onClick={leaveStage}>Kembali Setup (Esc)</button>
-   <button type="button" onClick={disarm}>Disarm</button>
-  </div>}
+
+  <details className="f3-hardware-details f3-setup"><summary>Info teknis & proyektor <ChevronDown size={14}/></summary>
   <div className="f3-setup f3-operator-footer">
    <p role="status"><ShieldAlert size={14}/> {message}</p>
    <p>Output fisik: {f3ProjectorGate().ready?'Gate BODY siap, integrasi F3 menunggu uji fisik.':
     'Terkunci. Stage View lokal tidak membutuhkan proyektor.'}</p>
    <button type="button" disabled title="Integrasi proyekor F3 belum diverifikasi; output harus tetap Blackout."
     onClick={f3Blackout}><VideoOff size={14}/> Keluarkan ke Kanvas — belum tersedia</button>
-  </div>
+  </div>  </details>
+
  </section>;
 }
