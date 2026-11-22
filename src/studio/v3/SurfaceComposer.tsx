@@ -45,6 +45,15 @@ import {composeInspectorVisible} from './composeLowerBodyModel.ts';
 import {paintComposeSkeletonMonitor,type ComposeSkeletonBackdrop} from './composeSkeletonMonitor.ts';
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
+import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
+import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
+import {footSamplesFromExperiment,footSamplesFromLive} from '../../footprints/lines/FootLineSampleAdapter.ts';
+import {ComposeFloorPosePreview,useComposeFloorPoseFallback} from './ComposeFloorPosePreview.ts';
+import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
+ from '../../footprints/lines/FullscreenInputDiagnostics.ts';
+import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
+import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
+import './line-trails-beta.css';
 
 type Surface='FLOOR'|'BODY A'|'BODY B';
 type Mask='silhouette'|'polygon'|'none';
@@ -101,28 +110,63 @@ type Props={
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
+ lineSource?:'camera'|'phone';
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
  onOpenMapTrack?:()=>void;
  onOpenMapCompose?:()=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose}:Props){
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const workspaceHiddenRef=useRef(workspaceHidden);workspaceHiddenRef.current=workspaceHidden;
  const mapModeRef=useRef(mapMode);mapModeRef.current=mapMode;
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [monitorView,setMonitorView]=useState<ComposeMonitorView>('FLOOR');
+ const [lineTrails,setLineTrails]=useState(false);
+ const lineTrailsRef=useRef(lineTrails);lineTrailsRef.current=lineTrails;
+ const [lineOptions,setLineOptions]=useState<LineTrailsOptions>(DEFAULT_LINE_TRAILS_OPTIONS);
+ const [lineDemo,setLineDemo]=useState(false);
+ const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
+ const [lineActor,setLineActor]=useState<'A'|'B'>('A');
+ const [lineStatus,setLineStatus]=useState('Menunggu kaki');
+ const [,setLineBrushCount]=useState(0);
+ const floorPosePreview=useRef(new ComposeFloorPosePreview());
+ const [floorPosePreviewActive,setFloorPosePreviewActive]=useState(false);
+ const floorPosePreviewActiveRef=useRef(false);
+ const lineEngine=useRef(new FootLineTrailEngine());
+ const brushEngine=useRef(new FootprintBrushEngine());
+ const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
  const monitorFullscreenRef=useRef<HTMLElement|null>(null);
  const [monitorFullscreen,setMonitorFullscreen]=useState(false);
  const [fullscreenNotice,setFullscreenNotice]=useState('');
  useEffect(()=>{
-  const sync=()=>setMonitorFullscreen(document.fullscreenElement===monitorFullscreenRef.current);
+  const sync=()=>setMonitorFullscreen(document.fullscreenElement===monitorFullscreenRef.current||document.fullscreenElement===lineFullscreenRef.current);
   document.addEventListener('fullscreenchange',sync);
   return()=>document.removeEventListener('fullscreenchange',sync);
  },[]);
+ // Local Beta fullscreen has no on-screen controls; Esc must always return to Compose.
+ useEffect(()=>{
+  const onKey=(event:globalThis.KeyboardEvent)=>{
+   if(document.fullscreenElement!==lineFullscreenRef.current)return;
+   if(event.key==='Escape'){
+    void document.exitFullscreen().catch(()=>{});
+    return;
+   }
+   if(event.ctrlKey||event.metaKey||event.altKey||event.repeat)return;
+   if(event.key.toLowerCase()==='v'){
+    event.preventDefault();
+    setLineFullscreenDiagnostics(p=>({...p,camera:!p.camera}));
+   }else if(event.key.toLowerCase()==='k'){
+    event.preventDefault();
+    setLineFullscreenDiagnostics(p=>({...p,skeleton:!p.skeleton}));
+   }
+  };
+  window.addEventListener('keydown',onKey);
+  return()=>window.removeEventListener('keydown',onKey);
+ },[]);
  const toggleMonitorFullscreen=()=>{
-  const monitor=monitorFullscreenRef.current;
+  const monitor=lineTrails?lineFullscreenRef.current:monitorFullscreenRef.current;
   if(!monitor)return;
   setFullscreenNotice('');
   const promise=document.fullscreenElement===monitor
@@ -152,6 +196,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const skeletonInputIdRef=useRef(skeletonInputId);skeletonInputIdRef.current=skeletonInputId;
  useEffect(()=>{setSkeletonBackdrop('black');setSkeletonInputId('track');},[experimentSource]);
  const selectMonitorView=(view:ComposeMonitorView)=>{
+  if(view!=='FLOOR')setLineTrails(false);
   setMonitorView(view);
   if(view==='FLOOR'){
    setSelected('FLOOR');setSelectedLayer(0);setInspectorTab('scene');setPreviewArrangement('surface');
@@ -204,7 +249,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [liquidStatus,setLiquidStatus]=useState('Renderer visual memuat…');
  const liquidCanvas=useRef<HTMLCanvasElement>(null);
  const liquidRenderer=useRef<PixiLiquidImprintCompositor|null>(null);
- const liquidEnabledRef=useRef(liquidEnabled);liquidEnabledRef.current=liquidEnabled;
+ const liquidEnabledRef=useRef(liquidEnabled);liquidEnabledRef.current=liquidEnabled&&!lineTrails;
  const liquidModeRef=useRef(liquidMode);liquidModeRef.current=liquidMode;
  const liquidPhaseRef=useRef(liquidPhase);liquidPhaseRef.current=liquidPhase;
  const steeringRef=useRef(steering);steeringRef.current=steering;
@@ -308,6 +353,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const routerRef=useRef(router);routerRef.current=router;
  const floorRef=useRef(floorTracker);floorRef.current=floorTracker;
  const cameraOnRef=useRef(cameraOn);cameraOnRef.current=cameraOn;
+ const lineSourceRef=useRef(lineSource);lineSourceRef.current=lineSource;
  const bodySelectedRef=useRef(bodySelected);bodySelectedRef.current=bodySelected;
  const performerRef=useRef(performerCount);performerRef.current=performerCount;
  const floorReadyRef=useRef(floorReady);floorReadyRef.current=floorReady;
@@ -702,6 +748,44 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      g.globalAlpha=1;g.drawImage(liquidCanvas.current,0,0,preview.width,preview.height);
      g.restore();}
    }
+   // A 1P camera can track feet without verified floor contact.
+   // Draw observed image-space soles only into the SOFTWARE Stage Monitor.
+   // Physical FLOOR output and Map/Perform authorization remain unchanged.
+   const floorPreviewVisible=useComposeFloorPoseFallback({
+    softwareMonitor:!!preview&&monitorViewRef.current==='FLOOR'&&
+     selectedRef.current==='FLOOR'&&previewArrangementRef.current==='surface',
+    lineTrails:lineTrailsRef.current,liquidEnabled:liquidEnabledRef.current,
+    liquidMode:liquidModeRef.current,timelineMode:timelineModeRef.current,
+    previewLive:previewLiveRef.current,blackout:blackoutRef.current,
+    verifiedImprints:liquidFrame?(liquidRenderer.current?.stats.activeImprints??0):0
+   });
+   if(floorPreviewVisible){
+    const frame=frameRefLive.current.current;
+    const experiment=experimentFrameRef?.current??null;
+    const experimentType=experimentSourceRef.current;
+    const session=motionSessionRef.current?.()??'live-camera';
+    const sourceKey=experimentType==='video'&&experiment?.kind==='video'
+     ?'video:'+experiment.name+':'+(experiment.snapshot?.segment??0)
+     :experimentType==='simulator'?'simulator':lineSourceRef.current+':'+session;
+    const samples=experimentType
+     ?(experiment&&experiment.kind===experimentType?
+      footSamplesFromExperiment(experiment,'compose-floor-preview',0,'A'):[])
+     :cameraOnRef.current&&bodySelectedRef.current&&frame.tracked&&
+       frame.source==='camera'&&frame.time>0&&now>=frame.time&&now-frame.time<450
+      ?footSamplesFromLive(frame,routerRef.current.status,performerRef.current,
+         lineSourceRef.current,session,0,'A'):[];
+    floorPosePreview.current.ingest(samples,now,sourceKey);
+    const ctx=preview?.getContext('2d');
+    const painted=!!preview&&!!ctx&&floorPosePreview.current.paint(
+     ctx,now,preview.width,preview.height);
+    if(painted!==floorPosePreviewActiveRef.current){
+     floorPosePreviewActiveRef.current=painted;
+     setFloorPosePreviewActive(painted);
+    }
+   }else if(floorPosePreviewActiveRef.current){
+    floorPosePreviewActiveRef.current=false;
+    setFloorPosePreviewActive(false);
+   }
    if(preview&&timelineModeRef.current==='replay'&&selectedRef.current==='FLOOR'&&
     previewArrangementRef.current==='surface'&&!blackoutRef.current&&previewLiveRef.current&&!liquidFrame){
     const g=preview.getContext('2d');
@@ -827,7 +911,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-heading">
    <div className="cpux-heading-label">
     <h2>Compose</h2>
-    <span>{monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='SKELETON'?'Skeleton · 33 titik':'Kaki · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
+    <span>{lineTrails?'Floor · Line Trails Beta':monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='SKELETON'?'Skeleton · 33 titik':'Kaki · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
    </div>
    <div className="s64-safety">
     <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
@@ -857,6 +941,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   </div>
   <div className="s64-layout" data-inspector-tab={inspectorTab}
    data-compose-view={monitorView}
+   data-line-trails-active={lineTrails}
    data-compose-dock={composeInspectorVisible(monitorView,skeletonBackdrop)?'inspect':'wide'}>
    <aside className="s64-column cp02-library">
     <details className="soma-ia-media"><summary>Media <span>{media.length}</span></summary><label className="s64-upload">+ Import image / video<input type="file" multiple accept="image/*,video/*" onChange={upload}/></label><div className="s64-media-list">{media.map(m=><div className="cp06-asset" key={m.id}>
@@ -886,6 +971,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
        aria-pressed={monitorView===tab.id}
        onClick={()=>selectMonitorView(tab.id)}>{tab.label}</button>)}
      </div>
+     <button type="button" className="lt-beta-trigger" aria-pressed={lineTrails}
+      onClick={()=>{if(!lineTrails){selectMonitorView('FLOOR');setLineDemo(false);}setLineTrails(v=>!v);}}
+      title="Garis dari kaki kiri dan kanan · eksperimental">
+      Garis <span>BETA</span>
+     </button>
      {monitorView==='SKELETON'&&<div className="cp-compose-skeleton-controls" aria-label="Tampilan skeleton">
       <div role="group" aria-label="Latar skeleton" className="cp-compose-skeleton-modes">
        <button type="button" aria-pressed={skeletonBackdrop==='black'}
@@ -914,12 +1004,23 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      </button>
      {fullscreenNotice&&<small className="cp-compose-fullscreen-notice" role="status">{fullscreenNotice}</small>}
     </div>
-    <div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
+    {lineTrails&&<LineTrailsBetaStage
+     fullscreenRef={lineFullscreenRef} frameRef={frameRef} videoRef={videoRef}
+     experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
+     fullscreenDiagnostics={lineFullscreenDiagnostics}
+     router={router} engine={lineEngine.current} brushEngine={brushEngine.current}
+     settings={lineOptions} motionEvents={motionEvents}
+     blackout={blackout||previewBlackout} previewLive={previewLive}
+     cameraOn={cameraOn} bodySelected={bodySelected}
+     performerCount={performerCount} experimentSource={experimentSource}
+     sourceKind={lineSource} selectedActor={lineActor} demo={lineDemo}
+     onStatus={setLineStatus} onBrushCount={setLineBrushCount} motionSession={motionSession}/>}
+    {!lineTrails&&<div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&
   <div className="cp07-stage-selected" aria-hidden="true">
    <span>SELECTED · {layer.name}</span>
   </div>}
-  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div>
+  {editMask&&layer?.mask==='polygon'&&<svg viewBox="0 0 960 540" preserveAspectRatio="none">{layer.points.map(([x,y],i)=><circle key={i} cx={x*960} cy={y*540} r="9" fill="#84dacb"/>)}<polygon points={layer.points.map(p=>p[0]*960+','+p[1]*540).join(' ')} fill="#84dacb" fillOpacity=".1" stroke="#84dacb" strokeDasharray="6 5"/></svg>}</div>}
    {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<div className="lb-event-test-bar" role="group" aria-label="Simulasi gerak lower body">
     <span className="lb-event-test-label">EVENT TEST</span>
     {LOWER_BODY_SIM_ACTIONS.map(act=><button key={act.id} type="button"
@@ -929,7 +1030,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     </button>)}
    </div>}
    <div className="s64-bar">
-    {monitorView==='FLOOR'&&liquidMode==='track'&&timelineCapture.events.length===0&&
+    {lineTrails&&<span role="status">{lineStatus}</span>}
+    {!lineTrails&&monitorView==='FLOOR'&&liquidMode==='track'&&floorPosePreviewActive&&
+     <span role="status">Jejak 2D aktif · Kalibrasi Map diperlukan untuk proyektor</span>}
+    {!lineTrails&&monitorView==='FLOOR'&&liquidMode==='track'&&!floorPosePreviewActive&&timelineCapture.events.length===0&&
      <span role="status">Belum ada jejak dari Track</span>}
     {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<span>{cameraOn&&bodySelected?bodyStatus:'Simulasi aktif · uji mask paha, warna, tekstur, atau crossing'}</span>}
     {monitorView==='FLOOR'&&inspectorTab==='object'&&
@@ -975,6 +1079,15 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
+  {lineTrails?<LineTrailsBetaPanel
+   settings={lineOptions} onChange={setLineOptions}
+   fullscreenDiagnostics={lineFullscreenDiagnostics} onFullscreenDiagnostics={setLineFullscreenDiagnostics}
+   engine={lineEngine.current} brushEngine={brushEngine.current}
+   onClear={()=>{lineEngine.current.clear();brushEngine.current.clear();setLineBrushCount(0);setLineStatus('Gambar dibersihkan');}} demo={lineDemo}
+   onDemo={()=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineDemo(v=>!v);}}
+   status={lineStatus} performerCount={performerCount}
+   selectedActor={lineActor} onActor={actor=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineActor(actor);}}
+  />:<>
   <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:monitorView==='SKELETON'?'Skeleton 33 titik':'Visual Kaki · '+monitorView}</h3>
   {monitorView==='SKELETON'&&<p className="cp-compose-detection-note">Skeleton mengikuti Track. Pengaturan di bawah memengaruhi visual LEG A/B dan SPLIT.</p>}
   {monitorView!=='FLOOR'&&<LowerBodyQuickInspector
@@ -1149,7 +1262,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    <input type="range" min="0" max="100" value={layer?.opacity??100}
     onChange={e=>patch({opacity:Number(e.target.value)})}/></label>
   <label>Blend<select value={layer?.blend} onChange={e=>patch({blend:e.target.value as GlobalCompositeOperation})}><option value="source-over">Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="lighter">Add</option></select></label></>}
- {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</aside>
+ {hint&&inspectorTab!=='scene'&&<p className="cp04-hint" role="status">{hint}</p>}</>}
+ </aside>
   </div>
   <div className="s64-runtime" aria-hidden="true">
    <canvas ref={bodyOutput} width={1280} height={720} hidden aria-label="BODY compositor raster"/>
