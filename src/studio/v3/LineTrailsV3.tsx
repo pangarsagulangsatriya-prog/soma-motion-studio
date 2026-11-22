@@ -32,7 +32,7 @@ export function LineTrailsV3Stage(props:StageProps){
  useEffect(()=>{demoStart.current=performance.now();},[props.demo]);
  useEffect(()=>{
   let raf=0,lastDraw=0,lastStatus='',lastStatusAt=0,lastSource='';
-  let lastFrameMs=-1,lastPaused=false,lastSeeking=false,lastStale=false;
+  let lastFrameMs=-1,lastPaused=false,lastSeeking=false,lastStale=false,lastGoodAt=0;
   let lastDiag=0;
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);
@@ -50,7 +50,7 @@ export function LineTrailsV3Stage(props:StageProps){
    });
    let message=input.status;
    if(input.sourceKey!==lastSource){
-    lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;
+    lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
    }
    const off=p.blackout||!p.previewLive;
@@ -65,14 +65,18 @@ export function LineTrailsV3Stage(props:StageProps){
     }else{
      lastSeeking=false;
      if(!input.ready){
-      if(!lastStale&&(input.status.includes('tertunda')||input.status.includes('menunggu')||
-       input.status.includes('belum'))){
-       p.engine.cutAll('stale-frame');
-       lastStale=true;
+      const waiting=input.status.includes('tertunda')||input.status.includes('menunggu')||
+       input.status.includes('belum');
+      // Pose inference in MP4 is asynchronous. Do not cut all four feet
+      // immediately because a single decoded frame overtook its pose result.
+      // A later valid frame will still cut a >390ms gap in the tracking engine.
+      const graceMs=input.source==='video'?1000:500;
+      if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
+       p.engine.cutAll('stale-frame');lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
-      lastFrameMs=input.frameMs;
+      lastFrameMs=input.frameMs;lastGoodAt=now;
       lastStale=false;
      }
      if(input.paused)message='MP4 dijeda · jejak dipertahankan';
@@ -98,10 +102,17 @@ export function LineTrailsV3Stage(props:StageProps){
     lastDiag=now;
     const recent=p.engine.diagnostics.slice(-4);
     const reasons=recent.filter(x=>!x.accepted).map(x=>x.id+': '+x.reason);
+    const cutSummary=p.engine.diagnostics.filter(x=>!x.accepted)
+     .reduce<Record<string,number>>((sum,x)=>{const key=x.reason??'invalid';
+      sum[key]=(sum[key]??0)+1;return sum;},{});
+    const lag=input.source==='video'&&input.frameMs>=0?
+     Math.round(input.presentationMs-input.frameMs):null;
     p.onDiagnostics?.([
      'Sumber: '+input.source+' · '+(input.ready?'frame siap':'frame belum siap'),
-     'Waktu frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
+     'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
+     ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
+     'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
     ].join(' | '));
    }
