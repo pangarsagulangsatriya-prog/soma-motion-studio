@@ -597,7 +597,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
        }
        await selectFootprintsCameraDevice(id);
       }}
-      onGoStageOne={()=>{setCameraHubActive(false);setClean(false);setArchiveActive(false);setProjectionActive(false);selectScene('footprints');setSelectedStageTool('tracking');setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));}}/>}
+      onGoStageOne={()=>{setCameraHubActive(false);setClean(false);setArchiveActive(false);setProjectionActive(false);selectScene('footprints');setSelectedStageTool('tracking');setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));}}/>
     {stageTwo&&!clean&&!archiveActive&&!projectionActive&&<StageTwoInstrumentNav
      active={stageTwoActive} onSelect={selectStageTwoLab}/>}
 
