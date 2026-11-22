@@ -123,3 +123,54 @@ test('F3 preview and saved JPEG draw exactly the same source B crop; no A substi
    preset:'manual',consent:true,eventId:'B-fixture-event-1',fresh:true}),/Satu gerakan/);
  }finally{globalThis.document=original;store.revokeAll();}
 });
+
+test('F3 camera registry drops stale getUserMedia response after a newer source was selected',async()=>{
+ const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ const queued=new Map<string,(value:unknown)=>void>();
+ const makeTrack=()=>({readyState:'live',stopped:false,
+  addEventListener(){},stop(){this.stopped=true;this.readyState='ended';}});
+ const oldTrack=makeTrack(),newTrack=makeTrack();
+ const oldStream={active:true,getTracks:()=>[oldTrack],getVideoTracks:()=>[oldTrack]};
+ const newStream={active:true,getTracks:()=>[newTrack],getVideoTracks:()=>[newTrack]};
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{
+  getUserMedia:(options:{video:{deviceId:{exact:string}}})=>new Promise(resolve=>queued.set(options.video.deviceId.exact,resolve))
+ }}});
+ const video={srcObject:null,muted:true,playsInline:true,readyState:0,videoWidth:0,videoHeight:0,
+  pause(){},removeAttribute(){},play:async()=>{}} as unknown as HTMLVideoElement;
+ const registry=new F3CameraRegistry();registry.attach('B',video);
+ try{
+  const first=registry.connectDevice('B','camera-1');
+  const second=registry.connectDevice('B','camera-2');
+  queued.get('camera-2')?.(newStream);await second;
+  queued.get('camera-1')?.(oldStream);await first;
+  assert.equal(registry.status('B').id,'camera-2');
+  assert.equal(video.srcObject,newStream);
+  assert.equal(oldTrack.stopped,true,'obsolete camera must stop');
+  assert.equal(newTrack.stopped,false,'latest camera must stay active');
+ }finally{
+  registry.dispose();
+  if(original)Object.defineProperty(globalThis,'navigator',original);
+  else Reflect.deleteProperty(globalThis,'navigator');
+ }
+});
+
+test('F3 revocation during asynchronous JPEG encoding blocks photo commit',async()=>{
+ const original=globalThis.document;
+ let finish:(blob:Blob)=>void=()=>{};
+ globalThis.document={createElement(){return {width:0,height:0,
+  getContext(){return {drawImage(){}};},
+  toBlob(callback:(blob:Blob)=>void){finish=callback;}
+ };}} as unknown as Document;
+ const video={videoWidth:640,videoHeight:480,srcObject:null} as HTMLVideoElement;
+ const store=new F3PhotoStore();let valid=true;
+ try{
+  const started=store.capture({
+   video,crop:{x:0,y:0,width:300,height:200},cameraId:'B',frameId:1,
+   sourceTimestamp:123,preset:'manual',consent:true,eventId:'revoked-1',
+   fresh:true,stillValid:()=>valid
+  });
+  valid=false;finish(new Blob(['jpeg'],{type:'image/jpeg'}));
+  await assert.rejects(started,/Consent dicabut|Kamera B terputus/);
+  assert.equal(store.count,0);
+ }finally{store.revokeAll();globalThis.document=original;}
+});
