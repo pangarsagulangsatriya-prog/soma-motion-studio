@@ -72,6 +72,7 @@ test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; B-only pixels and Esc keep sourc
  await enterStage(page);
  await stageScreenshot(page,'fullscreen-2-of-4',testInfo.project.name);
  await page.keyboard.press('Escape');
+ await page.locator('.f3-gesture-details summary').click();
  await page.getByRole('button',{name:'Mulai latihan'}).click();
  // Resize deliberately uses two hands; it must not add photographs.
  let count=await page.locator('.f3-slot img').count();

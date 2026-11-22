@@ -271,8 +271,13 @@ export function F3CaptureWorkspace(){
    onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
   <div className="f3-step-heading f3-photo-heading"><b>03</b><div><h2>Ambil empat foto</h2><p>Gunakan rana manual atau latih pukulan aktor.</p></div></div>
    <div className="f3-operator-grid">
-    <section className="f3-operator-card"><h2>Pukulan & rana</h2>
-     <div className="f3-switch" role="group" aria-label="Preset pukulan">
+    <section className="f3-operator-card f3-capture-control"><h2>Ambil foto</h2>
+     <label className="f3-consent"><input type="checkbox" checked={consent} onChange={e=>markConsent(e.target.checked)}/>
+      Penonton menyetujui pengambilan foto kaki.</label>
+     <div className="f3-actions f3-main-capture"><button disabled={!consent||!readyB||busy||stageCount>=4&&replacement===null} onClick={manualShot}><Camera size={14}/> Jepret manual</button> <span>{armed?'Gestur aktif':'Rana gestur terkunci'}</span></div>
+     <details className="f3-gesture-details"><summary><Hand size={14}/> Atur rana gestur <ChevronDown size={14}/></summary>
+      <div className="f3-gesture-inner">
+<div className="f3-switch" role="group" aria-label="Preset pukulan">
       <button aria-pressed={preset==='straight'} onClick={()=>updatePreset('straight')}>Straight</button>
       <button aria-pressed={preset==='uppercut'} onClick={()=>updatePreset('uppercut')}>Uppercut</button>
      </div>
@@ -284,12 +289,13 @@ export function F3CaptureWorkspace(){
        setRehearsal(false);setVerified(true);session.current.setVerified(true);setMessage('Latihan tercatat; periksa consent sebelum Arm.');
       }}>Verifikasi gestur</button></div>
      <p className="f3-meta">Pukulan terbaca: {positive} · Negatif: {negativeConfirmed?'diperiksa':'belum diperiksa'}</p>
-     <label className="f3-consent"><input type="checkbox" checked={consent} onChange={e=>markConsent(e.target.checked)}/>
-      Penonton menyetujui pengambilan foto kaki.</label>
+     
      <div className="f3-actions"><button disabled={!verified||!consent||!readyA||!readyB||stageCount>=4} onClick={arm}>Arm</button>
       <button className="f3-danger" onClick={disarm}>Disarm</button>
-      <button disabled={!consent||!readyB||busy||stageCount>=4&&replacement===null} onClick={manualShot}><Camera size={14}/> Jepret manual</button></div>
+      </div>
      <p className="f3-meta" role="status">{armed?'ARMED · shutter gestur aktif':rehearsal?'REHEARSAL · belum memotret':'DISARMED · foto manual tetap perlu consent'}</p>
+      </div>
+     </details>
     </section>
     <section className="f3-operator-card"><h2>Arsip kaki <small>{stageCount}/4</small></h2>
      <div className="f3-slots">
