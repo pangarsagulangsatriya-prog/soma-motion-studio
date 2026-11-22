@@ -1,6 +1,8 @@
 import {CameraTracker} from '../../engine/tracking.ts';
 import {defaults,type MotionFrame,type Settings} from '../../engine/types.ts';
 import {cameraErrorMessage} from '../../engine/universalCamera.ts';
+import {hubDisplayName,hubSourceAvailable,hubBodyCount} from './cameraHubModel.ts';
+export {hubDisplayName,hubSourceAvailable,hubFrameIsFresh,hubBodyCount} from './cameraHubModel.ts';
 
 /**
  * One independent CameraTracker per registered webcam/USB/OS-exposed phone camera.
@@ -22,21 +24,6 @@ type Entry={
 };
 const settings:Settings={...defaults(),input:'body',poseInLab:true,
  layers:{...defaults().layers,tracking:'detected'}};
-const maxNameLength=64;
-export function hubDisplayName(label:string):string{
- return label.trim().slice(0,maxNameLength)||'Kamera baru';
-}
-export function hubSourceAvailable(deviceId:string,records:readonly Pick<HubCameraRecord,'deviceId'>[]):boolean{
- return Boolean(deviceId)&&!records.some(x=>x.deviceId===deviceId);
-}
-export function hubFrameIsFresh(frameAt:number,now:number,limitMs=650):boolean{
- return Number.isFinite(frameAt)&&frameAt>0&&now>=frameAt&&now-frameAt<limitMs;
-}
-export function hubBodyCount(frame:MotionFrame|null):number{
- if(!frame||!frame.tracked)return 0;
- const poses=frame.poses?.filter(p=>p.length>=33)??[];
- return Math.min(2,poses.length||(frame.pose?.length>=33?1:0));
-}
 export class CameraHubRegistry {
  private entries=new Map<string,Entry>();
  private listeners=new Set<()=>void>();
