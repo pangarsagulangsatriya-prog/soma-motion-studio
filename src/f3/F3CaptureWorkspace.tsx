@@ -11,6 +11,7 @@ import {F3PhotoStore} from './F3PhotoStore.ts';
 import {F3SessionMachine} from './F3SessionMachine.ts';
 import {f3Zip} from './F3Zip.ts';
 import {F3StageView} from './F3StageView.tsx';
+import {F3VideoMonitor} from './F3VideoMonitor.tsx';
 import {makeF3StageFrame} from './F3StageRenderer.ts';
 import {f3ProjectorGate,f3Blackout} from './F3OutputAdapter.ts';
 import type {F3Role,F3CameraStatus,F3PunchPreset,F3StageFrame,F3MotionFrame} from './F3Types.ts';
@@ -39,7 +40,11 @@ export function F3CaptureWorkspace(){
  const [modelState,setModelState]=useState('Menunggu Kamera A');
  const [zoom,setZoom]=useState(.6),[message,setMessage]=useState('Hubungkan dua kamera untuk mencoba fullscreen.');
  const [busy,setBusy]=useState(false),[flash,setFlash]=useState(0);
- const [activeStep,setActiveStep]=useState<'camera'|'stage'|'photo'>('camera');
+ const [activeStep,setActiveStep]=useState<'input'|'motion'|'perform'>('input');
+ const [skeletonVisible,setSkeletonVisible]=useState(true);
+ const motionSnapshot=useRef<F3MotionFrame|null>(null);
+ const motionLastUi=useRef(0);
+ const [motionSummary,setMotionSummary]=useState({body:false,hands:0,label:'Menunggu Kamera A'});
  const shutterEpoch=useRef(0);
  const sourceFiles=useRef<{A:string|null;B:string|null}>({A:null,B:null});
  const statusRef=useRef(statuses),control=useRef({consent,armed,rehearsal,stageMode,replacement,verified});
@@ -61,6 +66,7 @@ export function F3CaptureWorkspace(){
  },[refresh,refreshDevices]);
  const connect=async(role:F3Role)=>{
   try{
+   invalidateMotion();
    if(!chosen[role])throw Error('Pilih perangkat Kamera '+role+'.');
    await registry.current.connectDevice(role,chosen[role]);sourceFiles.current[role]=null;
    await refreshDevices();refresh();
@@ -70,6 +76,7 @@ export function F3CaptureWorkspace(){
  const connectFixture=async(role:F3Role,file:File|undefined)=>{
   if(!file)return;
   try{
+   invalidateMotion();
    if(!/\.mp4$/i.test(file.name)&&file.type!=='video/mp4')throw Error('Gunakan rekaman MP4.');
    const key=file.name+':'+file.size+':'+file.lastModified;
    if(sourceFiles.current[role==='A'?'B':'A']===key)throw Error('Fixture A dan B harus berbeda.');
@@ -81,6 +88,13 @@ export function F3CaptureWorkspace(){
   shutterEpoch.current++;
   session.current.disarm();setArmed(false);setMessage('Rana gestur dikunci.');
  },[]);
+ const invalidateMotion=()=>{
+  disarm();setVerified(false);session.current.setVerified(false);setRehearsal(false);
+  framing.current.reset();punch.current.reset();fusion.current.resetFrames();
+  motionSnapshot.current=null;motionLastUi.current=0;
+  setMotionSummary({body:false,hands:0,label:'Menunggu deteksi'});
+  setZoom(.6);
+ };
  const capture=useCallback(async(presetValue:F3PunchPreset|'manual',eventId:string)=>{
   const b=registry.current.status('B'),now=performance.now(),settings=control.current;
   const requestEpoch=shutterEpoch.current;
@@ -135,11 +149,21 @@ export function F3CaptureWorkspace(){
   document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey);
  },[stageMode,disarm]);
  const processMotion=useCallback((motion:F3MotionFrame,now:number)=>{
+  motionSnapshot.current=motion;
   const prev=framing.current.fraction;
   const size=framing.current.step(motion,now);
   if(Math.abs(size-prev)>.001)setZoom(size);
   const cfg=control.current;
-  const result=punch.current.step(motion,now,cfg.armed||cfg.rehearsal);
+  if(framing.current.resizing)punch.current.pauseResize(now);
+  const result=framing.current.resizing?{kind:'resize' as const}:punch.current.step(motion,now,cfg.armed||cfg.rehearsal);
+  if(now-motionLastUi.current>180){
+   motionLastUi.current=now;
+   const joints=[11,12,13,14,15,16].map(k=>motion.pose[k]);
+   const body=joints.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&(p.visibility??1)>=.55);
+   const label=framing.current.resizing?'Zoom aktif':result.kind==='prepared'?'Persiapan '+preset:
+    result.kind==='capture'?preset+' terbaca':body?'Tubuh terbaca':'Periksa posisi aktor';
+   setMotionSummary({body,hands:motion.hands.length,label});
+  }
   if(result.kind==='capture'){
    if(cfg.rehearsal){setPositive(n=>n+1);setMessage('Pukulan '+preset+' terdeteksi dalam latihan.');}
    else if(cfg.armed&&cfg.consent&&!framing.current.resizing&&
@@ -225,8 +249,7 @@ export function F3CaptureWorkspace(){
  const chooseSource=(role:F3Role,kind:F3SourceChoice)=>{
   if(sourceChoiceRef.current[role]===kind)return;
   // Replacing a camera always clears its liveness/gesture authorization first.
-  registry.current.disconnect(role);disarm();
-  setVerified(false);session.current.setVerified(false);setRehearsal(false);
+  registry.current.disconnect(role);invalidateMotion();
   sourceFiles.current[role]=null;
   setChosen(old=>({...old,[role]:''}));
   const next={...sourceChoiceRef.current,[role]:kind};
@@ -238,6 +261,7 @@ export function F3CaptureWorkspace(){
    stream.getTracks().forEach(track=>track.stop());return;
   }
   try{
+   invalidateMotion();
    await registry.current.connectPhoneStream(role,stream);
    refresh();
    setMessage('Kamera HP '+role+' tersambung. Menunggu frame segar…');
@@ -249,7 +273,7 @@ export function F3CaptureWorkspace(){
  };
  const disconnectPhone=(role:F3Role)=>{
   if(sourceChoiceRef.current[role]!=='phone')return;
-  registry.current.disconnect(role);disarm();refresh();
+  registry.current.disconnect(role);invalidateMotion();refresh();
   setMessage('Kamera HP '+role+' terputus. Sambungkan ulang.');
  };
  const requestPermission=async()=>{
@@ -292,7 +316,7 @@ export function F3CaptureWorkspace(){
      <button type="button" disabled={!chosen[role]||current.state==='connecting'}
       onClick={()=>void connect(role)}>{current.state==='live'?'Ganti':'Sambungkan'}</button>
      <button type="button" disabled={current.state==='idle'}
-      onClick={()=>{registry.current.disconnect(role);disarm();refresh();}}>Putus</button>
+      onClick={()=>{registry.current.disconnect(role);invalidateMotion();refresh();}}>Putus</button>
     </div>
     {!devices.length&&<button type="button" className="f3-camera-permission"
      onClick={()=>void requestPermission()}>Izinkan kamera</button>}
@@ -310,148 +334,169 @@ export function F3CaptureWorkspace(){
   </div>;
  };
  return <section className="f3-workspace" aria-label="F3 Capture" data-stage-active={screenActive} data-step={activeStep}>
+  {/* Stream A/B selalu mounted; monitor Input dan Motion hanya membaca pikselnya. */}
+  <div className="f3-source-host" aria-hidden="true">
+   <video ref={videoA} autoPlay muted playsInline aria-label="Live video Kamera A"/>
+   <video ref={videoB} autoPlay muted playsInline aria-label="Live video Kamera B"/>
+  </div>
   <div className="f3-setup f3-workspace-intro">
-   <div className="f3-workspace-title"><h1>F3 Capture</h1><span>Dua kamera · Stage View · empat foto kaki</span></div>
+   <div className="f3-workspace-title"><h1>F3 Capture</h1><span>Input · Motion · Perform</span></div>
    <span className="f3-header-count">{stageCount}/4 foto</span>
   </div>
   <nav className="f3-pipeline-nav f3-setup" aria-label="Langkah F3 Capture">
    <div className="f3-pipeline-tabs" role="group" aria-label="Pilih langkah F3">
-    <button type="button" className="f3-pipeline-tab" aria-current={activeStep==='camera'?'page':undefined}
-     onClick={()=>setActiveStep('camera')}><span className="f3-step-num">{readyA&&readyB&&activeStep!=='camera'?<Check size={12}/>: '01'}</span> Kamera</button>
+    <button type="button" className="f3-pipeline-tab" aria-current={activeStep==='input'?'page':undefined}
+     onClick={()=>setActiveStep('input')}><span className="f3-step-num">01</span> Input</button>
     <span className="f3-step-sep" aria-hidden="true">›</span>
-    <button type="button" className="f3-pipeline-tab" aria-current={activeStep==='stage'?'page':undefined}
-     onClick={()=>setActiveStep('stage')}><span className="f3-step-num">{readyA&&readyB&&activeStep==='photo'?<Check size={12}/>: '02'}</span> Stage View</button>
+    <button type="button" className="f3-pipeline-tab" aria-current={activeStep==='motion'?'page':undefined}
+     onClick={()=>setActiveStep('motion')}><span className="f3-step-num">02</span> Motion</button>
     <span className="f3-step-sep" aria-hidden="true">›</span>
-    <button type="button" className="f3-pipeline-tab" aria-current={activeStep==='photo'?'page':undefined}
-     onClick={()=>setActiveStep('photo')}><span className="f3-step-num">{stageCount===4&&activeStep!=='photo'?<Check size={12}/>: '03'}</span> Foto</button>
+    <button type="button" className="f3-pipeline-tab" aria-current={activeStep==='perform'?'page':undefined}
+     onClick={()=>setActiveStep('perform')}><span className="f3-step-num">03</span> Perform</button>
    </div>
-   {activeStep!=='photo'&&<button type="button" className="f3-next-cta" onClick={()=>setActiveStep(activeStep==='camera'?'stage':'photo')}>
-    Lanjut {activeStep==='camera'?'Stage View':'Foto'} <ArrowRight size={14}/>
+   {activeStep!=='perform'&&<button type="button" className="f3-next-cta"
+    onClick={()=>setActiveStep(activeStep==='input'?'motion':'perform')}
+    disabled={activeStep==='input'&&!readyA}>
+    Lanjut {activeStep==='input'?'Motion':'Perform'} <ArrowRight size={14}/>
    </button>}
   </nav>
   <div className="f3-main-layout">
    <aside className="f3-setup f3-left-column" aria-label="Kontrol F3">
-    <section className="f3-source-panel f3-step-panel" data-active={activeStep==='camera'} hidden={activeStep!=='camera'}>
-     <header className="f3-panel-heading"><h2>Sumber</h2></header>
-     <details className="f3-device-details" open>
-      <summary>Pilih sumber kamera A dan B <ChevronDown size={15}/></summary>
-      {cameraSelect('A')}{cameraSelect('B')}
-      <div className="f3-source-utilities">
-       <button type="button" onClick={()=>void refreshDevices()}><RotateCcw size={14}/> Cari kamera</button>
-       <span>Kamera HP: kabel atau WebRTC. Kamera lain: webcam / capture / OBS.</span>
-      </div>
-     </details>
-     <section className="f3-input-health" aria-label="Status kamera">
-      <h3>Periksa input</h3>
-      <div className="f3-input-health-row">{status('A')}{status('B')}</div>
-      <p role="status">{message}</p>
-     </section>
-     <details className="f3-monitor-details"><summary>Lihat gambar kamera <ChevronDown size={14}/></summary>
-      <div className="f3-input-grid">
-       <section className="f3-video-card">
-        <div className="f3-card-head"><strong>A · Gerak aktor</strong><small>Pose + Hands</small></div>
-        <div className="f3-video-frame"><video ref={videoA} autoPlay muted playsInline aria-label="Live video Kamera A"/></div>
-        <p role="status">{modelState}</p>
-        {fusion.current.status==='error'&&<button type="button" onClick={()=>{
-         setModelState('Memuat ulang Pose + Hands…');
-         void fusion.current.retry().then(()=>setModelState('Pose + Hands siap'))
-          .catch(e=>setModelState('Model gagal: '+String(e)));
-        }}>Coba lagi model gestur</button>}
-       </section>
-       <section className="f3-video-card f3-b-card">
-        <div className="f3-card-head"><strong>B · Kaki penonton</strong><small>Foto</small></div>
-        <div className="f3-video-frame"><video ref={videoB} autoPlay muted playsInline aria-label="Live video Kamera B"/>
-         <div className="f3-frame-corners" aria-hidden="true"/></div>
-        <p>Crop {Math.round(zoom*100)}% · sumber foto Kamera B.</p>
-       </section>
-      </div>
+    <section className="f3-source-panel f3-step-panel" data-active={activeStep==='input'} hidden={activeStep!=='input'}>
+     <header className="f3-panel-heading">
+      <h2>Sumber kamera</h2>
+      <button type="button" className="f3-text-action" onClick={()=>void refreshDevices()} aria-label="Cari kamera">
+       <RotateCcw size={14}/> Cari kamera
+      </button>
+     </header>
+     {cameraSelect('A')}
+     {cameraSelect('B')}
+     <p className="f3-control-feedback" role="status">{message}</p>
+     <details className="f3-source-help">
+      <summary>Petunjuk koneksi <ChevronDown size={13}/></summary>
+      <p>HP dapat memakai USB/Continuity atau WebRTC. MP4 dipakai untuk latihan lokal.</p>
      </details>
     </section>
-    <section className="f3-stage-panel f3-step-panel" data-active={activeStep==='stage'} hidden={activeStep!=='stage'}>
-     <header className="f3-panel-heading"><h2>Coba panggung</h2></header>
-     <p className="f3-panel-description">Pratinjau keluaran asli. Empat foto di kiri, video kaki kamera B di kanan.</p>
-     <div className="f3-stage-readiness"><span>Kamera A</span><b data-ready={readyA}>{readyA?'Siap':'Belum siap'}</b></div>
-     <div className="f3-stage-readiness"><span>Kamera B</span><b data-ready={readyB}>{readyB?'Siap':'Belum siap'}</b></div>
-     <div className="f3-input-health"><h3>Periksa hasil</h3>
-      <p>{readyA&&readyB?'Kedua gambar siap. Klik Coba Fullscreen pada monitor.':'Sambungkan kedua kamera melalui langkah Kamera.'}</p>
+    <section className="f3-motion-panel f3-step-panel" data-active={activeStep==='motion'} hidden={activeStep!=='motion'}>
+     <header className="f3-panel-heading"><h2>Deteksi gerak</h2><span>{readyA?'Kamera A LIVE':'Menunggu A'}</span></header>
+     <div className="f3-readiness-rows">
+      <div><span>Tubuh</span><strong>{readyA?(motionSummary.body?'Terdeteksi':'Mencari tubuh'):'Belum terhubung'}</strong></div>
+      <div><span>Tangan</span><strong>{readyA?motionSummary.hands+' terbaca':'–'}</strong></div>
+      <div><span>Zoom B</span><strong>{Math.round(zoom*100)}%</strong></div>
+      <div><span>Gerak</span><strong>{motionSummary.label}</strong></div>
      </div>
+     <div className="f3-motion-presets">
+      <h3>Gestur foto</h3>
+      <div className="f3-switch" role="group" aria-label="Preset pukulan">
+       <button type="button" aria-pressed={preset==='straight'} onClick={()=>updatePreset('straight')}>Straight</button>
+       <button type="button" aria-pressed={preset==='uppercut'} onClick={()=>updatePreset('uppercut')}>Uppercut</button>
+      </div>
+     </div>
+     <p className="f3-panel-description">Rentangkan atau rapatkan dua tangan untuk mengubah crop B. Pukulan diuji tanpa menyimpan foto.</p>
+     <div className="f3-motion-test">
+      <button type="button" className="f3-primary" onClick={()=>{
+       setRehearsal(true);disarm();session.current.startRehearsal();
+       setPositive(0);setNegativeConfirmed(false);setVerified(false);session.current.setVerified(false);
+      }} disabled={!readyA}><Hand size={14}/> Mulai latihan</button>
+      <span>{rehearsal?'Latihan aktif':verified?'Gerak terverifikasi':'Belum diverifikasi'}</span>
+     </div>
+     <div className="f3-readiness-rows f3-motion-results">
+      <div><span>Pukulan terbaca</span><strong>{positive}</strong></div>
+      <div><span>Gerak negatif</span><strong>{negativeConfirmed?'Sudah diperiksa':'Belum diperiksa'}</strong></div>
+     </div>
+     <div className="f3-actions">
+      <button type="button" disabled={!rehearsal} onClick={()=>setNegativeConfirmed(true)}>
+       Konfirmasi uji negatif
+      </button>
+      <button type="button" disabled={!rehearsal||!positive||!negativeConfirmed} onClick={()=>{
+       setRehearsal(false);setVerified(true);session.current.setVerified(true);
+       setMessage('Gestur siap. Buka Perform untuk mengaktifkan rana.');
+      }}>Verifikasi gestur</button>
+     </div>
+     {modelState.toLowerCase().includes('gagal')||modelState.toLowerCase().includes('berhenti')?
+      <button type="button" onClick={()=>{
+       setModelState('Memuat ulang Pose + Hands…');
+       void fusion.current.retry().then(()=>{invalidateMotion();setModelState('Pose + Hands siap');})
+        .catch(e=>setModelState('Model gestur gagal: '+String(e)));
+      }}>Coba lagi deteksi</button>:null}
+     <p className="f3-control-feedback" role="status">{modelState}</p>
     </section>
-    <section className="f3-control-panel f3-step-panel" data-active={activeStep==='photo'} hidden={activeStep!=='photo'}>
-     <header className="f3-panel-heading"><h2>Ambil foto</h2><span>{stageCount}/4</span></header>
+    <section className="f3-control-panel f3-step-panel" data-active={activeStep==='perform'} hidden={activeStep!=='perform'}>
+     <header className="f3-panel-heading"><h2>Perform</h2><span>{stageCount}/4 foto</span></header>
+     <div className="f3-readiness-rows f3-perform-health">
+      <div><span>Kamera A</span><strong>{readyA?(statuses.A.kind==='fixture'?'SIMULASI':'LIVE'):'Belum siap'}</strong></div>
+      <div><span>Kamera B</span><strong>{readyB?(statuses.B.kind==='fixture'?'SIMULASI':'LIVE'):'Belum siap'}</strong></div>
+      <div><span>Motion</span><strong>{verified?'Terverifikasi':'Belum diuji'}</strong></div>
+     </div>
      <label className="f3-consent"><input type="checkbox" checked={consent} onChange={e=>markConsent(e.target.checked)}/>
       Penonton menyetujui pengambilan foto kaki.</label>
-     <button type="button" className="f3-primary f3-manual-shot"
-      disabled={!consent||!readyB||busy||(stageCount>=4&&replacement===null)}
-      onClick={manualShot}><Camera size={15}/> Jepret manual</button>
-     <p className="f3-shutter-state" role="status">{armed?'Gestur aktif':rehearsal?'Latihan gestur':'Rana gestur terkunci'}</p>
-     <details className="f3-gesture-details">
-      <summary>Atur rana gestur <ChevronDown size={14}/></summary>
-      <div className="f3-gesture-inner">
-       <p>Latih pukulan sebelum mengaktifkan rana. Gerak resize tidak memotret.</p>
-       <div className="f3-switch" role="group" aria-label="Preset pukulan">
-        <button type="button" aria-pressed={preset==='straight'} onClick={()=>updatePreset('straight')}>Straight</button>
-        <button type="button" aria-pressed={preset==='uppercut'} onClick={()=>updatePreset('uppercut')}>Uppercut</button>
-       </div>
-       <div className="f3-actions">
-        <button type="button" onClick={()=>{setRehearsal(true);disarm();session.current.startRehearsal();setPositive(0);setNegativeConfirmed(false);}}>
-         <Hand size={14}/> Mulai latihan</button>
-        <button type="button" disabled={!rehearsal} onClick={()=>setNegativeConfirmed(true)}>Konfirmasi uji negatif</button>
-        <button type="button" disabled={!rehearsal||!positive||!negativeConfirmed} onClick={()=>{
-         setRehearsal(false);setVerified(true);session.current.setVerified(true);setMessage('Latihan tercatat; periksa persetujuan sebelum Arm.');
-        }}>Verifikasi gestur</button>
-       </div>
-       <p className="f3-meta">Pukulan terbaca: {positive} · Negatif: {negativeConfirmed?'diperiksa':'belum diperiksa'}</p>
-       <div className="f3-actions">
-        <button type="button" disabled={!verified||!consent||!readyA||!readyB||stageCount>=4} onClick={arm}>Arm</button>
-        <button type="button" className="f3-danger" onClick={disarm}>Disarm</button>
-       </div>
-       <p className="f3-meta">{armed?'ARMED · rana gestur aktif':rehearsal?'REHEARSAL · belum memotret':'DISARMED · rana terkunci'}</p>
+     <button type="button" className="f3-primary f3-arm-button"
+      disabled={armed||!verified||!consent||!readyA||!readyB||stageCount>=4}
+      onClick={arm}><Hand size={14}/> {armed?'Gestur Aktif':'Aktifkan Gestur'}</button>
+     <div className="f3-operator-secondary">
+      <button type="button" onClick={disarm} disabled={!armed&&!rehearsal}>Hentikan Gestur</button>
+      <button type="button" onClick={manualShot} disabled={!consent||!readyB||busy||(stageCount>=4&&replacement===null)}>
+       <Camera size={14}/> Jepret manual
+      </button>
+     </div>
+     <p className="f3-shutter-state" role="status">{armed?'Rana gestur aktif':rehearsal?'Selesaikan latihan di Motion':'Rana gestur terkunci'}</p>
+     <button type="button" className="f3-primary f3-perform-fullscreen" onClick={enterFullscreen}
+      disabled={!readyA||!readyB}><Maximize2 size={15}/> Buka Fullscreen</button>
+     <div className="f3-photo-operations">
+      <header><strong>Foto tersimpan</strong><span>{stageCount}/4</span></header>
+      <div className="f3-photo-ops">
+       {archive.current.slots.map((photo,index)=><div key={index} data-selected={replacement===index}>
+        <span>{String(index+1).padStart(2,'0')} · {photo?'Terisi':'Kosong'}</span>
+        <button type="button" aria-label={'Ganti foto '+(index+1)} aria-pressed={replacement===index}
+         onClick={()=>setReplacement(replacement===index?null:index)}>{replacement===index?'Batal':'Ganti'}</button>
+        {photo&&<button type="button" aria-label={'Hapus foto '+(index+1)} onClick={()=>removePhoto(index)}>Hapus</button>}
+       </div>)}
       </div>
-     </details>
+      <div className="f3-archive-actions">
+       <button type="button" onClick={undo} disabled={!stageCount}><RotateCcw size={13}/> Undo</button>
+       <button type="button" onClick={()=>void saveZip()} disabled={!stageCount}><Download size={13}/> Ekspor ZIP</button>
+      </div>
+     </div>
      <p className="f3-control-feedback" role="status">{message}</p>
     </section>
    </aside>
-   <div className="f3-monitor-column">
-    <section className="f3-surface-panel" aria-label="Pratinjau Stage View">
+   <main className="f3-monitor-column" aria-label="Monitor F3">
+    <section className="f3-workspace-monitor f3-step-panel" hidden={activeStep!=='input'}>
+     <header className="f3-panel-heading"><h2>Monitor kamera</h2><span>Input asli A/B</span></header>
+     {activeStep==='input'&&<F3VideoMonitor mode="input" videoA={videoA} videoB={videoB}
+      motion={motionSnapshot} stage={stageFrame} showSkeleton={false}/>}
+    </section>
+    <section className="f3-workspace-monitor f3-step-panel" hidden={activeStep!=='motion'}>
+     <header className="f3-panel-heading">
+      <h2>Motion · Kamera A</h2>
+      <button type="button" className="f3-text-action" aria-pressed={skeletonVisible}
+       onClick={()=>setSkeletonVisible(v=>!v)}>Skeleton {skeletonVisible?'On':'Off'}</button>
+     </header>
+     {activeStep==='motion'&&<F3VideoMonitor mode="motion" videoA={videoA} videoB={videoB}
+      motion={motionSnapshot} stage={stageFrame} showSkeleton={skeletonVisible}/>}
+    </section>
+    <section className="f3-surface-panel" aria-label="Pratinjau Stage View" hidden={activeStep!=='perform'&&!screenActive}>
      <header className="f3-surface-header f3-setup">
-      <div><strong>Stage View</strong><small>Empat foto · Live Kamera B</small></div>
-      <button type="button" className="f3-preview-fullscreen" onClick={enterFullscreen}
-       disabled={!readyA||!readyB}><Maximize2 size={15}/> Coba Fullscreen</button>
+      <div><strong>Stage View</strong><small>Empat foto kiri · Live kamera B kanan</small></div>
+      <span className="f3-ratio-label">2:1</span>
      </header>
      <F3StageView hostRef={stageHost} frameRef={stageFrame} videoRef={videoB}
       stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
       onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
      <div className="f3-surface-footer f3-setup" role="status">
       <span>{statuses.B.kind==='fixture'&&readyB?'SIMULASI':readyA&&readyB?'LIVE':'Menunggu dua kamera'}</span>
-      <span>2:1</span>
+      <span>Stage View 1600 × 800</span>
      </div>
     </section>
-    <section className="f3-archive-panel f3-setup" hidden={activeStep!=='photo'}>
-     <div className="f3-archive-heading"><h2>Foto tersimpan <span>{stageCount}/4</span></h2>
-      <div className="f3-archive-actions">
-       <button type="button" onClick={undo} disabled={!stageCount}><RotateCcw size={13}/> Undo</button>
-       <button type="button" onClick={()=>void saveZip()} disabled={!stageCount}><Download size={13}/> Ekspor ZIP</button>
-      </div>
-     </div>
-     <div className="f3-slots">
-      {archive.current.slots.map((photo,index)=><div key={index} className="f3-slot" data-selected={replacement===index}>
-       {photo?<img src={photo.url} alt={'Foto kaki '+(index+1)}/>:<span>0{index+1}</span>}
-       <div className="f3-slot-actions">
-        <button type="button" aria-label={'Ganti foto '+(index+1)}
-         aria-pressed={replacement===index} onClick={()=>setReplacement(replacement===index?null:index)}>Ganti</button>
-        {photo&&<button type="button" aria-label={'Hapus foto '+(index+1)} onClick={()=>removePhoto(index)}>Hapus</button>}
-       </div>
-      </div>)}
-     </div>
-    </section>
-   </div>
+   </main>
   </div>
-  <details className="f3-hardware-details f3-setup"><summary><ShieldAlert size={14}/> Info teknis & proyektor <ChevronDown size={14}/></summary>
+  <details className="f3-hardware-details f3-setup" hidden={activeStep!=='perform'}>
+   <summary><ShieldAlert size={14}/> Pengaturan lanjutan <ChevronDown size={14}/></summary>
    <div className="f3-operator-footer">
     <p>{f3ProjectorGate().ready?'Gate BODY tersedia. Pengujian fisik F3 belum selesai.':
-     'Output proyektor terkunci. Stage View lokal tidak memerlukan proyektor.'}</p>
-    <button type="button" disabled title="Integrasi F3 memerlukan uji fisik."
-     onClick={f3Blackout}><VideoOff size={14}/> Keluarkan ke Kanvas — belum tersedia</button>
+     'Output proyektor F3 terkunci sampai QA perangkat. Fullscreen lokal tetap tersedia.'}</p>
+    <button type="button" disabled title="Output fisik F3 perlu pengujian panggung."
+     onClick={f3Blackout}><VideoOff size={14}/> Output fisik belum tersedia</button>
    </div>
   </details>
  </section>;

@@ -16,6 +16,7 @@ export class F3PunchEngine{
  get negatives(){return this.invalidCount;}
  reset(){this.prepared=null;this.lastFrame=-1;this.needsNeutral=false;this.cooldownUntil=0;this.invalidCount=0;}
  setPreset(preset:F3PunchPreset){this.preset=preset;this.reset();}
+ pauseResize(now:number){this.prepared=null;this.previousResizeAt=now;}
  private clenched(hand:F3Landmark[]){
   if(hand.length<21)return false;
   const palm=Math.max(.02,length(hand[0],hand[5]));
@@ -34,9 +35,14 @@ export class F3PunchEngine{
   if([shoulderL,shoulderR,leftW,rightW,leftE,rightE].some(p=>!p||p.visibility!==undefined&&p.visibility<.55)){
    this.prepared=null;return {kind:'invalid'};
   }
-  const side:Side=frame.hands.some(h=>h[0]&&this.clenched(h)&&h[0].x<.5)?'left':'right';
-  const hand=frame.hands.find(h=>h[0]&&this.clenched(h)&&
-   (side==='left'?h[0].x<.5:h[0].x>=.5));
+  // Associate each observed fist to its closest Pose wrist, never to screen center.
+  const shoulderSpan=Math.max(.08,length(shoulderL,shoulderR));
+  const candidate=frame.hands.filter(h=>h[0]&&this.clenched(h)).map(h=>{
+   const dLeft=length(h[0],leftW),dRight=length(h[0],rightW);
+   return {hand:h,side:(dLeft<=dRight?'left':'right') as Side,distance:Math.min(dLeft,dRight)};
+  }).filter(x=>x.distance<shoulderSpan*1.9).sort((a,b)=>a.distance-b.distance)[0];
+  const side:Side=candidate?.side??'right';
+  const hand=candidate?.hand;
   if(!hand){this.prepared=null;this.invalidCount++;return {kind:'invalid'};}
   const w=side==='left'?leftW:rightW,other=side==='left'?rightW:leftW;
   const shoulder=side==='left'?shoulderL:shoulderR,elbow=side==='left'?leftE:rightE;

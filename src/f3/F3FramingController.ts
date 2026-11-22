@@ -16,26 +16,74 @@ export class F3FramingController{
  private baseline:{spread:number;fraction:number}|null=null;
  private lastPinchAt=0;
  private lastFrameId=-1;
+ private bodyBaseline:{left:number;right:number;spread:number;fraction:number}|null=null;
+ private bodyPrevious:{left:number;right:number}|null=null;
+ private bodyMovedAt=0;
+ /** Stable 2-arm relative motion, measured in shoulder widths (distance-invariant). */
  step(frame:F3MotionFrame,now:number){
-  if(!frame.fresh||frame.hands.length<2){this.resizing=false;this.baseline=null;return this.fraction;}
-  if(frame.frameId<=this.lastFrameId)return this.fraction;
+  if(!frame.fresh||frame.frameId<=this.lastFrameId)return this.fraction;
   this.lastFrameId=frame.frameId;
-  const left=frame.hands[0],right=frame.hands[1];
-  const leftPoint=left[0],rightPoint=right[0];
-  if(!leftPoint||!rightPoint)return this.fraction;
-  const shoulderA=frame.pose[11],shoulderB=frame.pose[12];
-  const shoulderWidth=shoulderA&&shoulderB?Math.max(.1,distance(shoulderA,shoulderB)):.32;
-  const spread=distance(leftPoint,rightPoint)/shoulderWidth;
-  const pinched=f3Pinched(left)||f3Pinched(right);
-  if(pinched){
-   this.lastPinchAt=now;
-   if(!this.resizing||!this.baseline){this.resizing=true;this.baseline={spread,fraction:this.fraction};}
-   const target=clamp(this.baseline.fraction*(this.baseline.spread/Math.max(.1,spread)),.2,1);
-   if(Math.abs(target-this.fraction)>.008)this.fraction=clamp(this.fraction+(target-this.fraction)*.28,.2,1);
-  }else if(this.resizing&&now-this.lastPinchAt>300){this.resizing=false;this.baseline=null;}
+  const shoulderL=frame.pose[11],shoulderR=frame.pose[12];
+  const wristL=frame.pose[15],wristR=frame.pose[16];
+  const visible=(p:F3Landmark|undefined)=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
+   p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&(p.visibility??1)>=.55;
+  const hasBody=[shoulderL,shoulderR,wristL,wristR].every(visible);
+  if(hasBody){
+   const shoulderWidth=distance(shoulderL!,shoulderR!);
+   const middle=(shoulderL!.x+shoulderR!.x)/2;
+   const l=(middle-Math.min(wristL!.x,wristR!.x))/Math.max(.07,shoulderWidth);
+   const r=(Math.max(wristL!.x,wristR!.x)-middle)/Math.max(.07,shoulderWidth);
+   if(shoulderWidth>=.055&&l>.05&&r>.05&&l<5&&r<5){
+    const spread=l+r;
+    if(!this.bodyBaseline){
+     this.bodyBaseline={left:l,right:r,spread,fraction:this.fraction};
+     this.bodyPrevious={left:l,right:r};
+    }else{
+     const base=this.bodyBaseline;
+     const dL=l-base.left,dR=r-base.right;
+     const balanced=dL*dR>0&&Math.min(Math.abs(dL),Math.abs(dR))>.13&&
+      Math.max(Math.abs(dL),Math.abs(dR))/Math.min(Math.abs(dL),Math.abs(dR))<2.7;
+     const previous=this.bodyPrevious;
+     const moved=previous?Math.abs(l-previous.left)+Math.abs(r-previous.right)>.026:false;
+     if(balanced){
+      this.resizing=true;this.lastPinchAt=now;
+      if(moved)this.bodyMovedAt=now;
+      const target=clamp(base.fraction*(base.spread/Math.max(.18,spread)),.2,1);
+      if(Math.abs(target-this.fraction)>.007)
+       this.fraction=clamp(this.fraction+(target-this.fraction)*.25,.2,1);
+     }
+     this.bodyPrevious={left:l,right:r};
+     if(this.resizing&&!balanced&&now-this.lastPinchAt>380){
+      this.resizing=false;this.bodyBaseline={left:l,right:r,spread,fraction:this.fraction};
+     }
+     if(this.resizing&&now-this.bodyMovedAt>650){
+      this.resizing=false;this.bodyBaseline={left:l,right:r,spread,fraction:this.fraction};
+     }
+    }
+    if(this.resizing)return this.fraction;
+   }
+  }else{
+   this.bodyBaseline=null;this.bodyPrevious=null;this.resizing=false;
+  }
+  // Optional close-range pinch fallback. Stage use never requires fingers for zoom.
+  if(frame.hands.length>=2&&frame.hands.some(f3Pinched)){
+   const left=frame.hands[0][0],right=frame.hands[1][0];
+   if(left&&right){
+    const shoulderWidth=shoulderL&&shoulderR?Math.max(.1,distance(shoulderL,shoulderR)):.32;
+    const spread=distance(left,right)/shoulderWidth;
+    this.lastPinchAt=now;
+    if(!this.baseline){this.resizing=true;this.baseline={spread,fraction:this.fraction};}
+    const target=clamp(this.baseline.fraction*(this.baseline.spread/Math.max(.1,spread)),.2,1);
+    if(Math.abs(target-this.fraction)>.008)
+     this.fraction=clamp(this.fraction+(target-this.fraction)*.28,.2,1);
+    return this.fraction;
+   }
+  }
+  if(this.baseline&&now-this.lastPinchAt>320)this.baseline=null;
+  if(this.resizing&&now-this.lastPinchAt>380)this.resizing=false;
   return this.fraction;
  }
- setFraction(value:number){this.fraction=clamp(value,.2,1);this.resizing=false;this.baseline=null;}
+ setFraction(value:number){this.fraction=clamp(value,.2,1);this.resizing=false;this.baseline=null;this.bodyBaseline=null;this.bodyPrevious=null;}
  crop(width:number,height:number,aspect=1.36){return f3Crop(width,height,this.fraction,aspect);}
- reset(){this.fraction=.6;this.resizing=false;this.baseline=null;this.lastFrameId=-1;}
+ reset(){this.fraction=.6;this.resizing=false;this.baseline=null;this.bodyBaseline=null;this.bodyPrevious=null;this.lastFrameId=-1;this.bodyMovedAt=0;}
 }

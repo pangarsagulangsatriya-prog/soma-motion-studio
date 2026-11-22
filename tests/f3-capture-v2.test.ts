@@ -174,3 +174,32 @@ test('F3 revocation during asynchronous JPEG encoding blocks photo commit',async
   assert.equal(store.count,0);
  }finally{store.revokeAll();globalThis.document=original;}
 });
+
+
+test('F3 V3: two-wrist body zoom works without finger pinch and holds while lost',()=>{
+ const f=new F3FramingController();
+ const pose=(id:number,shoulder:number,arm:number):F3MotionFrame=>{
+  const framePose=Array.from({length:33},()=>point(.5,.5));
+  framePose[11]=point(.5-shoulder/2,.4);
+  framePose[12]=point(.5+shoulder/2,.4);
+  framePose[15]=point(.5-shoulder*arm,.48);
+  framePose[16]=point(.5+shoulder*arm,.48);
+  return {frameId:id,timestamp:id*100,videoTime:id/30,pose:framePose,hands:[],fresh:true,confidence:1};
+ };
+ assert.equal(f.step(pose(1,.2,1),1000),.6);
+ const moved=f.step(pose(2,.2,1.6),1100);
+ assert.ok(moved<.6,'both wrists extending zoom into B with pose only');
+ assert.equal(f.resizing,true);
+ const held=f.step({...pose(3,.2,1.6),fresh:false},1200);
+ assert.equal(held,moved,'lost frame holds crop rather than resetting it');
+ const another=new F3FramingController();
+ assert.equal(another.step(pose(1,.2,1),1000),.6);
+ assert.equal(another.step(pose(2,.13,1),1120),.6,
+  'actor moving farther with same arm-to-shoulder ratio must not zoom');
+});
+test('F3 V3: unilateral hand movement does not start body zoom',()=>{
+ const f=new F3FramingController();
+ assert.equal(f.step(frame(1,.7,.54,{otherX:.35}),1000),.6);
+ assert.equal(f.step(frame(2,.92,.54,{otherX:.35}),1150),.6);
+ assert.equal(f.resizing,false);
+});

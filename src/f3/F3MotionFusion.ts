@@ -44,9 +44,14 @@ export class F3MotionFusion{
   ctx.drawImage(video,0,0,width,height);
   const pose=this.pose.detectForVideo(shared,timestamp);
   const hands=this.hand.detectForVideo(shared,timestamp);
-  return {frameId,timestamp,videoTime:video.currentTime,pose:pose.landmarks[0]??[],hands:hands.landmarks??[],
-   confidence:pose.landmarks[0]?.[11]&&hands.landmarks?.length?1:0,fresh:true};
+  const body=pose.landmarks[0]??[];
+  const joints=[11,12,13,14,15,16].map(index=>body[index]).filter(Boolean);
+  const quality=joints.length===6?
+   joints.reduce((sum,p)=>sum+(Number.isFinite(p.visibility)?Math.max(0,Math.min(1,p.visibility!)):1),0)/6:0;
+  return {frameId,timestamp,videoTime:video.currentTime,pose:body,hands:hands.landmarks??[],
+   confidence:quality,fresh:true};
  }
+ resetFrames(){this.lastFrame=-1;this.lastTime=0;}
  async retry(){this.dispose();this.error='';return this.init();}
  dispose(){this.pose?.close();this.hand?.close();this.pose=null;this.hand=null;this.loading=null;this.status='idle';this.lastFrame=-1;this.lastTime=0;this.sharedCanvas=null;}
 }
