@@ -36,6 +36,7 @@ test('V3 uses two-foot precise default, a compact control panel and a clean canv
  await expect(panel.getByLabel('Warna kaki left')).toHaveValue('#ff0000');
  await panel.getByRole('button',{name:'8 dtk'}).click();
  await expect(panel.getByRole('button',{name:'8 dtk'})).toHaveAttribute('aria-pressed','true');
+ await panel.getByRole('button',{name:'Hentikan Demo'}).click();
  await panel.getByRole('button',{name:'Bersihkan'}).click();
  await expect(panel.locator('.lt-beta-count')).toContainText('0 titik');
 });
