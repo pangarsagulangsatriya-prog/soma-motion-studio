@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
  hubDisplayName,hubSourceAvailable,hubFrameIsFresh,hubBodyCount
-} from '../src/studio/v3/CameraHubRegistry.ts';
+} from '../src/studio/v3/cameraHubModel.ts';
 import type {MotionFrame} from '../src/engine/types.ts';
 const src=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
