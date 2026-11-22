@@ -39,7 +39,7 @@ test('drag produces continuous dabs without centerline and stable seed',()=>{
 });
 test('pivot samples arc around a stable heel despite stationary center',()=>{
  const a=adaptFootBrushFrame([sample(.3,100)],'video:test',100).poses[0];
- const b={...a,atMs:130,headingRad:Math.PI/3,
+ const b={...a,atMs:130,headingRad:(a.headingRad??0)+Math.PI/3,
   heel:a.heel,center:a.center};
  const d=buildFootBrushDabs(a,b,'pivot',{pivot:'heel'});
  assert.ok(d.length>3);
