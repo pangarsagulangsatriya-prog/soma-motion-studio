@@ -104,6 +104,17 @@ const RATELIMIT=[
  "if count==1 then redis.call('EXPIRE',KEYS[1],60) end",
  "return count"
 ].join('\n');
+/** One atomic Redis operation protects both the entire shared Wi-Fi and
+ * each room credential. 10 active QR pairs at 850ms polling ≈1412 polls/min;
+ * global ceiling 1800 and per-peer ceiling 95 preserve bounded capacity. */
+const RATELIMIT_SCOPED=[
+ "local global=redis.call('INCR',KEYS[1])",
+ "if global==1 then redis.call('EXPIRE',KEYS[1],60) end",
+ "local actor=redis.call('INCR',KEYS[2])",
+ "if actor==1 then redis.call('EXPIRE',KEYS[2],60) end",
+ "if global>tonumber(ARGV[1]) or actor>tonumber(ARGV[2]) then return 0 end",
+ "return 1"
+].join('\n');
 function environment(){
  // Vercel Upstash integration uses KV_REST_API_*; standalone Upstash
  // integrations may use UPSTASH_REDIS_REST_* instead.
@@ -125,13 +136,28 @@ async function redis(command:unknown[]):Promise<RedisPrimitive>{
 }
 const evalRedis=(script:string,key:string,...args:string[])=>redis(['EVAL',script,1,key,...args]);
 const key=(room:string)=>'soma:phone:room:'+room;
-async function rateLimit(request:Request,action:Action):Promise<boolean>{
+async function rateLimit(request:Request,action:Action,payload:RequestPayload):Promise<boolean>{
+ // Platform-provided forwarding address, never a client-declared device name.
  const source=request.headers.get('x-vercel-forwarded-for')||
   request.headers.get('x-real-ip')||'unknown';
  const ipHash=(await digest(source)).slice(0,32);
- const limit=action==='create'?8:240;
- const count=await evalRedis(RATELIMIT,'soma:phone:rate:'+action+':'+ipHash);
- return typeof count==='number'&&count<=limit;
+ const globalKey='soma:phone:rate:'+action+':ip:'+ipHash;
+ if(action==='create'||action==='join'||!validRoom(payload.room)||
+  !validToken(payload.token)){
+  // Invitations are deliberately limited to 8/min per public IP.
+  // A ten-camera installation must stagger setup across minutes.
+  const limit=action==='create'?8:action==='join'?40:120;
+  const count=await evalRedis(RATELIMIT,globalKey);
+  return typeof count==='number'&&count<=limit;
+ }
+ // Hash both role secret and room. No raw bearer tokens in Redis key names.
+ const principal=(await digest(payload.room+':'+payload.token)).slice(0,40);
+ const actorKey='soma:phone:rate:'+action+':actor:'+principal;
+ const ipLimit=action==='poll'?1800:240;
+ const actorLimit=action==='poll'?95:action==='resume'?24:40;
+ const allowed=await redis(['EVAL',RATELIMIT_SCOPED,2,
+  globalKey,actorKey,ipLimit,actorLimit]);
+ return allowed===1;
 }
 export async function POST(request:Request):Promise<Response>{
  if(request.method!=='POST')return json({ok:false,error:'Metode tidak didukung.'},405);
@@ -150,7 +176,7 @@ export async function POST(request:Request):Promise<Response>{
   if(!value||!['create','join','poll','offer','answer','ack','resume','close'].includes(value.action??''))
    return json({ok:false,error:'Aksi pairing tidak dikenal.'},400);
   const action=value.action!;
-  if(!await rateLimit(request,action))return json({ok:false,error:'Terlalu banyak permintaan. Coba lagi.',code:'RATE_LIMIT'},429);
+  if(!await rateLimit(request,action,value))return json({ok:false,error:'Terlalu banyak permintaan. Coba lagi.',code:'RATE_LIMIT'},429);
   if(action==='create'){
    for(let attempt=0;attempt<3;attempt++){
     const room=randomToken(12),desktopToken=randomToken(),ticket=randomToken();
