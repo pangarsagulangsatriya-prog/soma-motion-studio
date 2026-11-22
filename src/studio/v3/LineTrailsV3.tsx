@@ -7,7 +7,10 @@ import {paintFullscreenInputDiagnostics} from '../../footprints/lines/Fullscreen
 import {resolveFullscreenInput} from '../../footprints/lines/FullscreenInputSource.ts';
 import {normalizeTrajectoryInput} from '../../footprints/lines/v3/SourceFrameNormalizer.ts';
 import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajectoryEngine.ts';
-import {paintTrajectory,type V3Settings} from '../../footprints/lines/v3/TrajectoryRenderer.ts';
+import type {V3Settings} from '../../footprints/lines/v3/TrajectoryRenderer.ts';
+import {PainterlyImpressionEngine} from '../../footprints/lines/v3/PainterlyImpressionEngine.ts';
+import {paintPainterlyCanvas,type PainterlySettings} from '../../footprints/lines/v3/PainterlyCanvasRenderer.ts';
+import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
 
 type StageProps={
@@ -17,6 +20,7 @@ type StageProps={
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  router:MultiPoseGaitRouter;engine:DualFootTrajectoryEngine;settings:V3Settings;
+ impressions:PainterlyImpressionEngine;painterly:PainterlySettings;motionEvents?:()=>readonly FootMotionEventV2[];
  fullscreenDiagnostics:FullscreenDiagnostics;blackout:boolean;previewLive:boolean;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;
  experimentSource:'video'|'simulator'|null;sourceKind:'camera'|'phone';
@@ -52,6 +56,7 @@ export function LineTrailsV3Stage(props:StageProps){
    if(input.sourceKey!==lastSource){
     lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
+    p.impressions.ensureSource(input.sourceKey);
    }
    const off=p.blackout||!p.previewLive;
    if(off){
@@ -59,7 +64,7 @@ export function LineTrailsV3Stage(props:StageProps){
     message='Preview padam';
    }else{
     if(input.seeking){
-     if(!lastSeeking)p.engine.cutAll('seek');
+     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();}
      lastSeeking=true;
      message='MP4 · memindahkan posisi video';
     }else{
@@ -76,6 +81,9 @@ export function LineTrailsV3Stage(props:StageProps){
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
+      p.impressions.ingestFrame(input.samples,input.frameMs,input.source);
+      if(input.source!=='demo'&&p.motionEvents)
+       p.impressions.ingestContacts(p.motionEvents(),input.source,input.frameMs);
       lastFrameMs=input.frameMs;lastGoodAt=now;
       lastStale=false;
      }
@@ -85,7 +93,7 @@ export function LineTrailsV3Stage(props:StageProps){
     }
    }
    const fullscreen=document.fullscreenElement===p.fullscreenRef.current;
-   paintTrajectory(ctx,p.engine,p.settings,input.presentationMs,off,fullscreen);
+   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
     // Diagnostics live only on explicit V/K; V3 fullscreen default is clean.
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
@@ -112,6 +120,7 @@ export function LineTrailsV3Stage(props:StageProps){
      'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
      ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
+     'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
     ].join(' | '));
@@ -128,13 +137,16 @@ export function LineTrailsV3Stage(props:StageProps){
 
 type PanelProps={
  settings:V3Settings;onChange:(next:V3Settings)=>void;
+ painterly:PainterlySettings;onPainterlyChange:(next:PainterlySettings)=>void;
+ impressions:PainterlyImpressionEngine;
  engine:DualFootTrajectoryEngine;onClear:()=>void;demo:boolean;onDemo:()=>void;
  status:string;diagnostics:string;performerCount:1|2;
  onUseV2:()=>void;fullscreenDiagnostics:FullscreenDiagnostics;
  onFullscreenDiagnostics:(next:FullscreenDiagnostics)=>void;
 };
-export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,status,
- diagnostics,performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
+export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange,
+ impressions,engine,onClear,demo,onDemo,status,diagnostics,
+ performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
  const actorColor=(actor:'A'|'B',value:string)=>onChange({
   ...settings,actorColors:{...settings.actorColors,[actor]:value}
  });
@@ -153,12 +165,45 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
   onChange({...settings,footOverrides:next});
  };
  const activeActors=performerCount===2?(['A','B'] as const):(['A'] as const);
- return <section className="lt-beta-controls lt-v3-controls" aria-label="Kontrol Garis V3">
-  <header><strong>Garis · Lintasan</strong><span>V3.1 BETA</span></header>
+ const material=(value:PainterlySettings['material'])=>onPainterlyChange({...painterly,material:value});
+ const change=(patch:Partial<PainterlySettings>)=>onPainterlyChange({...painterly,...patch});
+ return <section className="lt-beta-controls lt-v3-controls lt-painterly-controls" aria-label="Kontrol Garis V3">
+  <header><strong>Garis · Painterly</strong><span>V3.2 BETA</span></header>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
-  <div className="lt-v3-mode" role="group" aria-label="Mode Garis">
-   <button type="button" aria-pressed="true">Lintasan</button>
-   <button type="button" disabled title="Menunggu gate kontak kaki yang terverifikasi">Pijakan · P1</button>
+  <div className="lt-painterly-material" role="group" aria-label="Material lukisan">
+   {([{id:'ink',label:'Tinta'},{id:'charcoal',label:'Arang'},
+     {id:'pigment',label:'Pigmen'}] as const).map(m=><button key={m.id} type="button"
+      aria-pressed={painterly.material===m.id} onClick={()=>material(m.id)}>{m.label}</button>)}
+  </div>
+  <div className="lt-painterly-layers">
+   <div className="lt-painterly-layer">
+    <label><input aria-label="Tampilkan tapak kaki" type="checkbox"
+     checked={painterly.showSoles} onChange={e=>change({showSoles:e.target.checked})}/>
+     <strong>Tapak kaki</strong></label>
+    <label className="lt-painterly-stay"><input type="checkbox"
+     aria-label="Tapak tetap" checked={painterly.footprintKeep}
+     onChange={e=>change({footprintKeep:e.target.checked})}/>Tetap</label>
+    <label className="lt-painterly-duration">Hilang <output>{painterly.footprintKeep?'Tetap':Math.round(painterly.footprintLifeMs/1000)+' dtk'}</output>
+     <input type="range" min="1" max="30" step="1"
+      aria-label="Durasi tapak kaki" disabled={painterly.footprintKeep||!painterly.showSoles}
+      value={Math.round(painterly.footprintLifeMs/1000)}
+      onChange={e=>change({footprintLifeMs:Number(e.target.value)*1000})}/>
+    </label>
+   </div>
+   <div className="lt-painterly-layer">
+    <label><input aria-label="Tampilkan garis lintasan" type="checkbox"
+     checked={painterly.showTrails} onChange={e=>change({showTrails:e.target.checked})}/>
+     <strong>Garis lintasan</strong></label>
+    <label className="lt-painterly-stay"><input type="checkbox"
+     aria-label="Garis tetap" checked={painterly.trailKeep}
+     onChange={e=>change({trailKeep:e.target.checked})}/>Tetap</label>
+    <label className="lt-painterly-duration">Hilang <output>{painterly.trailKeep?'Tetap':Math.round(painterly.trailLifeMs/1000)+' dtk'}</output>
+     <input type="range" min="1" max="30" step="1"
+      aria-label="Durasi garis lintasan" disabled={painterly.trailKeep||!painterly.showTrails}
+      value={Math.round(painterly.trailLifeMs/1000)}
+      onChange={e=>change({trailLifeMs:Number(e.target.value)*1000})}/>
+    </label>
+   </div>
   </div>
   {activeActors.map(actor=><div key={actor} className="lt-v31-actor">
    <label htmlFor={'v31-actor-color-'+actor}><strong>Aktor {actor}</strong>
@@ -170,6 +215,7 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
     aria-label={'Tampilkan Aktor '+actor}
     onChange={e=>actorVisible(actor,e.target.checked)}/>
   </div>)}
+  <details className="lt-painterly-characters"><summary>Karakter garis</summary>
   <div className="lt-v31-character" role="group" aria-label="Karakter garis">
    {([{value:'precision',label:'Presisi'},
       {value:'fluid',label:'Luwes'},
@@ -178,21 +224,12 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
      aria-pressed={settings.styleMode===mode.value}
      onClick={()=>onChange({...settings,styleMode:mode.value})}>{mode.label}</button>)}
   </div>
+  </details>
   <label className="lt-beta-width">Ketebalan <output>{settings.width} px</output>
    <input type="range" min={1} max={12} step={1}
     aria-label="Ketebalan lintasan" value={settings.width}
     onChange={e=>onChange({...settings,width:Number(e.target.value)})}/>
   </label>
-  <div className="lt-v3-duration"><strong>Durasi jejak</strong>
-   <div className="lt-v3-three" role="group" aria-label="Durasi lintasan">
-    <button type="button" aria-pressed={settings.decay==='keep'}
-     onClick={()=>onChange({...settings,decay:'keep'})}>Tetap</button>
-    <button type="button" aria-pressed={settings.decay==='fade'&&settings.lifeMs===8000}
-     onClick={()=>onChange({...settings,decay:'fade',lifeMs:8000})}>8 dtk</button>
-    <button type="button" aria-pressed={settings.decay==='fade'&&settings.lifeMs===20000}
-     onClick={()=>onChange({...settings,decay:'fade',lifeMs:20000})}>20 dtk</button>
-   </div>
-  </div>
   <div className="lt-beta-actions">
    <button type="button" onClick={onClear}>Bersihkan</button>
    <button type="button" className="lt-beta-demo" aria-pressed={demo} onClick={onDemo}>
@@ -200,7 +237,7 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
    </button>
   </div>
   <small className="lt-beta-count">{engine.sampleCount} titik · {engine.allStrokes.length} segmen ·
-   Preview posisi 2D, belum diproyeksikan</small>
+   · {impressions.count} cap ({impressions.estimatedCount} estimasi) · Posisi 2D</small>
   <details className="lt-v31-foot-details">
    <summary>Detail kaki</summary>
    <p>Warna kedua kaki mengikuti aktor, kecuali saat warna khusus diaktifkan.</p>
@@ -234,6 +271,12 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
   </details>
   <details className="lt-v3-advanced">
    <summary>Pengaturan lanjutan</summary>
+   <label><input type="checkbox" checked={painterly.enabled}
+    onChange={e=>change({enabled:e.target.checked})}/> Painterly aktif (matikan untuk Lintasan klasik)</label>
+   <label>Ukuran tapak <output>{painterly.sizePx} px</output>
+    <input type="range" min="30" max="110" step="2" aria-label="Ukuran tapak"
+     value={painterly.sizePx} onChange={e=>change({sizePx:Number(e.target.value)})}/>
+   </label>
    <div className="lt-v3-three" role="group" aria-label="Latar garis">
     <button type="button" aria-pressed={settings.background==='#F5F5F2'}
      onClick={()=>onChange({...settings,background:'#F5F5F2'})}>Terang</button>
