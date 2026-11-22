@@ -75,6 +75,8 @@ export function LineTrailsV3Stage(props:StageProps){
    const off=p.blackout||!p.previewLive;
    if(off){
     p.engine.cutAll('manual-reset');
+    // Any later frame must start a fresh stroke; retained pigment stays until cleared.
+    gestures.reset();
     message='Preview padam';
    }else{
     if(input.seeking){
@@ -91,7 +93,7 @@ export function LineTrailsV3Stage(props:StageProps){
       // A later valid frame will still cut a >390ms gap in the tracking engine.
       const graceMs=input.source==='video'?1000:500;
       if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
-       p.engine.cutAll('stale-frame');lastStale=true;
+       p.engine.cutAll('stale-frame');gestures.reset();lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
