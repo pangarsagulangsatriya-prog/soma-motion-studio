@@ -69,5 +69,6 @@ test('refresh warning never impersonates a persistent live peer',()=>{
  assert.match(source,/beforeunload/);
  assert.match(auto,/beforeunload/);
  assert.match(protocol,/PHONE_PAIR_TTL_MS=180_000/);
- assert.match(auto,/QR lama sekali pakai/);
+ assert.match(auto,/phonePairRequest\\('resume'/);
+ assert.match(auto,/readPhoneSession\\('desktop'\\)/);
 });

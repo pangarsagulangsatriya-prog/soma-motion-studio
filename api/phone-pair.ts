@@ -173,8 +173,10 @@ export async function POST(request:Request):Promise<Response>{
     return json({ok:false,error:'Sesi HP sudah kedaluwarsa. Scan QR baru.',
      code:'ROOM_EXPIRED'},410);
    if(result[0]==='denied')return json({ok:false,error:'Kunci pemulihan salah.'},403);
+   const metadata=await evalRedis(READ,roomKey,auth);
+   const ttl=Array.isArray(metadata)?Number(metadata[4]):0;
    return json({ok:true,state:result[0],epoch:Number(result[1])||0,
-    expiresAt:Date.now()+Math.max(0,Number((await evalRedis(READ,roomKey,auth) as Array<string|number|null>)?.[4])||0)*1000)});
+    expiresAt:Date.now()+Math.max(0,ttl||0)*1000});
   }
   if(action==='poll'){
    const result=await evalRedis(READ,roomKey,auth);
