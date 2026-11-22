@@ -47,5 +47,6 @@ export class F3MotionFusion{
   return {frameId,timestamp,videoTime:video.currentTime,pose:pose.landmarks[0]??[],hands:hands.landmarks??[],
    confidence:pose.landmarks[0]?.[11]&&hands.landmarks?.length?1:0,fresh:true};
  }
- dispose(){this.pose?.close();this.hand?.close();this.pose=null;this.hand=null;this.loading=null;this.status='idle';this.lastFrame=-1;this.sharedCanvas=null;}
+ async retry(){this.dispose();this.error='';return this.init();}
+ dispose(){this.pose?.close();this.hand?.close();this.pose=null;this.hand=null;this.loading=null;this.status='idle';this.lastFrame=-1;this.lastTime=0;this.sharedCanvas=null;}
 }
