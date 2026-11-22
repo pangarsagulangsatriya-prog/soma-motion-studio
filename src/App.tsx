@@ -22,6 +22,8 @@ import {usePhotoArchive} from './photos/usePhotoArchive';
 import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
+import {useCameraHub} from './camera-hub/CameraHubProvider.tsx';
+import {cameraSourceId} from './camera-hub/CameraHubRegistry.ts';
 import {F3CaptureWorkspace} from './f3/F3CaptureWorkspace.tsx';
 import {StageTwoInstrumentNav} from './studio/v3/StageTwoInstrumentNav.tsx';
 import type {StageTwoLabId} from './studio/v3/labsCatalog.ts';
@@ -74,6 +76,7 @@ const STARTERS=[
 ].map(p=>({...p,settings:{...p.settings,hydra:{...hydraDefaults(),enabled:false}}})) as {name:string;description:string;settings:Settings}[];
 export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const stageSession=useStageSession();
+ const cameraHub=useCameraHub();
  const [f3CaptureActive,setF3CaptureActive]=useState(()=>!stageTwo&&new URL(window.location.href).searchParams.get('f3')==='1');
  const [archiveActive,setArchiveActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
@@ -151,6 +154,38 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
  const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);phoneLandscapeRef.current?.stop();phoneLandscapeRef.current=null;setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
+ // Observe the existing Stage 1 capture. Camera Hub never starts another
+ // getUserMedia session or takes ownership of this source.
+ useEffect(()=>{
+  const slot='stage1.track' as const;
+  let registered:string|null=null,seenTime=-1,lastProgress=performance.now();
+  const inspect=()=>{
+   const element=video.current,stream=element?.srcObject;
+   if(!cameraOn||cameraBusy||!element||!(stream instanceof MediaStream)||
+    (footprintsChoice!=='webcam'&&footprintsChoice!=='phone')){
+    cameraHub.release(slot);registered=null;return;
+   }
+   const device=stream.getVideoTracks()[0]?.getSettings?.().deviceId||deviceId;
+   const phone=footprintsChoice==='phone';
+   const id=phone?'phone:stage1':device?cameraSourceId(device):'webcam:stage1-default';
+   const now=performance.now();
+   if(element.currentTime!==seenTime&&element.readyState>=2){
+    seenTime=element.currentTime;lastProgress=now;
+   }
+   const fresh=element.readyState>=2&&now-lastProgress<1100;
+   if(registered!==id){
+    cameraHub.observe({cameraId:id,slot,kind:phone?'phone-webrtc':'usb',
+     name:phone?'Kamera HP · Track':
+      devices.find(d=>d.deviceId===device)?.label||'Webcam · Track',
+     stream,fresh,deviceId:phone?undefined:device,now});
+    registered=id;
+   }
+   cameraHub.heartbeat(slot,id,now,fresh);
+  };
+  inspect();
+  const timer=setInterval(inspect,550);
+  return()=>{clearInterval(timer);cameraHub.release(slot);};
+ },[cameraHub,cameraOn,cameraBusy,deviceId,devices,footprintsChoice]);
  // Camera recognition belongs to macOS; never assume a USB cable equals video.
  useEffect(()=>{
   const media=navigator.mediaDevices;
@@ -573,6 +608,25 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      setClean(false);selectScene('footprints');setSelectedStageTool('tracking');
      setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));
      void switchFootprintsSource(choice);
+    }}
+    onHubUseStageOne={id=>{
+     if(f3CaptureActive||stageTwo)return;
+     // Operator switch reuses Stage 1's camera transaction and QA gates.
+     if(footprintsChoice==='webcam'){
+      if(cameraOn)void selectFootprintsCameraDevice(id);
+      else{
+       setDeviceId(id);
+       try{localStorage.setItem('soma-quick-camera-v1',id);}catch{}
+       void startCamera(id);
+      }
+     }else{
+      setDeviceId(id);
+      try{localStorage.setItem('soma-quick-camera-v1',id);}catch{}
+      void switchFootprintsSource('webcam');
+     }
+     setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
+     setClean(false);selectScene('footprints');setSelectedStageTool('tracking');
+     setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));
     }}
     sourceLabel={footprintsChoice==='video'?'Video MP4':footprintsChoice==='simulator'?'Simulasi 3D':footprintsChoice==='phone'?'Kamera HP':footprintsChoice==='webcam'?'Kamera lain':'Pilih sumber'}
     trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}

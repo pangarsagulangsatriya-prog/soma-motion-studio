@@ -1,0 +1,85 @@
+/* Global camera catalog. Additive styles keep the three Stage menus intact. */
+.soma-v3 .soma-primary-header .soma-camera-hub-trigger{
+ display:inline-flex;gap:8px;align-items:center;justify-content:center;
+ min-height:36px;padding:0 11px;border:1px solid #3c5849;
+ background:#1b2a22;border-radius:9px;color:#d2e8d4;cursor:pointer;
+ font-size:12px;font-weight:600;white-space:nowrap;
+}
+.soma-v3 .soma-primary-header .soma-camera-hub-trigger:hover,
+.soma-v3 .soma-primary-header .soma-camera-hub-trigger[aria-expanded=true]{
+ background:#2d4834;border-color:#9dca99;
+}
+.soma-camera-hub-scrim{
+ position:fixed;inset:0;z-index:540;border:0;background:#030705c8;
+ cursor:pointer;
+}
+.soma-camera-hub-panel{
+ position:fixed;right:0;top:0;bottom:0;width:min(440px,100%);
+ z-index:541;display:flex;flex-direction:column;gap:0;
+ background:#101914;border-left:1px solid #456249;
+ box-shadow:-20px 0 70px #020704ba;color:#e6f0e3;
+ overflow:auto;min-height:0;font-size:13px;
+}
+.soma-camera-hub-header{
+ display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+ position:sticky;top:0;background:#142219;padding:22px 20px 18px;
+ border-bottom:1px solid #355340;z-index:2;
+}
+.soma-camera-hub-header>div{display:flex;flex-direction:column;gap:5px}
+.soma-camera-hub-header strong{font-size:18px;letter-spacing:-.02em}
+.soma-camera-hub-header small{color:#a9c4b3;font-size:12px}
+.soma-camera-hub-header button{border:0;background:transparent;color:#dce7db;cursor:pointer;
+ border-radius:7px;padding:5px;display:flex}
+.soma-camera-hub-toolbar{display:flex;align-items:center;justify-content:space-between;
+ padding:16px 20px 10px;gap:12px;font-weight:600}
+.soma-camera-hub-toolbar button,.soma-camera-hub-item-actions button{
+ display:flex;align-items:center;gap:6px;background:#24392a;border:1px solid #49654d;
+ border-radius:7px;color:#dcebd9;padding:8px 10px;font:inherit;cursor:pointer;
+}
+.soma-camera-hub-toolbar button:hover,.soma-camera-hub-item-actions button:hover{
+ border-color:#abd0a0;background:#324f38;
+}
+.soma-camera-hub-item-actions button[disabled]{opacity:.45;cursor:not-allowed}
+.soma-camera-hub-list{display:flex;flex-direction:column;gap:9px;padding:0 20px;margin:3px 0 16px;
+ list-style:none;max-height:none;overflow:visible}
+.soma-camera-hub-item{display:flex;flex-direction:column;gap:10px;padding:13px;
+ border:1px solid #365441;border-radius:11px;background:#1b2a21;min-width:0}
+.soma-camera-hub-item-head{display:flex;align-items:center;gap:10px;min-width:0}
+.soma-camera-hub-camera-icon{width:35px;height:35px;display:grid;place-items:center;
+ border-radius:8px;background:#324738;color:#bde3b9;flex:none}
+.soma-camera-hub-item-title{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.soma-camera-hub-item-title strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap}
+.soma-camera-hub-item-title>span{color:#a3b7aa;font-size:11px}
+.soma-camera-hub-state{display:flex;align-items:center;gap:3px;color:#b7bfb8;
+ font-size:10px;white-space:nowrap}
+.soma-camera-hub-state[data-live=true]{color:#b2e5a1}
+.soma-camera-hub-assignment{color:#bed4be;font-size:11px}
+.soma-camera-hub-item-actions{display:flex;gap:8px;flex-wrap:wrap}
+.soma-camera-hub-item-actions button{font-size:11px;min-height:31px}
+.soma-camera-hub-preview{position:relative;margin:0 20px 14px;border-radius:9px;
+ background:#060906;aspect-ratio:16/9;overflow:hidden;border:1px solid #42614c}
+.soma-camera-hub-preview video{display:block;width:100%;height:100%;object-fit:contain}
+.soma-camera-hub-preview-empty{position:absolute;inset:0;display:flex;align-items:center;
+ flex-direction:column;justify-content:center;gap:9px;background:#080d0b;color:#a5b4ab;
+ padding:12px;text-align:center}
+.soma-camera-hub-empty{padding:40px 24px;display:flex;align-items:center;gap:10px;
+ flex-direction:column;text-align:center;color:#b9cbbc}
+.soma-camera-hub-empty strong{color:#e1efe1;font-size:14px}
+.soma-camera-hub-empty span{font-size:12px;max-width:290px;line-height:1.6}
+.soma-camera-hub-error{color:#f4bbac;margin:0;padding:5px 20px;font-size:12px}
+.soma-camera-hub-help{display:flex;align-items:flex-start;gap:10px;margin:0 20px 18px;
+ padding:12px;border-radius:8px;background:#243329;color:#bdcdbf;line-height:1.5;font-size:11px}
+.soma-camera-hub-help svg{flex:none;margin-top:1px}
+.soma-camera-hub-panel footer{margin-top:auto;border-top:1px solid #314939;
+ padding:15px 20px;color:#9cafa0;font-size:11px}
+@media(max-width:760px){
+ .soma-v3 .soma-primary-header .soma-camera-hub-trigger{
+  width:36px;min-width:36px;padding:0;
+ }
+ .soma-v3 .soma-primary-header .soma-camera-hub-trigger span{display:none}
+ .soma-camera-hub-panel{width:100%;border:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .soma-camera-hub-panel,.soma-camera-hub-trigger{transition:none!important}
+}

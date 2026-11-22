@@ -7,6 +7,7 @@ import type {StageNavigationTool} from './stageNavigation.ts';
 import type {FootprintsInputChoice} from './sourceSwitchModel.ts';
 import {searchStageTwoLabs,STAGE_TWO_ITEM_COUNT,isStageTwoLab,type LabsId,type StageTwoLabId} from './labsCatalog.ts';
 import {isDismissEscape,RAIL_TOOLTIP_DELAY_MS} from './interactionPolicy.ts';
+import {CameraHubControl} from '../../camera-hub/CameraHubControl.tsx';
 import './workspace-navigation.css';
 import './projector-shell.css';
 import './ux-r1-unified-shell.css';
@@ -21,7 +22,7 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,onF3Capture,f3Active=false,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onStageTool,onSoundLab,onHydraLab,onCaptureLab,onF3Capture,f3Active=false,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource,onHubUseStageOne}:{
  workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
  onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
  onF3Capture:()=>void;f3Active?:boolean;
@@ -33,6 +34,7 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
  sourceLabel:string;trackingLabel:string;outputLabel:string;
  sourceSelection:FootprintsInputChoice|null;sourceBusy:boolean;
  onSelectSource:(choice:FootprintsInputChoice)=>void;
+ onHubUseStageOne?:(deviceId:string)=>void;
 }){
  const [mobile,setMobile]=useState(()=>window.matchMedia(mobileQuery).matches);
  const [expanded,setExpanded]=useState(()=>{
@@ -180,6 +182,8 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
     <span title="Status koneksi output">{outputLabel}</span>
    </div>}
    <div className="v3-global-actions">
+    <CameraHubControl stageOneAvailable={stageModuleActive&&!sourceBusy}
+     onUseStageOne={onHubUseStageOne}/>
     {stageTwo&&<button ref={labsRef} type="button" className="soma-header-labs-btn"
      aria-label="Instrumen Stage 2" title="Cari semua instrumen Stage 2"
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"

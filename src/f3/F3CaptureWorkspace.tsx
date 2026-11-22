@@ -1,6 +1,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {ArrowRight,Camera,Check,ChevronDown,Download,Hand,Maximize2,RotateCcw,ShieldAlert,VideoOff} from 'lucide-react';
 import {F3CameraRegistry} from './F3CameraRegistry.ts';
+import {useCameraHub} from '../camera-hub/CameraHubProvider.tsx';
+import {cameraSourceId} from '../camera-hub/CameraHubRegistry.ts';
 import {PhoneCameraReceiver} from '../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,SOURCE_LABELS} from '../studio/v3/sourceSwitchModel.ts';
 import {normalizeCameraDevices,cameraDeviceLabel,cameraErrorMessage} from '../engine/universalCamera.ts';
@@ -21,6 +23,7 @@ type F3SourceChoice='webcam'|'phone'|'video';
 const f3Sources=SOURCE_CHOICES.filter(source=>source.id!=='simulator');
 const startFrame=makeF3StageFrame({sourceId:'',frameId:0,timestamp:0,crop:{x:0,y:0,width:0,height:0},slots:[null,null,null,null],state:'BLACKOUT'});
 export function F3CaptureWorkspace(){
+ const cameraHub=useCameraHub();
  const registry=useRef(new F3CameraRegistry()),fusion=useRef(new F3MotionFusion());
  const framing=useRef(new F3FramingController()),punch=useRef(new F3PunchEngine());
  const archive=useRef(new F3PhotoStore()),session=useRef(new F3SessionMachine());
@@ -65,6 +68,29 @@ export function F3CaptureWorkspace(){
   return()=>{off();media?.removeEventListener?.('devicechange',refreshDevices);
    reg.dispose();fusion.current.dispose();archive.current.revokeAll();};
  },[refresh,refreshDevices]);
+ // Observe F3's existing two streams in the global Hub. The F3 registry
+ // keeps sole ownership of tracks, consent, crop and shutter QA.
+ useEffect(()=>{
+  for(const role of ['A','B'] as const){
+   const slot=role==='A'?'f3.cameraA' as const:'f3.cameraB' as const;
+   const status=statuses[role],video=role==='A'?videoA.current:videoB.current;
+   const stream=video?.srcObject;
+   if(status.state!=='live'||!(stream instanceof MediaStream)){
+    cameraHub.release(slot);continue;
+   }
+   const phone=status.kind==='phone';
+   const hardwareId=chosen[role]||stream.getVideoTracks()[0]?.getSettings?.().deviceId;
+   const cameraId=phone?'phone:f3:'+role:
+    hardwareId?cameraSourceId(hardwareId):'f3:camera:'+role;
+   cameraHub.observe({cameraId,slot,stream,
+    kind:phone?'phone-webrtc':'usb',fresh:registry.current.fresh(role,performance.now()),
+    name:phone?'HP · F3 '+role:
+     devices.find(d=>d.deviceId===hardwareId)?.label||'Kamera F3 '+role,
+    deviceId:phone?undefined:hardwareId});
+  }
+  return()=>{cameraHub.release('f3.cameraA');cameraHub.release('f3.cameraB');};
+ },[cameraHub,statuses.A.id,statuses.A.state,statuses.B.id,statuses.B.state,
+    chosen.A,chosen.B,devices]);
  const connect=async(role:F3Role)=>{
   try{
    invalidateMotion();
