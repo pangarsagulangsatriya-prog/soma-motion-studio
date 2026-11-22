@@ -31,7 +31,7 @@ test('Sumi V3.4 enables bold 36px, permanent ink and 6s footprints',async({page}
    }return count;
   });
  },{timeout:12000}).toBeGreaterThan(10);
- await monitor.locator('.lt-v3-stage canvas').screenshot({path:'test-results/sumi-v34-demo.png'});
+ await monitor.locator('.lt-v3-stage canvas').screenshot({path:'e2e/test-results/sumi-v34-demo.png'});
  await panel.getByRole('button',{name:'Hentikan Demo'}).click();
  await expect(panel.getByRole('button',{name:'Simpan lukisan PNG'})).toBeVisible();
  await panel.getByRole('button',{name:'Bersihkan Lukisan'}).click();
