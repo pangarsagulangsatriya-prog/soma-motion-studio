@@ -12,10 +12,10 @@ test('IA-R1: fixed rail has Engine and Camera Hub with three floating stage choi
  assert.match(global,/aria-label="Engine"/);
  assert.match(nav,/className="soma-engine-flyout"/);
  assert.match(nav,/aria-expanded=\{engineMenuOpen\}/);
- assert.match(nav,/<strong>Stage 1<\\/strong>/);
- assert.match(nav,/<strong>Stage 2<\\/strong>/);
+ assert.match(nav,/<strong>Stage 1<\/strong>/);
+ assert.match(nav,/<strong>Stage 2<\/strong>/);
  assert.match(global,/aria-label="Camera Hub"/);
- assert.match(nav,/<strong>F3 Capture<\\/strong>/);
+ assert.match(nav,/<strong>F3 Capture<\/strong>/);
  for(const name of ['Track','Compose','Map','Perform'])
   assert.match(local,new RegExp("id:'"+name.toLowerCase()+"'"));
  assert.match(local,/aria-label="Stage 1 — workspace"/);
