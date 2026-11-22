@@ -133,6 +133,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   document.addEventListener('fullscreenchange',sync);
   return()=>document.removeEventListener('fullscreenchange',sync);
  },[]);
+ // Local Beta fullscreen has no on-screen controls; Esc must always return to Compose.
+ useEffect(()=>{
+  const onKey=(event:globalThis.KeyboardEvent)=>{
+   if(event.key==='Escape'&&document.fullscreenElement===lineFullscreenRef.current){
+    void document.exitFullscreen().catch(()=>{});
+   }
+  };
+  window.addEventListener('keydown',onKey);
+  return()=>window.removeEventListener('keydown',onKey);
+ },[]);
  const toggleMonitorFullscreen=()=>{
   const monitor=lineTrails?lineFullscreenRef.current:monitorFullscreenRef.current;
   if(!monitor)return;
