@@ -21,6 +21,7 @@ import {usePhotoArchive} from './photos/usePhotoArchive';
 import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
+import {CameraHubWorkspace} from './studio/v3/CameraHubWorkspace.tsx';
 import {StageTwoInstrumentNav} from './studio/v3/StageTwoInstrumentNav.tsx';
 import type {StageTwoLabId} from './studio/v3/labsCatalog.ts';
 import './studio/v3/stage-two.css';
@@ -73,6 +74,7 @@ const STARTERS=[
 export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const stageSession=useStageSession();
  const [archiveActive,setArchiveActive]=useState(false);
+ const [cameraHubActive,setCameraHubActive]=useState(false);
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState<boolean>(()=>stageTwo?false:defaultFootprintsWorkspace());
  const [stageTwoActive,setStageTwoActive]=useState<StageTwoLabId>('liquid');
@@ -487,13 +489,13 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
    {!clean&&<GlobalNav workspace={archiveActive?'archive':projectionActive?'projection':'studio'} scene={currentScene}
     stageTwo={stageTwo} stageTwoLab={stageTwoActive} onStageTwoLab={selectStageTwoLab}
     perform={footprintsOperator}
-    onFootprints={()=>{if(stageTwo){openStageOneFromTwo();return;}
+    onFootprints={()=>{setCameraHubActive(false);if(stageTwo){openStageOneFromTwo();return;}
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
      setSelectedStageTool('composer');
      setStageNavigation(prev=>({id:(prev?.id??0)+1,tool:'composer'}));}}
-    onStageTwo={()=>{
+    onStageTwo={()=>{setCameraHubActive(false);
      if(stageTwo)return;
      // A full workspace transition unmounts Stage 1's camera and renderer.
      // Always request software blackout before navigating to the isolated module.
@@ -503,7 +505,9 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      url.searchParams.set('stage','2');
      window.location.assign(url.toString());
     }}
-    onInstrument={scene=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+    onCameraHub={()=>{setClean(false);setCameraHubActive(true);}}
+     cameraHubActive={cameraHubActive}
+     onInstrument={scene=>{setCameraHubActive(false);requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
     onArchive={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
@@ -560,7 +564,11 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      updateFootprint({hold:true});
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
-   <main>
+   <main style={{position:'relative'}}>
+     {cameraHubActive&&<CameraHubWorkspace devices={devices} selectedId={deviceId} cameraOn={cameraOn}
+      cameraBusy={cameraBusy} cameraError={cameraError} videoRef={video}
+      onSelectStageOne={selectFootprintsCameraDevice}
+      onGoStageOne={()=>{setCameraHubActive(false);setClean(false);setArchiveActive(false);setProjectionActive(false);selectScene('footprints');setSelectedStageTool('tracking');setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));}}/>}
     {stageTwo&&!clean&&!archiveActive&&!projectionActive&&<StageTwoInstrumentNav
      active={stageTwoActive} onSelect={selectStageTwoLab}/>}
 
