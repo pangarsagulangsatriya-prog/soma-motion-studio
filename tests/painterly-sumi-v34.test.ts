@@ -87,7 +87,7 @@ test('persistent store paints once, cuts without clearing, and clears on command
  class FakeCanvas {
   width=0;height=0;
   getContext(){
-   return {canvas:this,save(){},restore(){},translate(){},beginPath(){},
+   return {canvas:this,save(){},restore(){},translate(){},setTransform(){},beginPath(){},
     moveTo(){},lineTo(){},closePath(){},fill(){},stroke(){},clip(){},
     ellipse(){},clearRect(){},fillRect(){},drawImage(){composites++;},
     set globalAlpha(_x:number){},set globalCompositeOperation(_x:string){},
