@@ -1,5 +1,5 @@
 export type F3Role='A'|'B';
-export type F3InputKind='camera'|'fixture';
+export type F3InputKind='camera'|'fixture'|'phone';
 export type F3Connection='idle'|'connecting'|'live'|'stale'|'error';
 export type F3PunchPreset='straight'|'uppercut';
 export type F3Rect={x:number;y:number;width:number;height:number};

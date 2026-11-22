@@ -28,6 +28,11 @@ async function startFixtures(page){
  await expect(page.getByRole('button',{name:'F3 Capture'})).toHaveAttribute('aria-current','page');
  const details=page.locator('.f3-device-details');
  if(!(await details.evaluate(el=>el.open)))await details.locator('summary').click();
+ for(const role of ['A','B']){
+  const card=details.locator('.f3-device-row[data-role="'+role+'"]');
+  await card.locator('.f3-role-source-picker>summary').click();
+  await card.locator('.f3-source-option[data-source="video"]').click();
+ }
  const inputs=details.locator('input[type="file"]');
  await inputs.nth(0).setInputFiles('artifacts/f3-fixtures/actor-a.mp4');
  await inputs.nth(1).setInputFiles('artifacts/f3-fixtures/feet-b.mp4');
@@ -107,4 +112,22 @@ test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; B-only pixels and Esc keep sourc
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
  const end=await page.evaluate(()=>window.__SOMA_F3_QA__.registry());
  expect(end.A.state).toBe('live');expect(end.B.state).toBe('live');
+});
+
+test('F3 uses the same source types as Track for independent camera A/B',async({page})=>{
+ await page.goto('/?f3=1&f3qa=1');
+ const a=page.locator('.f3-device-row[data-role="A"]');
+ const b=page.locator('.f3-device-row[data-role="B"]');
+ await a.locator('.f3-role-source-picker>summary').click();
+ await expect(a.locator('.f3-source-option')).toHaveCount(3);
+ await a.locator('.f3-source-option[data-source="phone"]').click();
+ await expect(a.getByRole('button',{name:'Kamera HP nirkabel'})).toBeVisible();
+ await expect(b.locator('.f3-role-source-picker>summary')).toContainText('Pilih sumber');
+ await a.locator('.f3-role-source-picker>summary').click();
+ await a.locator('.f3-source-option[data-source="webcam"]').click();
+ await expect(a.locator('#f3-device-A')).toBeVisible();
+ await expect(a.locator('.f3-phone-connection')).toHaveCount(0);
+ await b.locator('.f3-role-source-picker>summary').click();
+ await b.locator('.f3-source-option[data-source="video"]').click();
+ await expect(b.locator('input[type="file"]')).toHaveCount(1);
 });

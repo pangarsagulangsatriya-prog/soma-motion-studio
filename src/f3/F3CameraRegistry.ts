@@ -1,20 +1,22 @@
 import {CameraLiveness} from '../engine/cameraLiveness.ts';
+import {openUniversalCamera} from '../engine/universalCamera.ts';
+import {createLandscapePhoneCamera} from '../engine/landscapePhoneCamera.ts';
 import type {F3Role,F3CameraStatus} from './F3Types.ts';
 
 /** Owns exactly two independently selected sources; never borrows Track's video element. */
 export class F3CameraRegistry{
- private entries=new Map<F3Role,{video:HTMLVideoElement;stream:MediaStream|null;url:string|null;status:F3CameraStatus;liveness:CameraLiveness;lastArrival:number}>();
+ private entries=new Map<F3Role,{video:HTMLVideoElement;stream:MediaStream|null;url:string|null;status:F3CameraStatus;liveness:CameraLiveness;lastArrival:number;cleanup:(()=>void)|null;deviceId:string}>();
  private generation:Record<F3Role,number>={A:0,B:0};
  private listeners=new Set<()=>void>();
  subscribe=(listener:()=>void)=>{this.listeners.add(listener);return ()=>this.listeners.delete(listener);};
  private emit(){this.listeners.forEach(fn=>fn());}
- private makeStatus(role:F3Role,kind:'camera'|'fixture'='camera'):F3CameraStatus{
+ private makeStatus(role:F3Role,kind:'camera'|'fixture'|'phone'='camera'):F3CameraStatus{
   return {role,id:'',kind,state:'idle',lastFrameAt:0,frameId:0,videoTime:-1,message:'Pilih sumber'};
  }
  attach(role:F3Role,video:HTMLVideoElement){
   const item=this.entries.get(role);
   if(item&&item.video!==video){video.srcObject=item.stream;if(item.url)video.src=item.url;void video.play().catch(()=>{});item.video=video;}
-  else if(!item)this.entries.set(role,{video,stream:null,url:null,status:this.makeStatus(role),liveness:new CameraLiveness(),lastArrival:0});
+  else if(!item)this.entries.set(role,{video,stream:null,url:null,status:this.makeStatus(role),liveness:new CameraLiveness(),lastArrival:0,cleanup:null,deviceId:''});
  }
  status(role:F3Role):F3CameraStatus{return {...(this.entries.get(role)?.status??this.makeStatus(role))};}
  video(role:F3Role){return this.entries.get(role)?.video??null;}
@@ -25,7 +27,7 @@ export class F3CameraRegistry{
  private require(role:F3Role){const e=this.entries.get(role);if(!e)throw Error('Video '+role+' belum tersedia.');return e;}
  async connectDevice(role:F3Role,deviceId:string){
   const e=this.require(role),other=this.entries.get(role==='A'?'B':'A');
-  if(other?.status.kind==='camera'&&other.status.id===deviceId&&other.status.state!=='idle')
+  if(deviceId&&other?.deviceId===deviceId&&other.status.state!=='idle')
    throw Error('Kamera A dan B harus memakai perangkat berbeda.');
   if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser belum memberi akses kamera lewat HTTPS.');
   this.disconnect(role);
@@ -33,9 +35,9 @@ export class F3CameraRegistry{
   e.status={...this.makeStatus(role),kind:'camera',state:'connecting',message:'Menghubungkan kamera…'};this.emit();
   e.status.id=deviceId||'default';
   try{
-   const stream=await navigator.mediaDevices.getUserMedia({video:{deviceId:deviceId?{exact:deviceId}:undefined},audio:false});
+   const {stream}=await openUniversalCamera(navigator.mediaDevices,deviceId);
    if(generation!==this.generation[role]||e.status.state!=='connecting'||e.status.id!==(deviceId||'default')){stream.getTracks().forEach(t=>t.stop());return;}
-   e.stream=stream;
+   e.stream=stream;e.deviceId=deviceId;
    e.video.removeAttribute('src');e.video.srcObject=stream;e.video.muted=true;e.video.playsInline=true;
    const track=stream.getVideoTracks()[0];
    track.addEventListener('ended',()=>{if(e.stream===stream){e.status.state='stale';e.status.message='Kamera terputus';this.emit();}});
@@ -44,6 +46,44 @@ export class F3CameraRegistry{
    e.status.state='connecting';e.status.message='Menunggu frame…';this.emit();
   }catch(err){if(generation!==this.generation[role])return;
    this.disconnect(role);e.status={...this.makeStatus(role),state:'error',message:err instanceof Error?err.message:'Gagal membuka kamera'};this.emit();throw err;}
+ }
+ /** Track's phone transport is reused; the role keeps its own horizontal video feed. */
+ async connectPhoneStream(role:F3Role,input:MediaStream){
+  const e=this.require(role),track=input.getVideoTracks()[0];
+  if(!track||track.readyState!=='live')throw Error('HP belum mengirim video.');
+  const deviceId=track.getSettings?.().deviceId??'';
+  const other=this.entries.get(role==='A'?'B':'A');
+  if(deviceId&&other?.deviceId===deviceId&&other.status.state!=='idle')
+   throw Error('Kamera A dan B harus memakai perangkat berbeda.');
+  this.disconnect(role);
+  const generation=this.generation[role];
+  e.deviceId=deviceId;
+  e.status={...this.makeStatus(role,'phone'),id:'phone-'+role+'-'+crypto.randomUUID(),
+   state:'connecting',message:'Menyiapkan video HP horizontal…'};
+  this.emit();
+  try{
+   const session=await createLandscapePhoneCamera(input,()=>{
+    if(generation!==this.generation[role])return;
+    this.disconnect(role);
+    e.status={...this.makeStatus(role,'phone'),state:'stale',message:'Sinyal HP terputus'};
+    this.emit();
+   });
+   if(generation!==this.generation[role]){session.stop();return;}
+   e.stream=session.stream;e.cleanup=session.stop;
+   e.video.removeAttribute('src');e.video.srcObject=session.stream;
+   e.video.muted=true;e.video.playsInline=true;
+   await e.video.play();
+   if(generation!==this.generation[role])return;
+   e.status.state='connecting';e.status.message='Menunggu frame HP…';this.emit();
+  }catch(error){
+   if(generation===this.generation[role]){
+    this.disconnect(role);
+    e.status={...this.makeStatus(role,'phone'),state:'error',
+     message:error instanceof Error?error.message:'Kamera HP gagal dihubungkan'};
+    this.emit();
+   }
+   throw error;
+  }
  }
  async connectFixture(role:F3Role,file:File){
   const e=this.require(role);this.disconnect(role);
@@ -77,7 +117,8 @@ export class F3CameraRegistry{
  disconnect(role:F3Role){
   this.generation[role]++;
   const e=this.entries.get(role);if(!e)return;
-  e.stream?.getTracks().forEach(t=>t.stop());e.stream=null;
+  e.cleanup?.();e.cleanup=null;
+  e.stream?.getTracks().forEach(t=>t.stop());e.stream=null;e.deviceId='';
   e.video.pause();e.video.srcObject=null;e.video.removeAttribute('src');
   if(e.url){URL.revokeObjectURL(e.url);e.url=null;}
   e.status=this.makeStatus(role);e.lastArrival=0;e.liveness=new CameraLiveness();this.emit();

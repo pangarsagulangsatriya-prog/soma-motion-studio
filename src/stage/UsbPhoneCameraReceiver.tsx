@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {Check,ChevronDown,HelpCircle,LoaderCircle,RefreshCw,Video,VideoOff} from 'lucide-react';
 import {cameraDeviceLabel,cameraErrorMessage,normalizeCameraDevices,openUniversalCamera} from '../engine/universalCamera.ts';
 import {preferredCameraDevice,prioritizedCameraDevices,looksLikePhoneWebcam,cameraPathHelp,type CameraIntent} from '../engine/cameraRouteModel.ts';
@@ -13,6 +13,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
  intent?:CameraIntent;
 }){
+ const deviceFieldId=useId();
  const [devices,setDevices]=useState<MediaDeviceInfo[]>([]);
  const [deviceId,setDeviceId]=useState('');
  const [phase,setPhase]=useState<CameraPhase>('searching');
@@ -137,7 +138,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
  const showFeedback=phase==='error'||phase==='searching'||phase==='connecting'||connected||devices.length===0;
  return <section className="soma-usb-phone soma-camera-quick-connect" aria-label="Pilih kamera" data-phase={phase}>
   <div className="soma-usb-head">
-   <label htmlFor="soma-usb-phone-device">{intent==='phone'?'Kamera HP':'Kamera'} <span className="soma-usb-count">{devices.length} terdeteksi di Mac</span></label>
+   <label htmlFor={deviceFieldId}>{intent==='phone'?'Kamera HP':'Kamera'} <span className="soma-usb-count">{devices.length} terdeteksi di Mac</span></label>
    <button type="button" className="soma-usb-refresh" onClick={()=>void refresh()}
     title="Muat ulang daftar kamera" aria-label="Muat ulang daftar kamera" disabled={busy}>
     <RefreshCw size={15} aria-hidden="true"/>
@@ -147,7 +148,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
   <details className="soma-usb-manual-picker" open={!autoCandidate?true:undefined}>
    <summary>{autoCandidate?'Pilih kamera lain secara manual':'Pilih kamera secara manual'}</summary>
   <div className="soma-usb-select-wrap">
-   <select id="soma-usb-phone-device" value={deviceId} disabled={busy}
+   <select id={deviceFieldId} value={deviceId} disabled={busy}
     title={devices.find(device=>device.deviceId===deviceId)?.label||'Pilih kamera'}
     onChange={e=>{if(active.current)stop(true);setDeviceId(e.target.value);setPhase('idle');setMessage('Pilih perangkat, lalu sambungkan.');}}>
     <option value="">{devices.length?'Pilih perangkat…':'Belum ada kamera'}</option>

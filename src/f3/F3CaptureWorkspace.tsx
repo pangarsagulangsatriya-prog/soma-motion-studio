@@ -1,6 +1,9 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {ArrowRight,Camera,Check,ChevronDown,Download,Hand,Maximize2,RotateCcw,ShieldAlert,VideoOff} from 'lucide-react';
 import {F3CameraRegistry} from './F3CameraRegistry.ts';
+import {PhoneCameraReceiver} from '../stage/PhoneCameraReceiver.tsx';
+import {SOURCE_CHOICES,SOURCE_LABELS} from '../studio/v3/sourceSwitchModel.ts';
+import {normalizeCameraDevices,cameraDeviceLabel,cameraErrorMessage} from '../engine/universalCamera.ts';
 import {F3MotionFusion} from './F3MotionFusion.ts';
 import {F3FramingController} from './F3FramingController.ts';
 import {F3PunchEngine} from './F3PunchEngine.ts';
@@ -13,6 +16,8 @@ import {f3ProjectorGate,f3Blackout} from './F3OutputAdapter.ts';
 import type {F3Role,F3CameraStatus,F3PunchPreset,F3StageFrame,F3MotionFrame} from './F3Types.ts';
 import './f3.css';
 const emptyStatus=(role:F3Role):F3CameraStatus=>({role,id:'',kind:'camera',state:'idle',lastFrameAt:0,frameId:0,videoTime:-1,message:'Pilih sumber'});
+type F3SourceChoice='webcam'|'phone'|'video';
+const f3Sources=SOURCE_CHOICES.filter(source=>source.id!=='simulator');
 const startFrame=makeF3StageFrame({sourceId:'',frameId:0,timestamp:0,crop:{x:0,y:0,width:0,height:0},slots:[null,null,null,null],state:'BLACKOUT'});
 export function F3CaptureWorkspace(){
  const registry=useRef(new F3CameraRegistry()),fusion=useRef(new F3MotionFusion());
@@ -23,6 +28,8 @@ export function F3CaptureWorkspace(){
  const [statuses,setStatuses]=useState({A:emptyStatus('A'),B:emptyStatus('B')});
  const [devices,setDevices]=useState<MediaDeviceInfo[]>([]);
  const [chosen,setChosen]=useState({A:'',B:''});
+ const [sourceChoice,setSourceChoice]=useState<Record<F3Role,F3SourceChoice|null>>({A:null,B:null});
+ const sourceChoiceRef=useRef(sourceChoice);sourceChoiceRef.current=sourceChoice;
  const [stageMode,setStageMode]=useState<'setup'|'fullscreen'|'inline'>('setup');
  const [stageCount,setStageCount]=useState(0),[replacement,setReplacement]=useState<number|null>(null);
  const [consent,setConsent]=useState(false),[armed,setArmed]=useState(false);
@@ -40,14 +47,17 @@ export function F3CaptureWorkspace(){
  const refresh=useCallback(()=>setStatuses({A:registry.current.status('A'),B:registry.current.status('B')}),[]);
  const refreshDevices=useCallback(async()=>{
   try{const list=await navigator.mediaDevices?.enumerateDevices();
-   if(list)setDevices(list.filter(d=>d.kind==='videoinput'));}
+   if(list)setDevices(normalizeCameraDevices(list));}
   catch{setMessage('Daftar kamera belum tersedia. Periksa izin browser.');}
  },[]);
  useEffect(()=>{
   if(!videoA.current||!videoB.current)return;
   const reg=registry.current;reg.attach('A',videoA.current);reg.attach('B',videoB.current);
   const off=reg.subscribe(refresh);void refreshDevices();
-  return()=>{off();reg.dispose();fusion.current.dispose();archive.current.revokeAll();};
+  const media=navigator.mediaDevices;
+  media?.addEventListener?.('devicechange',refreshDevices);
+  return()=>{off();media?.removeEventListener?.('devicechange',refreshDevices);
+   reg.dispose();fusion.current.dispose();archive.current.revokeAll();};
  },[refresh,refreshDevices]);
  const connect=async(role:F3Role)=>{
   try{
@@ -212,19 +222,93 @@ export function F3CaptureWorkspace(){
  const status=(role:F3Role)=><span className="f3-pill" data-live={statuses[role].state==='live'}>
   {role==='A'?'A · GESTUR':'B · FOTO'} <b>{statuses[role].kind==='fixture'?'SIMULASI':statuses[role].state==='live'?'LIVE':statuses[role].message}</b>
  </span>;
- const cameraSelect=(role:F3Role)=><div className="f3-device-row">
-  <div className="f3-device-title"><b>{role==='A'?'A · Aktor':'B · Penonton'}</b><span>{statuses[role].state==='live'?'LIVE':statuses[role].message}</span></div>
-  <label htmlFor={'f3-device-'+role}>Pilih kamera</label>
-  <select id={'f3-device-'+role} value={chosen[role]} onChange={e=>setChosen(old=>({...old,[role]:e.target.value}))}>
-   <option value="">Pilih kamera…</option>
-   {devices.map((d,index)=><option value={d.deviceId} key={d.deviceId||index} disabled={!!d.deviceId&&chosen[role==='A'?'B':'A']===d.deviceId}>{d.label||'Kamera '+(index+1)}</option>)}
-  </select>
-  <div className="f3-device-buttons"><button type="button" onClick={()=>void connect(role)} disabled={!chosen[role]}>{statuses[role].state==='live'?'Ganti':'Sambungkan'}</button>
-   <button type="button" onClick={()=>{registry.current.disconnect(role);disarm();}} disabled={statuses[role].state==='idle'}>Putus</button></div>
-  <details className="f3-simulation"><summary>Simulasi MP4</summary>
-   <label className="f3-file" aria-label={'Video simulasi '+role}>Pilih MP4 {role}<input type="file" accept="video/mp4,.mp4" onChange={e=>void connectFixture(role,e.target.files?.[0])}/></label>
-  </details>
- </div>;
+ const chooseSource=(role:F3Role,kind:F3SourceChoice)=>{
+  if(sourceChoiceRef.current[role]===kind)return;
+  // Replacing a camera always clears its liveness/gesture authorization first.
+  registry.current.disconnect(role);disarm();
+  setVerified(false);session.current.setVerified(false);setRehearsal(false);
+  sourceFiles.current[role]=null;
+  setChosen(old=>({...old,[role]:''}));
+  const next={...sourceChoiceRef.current,[role]:kind};
+  sourceChoiceRef.current=next;setSourceChoice(next);refresh();
+  setMessage('Kamera '+role+': '+SOURCE_LABELS[kind]+'. Pilih perangkat atau sambungkan HP.');
+ };
+ const connectPhone=async(role:F3Role,stream:MediaStream)=>{
+  if(sourceChoiceRef.current[role]!=='phone'){
+   stream.getTracks().forEach(track=>track.stop());return;
+  }
+  try{
+   await registry.current.connectPhoneStream(role,stream);
+   refresh();
+   setMessage('Kamera HP '+role+' tersambung. Menunggu frame segar…');
+  }catch(error){
+   const detail=cameraErrorMessage(error);
+   setMessage('Kamera HP '+role+': '+detail);refresh();
+   throw error;
+  }
+ };
+ const disconnectPhone=(role:F3Role)=>{
+  if(sourceChoiceRef.current[role]!=='phone')return;
+  registry.current.disconnect(role);disarm();refresh();
+  setMessage('Kamera HP '+role+' terputus. Sambungkan ulang.');
+ };
+ const requestPermission=async()=>{
+  try{
+   if(!navigator.mediaDevices?.getUserMedia)throw Error('Buka SOMA melalui HTTPS dan izinkan kamera.');
+   const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:true});
+   stream.getTracks().forEach(track=>track.stop());
+   await refreshDevices();
+   setMessage('Izin kamera diterima. Pilih perangkat A dan B yang berbeda.');
+  }catch(error){setMessage(cameraErrorMessage(error));}
+ };
+ const cameraSelect=(role:F3Role)=>{
+  const source=sourceChoice[role],current=statuses[role];
+  return <div className="f3-device-row" data-role={role}>
+   <div className="f3-device-title"><b>{role==='A'?'A · Aktor':'B · Penonton'}</b>
+    <span>{current.state==='live'?(current.kind==='phone'?'HP LIVE':current.kind==='fixture'?'SIMULASI':'LIVE'):current.message}</span>
+   </div>
+   <details className="f3-role-source-picker">
+    <summary>{source?SOURCE_LABELS[source]:'Pilih sumber'} <ChevronDown size={15}/></summary>
+    <div className="f3-role-source-options">
+     {f3Sources.map(option=><button type="button" key={option.id}
+      className="f3-source-option" data-source={option.id}
+      aria-current={source===option.id?'true':undefined}
+      onClick={event=>{
+       chooseSource(role,option.id as F3SourceChoice);
+       const details=event.currentTarget.closest('details');if(details)details.open=false;
+      }}>{option.label}</button>)}
+    </div>
+   </details>
+   {source==='webcam'&&<>
+    <label htmlFor={'f3-device-'+role}>Kamera lain · Webcam / HDMI / OBS</label>
+    <select id={'f3-device-'+role} value={chosen[role]}
+     onChange={event=>setChosen(old=>({...old,[role]:event.target.value}))}>
+     <option value="">Pilih kamera…</option>
+     {devices.map((device,index)=><option key={device.deviceId} value={device.deviceId}
+      disabled={!!device.deviceId&&chosen[role==='A'?'B':'A']===device.deviceId}>
+      {cameraDeviceLabel(device,index)}</option>)}
+    </select>
+    <div className="f3-device-buttons">
+     <button type="button" disabled={!chosen[role]||current.state==='connecting'}
+      onClick={()=>void connect(role)}>{current.state==='live'?'Ganti':'Sambungkan'}</button>
+     <button type="button" disabled={current.state==='idle'}
+      onClick={()=>{registry.current.disconnect(role);disarm();refresh();}}>Putus</button>
+    </div>
+    {!devices.length&&<button type="button" className="f3-camera-permission"
+     onClick={()=>void requestPermission()}>Izinkan kamera</button>}
+   </>}
+   {source==='phone'&&<section className="f3-phone-connection" aria-label={'Kamera HP '+role}>
+    <PhoneCameraReceiver onStream={stream=>connectPhone(role,stream)}
+     onDisconnect={()=>disconnectPhone(role)}/>
+   </section>}
+   {source==='video'&&<div className="f3-video-input">
+    <p>Rekaman lokal untuk latihan. Kamera A dan B memakai MP4 berbeda.</p>
+    <label className="f3-file" aria-label={'Video simulasi '+role}>Pilih MP4 {role}
+     <input type="file" accept="video/mp4,.mp4" onChange={event=>void connectFixture(role,event.target.files?.[0])}/>
+    </label>
+   </div>}
+  </div>;
+ };
  return <section className="f3-workspace" aria-label="F3 Capture" data-stage-active={screenActive} data-step={activeStep}>
   <div className="f3-setup f3-workspace-intro">
    <div className="f3-workspace-title"><h1>F3 Capture</h1><span>Dua kamera · Stage View · empat foto kaki</span></div>
@@ -250,11 +334,11 @@ export function F3CaptureWorkspace(){
     <section className="f3-source-panel f3-step-panel" data-active={activeStep==='camera'} hidden={activeStep!=='camera'}>
      <header className="f3-panel-heading"><h2>Sumber</h2></header>
      <details className="f3-device-details" open>
-      <summary>Pilih kamera A dan B <ChevronDown size={15}/></summary>
+      <summary>Pilih sumber kamera A dan B <ChevronDown size={15}/></summary>
       {cameraSelect('A')}{cameraSelect('B')}
       <div className="f3-source-utilities">
        <button type="button" onClick={()=>void refreshDevices()}><RotateCcw size={14}/> Cari kamera</button>
-       <span>USB / Continuity muncul saat perangkat dikenali.</span>
+       <span>Kamera HP: kabel atau WebRTC. Kamera lain: webcam / capture / OBS.</span>
       </div>
      </details>
      <section className="f3-input-health" aria-label="Status kamera">

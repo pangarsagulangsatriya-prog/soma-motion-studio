@@ -170,3 +170,46 @@
 @media(prefers-reduced-motion:reduce){
  .f3-workspace *{transition:none!important;animation:none!important}
 }
+
+/* Track-style source switcher for two independent F3 inputs. */
+.f3-role-source-picker{position:relative;min-width:0}
+.f3-role-source-picker>summary{
+ list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;justify-content:space-between;
+ gap:9px;padding:10px 12px;border:1px solid #55735b;border-radius:7px;
+ background:#23392a;color:#e8f1e1;font-size:12px;font-weight:650;
+ transition:background .14s,border-color .14s;
+}
+.f3-role-source-picker>summary::-webkit-details-marker{display:none}
+.f3-role-source-picker>summary:hover,.f3-role-source-picker[open]>summary{
+ border-color:#94b189;background:#2b4834;
+}
+.f3-role-source-picker[open]>summary svg{transform:rotate(180deg)}
+.f3-role-source-options{display:grid;gap:3px;margin-top:6px;padding:5px;border:1px solid #405b46;border-radius:8px;background:#17261d}
+.f3-workspace .f3-source-option{
+ min-height:44px;width:100%;display:flex;justify-content:flex-start;padding:10px 12px;
+ border:1px solid transparent;background:transparent;color:#e0ecdc;text-align:left;font-size:12px;font-weight:600;
+}
+.f3-workspace .f3-source-option:hover,.f3-workspace .f3-source-option[aria-current=true]{
+ background:#2b4432;border-color:#4f6e53;
+}
+.f3-video-input>p{color:#a8bca9;font-size:11px;line-height:1.5;margin:5px 0 12px}
+.f3-video-input>.f3-file{display:inline-flex;min-height:38px;align-items:center}
+.f3-camera-permission{width:100%;margin-top:2px}
+.f3-device-title span{max-width:62%}
+.f3-phone-connection{min-width:0}
+.f3-phone-connection .soma-setup-phone-choices{max-width:100%;min-width:0;margin:0;padding:0}
+.f3-phone-connection .soma-camera-method-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.f3-phone-connection .soma-setup-pair-tabs{min-width:0;max-width:100%}
+.f3-phone-connection :is(.soma-usb-phone,.soma-camera-quick-connect,.soma-camera-pairing-compact){max-width:100%;min-width:0}
+.f3-phone-connection :is(select,textarea,input){max-width:100%;min-width:0}
+.f3-phone-connection .soma-manual-pair{min-width:0;overflow-wrap:anywhere}
+.f3-phone-connection .soma-manual-pair textarea{box-sizing:border-box;width:100%}
+.f3-phone-connection :is(.soma-manual-reveal,.soma-usb-manual-picker){min-width:0;max-width:100%}
+.f3-phone-connection :is(.soma-manual-reveal a,.soma-phone-no-auto){overflow-wrap:anywhere}
+.f3-phone-connection .soma-usb-head label{font-size:11px}
+.f3-phone-connection .soma-usb-status{font-size:11px;line-height:1.4}
+.f3-phone-connection .soma-camera-help-pop{z-index:20}
+@media(max-width:760px){
+ .f3-role-source-options{gap:2px}
+ .f3-phone-connection .soma-setup-phone-choices{width:100%}
+}
