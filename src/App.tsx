@@ -505,8 +505,8 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      url.searchParams.set('stage','2');
      window.location.assign(url.toString());
     }}
-    onCameraHub={()=>{setClean(false);setCameraHubActive(true);}}
-     cameraHubActive={cameraHubActive}
+    onCameraHub={()=>{setCaptureOpen(false);setClean(false);setCameraHubActive(true);}}
+     cameraHubActive={cameraHubActive} captureActive={captureOpen}
      onInstrument={scene=>{setCameraHubActive(false);requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
@@ -528,6 +528,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      setTab('visual');setInspectorOpen(true);setControlsOpen(true);
     }}
     onCaptureLab={()=>{
+     setCameraHubActive(false);
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      setFootprintsOperator(false);selectScene('liquid');
