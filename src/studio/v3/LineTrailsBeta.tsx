@@ -232,7 +232,7 @@ export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClea
     {demo?'Hentikan Demo':'Coba Demo'}
    </button>
   </div>
-  <small className="lt-beta-count">{engine.sampleCount} sampel · {brushEngine.sweepCount} sapuan · {brushEngine.count-brushEngine.sweepCount} pijakan</small>
+  <small className="lt-beta-count">{engine.sampleCount} sampel tersimpan · {brushEngine.sweepCount} sapuan · {brushEngine.count-brushEngine.sweepCount} pijakan</small>
   {contrast&&<p className="lt-beta-warning">Warna hitam sulit terlihat pada latar gelap. Pilih warna yang lebih terang.</p>}
   <details className="lt-beta-more">
    <summary>Pengaturan latar</summary>
