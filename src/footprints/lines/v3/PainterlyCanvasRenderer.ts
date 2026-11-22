@@ -68,7 +68,7 @@ export function paintPainterlyCanvas(
  // One white-canvas raster pipeline for the Stage Monitor and fullscreen.
  if(painterly.showTrails){
   paintTrajectory(ctx,trajectory,{
-   ...settings,background:white,
+   ...settings,background:white,materialTreatment:painterly.material,
    decay:painterly.trailKeep?'keep':'fade',lifeMs:Math.max(1000,painterly.trailLifeMs),
    debug:settings.debug&&!fullscreen
   },presentationMs,false,fullscreen);
