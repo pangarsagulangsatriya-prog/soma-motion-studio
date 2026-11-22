@@ -35,7 +35,7 @@ test('MAP-R1: navigation goes to Stage Map instead of opening legacy Projector w
  const stage=source('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const local=source('../src/studio/v3/StageModuleNav.tsx');
  assert.match(nav,/aria-label="Engine"/);
- assert.match(nav,/<strong>Stage 1<\\/strong>/);
+ assert.match(nav,/<strong>Stage 1<\/strong>/);
  assert.match(local,/id:'map',label:'Map'/);
  assert.match(app,/onNavigateStageWorkspace=\{workspace=>\{/);
  assert.match(app,/workspace==='map'\?'mapping'/);
