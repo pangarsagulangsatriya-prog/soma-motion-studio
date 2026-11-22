@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SOMA / D1 · MoveNet Detector Benchmark</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1016;--panel:#141b24;--line:#2b3949;--ink:#edf3fa;--muted:#a2b0c0;--cyan:#64d8e8;--amber:#f9c36a;--red:#ff8989;--green:#8fdca6;font:14px/1.5 ui-sans-serif,system-ui,Arial,sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}header{border-bottom:1px solid var(--line);padding:22px max(20px,calc((100vw - 1160px)/2));display:flex;gap:20px;align-items:baseline;justify-content:space-between}h1{font-size:21px;margin:0;font-weight:650;letter-spacing:-.02em}h2{font-size:15px;margin:0 0 13px}small,.muted{color:var(--muted)}main{max-width:1200px;margin:0 auto;padding:22px 20px 50px}.ribbon{padding:10px 13px;border:1px solid var(--line);background:#111a23;border-radius:10px;margin-bottom:20px;color:#cad5e0}.grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px}.panel{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:17px}.controls{display:flex;flex-direction:column;gap:14px}label{font-size:12px;color:var(--muted);display:block;margin:0 0 5px}input,button,select{font:inherit}input[type=file],select,input[type=number]{width:100%;border:1px solid #425163;border-radius:7px;background:#101720;color:#eff6ff;padding:9px}input[type=range]{width:100%;accent-color:var(--cyan)}button{border:1px solid #536679;color:#eaf6ff;background:#26394a;padding:9px 12px;border-radius:8px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}.primary{background:#d6eef5;border-color:#d6eef5;color:#102333;font-weight:700}.danger{border-color:#8e4b4b;background:#493035}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}.button-row{display:flex;flex-wrap:wrap;gap:8px}.button-row button{flex:1}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.metric{background:#0d141d;border-radius:9px;border:1px solid var(--line);padding:12px}.metric strong{font-size:22px;display:block;line-height:1.1;margin-top:4px}.metric span{font-size:11px;color:var(--muted)}.views{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}.view{min-width:0;border-radius:8px;border:1px solid var(--line);background:#0a1117;overflow:hidden}.view .bar{padding:8px 11px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:5px;font-size:12px}canvas{width:100%;height:auto;display:block;background:#070a0e}.legend{color:var(--muted);font-size:12px;margin:5px 0 0}.status{font-size:12px;white-space:pre-wrap;line-height:1.5;background:#0a131a;border:1px solid var(--line);border-radius:8px;padding:10px;min-height:54px}.review{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:15px;align-items:end}.review .button-row{margin-top:6px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:270px}table{border-collapse:collapse;width:100%;font-size:12px}td,th{text-align:left;padding:8px 10px;border-bottom:1px solid #2b3743;white-space:nowrap}th{position:sticky;top:0;background:#1b2631}tr:hover{background:#202f3b}.tag{color:var(--cyan)}.warning{color:var(--amber)}.error{color:var(--red)}footer{padding:14px 0;color:var(--muted);font-size:12px}@media(max-width:820px){.grid,.views,.review{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}header{flex-direction:column;gap:5px}}
+</style>
+<!-- Pinned browser bundles. Network is required for first load and for the TFHub model. -->
+<script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.22.0/dist/tf-core.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.22.0/dist/tf-converter.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.22.0/dist/tf-backend-webgl.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+</head>
+<body>
+<header><h1>SOMA <span class="muted">/</span> D1 · Detector Benchmark</h1><small>Eksperimen terisolasi · MoveNet MultiPose · 384 vs 512</small></header>
+<main>
+<div class="ribbon">Input target: <strong>192 frame · 640 × 360 · 24 FPS</strong>. Kedua konfigurasi melihat frame yang sama. Identity Tracking A/B, Pose 33, dan proyeksi panggung sengaja tidak diaktifkan pada D1.</div>
+<div class="grid">
+<section class="panel controls">
+<h2>01 · Sumber & parameter</h2>
+<div><label for="source">MP4 pengujian dua performer</label><input id="source" type="file" accept="video/mp4,video/*"/><div class="legend" id="sourceInfo">Pilih berkas MP4 yang telah disiapkan.</div></div>
+<div><label for="framesSource">Alternatif presisi: 192 PNG hasil ekstraksi (pilih semua)</label><input id="framesSource" type="file" accept="image/png,image/jpeg" multiple/><div class="legend">Paket PNG lossless disediakan terpisah. Ekstrak ZIP, pilih seluruh 192 gambar. Mode ini lebih cepat dan menghindari seek MP4.</div></div>
+<div><label for="score">Ambang skor kandidat pose</label><select id="score"><option value="0.30" selected>0,30 · Sensitif</option><option value="0.40">0,40 · Sedang</option><option value="0.50">0,50 · Ketat</option></select></div>
+<div><label for="fps">Frame rate dataset (FPS)</label><input id="fps" type="number" min="1" max="120" value="24" step="1"/></div>
+<div><label for="frames">Jumlah frame</label><input id="frames" type="number" min="1" max="3000" value="192" step="1"/></div>
+<div class="button-row"><button id="run" class="primary" disabled>Jalankan D1</button><button id="stop" class="danger" disabled>Hentikan</button></div>
+<div><label>Perjalanan benchmark</label><progress id="progress" value="0" max="192" style="width:100%"></progress><div class="legend" id="progressText">0 / 192 frame</div></div>
+<div><h2>Rambu QA</h2><p class="legend">Keluaran detector berupa kandidat manusia dan 17 keypoint, bukan identitas aktor. Label dua orang terlihat jelas harus diperiksa manual, terutama pada dua crossing. PASS hanya boleh ditetapkan setelah semua 192 frame selesai dan label visual tersedia.</p></div>
+<div><h2>Ekspor</h2><div class="button-row"><button id="json" disabled>JSON</button><button id="csv" disabled>CSV</button></div><p class="legend">Raw poses, bounding box, latency, anotasi manual, kegagalan frame, dan metadata lingkungan ikut tersimpan.</p></div>
+</section>
+<section class="panel">
+<h2>02 · Inspector dua resolusi</h2>
+<div class="status" id="status" role="status" aria-live="polite">Belum dijalankan. Pilih MP4, lalu tekan Jalankan D1.</div>
+<div class="metrics">
+<div class="metric"><span>Frame selesai</span><strong id="completed">0 / 192</strong></div>
+<div class="metric"><span>384 · p50 / p95</span><strong id="lat384">—</strong></div>
+<div class="metric"><span>512 · p50 / p95</span><strong id="lat512">—</strong></div>
+<div class="metric"><span>Deteksi 2+ orang · 384 / 512</span><strong id="twoCount">—</strong></div>
+</div>
+<div class="views">
+<div class="view"><div class="bar"><strong>384</strong><span id="badge384">Belum diuji</span></div><canvas id="c384" width="640" height="360"></canvas></div>
+<div class="view"><div class="bar"><strong>512</strong><span id="badge512">Belum diuji</span></div><canvas id="c512" width="640" height="360"></canvas></div>
+</div>
+<div class="review">
+<div><label for="frame">Tinjau frame dan crossing</label><input type="range" id="frame" min="0" max="191" value="0"/><div class="legend" id="frameInfo">F000 · 0,000 s · mendekat</div></div>
+<div><label for="truth">Label visual manual</label><select id="truth"><option value="unknown">Belum diperiksa</option><option value="2">Dua aktor terlihat jelas</option><option value="1">Satu aktor terlihat jelas</option><option value="0">Tidak ada aktor terlihat</option><option value="occluded">Crossing / tertutup</option></select></div>
+</div>
+<div class="button-row" style="margin-top:12px"><button id="prev">Frame sebelumnya</button><button id="next">Frame berikutnya</button></div>
+<div style="margin-top:16px"><h2>03 · Ringkasan menurut fase</h2><div class="tablewrap"><table><thead><tr><th>Fase</th><th>Frame</th><th>384 · ≥2</th><th>512 · ≥2</th><th>Sudah dilabel</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="legend" id="groundTruth">Recall dua aktor: menunggu anotasi manual.</div>
+</section>
+</div>
+<video id="video" muted playsinline preload="auto" style="display:none"></video>
+<canvas id="decode" width="640" height="360" style="display:none"></canvas>
+<footer>D1 Experimental · Semua proses video dan hasil benchmark tetap di browser operator. CDN TensorFlow dan model jarak jauh memerlukan koneksi internet. Benchmark tidak mengubah kamera, Floor Session, atau proyeksi produksi.</footer>
+</main>
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const video=$('video'),decode=$('decode'),ctx=decode.getContext('2d',{willReadFrequently:true});
+const drawings=[{id:'c384',dim:384},{id:'c512',dim:512}];
+const phases=[['approach_1',0,47,'Mendekat'],['crossing_1',48,71,'Crossing 1'],['separation_return',72,119,'Menjauh / kembali'],['crossing_2',120,151,'Crossing 2'],['separation_2',152,191,'Menjauh 2']];
+const phase=i=>phases.find(p=>i>=p[1]&&i<=p[2])||['other',i,i,'Lainnya'];
+let objectUrl=null,loaded=false,running=false,cancelled=false,experiment=null,detectors=[];
+let sourceMode='video',frameFiles=[];
+const labels=new Map();let selected=0;let renderSerial=0;
+const wait=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+const changeStatus=(msg,klass='')=>{const e=$('status');e.textContent=msg;e.className='status '+klass;};
+const quantile=(values,q)=>{const a=values.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const p=(a.length-1)*q,lo=Math.floor(p),hi=Math.ceil(p);return a[lo]+(a[hi]-a[lo])*(p-lo);};
+const fmt=x=>x==null?'—':Number(x).toFixed(1)+' ms';
+const safe=(v)=>Number.isFinite(v)?+v.toFixed(5):null;
+const range=()=>({fps:Math.max(1,Math.min(120,Number($('fps').value)||24)),frames:Math.max(1,Math.min(3000,Number($('frames').value)||192))});
+const phaseText=i=>{const p=phase(i);return 'F'+String(i).padStart(3,'0')+' · '+(i/range().fps).toFixed(3)+' s · '+p[3]};
+function rowFor(i){if(!experiment)return null;return experiment.results[i]||null;}
+function poseInfo(raw,threshold){
+ const candidates=(raw||[]).map(p=>({score:safe(p.score??0),box:p.box?{xMin:safe(p.box.xMin),yMin:safe(p.box.yMin),xMax:safe(p.box.xMax),yMax:safe(p.box.yMax),width:safe(p.box.width),height:safe(p.box.height)}:null,
+ keypoints:(p.keypoints||[]).map(k=>({x:safe(k.x),y:safe(k.y),score:safe(k.score??0),name:k.name||null}))}));
+ return {count:candidates.filter(p=>(p.score??0)>=threshold).length,poses:candidates};
+}
+function renderSummary(){
+ const items=(experiment?.results||[]).filter(Boolean);const completed=items.filter(x=>!x.error).length;
+ $('completed').textContent=completed+' / '+(experiment?.config.frames??range().frames);
+ $('lat384').textContent=fmt(quantile(items.map(x=>x.v384?.ms),.5))+' / '+fmt(quantile(items.map(x=>x.v384?.ms),.95));
+ $('lat512').textContent=fmt(quantile(items.map(x=>x.v512?.ms),.5))+' / '+fmt(quantile(items.map(x=>x.v512?.ms),.95));
+ $('twoCount').textContent=[384,512].map(dim=>items.filter(x=>x['v'+dim]?.count>=2).length).join(' / ');
+ $('rows').replaceChildren();
+ for(const p of phases){const filtered=items.filter(r=>r.i>=p[1]&&r.i<=p[2]);let tr=document.createElement('tr');
+  [p[3],p[1]+'–'+p[2],filtered.filter(r=>r.v384?.count>=2).length+'/'+filtered.length,filtered.filter(r=>r.v512?.count>=2).length+'/'+filtered.length,filtered.filter(r=>labels.has(r.i)&&labels.get(r.i)!=='unknown').length+'/'+filtered.length].forEach(s=>{const td=document.createElement('td');td.textContent=s;tr.append(td)});$('rows').append(tr);}
+ const truth2=items.filter(x=>labels.get(x.i)==='2'&&!x.error);
+ const hit=dim=>truth2.filter(x=>x['v'+dim]?.count>=2).length;
+ $('groundTruth').textContent=truth2.length?'Recall 2+ kandidat pada '+truth2.length+' frame berlabel dua aktor terlihat jelas: 384 '+(100*hit(384)/truth2.length).toFixed(1)+'% · 512 '+(100*hit(512)/truth2.length).toFixed(1)+'%. Perlu verifikasi kandidat cocok dengan dua aktor asli; jumlah saja belum cukup untuk PASS.':'Recall dua aktor: menunggu anotasi manual. Label tiap frame di inspector.';
+}
+function drawOverlay(canvasId,frame,group,threshold){
+ const canvas=$(canvasId),c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
+ if(frame)c.drawImage(frame,0,0,canvas.width,canvas.height);
+ if(!group)return;
+ const sx=canvas.width/(experiment?.config.width||canvas.width),sy=canvas.height/(experiment?.config.height||canvas.height);
+ (group.poses||[]).forEach((pose,i)=>{
+  if((pose.score||0)<threshold)return;
+  const color=i%2===0?'#65f4d5':'#ffc46e';c.strokeStyle=color;c.fillStyle=color;c.lineWidth=2;
+  const b=pose.box;
+  if(b&&Number.isFinite(b.xMin)&&Number.isFinite(b.yMin)&&Number.isFinite(b.width)&&Number.isFinite(b.height))c.strokeRect(b.xMin*sx,b.yMin*sy,b.width*sx,b.height*sy);
+  c.fillStyle='#07151b';const x=b?.xMin??12,y=b?.yMin??12;c.fillRect(x*sx,y*sy-17,100,16);c.fillStyle=color;c.font='12px sans-serif';c.fillText('P'+(i+1)+' '+(pose.score??0).toFixed(2),x*sx+4,y*sy-5);
+  c.fillStyle=color;for(const k of pose.keypoints||[]){if(!Number.isFinite(k.x)||!Number.isFinite(k.y)||(k.score??0)<.35)continue;c.beginPath();c.arc(k.x*sx,k.y*sy,2.5,0,Math.PI*2);c.fill()}
+ });
+}
+function refreshFrameInfo(){const i=Math.max(0,Math.min(range().frames-1,selected));$('frameInfo').textContent=phaseText(i);$('truth').value=labels.get(i)||'unknown';}
+async function seekFrame(i,fps){
+ const target=(i+.5)/fps;
+ if(!Number.isFinite(target)||target>=video.duration)throw Error('Timestamp di luar durasi video: '+target);
+ const curToken=++renderSerial;
+ if(Math.abs(video.currentTime-target)>.00001){
+  await new Promise((resolve,reject)=>{
+   const timeout=setTimeout(()=>{cleanup();reject(Error('Seek timeout pada frame '+i))},4000);
+   const cleanup=()=>{clearTimeout(timeout);video.removeEventListener('seeked',ok);video.removeEventListener('error',bad)};
+   const ok=()=>{cleanup();resolve()};const bad=()=>{cleanup();reject(Error('Video gagal didekode'))};
+   video.addEventListener('seeked',ok,{once:true});video.addEventListener('error',bad,{once:true});video.currentTime=target;
+  });
+ }
+ if(curToken!==renderSerial)throw Error('Seek dibatalkan oleh permintaan baru');
+ ctx.drawImage(video,0,0,decode.width,decode.height);
+ return {image:ctx.getImageData(0,0,decode.width,decode.height),requestedSec:target,reportedSec:video.currentTime};
+}
+async function captureFrame(i,fps){
+ if(sourceMode==='video')return seekFrame(i,fps);
+ const file=frameFiles[i];if(!file)throw Error('Frame gambar hilang: '+i);
+ const bitmap=await createImageBitmap(file);
+ try{ctx.clearRect(0,0,decode.width,decode.height);ctx.drawImage(bitmap,0,0,decode.width,decode.height)}
+ finally{bitmap.close()}
+ return {image:ctx.getImageData(0,0,decode.width,decode.height),requestedSec:(i+.5)/fps,reportedSec:(i+.5)/fps};
+}
+async function showFrame(i){
+ if(!loaded||running)return;
+ try{
+ const f=await captureFrame(i,range().fps);
+ const row=rowFor(i);const threshold=experiment?.config.score||Number($('score').value);
+ drawOverlay('c384',decode,row?.v384,threshold);drawOverlay('c512',decode,row?.v512,threshold);
+ $('badge384').textContent=row?.v384?row.v384.count+' orang · '+fmt(row.v384.ms):'Belum diuji';
+ $('badge512').textContent=row?.v512?row.v512.count+' orang · '+fmt(row.v512.ms):'Belum diuji';
+ }catch(e){changeStatus('Preview: '+e.message,'warning')}
+}
+function selectFrame(i){selected=Math.max(0,Math.min(range().frames-1,i));$('frame').value=selected;refreshFrameInfo();void showFrame(selected)}
+async function prepareSource(file){
+ sourceMode='video';frameFiles=[];$('framesSource').value='';
+ if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(file);
+ loaded=false;video.src=objectUrl;video.load();
+ await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Metadata MP4 tidak terbaca')),10000);video.onloadedmetadata=()=>{clearTimeout(timer);resolve()};video.onerror=()=>{clearTimeout(timer);reject(Error('MP4 tidak didukung browser'))}});
+ loaded=true;decode.width=video.videoWidth;decode.height=video.videoHeight;
+ for(const id of ['c384','c512']){$(id).width=video.videoWidth;$(id).height=video.videoHeight;}
+ const {fps,frames}=range();$('sourceInfo').textContent=file.name+' · '+video.videoWidth+'×'+video.videoHeight+' · '+video.duration.toFixed(3)+' s';
+ $('run').disabled=false;selectFrame(0);const expected=frames/fps;
+ if(Math.abs(expected-video.duration)>.15)changeStatus('Perhatian: durasi berbeda dari dataset '+frames+' / '+fps+' FPS. Periksa parameter terlebih dahulu.','warning');
+ else changeStatus('MP4 siap. Benchmark memproses '+frames+' frame pada '+fps+' FPS. Model akan diunduh dari TFHub pada eksekusi pertama.');
+}
+async function prepareFrames(files){
+ if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null}
+ video.removeAttribute('src');video.load();$('source').value='';
+ frameFiles=Array.from(files).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+ sourceMode='frames';loaded=false;
+ if(!frameFiles.length)throw Error('Pilih gambar frame hasil ekstraksi');
+ const names=frameFiles.map(f=>f.name),unique=new Set(names);
+ if(unique.size!==names.length)throw Error('Nama file frame duplikat. Pilih satu paket gambar.');
+ const probe=await createImageBitmap(frameFiles[0]);decode.width=probe.width;decode.height=probe.height;probe.close();
+ for(const id of ['c384','c512']){$(id).width=decode.width;$(id).height=decode.height}
+ $('frames').value=String(frameFiles.length);$('frame').max=String(frameFiles.length-1);
+ $('sourceInfo').textContent=frameFiles.length+' frame gambar · '+decode.width+'×'+decode.height+' · urutan file numerik';
+ loaded=true;$('run').disabled=false;selectFrame(0);
+ changeStatus('Paket '+frameFiles.length+' frame dimuat. '+(frameFiles.length===192?'Sesuai dataset D1.':'Perhatian: D1 membutuhkan 192 frame; paket ini berbeda.')+' PNG/JPEG diproses langsung tanpa seek MP4.',frameFiles.length===192?'':'warning');
+}
+async function createDetectors(){
+ if(!window.tf||!window.poseDetection)throw Error('Library TensorFlow.js belum tersedia. Periksa CDN / koneksi internet.');
+ await tf.setBackend('webgl');await tf.ready();
+ const config=dim=>({modelType:poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,
+  multiPoseMaxDimension:dim,minPoseScore:.15,enableTracking:false,enableSmoothing:false});
+ // Load one shared model per configuration. Both retained for alternating-order runs.
+ changeStatus('Memuat MoveNet MultiPose 384 ...');const d384=await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet,config(384));
+ try{changeStatus('Memuat MoveNet MultiPose 512 ...');const d512=await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet,config(512));return [d384,d512];}
+ catch(e){d384.dispose();throw e}
+}
+async function run(){
+ if(running||!loaded)return;running=true;cancelled=false;renderSerial++;
+ $('run').disabled=true;$('source').disabled=true;$('framesSource').disabled=true;$('stop').disabled=false;$('json').disabled=true;$('csv').disabled=true;
+ const {fps,frames}=range(),score=Number($('score').value);
+ $('frame').max=String(frames-1);$('progress').max=frames;$('progress').value=0;
+ labels.clear();experiment={version:'SOMA-D1/1.0',status:'IN_PROGRESS',source:sourceMode==='video'?{mode:'video-seek',name:$('source').files[0].name,size:$('source').files[0].size,duration:video.duration,seekAccuracy:'unverified'}:{mode:'extracted-frames',count:frameFiles.length,firstFile:frameFiles[0]?.name,lastFile:frameFiles.at(-1)?.name,pixelEncoding:frameFiles[0]?.type},
+  config:{fps,frames,score,width:decode.width,height:decode.height,models:[384,512],tracking:false,smoothing:false},
+  environment:{userAgent:navigator.userAgent,tfBackend:null,tensorflowjsVersion:null,startedAt:new Date().toISOString()},results:Array(frames).fill(null),errors:[]};
+ try{
+  detectors=await createDetectors();experiment.environment.tfBackend=tf.getBackend();experiment.environment.tensorflowjsVersion=tf.version_core;
+  const warm=await captureFrame(0,fps);
+  changeStatus('Warm-up model, hasil warm-up tidak dihitung ...');
+  for(let j=0;j<5;j++)for(const d of detectors)await d.estimatePoses(warm.image,{maxPoses:6});
+  for(let i=0;i<frames;i++){
+   if(cancelled)break;
+   let f;
+   try{f=await captureFrame(i,fps);}catch(e){experiment.results[i]={i,timeSec:(i+.5)/fps,phase:phase(i)[0],error:e.message};experiment.errors.push({i,error:e.message});continue;}
+   const row={i,timeSec:f.requestedSec,reportedSec:f.reportedSec,phase:phase(i)[0]};
+   const order=i%2===0?[0,1]:[1,0];
+   for(const which of order){
+    const dim=which===0?384:512,start=performance.now();
+    try{const raw=await detectors[which].estimatePoses(f.image,{maxPoses:6});const ms=performance.now()-start;row['v'+dim]={...poseInfo(raw,score),ms:safe(ms)};}
+    catch(e){row.error=dim+': '+e.message;experiment.errors.push({i,dim,error:e.message});}
+   }
+   experiment.results[i]=row;selected=i;
+   if(i%6===0||i===frames-1){$('progress').value=i+1;$('progressText').textContent=(i+1)+' / '+frames+' frame';$('frame').value=i;refreshFrameInfo();
+    drawOverlay('c384',decode,row.v384,score);drawOverlay('c512',decode,row.v512,score);
+    $('badge384').textContent=(row.v384?.count??0)+' orang';$('badge512').textContent=(row.v512?.count??0)+' orang';renderSummary();
+    changeStatus('Memproses F'+String(i).padStart(3,'0')+' / '+(frames-1)+' · '+phase(i)[3]+'\nBackend: '+tf.getBackend()+' · tracking internal OFF · 17 keypoints per kandidat.');
+    await wait(0);
+   }
+  }
+  experiment.status=cancelled?'CANCELLED':experiment.errors.length?'INCOMPLETE':'COMPLETE_UNREVIEWED';
+  experiment.environment.finishedAt=new Date().toISOString();
+  const n=experiment.results.filter(r=>r?.v384&&r?.v512).length;
+  changeStatus('Hasil D1: '+n+'/'+frames+' frame pada kedua resolusi. Status: '+experiment.status+'.\nLabel visual pada frame penting dan ekspor JSON/CSV sebelum menentukan kelulusan.',experiment.errors.length?'warning':'');
+ }catch(e){if(experiment){experiment.status='ERROR';experiment.errors.push({error:e.message})}changeStatus('Benchmark gagal: '+e.message,'error')}
+ finally{for(const d of detectors){try{d.dispose()}catch{}}detectors=[];running=false;$('run').disabled=!loaded;$('source').disabled=false;$('framesSource').disabled=false;$('stop').disabled=true;$('json').disabled=!experiment;$('csv').disabled=!experiment;renderSummary();}
+}
+function save(name,type,body){const u=URL.createObjectURL(new Blob([body],{type}));const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1200);}
+function exportData(){if(!experiment)return null;const output={...experiment,manualLabels:Object.fromEntries(labels)};
+ const truth2=output.results.filter(r=>r&&labels.get(r.i)==='2'&&r.v384&&r.v512);
+ output.qa={labelledTwoVisible:truth2.length,recallCandidateCount384:truth2.length?truth2.filter(r=>r.v384.count>=2).length/truth2.length:null,
+  recallCandidateCount512:truth2.length?truth2.filter(r=>r.v512.count>=2).length/truth2.length:null,
+  warning:'Detection candidate count is not person-identity verified. PASS requires manual box/actor correspondence review and confirmed complete 192-frame decoding.'};
+ return output;}
+function csvEscape(v){const s=v==null?'':String(v);return /[,\n"]/.test(s)?'"'+s.replaceAll('"','""')+'"':s;}
+function exportCSV(){const e=exportData();if(!e)return;
+ const fields=['frame','timestamp_s','phase','manual_label','384_count','384_latency_ms','384_poses_json','512_count','512_latency_ms','512_poses_json','error'];
+ const out=[fields.join(',')];for(const r of e.results){if(!r)continue;const cells=[r.i,r.timeSec,r.phase,e.manualLabels[r.i]||'unknown',r.v384?.count,r.v384?.ms,JSON.stringify(r.v384?.poses||[]),r.v512?.count,r.v512?.ms,JSON.stringify(r.v512?.poses||[]),r.error||''];out.push(cells.map(csvEscape).join(','));}
+ save('SOMA_D1_192_frames_results.csv','text/csv;charset=utf-8',out.join('\n'));
+}
+$('source').addEventListener('change',async e=>{const f=e.target.files?.[0];if(f)try{await prepareSource(f)}catch(err){changeStatus(err.message,'error')}});
+$('framesSource').addEventListener('change',async e=>{const fs=e.target.files;if(fs?.length)try{await prepareFrames(fs)}catch(err){changeStatus(err.message,'error')}});
+$('run').addEventListener('click',()=>void run());$('stop').addEventListener('click',()=>{cancelled=true;changeStatus('Menghentikan setelah inferensi frame yang sedang berlangsung selesai.','warning')});
+$('frame').addEventListener('input',e=>selectFrame(Number(e.target.value)));$('prev').addEventListener('click',()=>selectFrame(selected-1));$('next').addEventListener('click',()=>selectFrame(selected+1));
+$('truth').addEventListener('change',e=>{labels.set(selected,e.target.value);renderSummary()});
+$('json').addEventListener('click',()=>{const out=exportData();if(out)save('SOMA_D1_192_frames_results.json','application/json;charset=utf-8',JSON.stringify(out,null,2))});
+$('csv').addEventListener('click',exportCSV);$('fps').addEventListener('change',()=>{if(!running){$('frame').max=String(range().frames-1);refreshFrameInfo()}});
+$('frames').addEventListener('change',()=>{if(!running){$('frame').max=String(range().frames-1);refreshFrameInfo();renderSummary()}});
+renderSummary();
+})();
+</script>
+</body>
+</html>
