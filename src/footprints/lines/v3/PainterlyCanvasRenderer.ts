@@ -4,11 +4,18 @@ import type {DualFootTrajectoryEngine} from './DualFootTrajectoryEngine.ts';
 import {paintTrajectory,type V3Settings} from './TrajectoryRenderer.ts';
 import {PainterlyImpressionEngine,lifetimeOpacity} from './PainterlyImpressionEngine.ts';
 import {paintFootBrushDeposits,type FootBrushDepositStore} from './FootBrushStrokeRenderer.ts';
+import type {PersistentInkStore} from './PersistentInkStore.ts';
+import type {SumiMaterial} from './SumiMaterialRenderer.ts';
+import type {PainterlyViewTransform} from './PainterlyPreviewTransform.ts';
 
 export type PainterlyMaterial='ink'|'charcoal'|'pigment';
 export type PainterlySettings={
  enabled:boolean;
- painterlyEngine?:'legacy-v32'|'foot-brush-v33';
+ painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34';
+ sumiMaterial?:SumiMaterial;
+ sumiWeightPx?:number;
+ sumiExpression?:'natural'|'bold';
+ previewFit?:boolean;
  material:PainterlyMaterial;
  showSoles:boolean;showTrails:boolean;
  footprintLifeMs:number;trailLifeMs:number;
@@ -55,7 +62,8 @@ export function paintPainterlyCanvas(
  ctx:CanvasRenderingContext2D,trajectory:DualFootTrajectoryEngine,
  impressions:PainterlyImpressionEngine,settings:V3Settings,
  painterly:PainterlySettings,presentationMs:number,blackout=false,fullscreen=false,
- brushStore?:FootBrushDepositStore
+ brushStore?:FootBrushDepositStore,sumiStore?:PersistentInkStore,
+ preview?:PainterlyViewTransform
 ){
  if(!painterly.enabled){
   paintTrajectory(ctx,trajectory,settings,presentationMs,blackout,fullscreen);
@@ -76,8 +84,19 @@ export function paintPainterlyCanvas(
   paintFootBrushDeposits(ctx,brushStore.entries,settings,painterly,presentationMs);
   return;
  }
- // One white-canvas raster pipeline for the Stage Monitor and fullscreen.
- if(painterly.showTrails){
+ // V3.4 is composited from cached ink; stamping a new image is prohibited in paint().
+ // Footprints remain a separate transient layer below.
+ const sumiCanvasMode=painterly.painterlyEngine==='sumi-v34'&&!!sumiStore;
+ if(sumiCanvasMode&&sumiStore){
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);
+  ctx.restore();
+  // Transform only the Stage Monitor preview, never the physical mapping basis.
+  ctx.save();
+  if(preview)ctx.setTransform(preview.scale,0,0,preview.scale,preview.tx*w/1600,preview.ty*h/900);
+  const ink=sumiStore.getCanvas();
+  if(ink&&painterly.showTrails)ctx.drawImage(ink,0,0,w,h);
+ }else if(painterly.showTrails){
   paintTrajectory(ctx,trajectory,{
    ...settings,background:white,materialTreatment:painterly.material,
    decay:painterly.trailKeep?'keep':'fade',lifeMs:Math.max(1000,painterly.trailLifeMs),
@@ -87,7 +106,7 @@ export function paintPainterlyCanvas(
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);ctx.restore();
  }
- if(!painterly.showSoles)return;
+ if(!painterly.showSoles){if(sumiCanvasMode)ctx.restore();return;}
  const scale=w/1600;
  const len=limit(painterly.sizePx,30,110)*scale;
  const width=len*.365;
@@ -120,4 +139,5 @@ export function paintPainterlyCanvas(
  for(const head of impressions.liveHeads(presentationMs)){
   draw(head,head.alpha,0,true);
  }
+ if(sumiCanvasMode)ctx.restore();
 }
