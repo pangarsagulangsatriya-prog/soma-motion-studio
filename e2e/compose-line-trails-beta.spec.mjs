@@ -204,7 +204,7 @@ test('Regression: red Garis BETA button remains visible after disabling lines an
  await expect(beta).toContainText('BETA');
  await beta.click();
  await expect(beta).toHaveAttribute('aria-pressed','true');
- await expect(page.getByRole('region',{name:'Kontrol Garis Beta'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Kontrol Garis V3'})).toBeVisible();
  await beta.click();
  await expect(beta).toBeVisible();
  await expect(beta).toHaveAttribute('aria-pressed','false');
