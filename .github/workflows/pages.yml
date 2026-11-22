@@ -70,12 +70,13 @@ jobs:
       - name: Install Chromium
         run: npx playwright install chromium
       - name: TRK-05 — visual regression and source E2E
+        if: github.ref_name == 'main'
         # Do not block publication of a TypeScript-built release on legacy visual baselines.
         # The QA report and failure screenshots are still uploaded for investigation.
         continue-on-error: true
         run: node scripts/trk05-browser-qa.mjs
       - name: Upload TRK-05 screenshots and QA report
-        if: always()
+        if: always() && github.ref_name == 'main'
         uses: actions/upload-artifact@v4
         with:
           name: trk05-browser-qa-${{ github.sha }}
