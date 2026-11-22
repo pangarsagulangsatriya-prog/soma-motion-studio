@@ -1,0 +1,47 @@
+name: Garis BETA V3 isolated browser QA
+on:
+  push:
+    branches:
+      - 'feat/garis-beta-v3-dual-foot'
+  pull_request:
+    paths:
+      - 'src/footprints/lines/v3/**'
+      - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/studio/v3/SurfaceComposer.tsx'
+      - 'tests/garis-v3-dual-foot.test.ts'
+      - 'e2e/garis-v3-dual-foot.spec.mjs'
+      - '.github/workflows/garis-v3-dual-foot-qa.yml'
+permissions:
+  contents: read
+jobs:
+  test-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Unit
+        run: npm test
+      - name: TypeScript and production build
+        run: npm run build
+      - name: Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Compose V3 end-to-end
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 garis-v3-dual-foot.spec.mjs
+      - name: Evidence on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: garis-v3-qa
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          if-no-files-found: warn
