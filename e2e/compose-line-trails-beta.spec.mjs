@@ -10,6 +10,11 @@ async function openBeta(page){
  await expect(beta).toBeVisible();
  await beta.click();
  await expect(beta).toHaveAttribute('aria-pressed','true');
+ // V3 is the default; V2 stays available for legacy style and brush regressions.
+ const panelV3=page.getByRole('region',{name:'Kontrol Garis V3'});
+ await expect(panelV3).toBeVisible();
+ await panelV3.locator('.lt-v3-advanced summary').click();
+ await panelV3.getByRole('button',{name:'Pakai engine V2 (rollback)'}).click();
  await expect(page.getByRole('region',{name:'Kontrol Garis Beta'})).toBeVisible();
  return {monitor,beta,panel:page.getByRole('region',{name:'Kontrol Garis Beta'})};
 }
@@ -199,7 +204,7 @@ test('Regression: red Garis BETA button remains visible after disabling lines an
  await expect(beta).toContainText('BETA');
  await beta.click();
  await expect(beta).toHaveAttribute('aria-pressed','true');
- await expect(page.getByRole('region',{name:'Kontrol Garis Beta'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Kontrol Garis V3'})).toBeVisible();
  await beta.click();
  await expect(beta).toBeVisible();
  await expect(beta).toHaveAttribute('aria-pressed','false');

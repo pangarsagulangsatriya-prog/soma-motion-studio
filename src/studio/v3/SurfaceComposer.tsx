@@ -53,6 +53,9 @@ import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
  from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
+import {LineTrailsV3Stage,LineTrailsV3Panel} from './LineTrailsV3.tsx';
+import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajectoryEngine.ts';
+import {DEFAULT_V3_SETTINGS,type V3Settings} from '../../footprints/lines/v3/TrajectoryRenderer.ts';
 import './line-trails-beta.css';
 
 type Surface='FLOOR'|'BODY A'|'BODY B';
@@ -126,6 +129,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineTrails,setLineTrails]=useState(false);
  const lineTrailsRef=useRef(lineTrails);lineTrailsRef.current=lineTrails;
  const [lineOptions,setLineOptions]=useState<LineTrailsOptions>(DEFAULT_LINE_TRAILS_OPTIONS);
+ const [lineVersion,setLineVersion]=useState<'v2'|'v3'>('v3');
+ const [v3Options,setV3Options]=useState<V3Settings>(DEFAULT_V3_SETTINGS);
+ const [v3Diagnostics,setV3Diagnostics]=useState('Menunggu observasi pertama');
  const [lineDemo,setLineDemo]=useState(false);
  const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
@@ -135,6 +141,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [floorPosePreviewActive,setFloorPosePreviewActive]=useState(false);
  const floorPosePreviewActiveRef=useRef(false);
  const lineEngine=useRef(new FootLineTrailEngine());
+ const lineV3Engine=useRef(new DualFootTrajectoryEngine());
  const brushEngine=useRef(new FootprintBrushEngine());
  const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
  const monitorFullscreenRef=useRef<HTMLElement|null>(null);
@@ -1004,7 +1011,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      </button>
      {fullscreenNotice&&<small className="cp-compose-fullscreen-notice" role="status">{fullscreenNotice}</small>}
     </div>
-    {lineTrails&&<LineTrailsBetaStage
+    {lineTrails&&lineVersion==='v3'&&<LineTrailsV3Stage
+     fullscreenRef={lineFullscreenRef} frameRef={frameRef} videoRef={videoRef}
+     experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
+     fullscreenDiagnostics={lineFullscreenDiagnostics}
+     router={router} engine={lineV3Engine.current} settings={v3Options}
+     blackout={blackout||previewBlackout} previewLive={previewLive}
+     cameraOn={cameraOn} bodySelected={bodySelected}
+     performerCount={performerCount} experimentSource={experimentSource}
+     sourceKind={lineSource} demo={lineDemo}
+     onStatus={setLineStatus} onDiagnostics={setV3Diagnostics} motionSession={motionSession}/>}
+    {lineTrails&&lineVersion==='v2'&&<LineTrailsBetaStage
      fullscreenRef={lineFullscreenRef} frameRef={frameRef} videoRef={videoRef}
      experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
      fullscreenDiagnostics={lineFullscreenDiagnostics}
@@ -1079,7 +1096,20 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
-  {lineTrails?<LineTrailsBetaPanel
+  {lineTrails&&lineVersion==='v3'?<LineTrailsV3Panel
+   settings={v3Options} onChange={setV3Options} engine={lineV3Engine.current}
+   onClear={()=>{lineV3Engine.current.reset();setLineStatus('Garis dibersihkan');}}
+   demo={lineDemo}
+   onDemo={()=>{lineV3Engine.current.reset();setLineDemo(v=>!v);}}
+   status={lineStatus} diagnostics={v3Diagnostics} performerCount={performerCount}
+   fullscreenDiagnostics={lineFullscreenDiagnostics}
+   onFullscreenDiagnostics={setLineFullscreenDiagnostics}
+   onUseV2={()=>{lineV3Engine.current.reset();setLineVersion('v2');setLineDemo(false);}}
+  />:lineTrails&&lineVersion==='v2'?<>
+   <button type="button" className="lt-v3-return" onClick={()=>{
+    lineEngine.current.clear();brushEngine.current.clear();setLineVersion('v3');setLineDemo(false);
+   }}>Kembali ke Garis V3</button>
+   <LineTrailsBetaPanel
    settings={lineOptions} onChange={setLineOptions}
    fullscreenDiagnostics={lineFullscreenDiagnostics} onFullscreenDiagnostics={setLineFullscreenDiagnostics}
    engine={lineEngine.current} brushEngine={brushEngine.current}
@@ -1087,7 +1117,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    onDemo={()=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineDemo(v=>!v);}}
    status={lineStatus} performerCount={performerCount}
    selectedActor={lineActor} onActor={actor=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineActor(actor);}}
-  />:<>
+  /></>:<>
   <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:monitorView==='SKELETON'?'Skeleton 33 titik':'Visual Kaki · '+monitorView}</h3>
   {monitorView==='SKELETON'&&<p className="cp-compose-detection-note">Skeleton mengikuti Track. Pengaturan di bawah memengaruhi visual LEG A/B dan SPLIT.</p>}
   {monitorView!=='FLOOR'&&<LowerBodyQuickInspector
