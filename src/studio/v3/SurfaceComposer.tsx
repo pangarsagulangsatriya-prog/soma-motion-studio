@@ -47,6 +47,8 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
+import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
+ from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
 import './line-trails-beta.css';
@@ -122,6 +124,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineTrails,setLineTrails]=useState(false);
  const [lineOptions,setLineOptions]=useState<LineTrailsOptions>(DEFAULT_LINE_TRAILS_OPTIONS);
  const [lineDemo,setLineDemo]=useState(false);
+ const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
  const [lineStatus,setLineStatus]=useState('Menunggu kaki');
  const [,setLineBrushCount]=useState(0);
@@ -139,8 +142,18 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  // Local Beta fullscreen has no on-screen controls; Esc must always return to Compose.
  useEffect(()=>{
   const onKey=(event:globalThis.KeyboardEvent)=>{
-   if(event.key==='Escape'&&document.fullscreenElement===lineFullscreenRef.current){
+   if(document.fullscreenElement!==lineFullscreenRef.current)return;
+   if(event.key==='Escape'){
     void document.exitFullscreen().catch(()=>{});
+    return;
+   }
+   if(event.ctrlKey||event.metaKey||event.altKey||event.repeat)return;
+   if(event.key.toLowerCase()==='v'){
+    event.preventDefault();
+    setLineFullscreenDiagnostics(p=>({...p,camera:!p.camera}));
+   }else if(event.key.toLowerCase()==='k'){
+    event.preventDefault();
+    setLineFullscreenDiagnostics(p=>({...p,skeleton:!p.skeleton}));
    }
   };
   window.addEventListener('keydown',onKey);
@@ -947,7 +960,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      {fullscreenNotice&&<small className="cp-compose-fullscreen-notice" role="status">{fullscreenNotice}</small>}
     </div>
     {lineTrails&&<LineTrailsBetaStage
-     fullscreenRef={lineFullscreenRef} frameRef={frameRef} experimentFrameRef={experimentFrameRef}
+     fullscreenRef={lineFullscreenRef} frameRef={frameRef} videoRef={videoRef}
+     experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
+     fullscreenDiagnostics={lineFullscreenDiagnostics}
      router={router} engine={lineEngine.current} brushEngine={brushEngine.current}
      settings={lineOptions} motionEvents={motionEvents}
      blackout={blackout||previewBlackout} previewLive={previewLive}
@@ -1019,6 +1034,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   {lineTrails?<LineTrailsBetaPanel
    settings={lineOptions} onChange={setLineOptions}
+   fullscreenDiagnostics={lineFullscreenDiagnostics} onFullscreenDiagnostics={setLineFullscreenDiagnostics}
    engine={lineEngine.current} brushEngine={brushEngine.current}
    onClear={()=>{lineEngine.current.clear();brushEngine.current.clear();setLineBrushCount(0);setLineStatus('Gambar dibersihkan');}} demo={lineDemo}
    onDemo={()=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineDemo(v=>!v);}}

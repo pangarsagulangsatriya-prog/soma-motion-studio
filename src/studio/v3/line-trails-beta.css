@@ -169,3 +169,31 @@
 @media(max-width:720px){
  .lt-beta-brush-wrap{padding:9px 8px}
 }
+
+/* Fullscreen diagnostic preview: explicit opt-in, no controls inside projector canvas. */
+.lt-beta-diagnostics{
+ display:flex;flex-direction:column;gap:8px;
+ border:1px solid #35513f;border-radius:8px;
+ background:#101d16;padding:10px 9px;
+}
+.lt-beta-diagnostics-heading{display:flex;flex-direction:column;gap:3px}
+.lt-beta-diagnostics-heading strong{font-size:11px;font-weight:700;color:#d8e8d8}
+.lt-beta-diagnostics-heading small{font-size:10px;color:#94b39c}
+.lt-beta-diagnostics-choices{display:grid;grid-template-columns:1fr;gap:5px}
+.lt-beta-diagnostics-choices label{
+ display:flex;align-items:center;gap:9px;min-height:34px;
+ padding:6px 8px;border-radius:6px;border:1px solid #34493a;
+ background:#16261c;color:#e0ecdf;font-size:11px;cursor:pointer
+}
+.lt-beta-diagnostics-choices label span{flex:1;min-width:0}
+.lt-beta-diagnostics-choices kbd{font-size:10px;color:#bdd5ba;
+ border:1px solid #556d55;padding:2px 5px;border-radius:4px;font-family:inherit}
+.fp-stage-workspace[data-workspace="compose"] .lt-beta-diagnostics-choices input[type="checkbox"]{
+ display:block!important;appearance:auto!important;flex:none;
+ width:16px!important;height:16px!important;margin:0!important;padding:0!important;
+ accent-color:#b5db9e;cursor:pointer
+}
+@media(max-width:720px){
+ .lt-beta-diagnostics{padding:8px}
+ .lt-beta-diagnostics-choices label{min-height:32px}
+}

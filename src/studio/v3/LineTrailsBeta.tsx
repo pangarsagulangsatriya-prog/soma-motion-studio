@@ -5,16 +5,22 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
 import {ActiveFootSelector} from '../../footprints/lines/ActiveFootSelector.ts';
+import {resolveFullscreenInput} from '../../footprints/lines/FullscreenInputSource.ts';
+import {paintFullscreenInputDiagnostics,type FullscreenDiagnostics}
+ from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import {demoFootSamples,footSamplesFromExperiment,footSamplesFromLive} from '../../footprints/lines/FootLineSampleAdapter.ts';
 import {paintLineTrails,type LineTrailsOptions,type LineStyle} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 
-export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,router,engine,settings,
+export function LineTrailsBetaStage({fullscreenRef,frameRef,videoRef,experimentInputCanvas,experimentFrameRef,router,engine,settings,fullscreenDiagnostics,
  blackout,previewLive,cameraOn,bodySelected,performerCount,experimentSource,sourceKind,selectedActor,
  demo,onStatus,onBrushCount,motionSession,motionEvents,brushEngine}:{
  fullscreenRef:RefObject<HTMLDivElement|null>;
  frameRef:RefObject<MotionFrame>;
+ videoRef:RefObject<HTMLVideoElement|null>;
+ experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
+ fullscreenDiagnostics:FullscreenDiagnostics;
  router:MultiPoseGaitRouter;engine:FootLineTrailEngine;brushEngine:FootprintBrushEngine;settings:LineTrailsOptions;
  blackout:boolean;previewLive:boolean;cameraOn:boolean;bodySelected:boolean;
  performerCount:1|2;experimentSource:'video'|'simulator'|null;
@@ -24,10 +30,10 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
 }){
  const canvas=useRef<HTMLCanvasElement>(null);
  const singleBrush=useRef(new ActiveFootSelector());
- const source=useRef({frameRef,experimentFrameRef,router,engine,settings,
+ const source=useRef({frameRef,videoRef,experimentInputCanvas,experimentFrameRef,router,engine,settings,fullscreenDiagnostics,
   blackout,previewLive,cameraOn,bodySelected,performerCount,experimentSource,
   sourceKind,selectedActor,demo,onStatus,onBrushCount,motionSession,motionEvents,brushEngine});
- source.current={frameRef,experimentFrameRef,router,engine,settings,
+ source.current={frameRef,videoRef,experimentInputCanvas,experimentFrameRef,router,engine,settings,fullscreenDiagnostics,
   blackout,previewLive,cameraOn,bodySelected,performerCount,experimentSource,
   sourceKind,selectedActor,demo,onStatus,onBrushCount,motionSession,motionEvents,brushEngine};
  const demoStart=useRef(0);
@@ -36,10 +42,14 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
   let raf=0,lastDraw=0,lastMessage='',lastStatus=0,lastSourceAt=-1,lastSourceKey='';
   let lastVisualKey='',lastCount=-1,lastCountAt=0;
   const redraw=(ctx:CanvasRenderingContext2D,p:typeof source.current,now:number,off:boolean)=>{
-   const key=JSON.stringify([p.engine.sampleCount,p.brushEngine.count,p.settings,off]);
+   const fullscreen=document.fullscreenElement===fullscreenRef.current;
+   const overlays=fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton);
+   const key=JSON.stringify([p.engine.sampleCount,p.brushEngine.count,p.settings,off,fullscreen,overlays]);
    const moving=p.engine.lastObservedAt>0&&now-p.engine.lastObservedAt<135;
-   if(key!==lastVisualKey||moving||(p.settings.decay==='fade'&&!off&&p.engine.sampleCount>0)){
+   if(key!==lastVisualKey||moving||overlays||(p.settings.decay==='fade'&&!off&&p.engine.sampleCount>0)){
     paintLineTrails(ctx,p.engine,p.settings,now,off,p.brushEngine.visible(now,p.settings.decay,8000,p.settings.brush.mode));
+    if(!off&&overlays)
+     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput(p,now));
     lastVisualKey=key;
    }
   };
@@ -128,9 +138,11 @@ const LINE_STYLES:{id:LineStyle;label:string;stroke:number}[]=[
 ];
 const SMOOTH_CHOICES=[{id:'responsive',label:'Responsif'},{id:'smooth',label:'Halus'},
  {id:'silky',label:'Sangat halus'}] as const;
-export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClear,demo,onDemo,status,
+export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClear,demo,onDemo,status,fullscreenDiagnostics,onFullscreenDiagnostics,
  performerCount,selectedActor,onActor}:{
  settings:LineTrailsOptions;onChange:(next:LineTrailsOptions)=>void;brushEngine:FootprintBrushEngine;
+ fullscreenDiagnostics:FullscreenDiagnostics;
+ onFullscreenDiagnostics:(next:FullscreenDiagnostics)=>void;
  engine:FootLineTrailEngine;onClear:()=>void;demo:boolean;onDemo:()=>void;status:string;
  performerCount:1|2;selectedActor:'A'|'B';onActor:(actor:'A'|'B')=>void;
 }){
@@ -206,6 +218,26 @@ export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClea
    <input id="lt-beta-lines-visible" type="checkbox" aria-label="Tampilkan garis"
     checked={settings.showLines} onChange={e=>onChange({...settings,showLines:e.target.checked})}/>
   </label>
+  <section className="lt-beta-diagnostics" aria-label="Overlay layar penuh">
+   <div className="lt-beta-diagnostics-heading">
+    <strong>Overlay fullscreen</strong>
+    <small>Default OFF · V / K saat fullscreen</small>
+   </div>
+   <div className="lt-beta-diagnostics-choices">
+    <label htmlFor="lt-beta-show-input">
+     <input id="lt-beta-show-input" type="checkbox" aria-keyshortcuts="V"
+      aria-label="Preview Kamera Input" checked={fullscreenDiagnostics.camera}
+      onChange={e=>onFullscreenDiagnostics({...fullscreenDiagnostics,camera:e.target.checked})}/>
+     <span>Preview Kamera Input</span><kbd>V</kbd>
+    </label>
+    <label htmlFor="lt-beta-show-skeleton">
+     <input id="lt-beta-show-skeleton" type="checkbox" aria-keyshortcuts="K"
+      aria-label="Skeleton Fullscreen" checked={fullscreenDiagnostics.skeleton}
+      onChange={e=>onFullscreenDiagnostics({...fullscreenDiagnostics,skeleton:e.target.checked})}/>
+     <span>Skeleton</span><kbd>K</kbd>
+    </label>
+   </div>
+  </section>
   <div className="lt-beta-smooth-wrap">
    <strong className="lt-beta-subheading">Kehalusan</strong>
    <div className="lt-beta-smoothness" role="group" aria-label="Kehalusan gerak">
@@ -243,6 +275,6 @@ export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClea
      onClick={()=>onChange({...settings,background:'#111512'})}>Gelap</button>
    </div>
   </details>
-  <p className="lt-beta-note">Preview 2D · Gerak dari Track, Demo memakai simulasi. Fullscreen tetap bersih.</p>
+  <p className="lt-beta-note">Preview 2D · Fullscreen bersih saat overlay OFF. Kamera dan Skeleton hanya tampil saat diaktifkan.</p>
  </section>;
 }

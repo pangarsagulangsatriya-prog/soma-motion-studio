@@ -130,3 +130,43 @@ test('Footprint Brush V3: toggle, sweep/step, layering, size and native fullscre
  await expect(panel.locator('.lt-beta-count')).toContainText('0 sapuan');
  await expect(page.locator('.lt-beta-frame canvas')).toBeVisible();
 });
+
+test('Fullscreen input and skeleton previews are OFF by default, opt-in via V/K, clean again when OFF',async({page})=>{
+ const {monitor,panel}=await openBeta(page);
+ const camera=panel.getByRole('checkbox',{name:'Preview Kamera Input'});
+ const skeleton=panel.getByRole('checkbox',{name:'Skeleton Fullscreen'});
+ await expect(camera).not.toBeChecked();
+ await expect(skeleton).not.toBeChecked();
+ const canvas=page.locator('.lt-beta-frame canvas');
+ const pixel=()=>canvas.evaluate(el=>{
+  const ctx=el.getContext('2d');
+  return ctx?Array.from(ctx.getImageData(1180,80,1,1).data).slice(0,3):[];
+ });
+ await monitor.getByRole('button',{name:'Fullscreen Stage Monitor'}).click();
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.classList.contains('lt-beta-frame')??false)).toBe(true);
+ await expect.poll(pixel).toEqual([245,245,242]);
+ await page.keyboard.press('v');
+ await expect.poll(()=>camera.isChecked()).toBe(true);
+ await expect.poll(async()=>(await pixel())[0]).toBeLessThan(100);
+ await page.keyboard.press('k');
+ await expect.poll(()=>skeleton.isChecked()).toBe(true);
+ await page.keyboard.press('v');
+ await expect.poll(()=>camera.isChecked()).toBe(false);
+ await page.keyboard.press('k');
+ await expect.poll(()=>skeleton.isChecked()).toBe(false);
+ await expect.poll(pixel).toEqual([245,245,242]);
+ const clean=await page.evaluate(()=>({
+  canvases:document.fullscreenElement?.querySelectorAll('canvas').length,
+  buttons:document.fullscreenElement?.querySelectorAll('button').length,
+  children:document.fullscreenElement?.children.length
+ }));
+ expect(clean).toEqual({canvases:1,buttons:0,children:1});
+ await page.keyboard.press('Escape');
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
+ await camera.check();
+ await expect(camera).toBeChecked();
+ await expect.poll(pixel).toEqual([245,245,242]); // overlay is fullscreen-only
+ await monitor.getByRole('button',{name:'Fullscreen Stage Monitor'}).click();
+ await expect.poll(async()=>(await pixel())[0]).toBeLessThan(100);
+ await page.keyboard.press('Escape');
+});
