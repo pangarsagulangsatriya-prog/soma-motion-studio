@@ -21,7 +21,7 @@ test('Line Trails: observed left and right feet are independent; torso is ignore
  const pair=footSamplesFromPose(pose(),metadata);
  assert.equal(pair.length,2);
  assert.equal(pair[0].foot,'left');assert.equal(pair[1].foot,'right');
- assert.equal(pair[0].x,.30);assert.equal(pair[1].x,.68);
+ assert.ok(Math.abs(pair[0].x-.30)<1e-10);assert.ok(Math.abs(pair[1].x-.68)<1e-10);
  assert.equal(footSamplesFromPose([point(.2,.2)],metadata).length,0);
  const one=pose();one[29]=point(-1,-1,0);one[31]=point(-1,-1,0);
  assert.equal(footSamplesFromPose(one,metadata).length,2,'visible ankle fallback allowed');
@@ -42,7 +42,7 @@ test('Line Trails: demo samples are deterministic and tagged SIMULASI',()=>{
  assert.ok(a.every(x=>x.actorId==='DEMO'&&x.source==='simulator'));
 });
 const sample=(foot:'left'|'right',x:number,y:number,atMs:number)=>({
- ...metadata,foot,x,y,atMs
+ ...metadata,foot,x,y,atMs,confidence:1
 });
 test('Line Trails: no scribble at rest, no teleport after tracking loss, source change safe',()=>{
  const engine=new FootLineTrailEngine();
