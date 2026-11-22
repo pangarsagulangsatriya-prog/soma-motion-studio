@@ -17,6 +17,7 @@ export type V3Settings={
  decay:'keep'|'fade';
  lifeMs:number;
  background:'#F5F5F2'|'#111512';
+ materialTreatment?:'ink'|'charcoal'|'pigment';
  debug:boolean;
 };
 export const DEFAULT_V3_SETTINGS:V3Settings={
@@ -70,7 +71,9 @@ function paintOne(ctx:CanvasRenderingContext2D,stroke:V3Stroke,settings:V3Settin
  // Large histories are drawn in one stroke to avoid thousands of canvas commands
  // per frame. Fade and expressive widths use a bounded number of segments.
  if(settings.decay==='keep'&&nodes.length>400){
-  ctx.globalAlpha=1;ctx.lineWidth=width;
+  ctx.globalAlpha=settings.materialTreatment==='pigment'?.68:
+   settings.materialTreatment==='charcoal'?.84:1;
+  ctx.lineWidth=width*(settings.materialTreatment==='pigment'?1.12:1);
   ctx.beginPath();ctx.moveTo(nodes[0].x,nodes[0].y);
   for(let i=1;i<nodes.length;i++)ctx.lineTo(nodes[i].x,nodes[i].y);
   ctx.stroke();return;
@@ -82,6 +85,13 @@ function paintOne(ctx:CanvasRenderingContext2D,stroke:V3Stroke,settings:V3Settin
    ctx.globalAlpha=bounded(1-age/settings.lifeMs,0,1);
   }else ctx.globalAlpha=1;
   if(ctx.globalAlpha<=0)continue;
+  if(settings.materialTreatment){
+   const base=settings.materialTreatment==='pigment'?.64:
+    settings.materialTreatment==='charcoal'?.79:.90;
+   const jitter=settings.materialTreatment==='charcoal'?
+    .91+.09*Math.sin((stroke.id*31+i*17)*.618):1;
+   ctx.globalAlpha*=base*jitter;
+  }
   const progress=(i-.5)/Math.max(1,nodes.length-1);
   const tip=Math.min(1,progress*8,(1-progress)*8);
   const taper=settings.styleMode==='precision'?1:.78+.22*bounded(tip,0,1);
@@ -91,7 +101,8 @@ function paintOne(ctx:CanvasRenderingContext2D,stroke:V3Stroke,settings:V3Settin
    const speed=bounded(b.speedPxPerSec,0,550);
    expression=bounded(1.18-speed/2400,.94,1.18);
   }
-  ctx.lineWidth=width*taper*expression;
+  ctx.lineWidth=width*taper*expression*
+   (settings.materialTreatment==='pigment'?1.15:settings.materialTreatment==='charcoal'?.94:1);
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
  }
  ctx.globalAlpha=1;

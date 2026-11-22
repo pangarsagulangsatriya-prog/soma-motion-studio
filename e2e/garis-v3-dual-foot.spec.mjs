@@ -15,9 +15,11 @@ async function openV3(page){
 }
 test('V3 uses two-foot precise default, a compact control panel and a clean canvas',async({page})=>{
  const {panel}=await openV3(page);
- await expect(panel.getByRole('button',{name:'Lintasan'})).toHaveAttribute('aria-pressed','true');
- await expect(panel.getByRole('button',{name:/Pijakan/})).toBeDisabled();
+ await expect(panel.getByRole('group',{name:'Material lukisan'}).getByRole('button',{name:'Tinta'}))
+  .toHaveAttribute('aria-pressed','true');
+ await expect(panel.getByLabel('Tampilkan tapak kaki')).toBeChecked();
  await expect(panel.getByLabel('Warna Aktor A')).toHaveValue('#e44f32');
+ await panel.locator('.lt-painterly-characters summary').click();
  await expect(panel.getByRole('group',{name:'Karakter garis'}).getByRole('button',{name:'Luwes'}))
   .toHaveAttribute('aria-pressed','true');
  await expect(panel.getByRole('slider',{name:'Ketebalan lintasan'})).toHaveValue('3');
@@ -35,8 +37,8 @@ test('V3 uses two-foot precise default, a compact control panel and a clean canv
  }),{timeout:12000}).toBeGreaterThan(5);
  await panel.getByLabel('Warna Aktor A').fill('#ff0000');
  await expect(panel.getByLabel('Warna Aktor A')).toHaveValue('#ff0000');
- await panel.getByRole('button',{name:'8 dtk'}).click();
- await expect(panel.getByRole('button',{name:'8 dtk'})).toHaveAttribute('aria-pressed','true');
+ await panel.getByRole('slider',{name:'Durasi tapak kaki'}).fill('8');
+ await expect(panel.getByRole('slider',{name:'Durasi tapak kaki'})).toHaveValue('8');
  await panel.getByRole('button',{name:'Hentikan Demo'}).click();
  await panel.getByRole('button',{name:'Bersihkan'}).click();
  await expect(panel.locator('.lt-beta-count')).toContainText('0 titik');

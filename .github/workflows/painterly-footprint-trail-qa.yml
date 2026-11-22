@@ -1,0 +1,48 @@
+name: Painterly Footprint & Trail QA
+on:
+  push:
+    branches:
+      - 'feat/painterly-footprint-trail-p0'
+  pull_request:
+    paths:
+      - 'src/footprints/lines/v3/**'
+      - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/studio/v3/SurfaceComposer.tsx'
+      - 'src/studio/v3/line-trails-v3.css'
+      - 'tests/painterly-footprint-trail.test.ts'
+      - 'e2e/painterly-footprint-trail.spec.mjs'
+      - '.github/workflows/painterly-footprint-trail-qa.yml'
+permissions:
+  contents: read
+jobs:
+  painterly-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Footprint/contact/decay and existing unit tests
+        run: npm test
+      - name: Production TypeScript build
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Painterly, Garis V3.1/V3 and legacy V2 at two viewports
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 painterly-footprint-trail.spec.mjs garis-v31-actor-organic.spec.mjs garis-v3-dual-foot.spec.mjs compose-line-trails-beta.spec.mjs
+      - name: Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: painterly-qa-evidence
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          if-no-files-found: warn

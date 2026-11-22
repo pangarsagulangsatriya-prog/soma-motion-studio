@@ -99,3 +99,53 @@
 @media(prefers-reduced-motion:reduce){
  .lt-v3-controls .lt-v31-character button{transition:none}
 }
+
+/* Painterly P0/P1: white canvas first, controls as a compact material instrument. */
+.lt-painterly-controls header span{background:#6b3a2e;color:#f4d7c7}
+.lt-painterly-controls .lt-painterly-material{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px
+}
+.lt-painterly-controls .lt-painterly-material button{
+ min-width:0;background:#152b1e;border:1px solid #375340;
+ color:#deeadc;border-radius:8px;font-size:11px;font-weight:600;padding:10px 3px;
+ cursor:pointer
+}
+.lt-painterly-controls .lt-painterly-material button[aria-pressed=true]{
+ background:#315240;border-color:#a7d6a6;color:#f6fcf2
+}
+.lt-painterly-controls .lt-painterly-layers{display:flex;flex-direction:column;gap:8px}
+.lt-painterly-controls .lt-painterly-layer{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;
+ column-gap:8px;row-gap:5px;background:#10221a;border:1px solid #304a37;
+ padding:11px;border-radius:9px;
+}
+.lt-painterly-controls .lt-painterly-layer>label:first-child{
+ display:flex;gap:8px;align-items:center;min-width:0;
+ font-size:12px;color:#e2eee0
+}
+.lt-painterly-controls .lt-painterly-layer input[type=checkbox]{
+ accent-color:#aed8a8
+}
+.lt-painterly-controls .lt-painterly-stay{
+ display:flex;align-items:center;gap:4px;font-size:10px;color:#aabfac
+}
+.lt-painterly-controls .lt-painterly-duration{
+ grid-column:1/-1;display:grid;grid-template-columns:1fr auto;gap:7px 8px;
+ color:#aabfac;font-size:10px;align-items:center
+}
+.lt-painterly-controls .lt-painterly-duration output{
+ font-variant-numeric:tabular-nums;color:#e3eee0;text-align:right
+}
+.lt-painterly-controls .lt-painterly-duration input[type=range]{
+ grid-column:1/-1;width:100%;accent-color:#abd7a8;margin:0
+}
+.lt-painterly-controls details.lt-painterly-characters{
+ border-top:1px solid #2f4433;padding-top:9px
+}
+.lt-painterly-controls details.lt-painterly-characters summary{
+ cursor:pointer;font-size:11px;color:#cbe6cd;font-weight:700
+}
+.lt-painterly-controls .lt-v31-character{margin-top:9px}
+.lt-painterly-controls .lt-beta-count{line-height:1.4;font-size:10px}
+.lt-painterly-controls :is(.lt-painterly-material button,.lt-painterly-layer input,
+ details summary):focus-visible{outline:2px solid #b9e2b7;outline-offset:2px}

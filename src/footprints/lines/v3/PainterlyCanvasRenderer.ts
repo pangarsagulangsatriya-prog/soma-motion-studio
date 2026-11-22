@@ -1,0 +1,112 @@
+import {paintAuthenticFootprint,footprintOutline,footprintToes} from '../../scenes/authenticFootGeometry.ts';
+import {resolveActorColor,actorChannel} from './ActorPaletteResolver.ts';
+import type {DualFootTrajectoryEngine} from './DualFootTrajectoryEngine.ts';
+import {paintTrajectory,type V3Settings} from './TrajectoryRenderer.ts';
+import {PainterlyImpressionEngine,lifetimeOpacity} from './PainterlyImpressionEngine.ts';
+
+export type PainterlyMaterial='ink'|'charcoal'|'pigment';
+export type PainterlySettings={
+ enabled:boolean;
+ material:PainterlyMaterial;
+ showSoles:boolean;showTrails:boolean;
+ footprintLifeMs:number;trailLifeMs:number;
+ footprintKeep:boolean;trailKeep:boolean;
+ sizePx:number;
+};
+export const DEFAULT_PAINTERLY_SETTINGS:PainterlySettings={
+ enabled:true,material:'ink',showSoles:true,showTrails:true,
+ footprintLifeMs:8000,trailLifeMs:4000,
+ footprintKeep:false,trailKeep:false,sizePx:70
+};
+const limit=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
+function unitRandom(seed:number,i:number){
+ let x=(seed+i*0x9E3779B9)>>>0;
+ x=Math.imul(x^(x>>>16),0x85ebca6b);
+ x=Math.imul(x^(x>>>13),0xc2b2ae35);
+ return ((x^(x>>>16))>>>0)/4294967296;
+}
+function grainWithinSole(ctx:CanvasRenderingContext2D,side:'left'|'right',
+ seed:number,material:PainterlyMaterial,amount:number){
+ if(material==='ink')return;
+ const outline=footprintOutline(side),toes=footprintToes(side);
+ ctx.save();ctx.beginPath();
+ ctx.moveTo(outline[0][0],outline[0][1]);
+ for(const [x,y] of outline.slice(1))ctx.lineTo(x,y);
+ ctx.closePath();
+ for(const toe of toes){
+  ctx.moveTo(toe.x+toe.rx,toe.y);
+  ctx.ellipse(toe.x,toe.y,toe.rx,toe.ry,toe.angle,0,Math.PI*2);
+ }
+ ctx.clip();
+ ctx.fillStyle=material==='charcoal'?'#F5F5F2':'#FFFDF8';
+ ctx.globalAlpha*=material==='charcoal'?.24:.13;
+ const count=material==='charcoal'?48:24;
+ for(let i=0;i<count;i++){
+  const x=(unitRandom(seed,i*3)-.5)*1.03;
+  const y=(unitRandom(seed,i*3+1)-.5)*2.15;
+  const r=(.008+unitRandom(seed,i*3+2)*.024)*amount;
+  ctx.beginPath();ctx.ellipse(x,y,r,r*.65,0,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
+}
+export function paintPainterlyCanvas(
+ ctx:CanvasRenderingContext2D,trajectory:DualFootTrajectoryEngine,
+ impressions:PainterlyImpressionEngine,settings:V3Settings,
+ painterly:PainterlySettings,presentationMs:number,blackout=false,fullscreen=false
+){
+ if(!painterly.enabled){
+  paintTrajectory(ctx,trajectory,settings,presentationMs,blackout,fullscreen);
+  return;
+ }
+ const w=ctx.canvas.width,h=ctx.canvas.height;
+ const white='#F5F5F2';
+ if(blackout){
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle='#000000';ctx.fillRect(0,0,w,h);
+  ctx.restore();return;
+ }
+ // One white-canvas raster pipeline for the Stage Monitor and fullscreen.
+ if(painterly.showTrails){
+  paintTrajectory(ctx,trajectory,{
+   ...settings,background:white,materialTreatment:painterly.material,
+   decay:painterly.trailKeep?'keep':'fade',lifeMs:Math.max(1000,painterly.trailLifeMs),
+   debug:settings.debug&&!fullscreen
+  },presentationMs,false,fullscreen);
+ }else{
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);ctx.restore();
+ }
+ if(!painterly.showSoles)return;
+ const scale=w/1600;
+ const len=limit(painterly.sizePx,30,110)*scale;
+ const width=len*.365;
+ const draw=(stamp:{actorId:string;foot:'left'|'right';x:number;y:number;
+  headingRad?:number},alpha:number,seed:number,head=false)=>{
+  const actor=actorChannel(stamp.actorId);
+  if(!settings.actors[actor]||!settings.footVisible[actor][stamp.foot]||alpha<=0)return;
+  const color=resolveActorColor(stamp.actorId,stamp.foot,
+   settings.actorColors,settings.footOverrides,white);
+  const opacity=alpha*(painterly.material==='pigment'?.65:painterly.material==='charcoal'?.75:.80);
+  paintAuthenticFootprint(ctx,{
+   x:stamp.x*w,y:stamp.y*h,side:stamp.foot,
+   ...(stamp.headingRad===undefined?{}:{headingRad:stamp.headingRad}),
+   widthPx:width,lengthPx:len,alpha:opacity,
+   color,phase:head?'prediction':'contact'
+  });
+  if(head||painterly.material==='ink')return;
+  // Deterministic texture is clipped inside the anatomical outline/toes.
+  ctx.save();ctx.translate(stamp.x*w,stamp.y*h);
+  ctx.rotate(stamp.headingRad??0);ctx.scale(width,len/2);
+  ctx.globalAlpha=opacity;
+  grainWithinSole(ctx,stamp.foot,seed,painterly.material,1);
+  ctx.restore();
+ };
+ for(const stamp of impressions.visible(presentationMs,painterly.footprintLifeMs,painterly.footprintKeep)){
+  const alpha=lifetimeOpacity(stamp.atSourceMs,presentationMs,
+   painterly.footprintLifeMs,painterly.footprintKeep);
+  draw(stamp,alpha,stamp.materialSeed);
+ }
+ for(const head of impressions.liveHeads(presentationMs)){
+  draw(head,head.alpha,0,true);
+ }
+}
