@@ -36,6 +36,7 @@ type StageProps={
  demo:boolean;motionSession?:()=>string;
  onStatus:(text:string)=>void;
  onDiagnostics?:(text:string)=>void;
+ onRegisterExportInk?:(fn:()=>string|null)=>void;
 };
 
 export function LineTrailsV3Stage(props:StageProps){
@@ -51,6 +52,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const brushStore=new FootBrushDepositStore();
   const sumiMotion=new ObservedMotionInkEngine();
   const sumiStore=new PersistentInkStore();
+  args.current.onRegisterExportInk?.(()=>sumiStore.exportPNG());
   let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
   let brushSource='';
   let brushMode=false;
@@ -189,7 +191,7 @@ export function LineTrailsV3Stage(props:StageProps){
    }
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');};
+  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');args.current.onRegisterExportInk?.(()=>null);};
  },[]);
  return <div ref={props.fullscreenRef} className="lt-beta-frame lt-v3-stage"
   aria-label="Kanvas Garis V3, lintasan dua kaki">
@@ -201,13 +203,13 @@ type PanelProps={
  settings:V3Settings;onChange:(next:V3Settings)=>void;
  painterly:PainterlySettings;onPainterlyChange:(next:PainterlySettings)=>void;
  impressions:PainterlyImpressionEngine;
- engine:DualFootTrajectoryEngine;onClear:()=>void;demo:boolean;onDemo:()=>void;
+ engine:DualFootTrajectoryEngine;onClear:()=>void;onExportPNG?:()=>void;demo:boolean;onDemo:()=>void;
  status:string;diagnostics:string;performerCount:1|2;
  onUseV2:()=>void;fullscreenDiagnostics:FullscreenDiagnostics;
  onFullscreenDiagnostics:(next:FullscreenDiagnostics)=>void;
 };
 export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange,
- impressions,engine,onClear,demo,onDemo,status,diagnostics,
+ impressions,engine,onClear,onExportPNG,demo,onDemo,status,diagnostics,
  performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
  const actorColor=(actor:'A'|'B',value:string)=>onChange({
   ...settings,actorColors:{...settings.actorColors,[actor]:value}
@@ -321,6 +323,7 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
   </label>}
   <div className="lt-beta-actions">
    <button type="button" onClick={onClear}>{sumi?'Bersihkan Lukisan':'Bersihkan'}</button>
+   {sumi&&<button type="button" onClick={onExportPNG} aria-label="Simpan lukisan PNG">Simpan PNG</button>}
    <button type="button" className="lt-beta-demo" aria-pressed={demo} onClick={onDemo}>
     {demo?'Hentikan Demo':'Coba Demo'}
    </button>
