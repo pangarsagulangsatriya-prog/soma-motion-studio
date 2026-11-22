@@ -124,33 +124,49 @@ type PanelProps={
 };
 export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,status,
  diagnostics,performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
- const color=(foot:'left'|'right',value:string)=>onChange({
-  ...settings,colors:{...settings.colors,[foot]:value}
+ const actorColor=(actor:'A'|'B',value:string)=>onChange({
+  ...settings,actorColors:{...settings.actorColors,[actor]:value}
  });
- const show=(foot:'left'|'right',value:boolean)=>onChange({
-  ...settings,visible:{...settings.visible,[foot]:value}
+ const actorVisible=(actor:'A'|'B',value:boolean)=>onChange({
+  ...settings,actors:{...settings.actors,[actor]:value}
  });
+ const footVisible=(actor:'A'|'B',foot:'left'|'right',value:boolean)=>onChange({
+  ...settings,footVisible:{...settings.footVisible,
+   [actor]:{...settings.footVisible[actor],[foot]:value}}
+ });
+ const footOverride=(actor:'A'|'B',foot:'left'|'right',value:string|undefined)=>{
+  const previous={...(settings.footOverrides[actor]??{})};
+  if(value)previous[foot]=value;else delete previous[foot];
+  const next={...settings.footOverrides};
+  if(Object.keys(previous).length)next[actor]=previous;else delete next[actor];
+  onChange({...settings,footOverrides:next});
+ };
+ const activeActors=performerCount===2?(['A','B'] as const):(['A'] as const);
  return <section className="lt-beta-controls lt-v3-controls" aria-label="Kontrol Garis V3">
-  <header><strong>Garis · Lintasan</strong><span>V3 BETA</span></header>
+  <header><strong>Garis · Lintasan</strong><span>V3.1 BETA</span></header>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
   <div className="lt-v3-mode" role="group" aria-label="Mode Garis">
    <button type="button" aria-pressed="true">Lintasan</button>
    <button type="button" disabled title="Menunggu gate kontak kaki yang terverifikasi">Pijakan · P1</button>
   </div>
-  {(['left','right'] as const).map(foot=><div key={foot} className="lt-beta-foot">
-   <label htmlFor={'v3-color-'+foot}><strong>Kaki {foot==='left'?'kiri':'kanan'}</strong>
-    <small>Lintasan terdeteksi</small></label>
-   <input type="color" id={'v3-color-'+foot} aria-label={'Warna kaki '+foot}
-    value={settings.colors[foot]} onChange={e=>color(foot,e.target.value)}/>
-   <input type="checkbox" checked={settings.visible[foot]}
-    aria-label={'Tampilkan kaki '+foot} onChange={e=>show(foot,e.target.checked)}/>
+  {activeActors.map(actor=><div key={actor} className="lt-v31-actor">
+   <label htmlFor={'v31-actor-color-'+actor}><strong>Aktor {actor}</strong>
+    <small>{actor==='A'?'Merah':'Hitam arang'} · dua kaki</small></label>
+   <input type="color" id={'v31-actor-color-'+actor}
+    aria-label={'Warna Aktor '+actor} value={settings.actorColors[actor]}
+    onChange={e=>actorColor(actor,e.target.value)}/>
+   <input type="checkbox" checked={settings.actors[actor]}
+    aria-label={'Tampilkan Aktor '+actor}
+    onChange={e=>actorVisible(actor,e.target.checked)}/>
   </div>)}
-  {performerCount===2&&<div className="lt-v3-actors">
-   {(['A','B'] as const).map(actor=><label key={actor}>
-    <input type="checkbox" checked={settings.actors[actor]}
-     onChange={e=>onChange({...settings,actors:{...settings.actors,[actor]:e.target.checked}})}/>
-    Aktor {actor}</label>)}
-  </div>}
+  <div className="lt-v31-character" role="group" aria-label="Karakter garis">
+   {([{value:'precision',label:'Presisi'},
+      {value:'fluid',label:'Luwes'},
+      {value:'paint',label:'Lukis'}] as const).map(mode=>
+    <button key={mode.value} type="button"
+     aria-pressed={settings.styleMode===mode.value}
+     onClick={()=>onChange({...settings,styleMode:mode.value})}>{mode.label}</button>)}
+  </div>
   <label className="lt-beta-width">Ketebalan <output>{settings.width} px</output>
    <input type="range" min={1} max={12} step={1}
     aria-label="Ketebalan lintasan" value={settings.width}
@@ -174,12 +190,36 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
   </div>
   <small className="lt-beta-count">{engine.sampleCount} titik · {engine.allStrokes.length} segmen ·
    Preview posisi 2D, belum diproyeksikan</small>
+  <details className="lt-v31-foot-details">
+   <summary>Detail kaki</summary>
+   <p>Warna kedua kaki mengikuti aktor, kecuali saat warna khusus diaktifkan.</p>
+   {activeActors.map(actor=><div key={actor} className="lt-v31-foot-group">
+    <strong>Aktor {actor}</strong>
+    {(['left','right'] as const).map(foot=>{
+     const override=settings.footOverrides[actor]?.[foot];
+     return <div className="lt-v31-foot-row" key={foot}>
+      <span>{foot==='left'?'Kiri':'Kanan'}</span>
+      <label><input type="checkbox" checked={Boolean(override)}
+       aria-label={'Warna khusus '+actor+' '+foot}
+       onChange={e=>footOverride(actor,foot,
+        e.target.checked?settings.actorColors[actor]:undefined)}/> Khusus</label>
+      <input type="color" aria-label={'Warna '+actor+' '+foot}
+       value={override??settings.actorColors[actor]} disabled={!override}
+       onChange={e=>footOverride(actor,foot,e.target.value)}/>
+      <input type="checkbox" aria-label={'Tampilkan '+actor+' '+foot}
+       checked={settings.footVisible[actor][foot]}
+       onChange={e=>footVisible(actor,foot,e.target.checked)}/>
+     </div>;
+    })}
+   </div>)}
+  </details>
   <details className="lt-v3-debug">
    <summary>Periksa jalur</summary>
    <label><input type="checkbox" checked={settings.debug}
     onChange={e=>onChange({...settings,debug:e.target.checked})}/> Titik mentah dan hasil filter</label>
    <p>{diagnostics}</p>
-   <small>Garis putus saat kaki hilang, identitas tidak pasti, atau frame tidak cocok.</small>
+   <small>Jejak pendek tetap tersimpan di engine. Luwes/Lukis hanya merapikan visual;
+    Presisi menampilkan seluruh segmen valid.</small>
   </details>
   <details className="lt-v3-advanced">
    <summary>Pengaturan lanjutan</summary>
