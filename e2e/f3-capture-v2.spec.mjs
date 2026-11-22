@@ -27,7 +27,7 @@ async function startFixtures(page){
  await page.goto('/?f3=1&f3qa=1');
  await expect(page.getByRole('button',{name:'F3 Capture'})).toHaveAttribute('aria-current','page');
  const details=page.locator('.f3-device-details');
- await details.locator('summary').click();
+ if(!(await details.evaluate(el=>el.open)))await details.locator('summary').click();
  const inputs=details.locator('input[type="file"]');
  await inputs.nth(0).setInputFiles('artifacts/f3-fixtures/actor-a.mp4');
  await inputs.nth(1).setInputFiles('artifacts/f3-fixtures/feet-b.mp4');
