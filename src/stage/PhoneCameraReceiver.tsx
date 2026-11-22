@@ -1,6 +1,7 @@
 import {useEffect,useId,useRef,useState} from 'react';
 import {Cable,CircleHelp,Copy,KeyRound,Link2,QrCode,X} from 'lucide-react';
 import {AutomaticPhoneReceiver} from './AutomaticPhoneReceiver.tsx';
+import {hasRestorableDesktopPhone} from './PhonePairPersistence.ts';
 import {UsbPhoneCameraReceiver} from './UsbPhoneCameraReceiver.tsx';
 import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
  samplePhonePeer} from './PhoneDeviceTelemetry.ts';
@@ -173,7 +174,7 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect,onInterrupted}:{
 export function PhoneCameraReceiver({onStream,onDisconnect,onInterrupted}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;onInterrupted?:()=>void;
 }){
- const [mode,setMode]=useState<'usb'|'qr'|'manual'>('usb');
+ const [mode,setMode]=useState<'usb'|'qr'|'manual'>(()=>hasRestorableDesktopPhone()?'qr':'usb');
  const [helpOpen,setHelpOpen]=useState(false);
  const helpId=useId();
  const helpButton=useRef<HTMLButtonElement>(null);

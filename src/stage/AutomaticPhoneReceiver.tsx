@@ -2,8 +2,10 @@ import {useEffect,useRef,useState} from 'react';
 import {QrCode,LoaderCircle,RefreshCw,Copy,Check,AlertCircle} from 'lucide-react';
 import {collectPhoneIce,ICE_SERVERS,phoneCameraUrl} from './PhoneSignal.ts';
 import {PHONE_LINK_GRACE_MS,phoneHeartbeatAction,phoneLinkAction} from './phoneLinkRecovery.ts';
-import {phonePairRequest,pairedPhoneUrl,PHONE_PAIR_POLL_MS,
+import {phonePairRequest,pairedPhoneUrl,PHONE_PAIR_POLL_MS,PHONE_SESSION_TTL_MS,
  type PairRoom} from './PhonePairProtocol.ts';
+import {readPhoneSession,savePhoneSession,clearPhoneSession,
+ type StoredPhoneSession} from './PhonePairPersistence.ts';
 import {PhonePairQr} from './PhonePairQr.tsx';
 import {claimPhoneTransport,reportPhoneTransport,releasePhoneTransport,
  samplePhonePeer} from './PhoneDeviceTelemetry.ts';
@@ -48,7 +50,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
   if(recoveryTimer.current)clearTimeout(recoveryTimer.current);
   recoveryTimer.current=null;interrupted.current=false;
  };
- const terminate=(feedback=true)=>{
+ const terminate=(feedback=true,closeRemote=true)=>{
   ++generation.current;controllerRef.current?.abort();controllerRef.current=null;
   if(heartbeatTimer.current)clearInterval(heartbeatTimer.current);
   heartbeatTimer.current=null;resetRecovery();
@@ -60,13 +62,20 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
   pcRef.current?.close();pcRef.current=null;
   streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null;
   setRoom(null);
-  if(existing)void phonePairRequest('close',{
-   room:existing.room,token:existing.desktopToken
-  }).catch(()=>{});
+  if(closeRemote){
+   clearPhoneSession('desktop');
+   if(existing)void phonePairRequest('close',{
+    room:existing.room,token:existing.desktopToken
+   }).catch(()=>{});
+  }
   if(hadStream)callback.current.onDisconnect();
   if(feedback){setStatus('Pairing dihentikan. Buat QR baru untuk menyambung.');setPhase('idle');}
  };
- useEffect(()=>()=>terminate(false),[]);
+ useEffect(()=>{
+  if(!staticPages){const stored=readPhoneSession('desktop');
+   if(stored)void start(stored);}
+  return()=>terminate(false,false);
+ },[]);
  // Full refresh destroys RTCPeerConnection; warn before accidentally
  // replacing the live desktop tab. In-app Track/Compose/Map navigation is safe.
  useEffect(()=>{
@@ -77,30 +86,79 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
   window.addEventListener('beforeunload',warn);
   return()=>window.removeEventListener('beforeunload',warn);
  },[phase]);
- const start=async()=>{
-  terminate(false);
+ const start=async(saved?:StoredPhoneSession)=>{
+  terminate(false,!saved);
   const version=++generation.current;
   const controller=new AbortController();controllerRef.current=controller;
   claimPhoneTransport(telemetryOwner,'qr');
   setPhase('creating');setStatus('Membuat ruang sementara di server SOMA…');
   try{
-   const response=await phonePairRequest('create',{},controller.signal);
+   let current:PairRoom;
+   let initialState:'waiting'|'joined'='waiting';
+   if(saved){
+    const response=await phonePairRequest('resume',{
+     room:saved.room,token:saved.token
+    },controller.signal);
+    if(response.state!=='waiting'&&response.state!=='joined')
+     throw Error('Sesi HP tidak dapat dipulihkan.');
+    initialState=response.state;
+    current={room:saved.room,desktopToken:saved.token,
+     ticket:saved.ticket??'',expiresAt:response.expiresAt??saved.expiresAt};
+   }else{
+    const response=await phonePairRequest('create',{},controller.signal);
+    if(!response.room||!response.ticket||!response.desktopToken||!response.expiresAt)
+     throw Error('Server tidak memberikan ruang pairing lengkap.');
+    current={room:response.room,ticket:response.ticket,
+     desktopToken:response.desktopToken,expiresAt:response.expiresAt};
+   }
    if(version!==generation.current)return;
-   if(!response.room||!response.ticket||!response.desktopToken||!response.expiresAt)
-    throw Error('Server tidak memberikan ruang pairing lengkap.');
-   const current:PairRoom={room:response.room,ticket:response.ticket,
-    desktopToken:response.desktopToken,expiresAt:response.expiresAt};
-   roomRef.current=current;setRoom(current);
-   setPhase('waiting');setStatus('Scan QR lewat kamera HP. Ruang aktif selama 3 menit.');
-   let offerSent=false,answerSet=false;
+   roomRef.current=current;
+   savePhoneSession({version:2,role:'desktop',room:current.room,
+    token:current.desktopToken,expiresAt:current.expiresAt,
+    ...(current.ticket?{ticket:current.ticket}:{})});
+   if(initialState==='waiting'){
+    if(!current.ticket)throw Error('Undangan QR tidak tersedia. Buat QR baru.');
+    setRoom(current);setPhase('waiting');
+    setStatus('Scan QR HP. Setelah tersambung, sesi dapat dipulihkan.');
+   }else{
+    setRoom(null);setPhase('recovering');
+    callback.current.onInterrupted?.();
+   }
+   let offeredEpoch=0,answeredEpoch=0,resumeInFlight=false;
+   const resumeSession=async()=>{
+    if(resumeInFlight||version!==generation.current)return;
+    resumeInFlight=true;
+    try{
+     callback.current.onInterrupted?.();
+     await phonePairRequest('resume',{room:current.room,token:current.desktopToken},controller.signal);
+     setPhase('recovering');setStatus('Mencari ulang kamera HP…');
+    }catch(error){
+     if(version===generation.current){setPhase('error');
+      setStatus(error instanceof Error?error.message:'Sesi HP belum dapat dilanjutkan.');}
+    }finally{resumeInFlight=false;}
+   };
    while(version===generation.current&&!controller.signal.aborted){
     if(Date.now()>=current.expiresAt)throw Error('QR kedaluwarsa. Buat QR baru.');
     const info=await phonePairRequest('poll',{
      room:current.room,token:current.desktopToken
     },controller.signal);
     if(version!==generation.current)return;
-    if(info.state==='joined'&&!offerSent){
-     offerSent=true;setPhase('negotiating');setStatus('HP terhubung ke ruang. Menyiapkan WebRTC…');
+    if(info.expiresAt&&info.expiresAt>Date.now()){
+     current.expiresAt=info.expiresAt;
+     savePhoneSession({version:2,role:'desktop',room:current.room,
+      token:current.desktopToken,expiresAt:current.expiresAt,
+      ...(info.state==='waiting'&&current.ticket?{ticket:current.ticket}:{})});
+    }
+    const epoch=info.epoch??1;
+    if(info.state==='joined'&&epoch>offeredEpoch){
+     if(pcRef.current){
+      callback.current.onInterrupted?.();
+      const previous=pcRef.current;pcRef.current=null;previous.close();
+      streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null;
+     }
+     if(heartbeatTimer.current)clearInterval(heartbeatTimer.current);
+     if(statsTimer.current)clearInterval(statsTimer.current);
+     resetRecovery();offeredEpoch=epoch;answeredEpoch=0;setPhase('negotiating');setStatus('HP terhubung ke ruang. Menyiapkan WebRTC…');
      const pc=new RTCPeerConnection(ICE_SERVERS);pcRef.current=pc;
      statsTimer.current=setInterval(()=>{
       if(generation.current===version&&!interrupted.current)
@@ -121,8 +179,8 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
       setPhase('recovering');setStatus(reason+' Mencoba menyambung kembali…');
       if(!recoveryTimer.current)recoveryTimer.current=setTimeout(()=>{
        if(generation.current!==version||pcRef.current!==pc||!interrupted.current)return;
-       setPhase('error');setStatus('Kamera tidak pulih. QR lama sekali pakai; pasangkan ulang.');
-       terminate(false);
+       setStatus('Kamera belum pulih. Menyiapkan ulang video HP…');
+       void resumeSession();
       },PHONE_LINK_GRACE_MS);
      };
      const recover=()=>{
@@ -151,13 +209,12 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
       const stream=event.streams[0]??new MediaStream([event.track]);
       streamRef.current=stream;
       event.track.addEventListener('ended',()=>{
-       if(generation.current!==version)return;
-       setPhase('error');setStatus('Track video HP berhenti. Periksa kamera dan sambungkan ulang.');
-       terminate(false);
+       if(generation.current!==version||pcRef.current!==pc)return;
+       hold('Track video HP berhenti.');
       },{once:true});
       void Promise.resolve(callback.current.onStream(stream)).catch(e=>{
-       setStatus('SOMA tidak dapat mengolah video HP: '+String(e));setPhase('error');
-       terminate(false);
+       if(pcRef.current!==pc)return;
+       hold('SOMA tidak dapat mengolah video HP: '+String(e));
       });
      });
      pc.addEventListener('connectionstatechange',()=>{
@@ -175,33 +232,34 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
       }else if(action==='recovering')hold('Sinyal kamera HP terganggu.');
       else if(action==='fatal'){
        hold('Koneksi kamera HP gagal.');
-       setPhase('error');setStatus('Koneksi HP gagal. QR lama sekali pakai; pasangkan ulang.');
-       terminate(false);
+       setStatus('Jalur WebRTC gagal. Menyambungkan ulang dari sesi HP…');
+       void resumeSession();
       }
      });
      await pc.setLocalDescription(await pc.createOffer());
      await collectPhoneIce(pc);
      if(!pc.localDescription?.sdp)throw Error('Offer WebRTC belum terbentuk.');
      await phonePairRequest('offer',{room:current.room,token:current.desktopToken,
-      sdp:pc.localDescription.sdp},controller.signal);
+      sdp:pc.localDescription.sdp,epoch:String(epoch)},controller.signal);
      setStatus('Menunggu izin kamera pada HP…');
     }
-    if(info.state==='answered'&&!answerSet&&pcRef.current){
+    if(info.state==='answered'&&epoch===offeredEpoch&&answeredEpoch!==epoch&&pcRef.current){
      if(!info.sdp)throw Error('Jawaban HP belum tersedia.');
-     answerSet=true;
+     answeredEpoch=epoch;
      await pcRef.current.setRemoteDescription({type:'answer',sdp:info.sdp});
-     // Room is spent after the answer is consumed. The WebRTC stream persists.
-     void phonePairRequest('close',{room:current.room,token:current.desktopToken}).catch(()=>{});
-     roomRef.current=null;setRoom(null);
+     // Room persists for authenticated reoffer after laptop refresh.
+     roomRef.current=current;setRoom(null);
      setStatus('WebRTC sedang menyambungkan video HP…');
-     return;
     }
     await wait(controller.signal);
    }
   }catch(e){
    if(version!==generation.current)return;
    const message=e instanceof Error?e.message:'Pairing gagal.';
-   terminate(false);setPhase('error');setStatus(message);
+   terminate(false,false);
+   if(/kedaluwarsa|expired|tidak sah|tidak dapat dilanjutkan/i.test(message))
+    clearPhoneSession('desktop');
+   setPhase('error');setStatus(message);
   }
  };
  const url=room?pairedPhoneUrl(window.location.origin,{
@@ -229,9 +287,9 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
  }
  return <div className="soma-auto-pair" data-phase={phase}
   aria-label="QR pairing kamera HP">
-  {!room&&phase!=='connected'&&<button type="button"
+  {!room&&(phase==='idle'||phase==='error')&&<button type="button"
    className="soma-setup-primary soma-track-create-qr"
-   onClick={()=>void start()} disabled={phase==='creating'}
+   onClick={()=>void start(readPhoneSession('desktop')??undefined)} disabled={phase==='creating'}
    aria-label={phase==='creating'?'Menyiapkan kode QR':'Tampilkan QR kamera HP'}>
    {phase==='creating'?<LoaderCircle size={17} className="soma-track-spinning" aria-hidden="true"/>:
     phase==='error'?<RefreshCw size={17} aria-hidden="true"/>:
@@ -260,6 +318,8 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
    <button type="button" className="soma-setup-secondary"
     onClick={()=>terminate()}>Putuskan</button>
   </div>}
+  {phase==='error'&&<button type="button" className="soma-phone-manual-fallback"
+   onClick={()=>{clearPhoneSession('desktop');void start();}}>Buat QR baru</button>}
   {(phase==='creating'||phase==='negotiating'||phase==='recovering'||phase==='error')&&
    <div className="soma-setup-status" data-phase={phase} role="status" aria-live="polite">
     {phase==='error'&&<AlertCircle size={16} aria-hidden="true"/>}

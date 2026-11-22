@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal} from './PhoneSignal.ts';
 import {parsePhoneInvite} from './PhonePairProtocol.ts';
+import {readPhoneSession} from './PhonePairPersistence.ts';
 import {AutomaticPhoneSender} from './AutomaticPhoneSender.tsx';
 import {buildHorizontalCameraConstraints} from '../engine/cameraConstraints.ts';
 import {PHONE_LINK_GRACE_MS,phoneLinkAction} from './phoneLinkRecovery.ts';
@@ -111,7 +112,12 @@ function ManualPhoneCameraSender(){
 }
 
 export function PhoneCameraSender(){
- const [invite]=useState(()=>parsePhoneInvite(window.location.hash));
+ const [invite]=useState(()=>{
+  const fresh=parsePhoneInvite(window.location.hash);
+  if(fresh)return fresh;
+  const restored=readPhoneSession('phone');
+  return restored?{room:restored.room,ticket:''}:null;
+ });
  useEffect(()=>{
   if(invite)window.history.replaceState(null,'',window.location.pathname+window.location.search);
  },[invite]);

@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {collectPhoneIce,ICE_SERVERS} from './PhoneSignal.ts';
 import {phonePairRequest,PHONE_PAIR_POLL_MS,type PhoneJoin} from './PhonePairProtocol.ts';
+import {readPhoneSession,savePhoneSession,clearPhoneSession} from './PhonePairPersistence.ts';
 import {buildHorizontalCameraConstraints} from '../engine/cameraConstraints.ts';
 import {PHONE_LINK_GRACE_MS,phoneLinkAction} from './phoneLinkRecovery.ts';
 import {usePhoneWakeLock} from './usePhoneWakeLock.ts';
@@ -22,18 +23,26 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
  const retryTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const {awake,supported}=usePhoneWakeLock(phase==='connecting'||phase==='connected'||phase==='recovering');
  const clearRetry=()=>{if(retryTimer.current)clearTimeout(retryTimer.current);retryTimer.current=null;};
- const terminate=(show=true)=>{
+ const terminate=(show=true,closeRemote=true)=>{
   generation.current++;ctrl.current?.abort();ctrl.current=null;
   if(pulseTimer.current)clearInterval(pulseTimer.current);
   pulseTimer.current=null;clearRetry();
   const key=phoneToken.current;phoneToken.current='';
-  if(key)void phonePairRequest('close',{room:invite.room,token:key}).catch(()=>{});
+  if(closeRemote){
+   clearPhoneSession('phone');
+   if(key)void phonePairRequest('close',{room:invite.room,token:key}).catch(()=>{});
+  }
   pc.current?.close();pc.current=null;
   stream.current?.getTracks().forEach(track=>track.stop());stream.current=null;
   if(video.current){video.current.pause();video.current.srcObject=null;}
   if(show){setPhase('idle');setStatus('Kamera berhenti. Minta QR baru pada laptop untuk menyambung ulang.');}
  };
- useEffect(()=>()=>terminate(false),[]);
+ useEffect(()=>{
+  const saved=readPhoneSession('phone');
+  if(saved?.room===invite.room)void connect();
+  // A reload keeps the server room; only the local media/peer is discarded.
+  return()=>terminate(false,false);
+ },[]);
  // A page refresh destroys the peer, so ask before unloading a live camera.
  useEffect(()=>{
   if(phase!=='connected'&&phase!=='recovering')return;
@@ -50,7 +59,9 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
   return()=>document.removeEventListener('visibilitychange',resume);
  },[]);
  const connect=async()=>{
-  terminate(false);
+  const saved=readPhoneSession('phone');
+  const restoring=!!saved&&saved.room===invite.room;
+  terminate(false,!restoring);
   const version=++generation.current;
   const controller=new AbortController();ctrl.current=controller;
   setPhase('connecting');setStatus('Meminta izin kamera wide horizontal…');
@@ -65,10 +76,31 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
    stream.current=media;
    if(video.current){video.current.srcObject=media;
     void video.current.play().catch(()=>{});}
-   setStatus('Mengunci ruang kamera sekali pakai…');
-   const reply=await phonePairRequest('join',{room:invite.room,ticket:invite.ticket},controller.signal);
-   if(!reply.phoneToken)throw Error('Server tidak mengirim kunci HP.');
-   phoneToken.current=reply.phoneToken;
+   setStatus(restoring?'Memulihkan sesi kamera…':'Menghubungkan lewat QR…');
+   const reply=restoring?
+    await phonePairRequest('resume',{room:saved!.room,token:saved!.token},controller.signal):
+    await phonePairRequest('join',{room:invite.room,ticket:invite.ticket},controller.signal);
+   if(!restoring&&!reply.phoneToken)throw Error('Server tidak mengirim kunci HP.');
+   phoneToken.current=restoring?saved!.token:reply.phoneToken!;
+   savePhoneSession({version:2,role:'phone',room:invite.room,
+    token:phoneToken.current,
+    expiresAt:reply.expiresAt??(Date.now()+3*60*60*1000)});
+   let handledEpoch=0,reofferPending=false;
+   const requestNewOffer=async()=>{
+    if(reofferPending||generation.current!==version)return;
+    reofferPending=true;
+    try{
+     await phonePairRequest('resume',{room:invite.room,token:phoneToken.current},controller.signal);
+     setPhase('recovering');setStatus('Menunggu SOMA membuat sambungan video baru…');
+    }catch(error){
+     if(generation.current===version){setPhase('error');
+      setStatus(error instanceof Error?error.message:'Sesi kamera tidak dapat dipulihkan.');}
+    }finally{reofferPending=false;}
+   };
+   const createPeer=()=>{
+   if(pulseTimer.current)clearInterval(pulseTimer.current);
+   pulseTimer.current=null;clearRetry();
+   pc.current?.close();
    const peer=new RTCPeerConnection(ICE_SERVERS);pc.current=peer;
    for(const track of media.getVideoTracks())peer.addTrack(track,media);
    peer.addEventListener('datachannel',event=>{
@@ -98,39 +130,46 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
      setPhase('recovering');setStatus('Sinyal terganggu. Menyambungkan kembali ke laptop…');
      if(!retryTimer.current)retryTimer.current=setTimeout(()=>{
       if(version!==generation.current||pc.current!==peer||peer.connectionState==='connected')return;
-      setPhase('error');setStatus('Sambungan tidak pulih. Minta pairing baru di laptop.');
-      terminate(false);
+      void requestNewOffer();
      },PHONE_LINK_GRACE_MS);
     }else if(action==='fatal'){
-     setStatus('Koneksi WebRTC gagal. Minta pairing baru di laptop.');setPhase('error');
-     terminate(false);
+     setPhase('recovering');setStatus('Jalur WebRTC gagal. Meminta sambungan baru…');
+     void requestNewOffer();
     }
    });
+    return peer;
+   };
    media.getVideoTracks().forEach(track=>track.addEventListener('ended',()=>{
     if(version!==generation.current)return;
-    setStatus('Kamera HP berhenti. Minta QR baru.');setPhase('error');
-    terminate(false);
+    setStatus('Kamera HP berhenti. Izinkan kembali untuk menyambung.');
+    terminate(false,false);setPhase('error');
    },{once:true}));
    while(version===generation.current&&!controller.signal.aborted){
     const data=await phonePairRequest('poll',{room:invite.room,
      token:phoneToken.current},controller.signal);
-    if(data.state==='offered'&&data.sdp){
+    if(data.expiresAt&&data.expiresAt>Date.now())
+     savePhoneSession({version:2,role:'phone',room:invite.room,
+      token:phoneToken.current,expiresAt:data.expiresAt});
+    const epoch=data.epoch??1;
+    if(data.state==='offered'&&data.sdp&&epoch>handledEpoch){
+     handledEpoch=epoch;
+     const peer=createPeer();
      await peer.setRemoteDescription({type:'offer',sdp:data.sdp});
      await peer.setLocalDescription(await peer.createAnswer());
      setStatus('Mengirim jawaban WebRTC ke laptop…');
      await collectPhoneIce(peer);
      if(!peer.localDescription?.sdp)throw Error('WebRTC tidak menghasilkan jawaban.');
      await phonePairRequest('answer',{room:invite.room,token:phoneToken.current,
-      sdp:peer.localDescription.sdp},controller.signal);
+      sdp:peer.localDescription.sdp,epoch:String(epoch)},controller.signal);
      setStatus('Menunggu video diterima SOMA…');
-     return;
+     // Keep polling; a desktop reload produces a fresh epoch/offer.
     }
     await pause(PHONE_PAIR_POLL_MS,controller.signal);
    }
   }catch(e){
    if(version!==generation.current)return;
    const message=e instanceof Error?e.message:'Koneksi HP gagal.';
-   terminate(false);setPhase('error');setStatus(message);
+   terminate(false,false);setPhase('error');setStatus(message);
   }
  };
  return <main className="soma-phone-sender">
@@ -141,14 +180,14 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
    <video ref={video} muted autoPlay playsInline aria-label="Preview kamera HP"/>
    <div className="soma-setup-status" role="status" aria-live="polite">{status}</div>
    <label>Pilih kamera
-    <select disabled={phase==='connecting'||phase==='connected'} value={facing}
+    <select disabled={phase==='connecting'||phase==='connected'||phase==='recovering'} value={facing}
      onChange={e=>setFacing(e.target.value as 'environment'|'user')}>
      <option value="environment">Kamera belakang — disarankan</option>
      <option value="user">Kamera depan</option>
     </select>
    </label>
-   {phase==='idle'&&<button type="button" className="soma-setup-primary"
-    onClick={()=>void connect()}>Aktifkan kamera dan hubungkan ke SOMA</button>}
+   {(phase==='idle'||phase==='error')&&<button type="button" className="soma-setup-primary"
+    onClick={()=>void connect()}>{phase==='error'?'Coba sambungkan lagi':'Aktifkan kamera dan hubungkan ke SOMA'}</button>}
    {phase==='connecting'&&<button type="button" disabled>Menyiapkan video…</button>}
    {(phase==='connecting'||phase==='connected'||phase==='recovering')&&<button type="button"
     className="soma-setup-secondary" onClick={()=>{

@@ -31,6 +31,7 @@ import {FootprintsVideoOpticalFlow} from '../../stage/footprintsVideoOpticalFlow
 import {PersistentBodyMaskEngine} from '../../stage/persistentBodyMaskEngine.ts';
 import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
+import {hasRestorableDesktopPhone} from '../../stage/PhonePairPersistence.ts';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
 import {trackStatus} from './trackViewModel.ts';
 import {liveSkeletonPresentation,observedLiveTorso} from './trackFeedbackModel.ts';
@@ -141,7 +142,7 @@ export function FootprintsStageWorkspace({
  cleanFloorOutput.current=floorCanvas.current;
  const stageSession=useStageSession();
  const [calibrationOpen,setCalibrationOpen]=useState(false);
- const [phonePanelOpen,setPhonePanelOpen]=useState(false);
+ const [phonePanelOpen,setPhonePanelOpen]=useState(()=>hasRestorableDesktopPhone());
  useEffect(()=>{
   // Connected HP switches directly to the live preview. Receiver stays mounted
   // while the sidebar pairing section is hidden, so the WebRTC track survives.

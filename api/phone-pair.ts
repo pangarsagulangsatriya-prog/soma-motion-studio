@@ -7,15 +7,17 @@ declare const process:{env:Record<string,string|undefined>};
 // relative .ts imports from src/. Keep values aligned with PhonePairProtocol.ts.
 const PHONE_PAIR_MAX_SDP=90_000;
 const PHONE_PAIR_TTL_MS=180_000;
+const PHONE_SESSION_TTL_MS=3*60*60*1000; // Rejoin window, expires even if polling.
 const validRoom=(value:unknown):value is string=>
  typeof value==='string'&&/^[a-zA-Z0-9_-]{12,32}$/.test(value);
 const validToken=(value:unknown):value is string=>
  typeof value==='string'&&/^[a-zA-Z0-9_-]{24,64}$/.test(value);
 
-type Action='create'|'join'|'poll'|'offer'|'answer'|'close';
+type Action='create'|'join'|'poll'|'offer'|'answer'|'resume'|'close';
 type RedisPrimitive=string|number|null|Array<string|number|null>;
-type RequestPayload={action?:Action;room?:string;token?:string;ticket?:string;sdp?:string};
+type RequestPayload={action?:Action;room?:string;token?:string;ticket?:string;sdp?:string;epoch?:string};
 const TTL_SECONDS=PHONE_PAIR_TTL_MS/1000;
+const SESSION_TTL_SECONDS=PHONE_SESSION_TTL_MS/1000;
 const HEADER={'Content-Type':'application/json','Cache-Control':'no-store, max-age=0',
  'Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'};
 const json=(data:Record<string,unknown>,status=200)=>new Response(JSON.stringify(data),
@@ -30,25 +32,30 @@ async function digest(text:string):Promise<string>{
 }
 const ALLOCATE=[
  "if redis.call('EXISTS',KEYS[1])==1 then return 0 end",
- "redis.call('HSET',KEYS[1],'desktop',ARGV[1],'invite',ARGV[2], 'phone','','state','waiting','offer','','answer','')",
+ "redis.call('HSET',KEYS[1],'desktop',ARGV[1],'invite',ARGV[2], 'phone','','state','waiting','offer','','answer','','epoch','0')",
  "redis.call('EXPIRE',KEYS[1],tonumber(ARGV[3]))",
  "return 1"
 ].join('\n');
 const JOIN=[
  "if redis.call('HGET',KEYS[1],'state')~='waiting' then return 'expired' end",
  "if redis.call('HGET',KEYS[1],'invite')~=ARGV[1] then return 'denied' end",
- "redis.call('HSET',KEYS[1],'state','joined','phone',ARGV[2],'invite','')",
+ "redis.call('HSET',KEYS[1],'state','joined','phone',ARGV[2],'invite','','epoch','1')",
+ "redis.call('EXPIRE',KEYS[1],tonumber(ARGV[3]))",
  "return 'joined'"
 ].join('\n');
 const SEND_OFFER=[
  "if redis.call('HGET',KEYS[1],'state')~='joined' then return 'expired' end",
  "if redis.call('HGET',KEYS[1],'desktop')~=ARGV[1] then return 'denied' end",
+ "local epoch=redis.call('HGET',KEYS[1],'epoch') or '1'",
+ "if ARGV[3]~=epoch and not (ARGV[3]=='' and epoch=='1') then return 'stale' end",
  "redis.call('HSET',KEYS[1],'state','offered','offer',ARGV[2])",
  "return 'offered'"
 ].join('\n');
 const SEND_ANSWER=[
  "if redis.call('HGET',KEYS[1],'state')~='offered' then return 'expired' end",
  "if redis.call('HGET',KEYS[1],'phone')~=ARGV[1] then return 'denied' end",
+ "local epoch=redis.call('HGET',KEYS[1],'epoch') or '1'",
+ "if ARGV[3]~=epoch and not (ARGV[3]=='' and epoch=='1') then return 'stale' end",
  "redis.call('HSET',KEYS[1],'state','answered','answer',ARGV[2])",
  "return 'answered'"
 ].join('\n');
@@ -57,9 +64,24 @@ const READ=[
  "if not s then return {'expired','',''} end",
  "local d=redis.call('HGET',KEYS[1],'desktop')",
  "local p=redis.call('HGET',KEYS[1],'phone')",
- "if d==ARGV[1] then return {s,'',redis.call('HGET',KEYS[1],'answer') or ''} end",
- "if p~='' and p==ARGV[1] then return {s,redis.call('HGET',KEYS[1],'offer') or '',''} end",
+ "local epoch=redis.call('HGET',KEYS[1],'epoch') or '0'",
+ "local ttl=redis.call('TTL',KEYS[1])",
+ "if d==ARGV[1] then return {s,'',redis.call('HGET',KEYS[1],'answer') or '',epoch,ttl} end",
+ "if p~='' and p==ARGV[1] then return {s,redis.call('HGET',KEYS[1],'offer') or '','',epoch,ttl} end",
  "return {'denied','',''}"
+].join('\n');
+/** Atomic epoch rotation. Both devices may request it, with their
+ * respective SHA-256 bearer credential. Any previous offer/answer is invalid.
+ * QR invite never becomes reusable, and room expires after a fixed TTL. */
+const RESUME=[
+ "local d=redis.call('HGET',KEYS[1],'desktop')",
+ "if not d then return {'expired','0'} end",
+ "local p=redis.call('HGET',KEYS[1],'phone')",
+ "if d~=ARGV[1] and (p=='' or p~=ARGV[1]) then return {'denied','0'} end",
+ "if p=='' then return {'waiting',redis.call('HGET',KEYS[1],'epoch') or '0'} end",
+ "local epoch=redis.call('HINCRBY',KEYS[1],'epoch',1)",
+ "redis.call('HSET',KEYS[1],'state','joined','offer','','answer','')",
+ "return {'joined',tostring(epoch)}"
 ].join('\n');
 const CLOSE=[
  "local d=redis.call('HGET',KEYS[1],'desktop')",
@@ -115,7 +137,7 @@ export async function POST(request:Request):Promise<Response>{
   if(raw.length>110000)return json({ok:false,error:'Payload pairing terlalu panjang.'},413);
   let value:RequestPayload;
   try{value=JSON.parse(raw) as RequestPayload;}catch{return json({ok:false,error:'JSON pairing tidak valid.'},400);}
-  if(!value||!['create','join','poll','offer','answer','close'].includes(value.action??''))
+  if(!value||!['create','join','poll','offer','answer','resume','close'].includes(value.action??''))
    return json({ok:false,error:'Aksi pairing tidak dikenal.'},400);
   const action=value.action!;
   if(!await rateLimit(request,action))return json({ok:false,error:'Terlalu banyak permintaan. Coba lagi.',code:'RATE_LIMIT'},429);
@@ -134,8 +156,9 @@ export async function POST(request:Request):Promise<Response>{
   if(action==='join'){
    if(!validToken(value.ticket))return json({ok:false,error:'Tiket QR tidak valid.'},400);
    const phoneToken=randomToken();
-   const state=await evalRedis(JOIN,roomKey,await digest(value.ticket),await digest(phoneToken));
-   if(state==='joined')return json({ok:true,state:'joined',phoneToken});
+   const state=await evalRedis(JOIN,roomKey,await digest(value.ticket),await digest(phoneToken),String(SESSION_TTL_SECONDS));
+   if(state==='joined')return json({ok:true,state:'joined',phoneToken,
+    epoch:1,expiresAt:Date.now()+PHONE_SESSION_TTL_MS});
    return json({ok:false,error:'QR sudah digunakan atau kedaluwarsa. Buat QR baru.',code:'ROOM_EXPIRED'},410);
   }
   if(!validToken(value.token))return json({ok:false,error:'Kunci sesi tidak valid.'},403);
@@ -144,20 +167,34 @@ export async function POST(request:Request):Promise<Response>{
    const closed=await evalRedis(CLOSE,roomKey,auth);
    return json({ok:closed===1,state:'waiting'});
   }
+  if(action==='resume'){
+   const result=await evalRedis(RESUME,roomKey,auth);
+   if(!Array.isArray(result)||result[0]==='expired')
+    return json({ok:false,error:'Sesi HP sudah kedaluwarsa. Scan QR baru.',
+     code:'ROOM_EXPIRED'},410);
+   if(result[0]==='denied')return json({ok:false,error:'Kunci pemulihan salah.'},403);
+   return json({ok:true,state:result[0],epoch:Number(result[1])||0,
+    expiresAt:Date.now()+Math.max(0,Number((await evalRedis(READ,roomKey,auth) as Array<string|number|null>)?.[4])||0)*1000)});
+  }
   if(action==='poll'){
    const result=await evalRedis(READ,roomKey,auth);
    if(!Array.isArray(result)||result[0]==='expired')
     return json({ok:false,error:'Ruang pairing berakhir. Buat QR baru.',code:'ROOM_EXPIRED'},410);
    if(result[0]==='denied')return json({ok:false,error:'Kunci pairing tidak cocok.'},403);
-   return json({ok:true,state:result[0],sdp:result[2]||result[1]||undefined});
+   return json({ok:true,state:result[0],sdp:result[2]||result[1]||undefined,
+    epoch:Number(result[3])||0,
+    expiresAt:Date.now()+Math.max(0,Number(result[4])||0)*1000});
   }
   if(typeof value.sdp!=='string'||value.sdp.length<40||
    value.sdp.length>PHONE_PAIR_MAX_SDP||!value.sdp.startsWith('v=0'))
    return json({ok:false,error:'SDP WebRTC tidak valid.'},400);
+  const epoch=typeof value.epoch==='string'&&/^(?:0|[1-9][0-9]{0,5})$/.test(value.epoch)?
+   value.epoch:'';
   const state=await evalRedis(action==='offer'?SEND_OFFER:SEND_ANSWER,
-   roomKey,auth,value.sdp);
+   roomKey,auth,value.sdp,epoch);
   if(state===(action==='offer'?'offered':'answered'))
    return json({ok:true,state});
+  if(state==='stale')return json({ok:false,error:'Jawaban dari generasi koneksi lama ditolak.',code:'STALE_EPOCH'},409);
   return json({ok:false,error:'Sesi tidak sah atau sudah digunakan.',code:'ROOM_EXPIRED'},410);
  }catch(error){
   const message=error instanceof Error?error.message:'';

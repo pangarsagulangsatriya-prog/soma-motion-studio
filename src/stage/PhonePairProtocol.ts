@@ -3,6 +3,7 @@
  */
 export const PHONE_PAIR_API='/api/phone-pair';
 export const PHONE_PAIR_TTL_MS=180_000;
+export const PHONE_SESSION_TTL_MS=3*60*60*1000;
 export const PHONE_PAIR_POLL_MS=850;
 export const PHONE_PAIR_MAX_SDP=90_000;
 export type PhonePairState='waiting'|'joined'|'offered'|'answered';
@@ -13,7 +14,7 @@ export type PhoneJoin={room:string;ticket:string};
 export type PairResponse={
  ok:boolean;state?:PhonePairState;room?:string;desktopToken?:string;
  ticket?:string;phoneToken?:string;expiresAt?:number;sdp?:string;
- error?:string;code?:string;
+ error?:string;code?:string;epoch?:number;
 };
 export function pairedPhoneUrl(origin:string,pair:PhoneJoin,basePath='/'):string{
  if(!validRoom(pair.room)||!validToken(pair.ticket))throw Error('Identitas QR tidak valid.');
@@ -37,7 +38,7 @@ export function parsePairResponse(value:unknown):PairResponse{
  return obj;
 }
 export async function phonePairRequest(
- action:'create'|'join'|'poll'|'offer'|'answer'|'close',
+ action:'create'|'join'|'poll'|'offer'|'answer'|'resume'|'close',
  payload:Record<string,string>={},
  signal?:AbortSignal
 ):Promise<PairResponse>{
