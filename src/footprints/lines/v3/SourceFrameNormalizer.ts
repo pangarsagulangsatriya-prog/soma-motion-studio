@@ -18,6 +18,14 @@ export type V3InputOptions={
  sourceKind:'camera'|'phone';motionSession:string;
 };
 const raw=(ms:number)=>Number.isFinite(ms)&&ms>=0?ms:-1;
+const clipTokens=new WeakMap<File,number>();
+let clipSerial=0;
+function clipIdentity(file:File|null|undefined,fallback:string):string{
+ if(!file)return fallback;
+ let token=clipTokens.get(file);
+ if(token===undefined){token=++clipSerial;clipTokens.set(file,token);}
+ return file.name+':'+file.size+':'+file.lastModified+':'+token;
+}
 const meta=(id:string,source:'camera'|'phone'|'video'|'simulator',atMs:number,actorId:string)=>
  ({sessionId:id,generation:0,source,atMs,actorId,
   coordinateBasis:source==='simulator'?'simulated' as const:'image-2d' as const});
@@ -39,7 +47,7 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
  if(experimentSource==='video'){
   const f=experiment?.kind==='video'?experiment:null;
   const clip=f?.clip;
-  const identity=clip?clip.name+':'+clip.size+':'+clip.lastModified:f?.name??'none';
+  const identity=clipIdentity(clip,f?.name??'none');
   const snap=f?.snapshot;
   const segment=snap?.segment??0;
   const sourceKey='video:'+identity+':'+segment+':'+performers;
