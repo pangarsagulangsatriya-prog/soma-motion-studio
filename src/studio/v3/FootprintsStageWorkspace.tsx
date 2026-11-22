@@ -1003,6 +1003,7 @@ export function FootprintsStageWorkspace({
      floorEvents={()=>tracker.session?.events??[]}
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
+     lineSource={sourceStatus.selection==='phone'?'phone':'camera'}
      identitySafe={!identityStatus.ambiguous}
       onOpenMapTrack={()=>onNavigateStageWorkspace('track')}
       onOpenMapCompose={()=>onNavigateStageWorkspace('compose')}

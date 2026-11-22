@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feat/f3-capture-v2-fullscreen-stage
+      - feat/stage1-compose-line-trails-beta
   workflow_dispatch:
 permissions:
   contents: read
@@ -95,6 +96,12 @@ jobs:
       - name: Gate F3 Pages release on real Chromium fullscreen E2E
         if: github.ref_name == 'feat/f3-capture-v2-fullscreen-stage'
         run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 f3-capture-v2.spec.mjs
+      - name: Install Line Trails Beta QA dependencies
+        if: github.ref_name == 'feat/stage1-compose-line-trails-beta'
+        run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - name: Gate Stage 1 Line Trails on desktop Chromium and existing Compose fullscreen tests
+        if: github.ref_name == 'feat/stage1-compose-line-trails-beta'
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 compose-line-trails-beta.spec.mjs compose-monitor-fullscreen.spec.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -103,7 +110,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment:
-      name: ${{ github.ref_name == 'feat/f3-capture-v2-fullscreen-stage' && 'f3-pages-preview' || 'github-pages' }}
+      name: ${{ github.ref_name == 'feat/stage1-compose-line-trails-beta' && 'stage1-beta-pages-preview' || github.ref_name == 'feat/f3-capture-v2-fullscreen-stage' && 'f3-pages-preview' || 'github-pages' }}
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
