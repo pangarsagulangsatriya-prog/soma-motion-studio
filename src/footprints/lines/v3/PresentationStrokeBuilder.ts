@@ -10,6 +10,15 @@ const CACHE_LIMIT=256;
 // One current revision per trajectory, so long-running video cannot accumulate
 // a cached path for every requestAnimationFrame or every received source frame.
 const cache=new Map<string,{revision:string;result:PresentationPath}>();
+// Source key and stroke id may be reused after reset. Object identity avoids
+// returning cached geometry from a different take that happens to share endpoints.
+const strokeIdentities=new WeakMap<object,number>();
+let identityCounter=0;
+function cacheIdentity(stroke:V3Stroke):string{
+ let id=strokeIdentities.get(stroke);
+ if(id===undefined){id=++identityCounter;strokeIdentities.set(stroke,id);}
+ return String(id);
+}
 export function clearPresentationCache(){cache.clear();}
 export function presentationCacheSize(){return cache.size;}
 
@@ -84,7 +93,7 @@ export function buildPresentationStroke(
  const pts=stroke.points;
  if(!pts.length)return {points:[],totalLengthPx:0,hiddenAsMicroStroke:true};
  const first=pts[0],last=pts[pts.length-1];
- const key=stroke.sourceKey+':'+stroke.id+':'+stroke.actorId+':'+stroke.foot;
+ const key=cacheIdentity(stroke);
  const revision=[character,w,h,pts.length,first.atMs,last.atMs,
   first.x,first.y,last.x,last.y].join('|');
  const prior=cache.get(key);
