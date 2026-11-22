@@ -50,3 +50,81 @@
 @media(max-width:1050px){.ch-layout{min-height:auto}.ch-inspector{padding:16px}}
 @media(max-width:680px){.ch-add-panel{align-items:stretch}.ch-add-panel select{flex:1}
  .ch-add-panel>div{min-width:100%}.ch-add-panel label{align-self:center}}
+
+
+/* UI-CH-06: create cameras inside the source canvas; retain room for video. */
+.ch-workspace[hidden]{display:none!important}
+.ch-add-node{
+ display:flex;align-items:center;gap:11px;width:220px;min-height:88px;
+ padding:13px;text-align:left;cursor:pointer;background:#192b21;
+ border:1px dashed #5f896c;border-radius:11px;color:#def3e3;
+ font:inherit;transition:background .15s,border-color .15s;
+}
+.ch-add-node:hover,.ch-add-node[aria-expanded=true]{background:#274635;border-color:#9cdeb2}
+.ch-add-node-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;
+ background:#2d4a38;border-radius:9px;color:#a2e5b9}
+.ch-add-node>span:last-child{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ch-add-node strong{font-size:12px}
+.ch-add-node small{font-size:10px;line-height:1.35;color:#9cbcab}
+.ch-canvas-picker{
+ position:absolute;z-index:80;top:65px;left:262px;
+ width:352px;max-height:420px;overflow-y:auto;
+ padding:10px;box-sizing:border-box;background:#172b20;
+ border:1px solid #5b8067;border-radius:12px;
+ color:#e4f1e8;box-shadow:0 17px 44px #000b;
+}
+.ch-picker-head{height:35px;display:flex;align-items:center;gap:9px;
+ border-bottom:1px solid #35513f;margin:0 2px 9px;padding:0 3px 10px}
+.ch-picker-head strong{font-size:13px;flex:1}
+.ch-picker-head button{border:0;border-radius:5px;display:grid;place-items:center;
+ color:#b2c9b7;background:transparent;cursor:pointer;padding:5px}
+.ch-picker-head button:hover{background:#35513f}
+.ch-picker-choices{display:flex;flex-direction:column;gap:8px}
+.ch-picker-choices>button,.ch-picker-devices>button{
+ display:flex;align-items:center;text-align:left;gap:10px;width:100%;
+ min-height:63px;padding:11px;border:1px solid #395946;border-radius:8px;
+ background:#233b2d;color:#e4f1e7;cursor:pointer;font:inherit
+}
+.ch-picker-choices>button:hover,.ch-picker-devices>button:hover{
+ border-color:#a0d8ad;background:#2c4b37}
+.ch-picker-choices button>span:nth-child(2){
+ min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.ch-picker-choices strong{font-size:12px}
+.ch-picker-choices small{font-size:10px;color:#9ebdab;line-height:1.45}
+.ch-picker-choices button>svg:last-child{color:#a4c9ae;flex:none}
+.ch-choice-icon{width:37px;height:37px;flex:0 0 37px;
+ border-radius:9px;background:#365943;color:#c2e9cf;display:grid;place-items:center}
+.ch-picker-devices{display:flex;flex-direction:column;gap:7px}
+.ch-picker-devices>p{font-size:11px;color:#b0c8b6;margin:2px 3px 8px;line-height:1.55}
+.ch-picker-devices>button{min-height:44px;padding:8px 10px;font-size:12px}
+.ch-picker-devices>button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ch-picker-devices>button.ch-device-refresh{border-style:dashed;background:#1b3124}
+.ch-add-node:focus-visible,.ch-canvas-picker button:focus-visible{outline:2px solid #b6e5ad;outline-offset:2px}
+.ch-phone-docks:empty{display:none}
+.ch-phone-dock{display:none}
+.ch-phone-dock-active{display:block;margin:0 0 14px}
+.ch-phone-dock>.soma-setup-phone-choices{
+ width:100%;box-sizing:border-box;border:1px solid #375644;
+ border-radius:9px;background:#102219;padding:12px;
+}
+.ch-phone-dock .soma-setup-pair-tabs{width:100%;display:flex}
+.ch-phone-dock .soma-setup-pair-tabs button{min-width:0;flex:1}
+.ch-phone-dock .soma-auto-pair{max-width:100%;min-width:0}
+.ch-phone-dock .soma-track-qr-frame{width:100%;max-width:220px;margin:auto}
+.ch-phone-dock .soma-track-qr-frame svg{max-width:100%;height:auto}
+.ch-phone-dock .soma-manual-pair textarea{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.ch-phone-dock .soma-manual-step{flex-wrap:wrap}
+.ch-phone-dock .soma-manual-step-text{min-width:0;flex:1}
+.ch-phone-dock .soma-setup-status{font-size:11px;line-height:1.45}
+.ch-phone-remove{display:flex;align-items:center;justify-content:center;gap:7px;
+ padding:10px;border:1px solid #704840;border-radius:7px;
+ background:#442820;color:#ffd1c2;cursor:pointer;font:inherit;font-size:12px}
+@media(max-width:1050px){
+ .ch-canvas-picker{width:350px;left:254px}
+}
+@media(max-width:680px){
+ .ch-canvas-picker{left:248px;width:340px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ch-add-node{transition:none}
+}
