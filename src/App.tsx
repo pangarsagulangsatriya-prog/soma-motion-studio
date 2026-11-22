@@ -372,7 +372,8 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  function changeLiveFloorCount(count:1|2){
   if(count===liveFloorCount)return;
   projection.setTransport('blackout');setLiveFloorApproval(null);
-  liveFloorEngine.resetSession();multiPoseRouter.setMode(count);setLiveFloorCount(count);
+  liveFloorEngine.resetSession();multiPoseRouter.setMode(count);
+   tracker.setPerformerCount(count);setLiveFloorCount(count);
   setLiveFloorRevision(v=>v+1);
  }
  function openLiveFloor(){

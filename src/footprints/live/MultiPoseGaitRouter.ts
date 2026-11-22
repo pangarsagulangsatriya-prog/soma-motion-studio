@@ -79,6 +79,7 @@ export class MultiPoseGaitRouter{
   if(this.mode!==2)return;
   // Always invalidate stale pose-index associations before examining a new frame.
   this.poseIndices={A:null,B:null};this.observedFrameTime=null;
+  this.ambiguous=false;
   if(!frame||frame.source!=='camera'||!frame.poses?.length||!Number.isFinite(clock)){
    for(const id of this.visible){
     this.floor.losePerformer(id);this.predictor?.lose(id);
@@ -88,11 +89,10 @@ export class MultiPoseGaitRouter{
    return;
   }
   this.lastTimestamp=clock;this.lastWallMs=performance.now();
-  // Crucial: do not feed a stale MotionFrame into a 2-person GaitAnalyzer.
-  if(!this.floor.isConfirmed||!this.floor.checkBinding(binding)){
-   this.visible=[];this.predictor?.reset();this.reason='Konfirmasi kalibrasi kamera dahulu.';this.invalidate();
-   return;
-  }
+  // Track identification must work BEFORE Map calibration. Calibration
+  // gates *floor contacts* below, not detection, A/B preview or Track QA.
+  // Avoid checkBinding on unconfirmed maps: it may revoke physical transport.
+  const floorReady=this.floor.isConfirmed&&this.floor.checkBinding(binding);
   const result=this.identity.observe(frame.poses,clock);
   for(const id of result.lost){
    this.floor.losePerformer(id);this.predictor?.lose(id);
@@ -108,8 +108,17 @@ export class MultiPoseGaitRouter{
    if(index<0||index>=2)continue;
    this.poseIndices[id]=index;
   }
-  if(this.poseIndices.A!==null&&this.poseIndices.B!==null)
+  // Partial identity is valid for the single observed performer; missing B
+  // remains explicitly missing and never gains a guessed pose index.
+  if(this.poseIndices.A!==null||this.poseIndices.B!==null)
    this.observedFrameTime=frame.time;
+  if(!floorReady){
+   for(const id of result.lost)this.floor.losePerformer(id);
+   this.reason=result.assignments.length?
+    result.reason+' Map belum dikalibrasi untuk pijakan.':result.reason;
+   this.invalidate();
+   return;
+  }
   for(const {id,pose} of result.assignments){
    let analyzer=this.analyzers.get(id);
    if(!analyzer){analyzer=new GaitAnalyzer();this.analyzers.set(id,analyzer);}

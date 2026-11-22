@@ -108,6 +108,14 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
    if(!c.hold&&f.source==='camera'&&f.time!==lastFrame.current){
     lastFrame.current=f.time;
     const valid=f.tracked&&f.pose.length>=33&&f.time<=now&&now-f.time<350;
+    // Multi-actor identity reads raw detector poses even when the legacy
+    // first-pose tracking signal is false for a cropped/partial performer.
+    const validMulti=f.time<=now&&now-f.time<350&&!!f.poses?.some(pose=>
+     pose.length===33&&[11,12,23,24].filter(i=>{
+      const point=pose[i];return point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&
+       point.x>=0&&point.x<=1&&point.y>=0&&point.y<=1&&
+       (point.visibility??0)>=.52;
+     }).length>=3);
     if(valid)trackingLost.current=false;
     const video=p.videoRef.current;
     const aspect=video?.videoWidth&&video?.videoHeight?video.videoWidth/video.videoHeight:4/3;
@@ -138,7 +146,7 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
      live.current[side]=mark;view.current.push(mark);
      if(session.current.length<100000)session.current.push({...mark});
     }
-    p.onPoseFrame?.(valid?f:null,clock,aspect);
+    p.onPoseFrame?.(validMulti?f:null,clock,aspect);
    }
    if(!c.hold&&now-f.time>400){
     live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();

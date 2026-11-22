@@ -106,17 +106,25 @@ export function deriveTrackFeedback(input:{
   actorIds.map((id):TrackActorFeedback=>({id,state:'unstable',feet:0})),true
  );
  if(identity&&identity.visible.length>0&&identity.visible.length<performerCount){
-  const actors=actorIds.map(id=>identity.visible.includes(id)?
-   ({id,state:'unstable',feet:0} as TrackActorFeedback):missing(id));
+  // Keep the verified partial actor visible instead of erasing their feet
+  // while the other performer is cropped or awaiting rescue.
+  const sameFrame=identity.observedFrameTime===liveFrame.time;
+  const actors=actorIds.map(id=>{
+   const index=sameFrame?identity.poseIndices[id]:null;
+   return index===null?missing(id):forPose(id,liveFrame.poses?.[index]);
+  });
+  const visibleFeet=actors.reduce((sum,actor)=>sum+actor.feet,0);
+  const missingId=actorIds.find(id=>!identity.visible.includes(id))??'B';
   return {state:'framing',label:`Aktor ${identity.visible.length}/${performerCount}`,
-   hint:'Pastikan kedua aktor masuk bingkai',actors,
-   visibleFeet:0,expectedFeet:performerCount*2};
+   hint:`Aktor ${missingId} belum terbaca · beri jarak, tampilkan kepala sampai kaki`,
+   actors,visibleFeet,expectedFeet:performerCount*2};
  }
  if(!identity||identity.observedFrameTime!==liveFrame.time){
   const rawCount=Math.min(liveFrame.poses?.length??0,performerCount);
   return {state:'uncertain',
-   label:rawCount?`${rawCount} tubuh · ID menunggu`:'Identitas belum stabil',
-   hint:'A/B belum terverifikasi',
+   label:rawCount?`${rawCount} tubuh · ID diperiksa`:'Mencari dua tubuh',
+   hint:rawCount===1?'Pastikan kedua tubuh terlihat penuh dan terpisah':
+    'Identitas A/B belum stabil · pisahkan kedua performer',
    actors:actorIds.map((id):TrackActorFeedback=>({id,state:'unstable',feet:0})),
    visibleFeet:0,expectedFeet:performerCount*2};
  }

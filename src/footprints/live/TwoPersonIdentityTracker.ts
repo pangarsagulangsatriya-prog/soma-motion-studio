@@ -7,13 +7,23 @@ type Center={x:number;y:number};
 type Track={position:Center;time:number};
 const ids:LivePerformerId[]=['A','B'];
 const close=(a:Center,b:Center)=>Math.hypot(a.x-b.x,a.y-b.y);
-const valid=(p:Landmark|undefined)=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
- p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&(p.visibility??0)>=.55;
+const valid=(p:Landmark|undefined,minimum=.52)=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
+ p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&(p.visibility??0)>=minimum;
+/** Truncated heads/one shoulder are common in wide HP cameras.
+ * Accept 3/4 torso landmarks with both hips OR two shoulders + one hip.
+ * Never assign an ID from legs only, and never extrapolate landmarks. */
 const locate=(pose:Landmark[]):{center:Center;confidence:number;pose:Landmark[]}|null=>{
- if(pose.length<33||![11,12,23,24].every(i=>valid(pose[i])))return null;
- const hip=pose[23],other=pose[24];
- const center={x:(hip.x+other.x)/2,y:(hip.y+other.y)/2};
- const confidence=Math.min(...[11,12,23,24].map(i=>pose[i].visibility??0));
+ if(pose.length<33)return null;
+ const shoulders=[11,12].filter(i=>valid(pose[i]));
+ const hips=[23,24].filter(i=>valid(pose[i]));
+ if(shoulders.length+hips.length<3||hips.length<1)return null;
+ const anchors=hips.length===2?hips:shoulders;
+ const center={
+  x:anchors.reduce((sum,i)=>sum+pose[i].x,0)/anchors.length,
+  y:anchors.reduce((sum,i)=>sum+pose[i].y,0)/anchors.length
+ };
+ const confidence=[...shoulders,...hips].reduce(
+  (sum,i)=>sum+(pose[i].visibility??0),0)/(shoulders.length+hips.length);
  return {center,confidence,pose};
 };
 

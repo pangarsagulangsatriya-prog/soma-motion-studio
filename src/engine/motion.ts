@@ -16,7 +16,19 @@ export class MotionProcessor {
  private previous:MotionFrame|null=null; private lastTimes:Record<string,number>={};private armed:Record<string,boolean>={};private openState=false;private pendingOpen=false;private openSince=0;private prevSpeed=0;private poseCenter:Landmark|null=null;
  reset(){this.previous=null;this.lastTimes={};this.armed={};this.openState=false;this.pendingOpen=false;this.openSince=0;this.prevSpeed=0;this.poseCenter=null;}
  process(h:RawHands|null,p:RawPose|null,time:number,s:Settings,fps:number,face:RawFace|null=null):MotionFrame{
-  const f=emptyFrame();f.time=time;f.fps=fps;f.hands=h?.landmarks??[];f.pose=p?.landmarks[0]??[];f.poses=p?.landmarks??[];f.handCount=f.hands.length;f.face=face?.faceLandmarks[0]??[];
+  const f=emptyFrame();f.time=time;f.fps=fps;f.hands=h?.landmarks??[];
+  f.poses=p?.landmarks??[];
+  // Select a representative OBSERVED pose for legacy 1P effects. Multi-pose
+  // IDs still use the unmodified detector array, not this quality ranking.
+  const torsoScore=(body:Landmark[])=>[11,12,23,24].reduce((sum,i)=>{
+   const point=body[i];
+   return sum+(point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&
+    point.x>=0&&point.x<=1&&point.y>=0&&point.y<=1?
+    (point.visibility??0):0);
+  },0);
+  f.pose=f.poses.reduce((best,body)=>torsoScore(body)>torsoScore(best)?body:best,
+   f.poses[0]??[] as Landmark[]);
+  f.handCount=f.hands.length;f.face=face?.faceLandmarks[0]??[];
   const dt=this.previous?clamp((time-this.previous.time)/1000,.008,.25):.033;
   const screenX=(x:number)=>s.mirror?1-x:x;
   const assign=(side:string)=>h?.handedness.findIndex(a=>a[0]?.categoryName===(s.swapHands?(side==='Right'?'Left':'Right'):side))??-1;
