@@ -187,3 +187,27 @@ test('Source parity: 1P and 2P modes stay selectable when switching from camera 
  await expect(page.getByText('Menganalisis video')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Map workspace'})).toBeVisible();
 });
+
+
+test('Regression: red Garis BETA button remains visible after disabling lines and switching Compose tabs',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Compose workspace'}).click();
+ const monitor=page.locator('#soma-compose-monitor');
+ const beta=monitor.locator('button.lt-beta-trigger');
+ await expect(beta).toBeVisible();
+ await expect(beta).toContainText('Garis');
+ await expect(beta).toContainText('BETA');
+ await beta.click();
+ await expect(beta).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('region',{name:'Kontrol Garis Beta'})).toBeVisible();
+ await beta.click();
+ await expect(beta).toBeVisible();
+ await expect(beta).toHaveAttribute('aria-pressed','false');
+ await monitor.getByRole('button',{name:'LEG A'}).click();
+ await expect(beta).toBeVisible();
+ await monitor.getByRole('button',{name:'FLOOR'}).click();
+ await expect(beta).toBeVisible();
+ await beta.click();
+ await expect(beta).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.lt-beta-frame canvas')).toBeVisible();
+});
