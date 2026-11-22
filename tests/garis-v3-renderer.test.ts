@@ -33,19 +33,18 @@ test('V3 keeps 90-degree corners as exact observed polyline, no midpoint curve',
  e.ingestFrame([foot('left',.3,.3,1033),foot('right',.7,.68,1033)],1033,1035);
  e.ingestFrame([foot('left',.3,.4,1066),foot('right',.7,.64,1066)],1066,1067);
  const {ctx,recorded}=fakeContext();
- paintTrajectory(ctx,e,DEFAULT_V3_SETTINGS,1100);
- const left=recorded.filter(x=>x.color==='#E44F32');
- const right=recorded.filter(x=>x.color==='#289B92');
- assert.equal(left.length,2);
- assert.equal(right.length,2);
- assert.deepEqual(left[0].segments,[[320,270],[480,270]]);
- assert.deepEqual(left[1].segments,[[480,270],[480,360]]);
+ paintTrajectory(ctx,e,{...DEFAULT_V3_SETTINGS,styleMode:'precision'},1100);
+ const red=recorded.filter(x=>x.color==='#E44F32');
+ assert.equal(red.length,4); // both feet of actor A are red
+ assert.deepEqual(red[0].segments,[[320,270],[480,270]]);
+ assert.deepEqual(red[1].segments,[[480,270],[480,360]]);
 });
 
 test('fullscreen and Compose preview use identical trajectory geometry',()=>{
  const e=new DualFootTrajectoryEngine();e.ensureSource('fixture');
  e.ingestFrame([foot('left',.2,.3,1000)],1000,1000);
  e.ingestFrame([foot('left',.25,.34,1033)],1033,1033);
+ e.ingestFrame([foot('left',.30,.36,1066)],1066,1066);
  const preview=fakeContext(),fullscreen=fakeContext();
  paintTrajectory(preview.ctx,e,DEFAULT_V3_SETTINGS,1040,false,false);
  paintTrajectory(fullscreen.ctx,e,DEFAULT_V3_SETTINGS,1040,false,true);
