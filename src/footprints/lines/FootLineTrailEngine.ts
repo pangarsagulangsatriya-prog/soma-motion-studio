@@ -129,8 +129,14 @@ export class FootLineTrailEngine{
    if(firstAfter<=0)return {...stroke,points:[]};
    const prev=points[firstAfter-1],next=points[firstAfter];
    const t=clamp((limit-prev.atMs)/Math.max(1,next.atMs-prev.atMs),0,1);
+   // Display interpolation also preserves the observed heel-to-toe direction.
+   const direction=Number.isFinite(prev.headingRad)&&Number.isFinite(next.headingRad)?
+    prev.headingRad!+Math.atan2(Math.sin(next.headingRad!-prev.headingRad!),
+     Math.cos(next.headingRad!-prev.headingRad!))*t:
+    (next.headingRad??prev.headingRad);
    const eased={x:prev.x+(next.x-prev.x)*t,y:prev.y+(next.y-prev.y)*t,
-    atMs:limit,speed:prev.speed+(next.speed-prev.speed)*t};
+    atMs:limit,speed:prev.speed+(next.speed-prev.speed)*t,
+    ...(Number.isFinite(direction)?{headingRad:direction}:{})};
    return {...stroke,points:[...points.slice(0,firstAfter),eased]};
   }).filter(stroke=>stroke.points.length>1);
  }

@@ -30,6 +30,10 @@ test('One person with two tracked feet produces exactly one path and one sole-he
  const mark=brush.allStamps[0];
  assert.ok(Math.abs(mark.headingRad-.52)<.2,'heel-toe direction reaches brush');
  assert.ok(Math.abs(mark.x-path.points.at(-1)!.x)<1e-7);
+ const displayed=lines.renderVisible(1390,'keep',8000,55)[0];
+ assert.ok(displayed?.points.at(-1)?.headingRad!==undefined);
+ assert.ok(Math.abs(displayed.points.at(-1)!.headingRad!-.52)<.2,
+  'interpolated brush follows heel-to-toe rather than motion tangent');
 });
 test('Switch active foot only after sustained observed alternate movement; do not teleport',()=>{
  const one=new ActiveFootSelector(),lines=new FootLineTrailEngine(),brush=new FootprintBrushEngine();
