@@ -30,7 +30,7 @@ function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,
    last=now;
    const c=canvas.current,ctx=c?.getContext('2d',{alpha:false});if(!c||!ctx)return;
    const feed:Feed=borrowed?
-    {video:cameraOn?videoRef.current:null,frame:frameRef.current,frameAt:frameRef.current.time}:
+    {video:cameraOn?videoRef.current:null,frame:frameRef.current,frameAt:frameRef.current?.time??0}:
     (registry.feed(nodeId)??{video:null,frame:null,frameAt:0});
    const video=feed.video;
    ctx.fillStyle='#050a07';ctx.fillRect(0,0,c.width,c.height);
@@ -177,8 +177,8 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
        {sources.map((n,i)=>{
         const routed=n.borrowed&&borrowed;
         if(!routed)return null;
-        const y=143+i*172;
-        return <path key={n.id} d={`M 251 ${y} C 340 ${y}, 320 121, 406 121`}
+        const y=145+i*172;
+        return <path key={n.id} d={`M 251 ${y} C 340 ${y}, 320 112, 406 112`}
          fill="none" stroke="#71d69c" strokeWidth={2.5} className="ch-live-edge"/>;
        })}
       </svg>
