@@ -147,6 +147,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const lineEngine=useRef(new FootLineTrailEngine());
  const lineV3Engine=useRef(new DualFootTrajectoryEngine());
  const painterlyEngine=useRef(new PainterlyImpressionEngine());
+ const inkExportRef=useRef<()=>string|null>(()=>null);
  const brushEngine=useRef(new FootprintBrushEngine());
  const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
  const monitorFullscreenRef=useRef<HTMLElement|null>(null);
@@ -1023,6 +1024,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      router={router} engine={lineV3Engine.current} settings={v3Options}
       impressions={painterlyEngine.current} painterly={painterlyOptions}
       brushResetRevision={brushResetRevision}
+      onRegisterExportInk={fn=>{inkExportRef.current=fn;}}
       motionEvents={motionEvents}
      blackout={blackout||previewBlackout} previewLive={previewLive}
      cameraOn={cameraOn} bodySelected={bodySelected}
@@ -1109,8 +1111,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    painterly={painterlyOptions} onPainterlyChange={setPainterlyOptions}
    impressions={painterlyEngine.current}
    onClear={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setBrushResetRevision(n=>n+1);setLineStatus('Gambar dibersihkan');}}
+   onExportPNG={()=>{
+    const png=inkExportRef.current();
+    if(!png){setLineStatus('Belum ada lukisan untuk disimpan');return;}
+    const a=document.createElement('a');a.href=png;a.download='soma-sumi-v34-lukisan.png';
+    document.body.appendChild(a);a.click();a.remove();
+   }}
    demo={lineDemo}
-   onDemo={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setBrushResetRevision(n=>n+1);setLineDemo(v=>!v);}}
+   onDemo={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();
+    if(painterlyOptions.painterlyEngine!=='sumi-v34')setBrushResetRevision(n=>n+1);
+    setLineDemo(v=>!v);}}
    status={lineStatus} diagnostics={v3Diagnostics} performerCount={performerCount}
    fullscreenDiagnostics={lineFullscreenDiagnostics}
    onFullscreenDiagnostics={setLineFullscreenDiagnostics}
