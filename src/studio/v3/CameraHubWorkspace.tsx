@@ -1,7 +1,9 @@
 import {useCallback,useEffect,useMemo,useRef,useState,type RefObject} from 'react';
 import {Camera,RefreshCw,Monitor,Layers3,ScanLine,Plus,Maximize,Unplug,AlertCircle,
- Eye,EyeOff,Trash2,Video,VideoOff,Check,Settings2} from 'lucide-react';
+ Eye,EyeOff,Trash2,Video,VideoOff,Check,Settings2,Smartphone,Wifi,Cable,ChevronLeft,ChevronRight,X} from 'lucide-react';
 import {drawSkeletonBodies} from '../../stage/fullBodySkeleton.ts';
+import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
+import {looksLikePhoneWebcam} from '../../engine/cameraRouteModel.ts';
 import type {MotionFrame} from '../../engine/types.ts';
 import {normalizeCameraDevices,cameraErrorMessage} from '../../engine/universalCamera.ts';
 import {hubFrameIsFresh,hubSourceAvailable,CameraHubRegistry,type HubCameraRecord} from './CameraHubRegistry.ts';
@@ -10,19 +12,20 @@ import './camera-hub-workspace.css';
 type Props={
  devices:MediaDeviceInfo[];selectedId:string;cameraOn:boolean;cameraBusy:boolean;
  cameraError:string;videoRef:RefObject<HTMLVideoElement|null>;frameRef:RefObject<MotionFrame>;
- registry:CameraHubRegistry;onSelectStageOne:(id:string)=>Promise<void>;onGoStageOne:()=>void;
+ registry:CameraHubRegistry;active:boolean;onSelectStageOne:(id:string)=>Promise<void>;onGoStageOne:()=>void;
 };
 type Feed={video:HTMLVideoElement|null;frame:MotionFrame|null;frameAt:number};
 type PreviewProps={
  registry:CameraHubRegistry;nodeId:string;borrowed:boolean;showSkeleton:boolean;
  cameraOn:boolean;videoRef:RefObject<HTMLVideoElement|null>;frameRef:RefObject<MotionFrame>;
- large?:boolean;
+ large?:boolean;active:boolean;
 };
 /** Each visible node paints its own independent Track source, including its own
  * 33-point skeleton. Rendering stops on unmount, capture stays alive in App. */
-function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large=false}:PreviewProps){
+function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large=false,active}:PreviewProps){
  const canvas=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
+  if(!active)return;
   let raf=0,last=0;
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);
@@ -47,7 +50,7 @@ function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,
   };
   raf=requestAnimationFrame(paint);
   return()=>cancelAnimationFrame(raf);
- },[registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large]);
+ },[registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large,active]);
  return <canvas ref={canvas} width={large?640:320} height={large?360:180}
   className="ch-camera-canvas" aria-label={showSkeleton?'Preview kamera dengan skeleton':'Preview video asli'} role="img"/>;
 }
@@ -58,20 +61,31 @@ const targets=[
 ] as const;
 type NodeView={id:string;deviceId:string;name:string;phase:string;message:string;showSkeleton:boolean;borrowed:boolean;record?:HubCameraRecord};
 const stageKey='stage-one-source';
-export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,cameraError,videoRef,frameRef,registry,onSelectStageOne,onGoStageOne}:Props){
+export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,cameraError,videoRef,frameRef,registry,active,onSelectStageOne,onGoStageOne}:Props){
  const [inventory,setInventory]=useState<MediaDeviceInfo[]>(devices);
  const [records,setRecords]=useState<HubCameraRecord[]>(()=>registry.snapshot());
  const [refreshing,setRefreshing]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [showAdd,setShowAdd]=useState(false);
- const [picked,setPicked]=useState('');
+ const [addStep,setAddStep]=useState<'kind'|'camera'|'phone'|'phone-cable'>('kind');
+ const [allPhoneDevices,setAllPhoneDevices]=useState(false);
+ const pickerRef=useRef<HTMLDivElement>(null);
+ const addTriggerRef=useRef<HTMLButtonElement>(null);
  const [renameValue,setRenameValue]=useState('');
  const [swapDevice,setSwapDevice]=useState('');
  const [stageSkeleton,setStageSkeleton]=useState(true);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [zoom,setZoom]=useState(1);
- useEffect(()=>registry.subscribe(()=>setRecords(registry.snapshot())),[registry]);
+ useEffect(()=>registry.subscribe(()=>{if(active)setRecords(registry.snapshot());}),[registry,active]);
+ useEffect(()=>{if(active)setRecords(registry.snapshot());},[registry,active]);
+ useEffect(()=>{
+  if(!showAdd)return;
+  const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();setShowAdd(false);addTriggerRef.current?.focus();}};
+  const outside=(e:PointerEvent)=>{if(e.target instanceof Node&&!pickerRef.current?.contains(e.target)&&!addTriggerRef.current?.contains(e.target))setShowAdd(false);};
+  document.addEventListener('keydown',key);document.addEventListener('pointerdown',outside);
+  return()=>{document.removeEventListener('keydown',key);document.removeEventListener('pointerdown',outside);};
+ },[showAdd]);
  useEffect(()=>{setInventory(current=>devices.length?normalizeCameraDevices(devices):current);},[devices]);
  const refresh=useCallback(async()=>{
   setRefreshing(true);setError('');
@@ -113,8 +127,8 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
   }catch(e){setError(cameraErrorMessage(e));}
   finally{setBusy(false);}
  };
- const newCamera=async()=>{
-  const device=inventory.find(d=>d.deviceId===picked);
+ const newCamera=async(deviceId:string)=>{
+  const device=inventory.find(d=>d.deviceId===deviceId);
   if(!device){setError('Pilih kamera terlebih dahulu.');return;}
   if(borrowed&&device.deviceId===trackDevice){setSelected(stageKey);setShowAdd(false);return;}
   let id='';
@@ -124,6 +138,10 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
    await registry.connect(id);
   }catch(e){setError(e instanceof Error?e.message:'Kamera tidak dapat ditambahkan.');}
   finally{setBusy(false);}
+ };
+ const addWirelessPhone=()=>{
+  const id=registry.createPhone(`Kamera HP ${records.filter(r=>r.kind==='phone').length+1}`);
+  setSelected(id);setShowAdd(false);setError('');
  };
  const act=async(action:()=>Promise<void>)=>{
   setBusy(true);setError('');
@@ -138,39 +156,22 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
   void act(()=>registry.replace(selectedNode.id,d.deviceId,d.label||renameValue));
  };
  const sendTrack=()=>{
-  if(!selectedNode||!selectedNode.deviceId)return;
+  if(!selectedNode||!selectedNode.deviceId||selectedNode.record?.kind==='phone')return;
   void act(async()=>{
    if(!selectedNode.borrowed)registry.disconnect(selectedNode.id);
    await onSelectStageOne(selectedNode.deviceId);
    setSelected(stageKey);
   });
  };
- return <section className="ch-workspace" aria-label="Camera Hub">
+ return <section className="ch-workspace" aria-label="Camera Hub" hidden={!active}>
   <header className="ch-head">
    <div><p className="ch-eyebrow">SOMA / SOURCES</p><h1>Camera Hub</h1>
     <p className="ch-subtitle">{inventory.length} terdeteksi <span>·</span> {live} streaming
      <span>·</span> {trackLinked} dipakai Stage 1</p></div>
    <div className="ch-actions">
     <button type="button" onClick={()=>void refresh()} disabled={refreshing}><RefreshCw size={16}/>{refreshing?'Memeriksa…':'Perbarui'}</button>
-    <button type="button" className="ch-primary" onClick={()=>{setShowAdd(v=>!v);setPicked('');setError('');}}>
-     <Plus size={17}/> Tambah kamera</button>
    </div>
   </header>
-  {showAdd&&<section className="ch-add-panel" aria-label="Tambah kamera">
-   <div><strong>Tambah sumber kamera</strong><p>Gunakan daftar perangkat Track: webcam, HDMI/OBS, serta HP yang muncul sebagai webcam USB/Continuity.</p></div>
-   <label htmlFor="ch-device-add">Perangkat</label>
-   <select id="ch-device-add" value={picked} onChange={e=>setPicked(e.target.value)}>
-    <option value="">Pilih perangkat…</option>
-    {freeDevices.map((d,i)=><option key={d.deviceId} value={d.deviceId}>{d.label||'Kamera '+(i+1)}</option>)}
-   </select>
-   <button type="button" className="ch-add-confirm" disabled={!picked||busy} onClick={()=>void newCamera()}>
-    <Plus size={15}/> Sambungkan
-   </button>
-   <button type="button" className="ch-add-close" onClick={()=>setShowAdd(false)}>Batal</button>
-   {!inventory.length&&<button type="button" className="ch-add-close" disabled={busy}
-    onClick={()=>void requestPermission()}><Camera size={15}/> Izinkan kamera</button>}
-   {!freeDevices.length&&<p className="ch-add-help">Tidak ada kamera bebas. Sambungkan perangkat lain atau perbarui daftar. HP nirkabel tetap bisa dipasangkan melalui Track.</p>}
-  </section>}
   {(error||cameraError)&&<div className="ch-error" role="alert"><AlertCircle size={17}/>{error||cameraError}</div>}
   <div className="ch-layout">
    <div className="ch-graph-scroll">
@@ -179,13 +180,13 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
       <span>{Math.round(zoom*100)}%</span><button type="button" aria-label="Perbesar" onClick={()=>setZoom(z=>Math.min(1.25,z+.1))}>+</button>
       <button type="button" aria-label="Fit view" onClick={()=>setZoom(1)}><Maximize size={14}/></button></div>
     </div>
-    <div className="ch-graph" style={{minWidth:Math.round(650*zoom),minHeight:Math.max(510,Math.round((sources.length*172+100)*zoom))}}>
+    <div className="ch-graph" style={{minWidth:Math.round(650*zoom),minHeight:Math.max(510,Math.round((sources.length*172+165)*zoom))}}>
      <div className="ch-grid"/>
      <div className="ch-graph-inner" style={{transform:`scale(${zoom})`,transformOrigin:'top left',
-      minHeight:Math.max(490,sources.length*172+75)}}>
+      minHeight:Math.max(490,sources.length*172+150)}}>
       <div className="ch-col-title ch-col-a">SOURCES <span>{sources.length}</span></div>
       <div className="ch-col-title ch-col-b">DESTINATIONS <span>3</span></div>
-      <svg className="ch-connections" width="650" height={Math.max(490,sources.length*172+75)} aria-hidden="true">
+      <svg className="ch-connections" width="650" height={Math.max(490,sources.length*172+150)} aria-hidden="true">
        {sources.map((n,i)=>{
         const routed=n.borrowed&&borrowed;
         if(!routed)return null;
@@ -195,19 +196,68 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
        })}
       </svg>
       <div className="ch-sources">
-       {sources.length===0&&<div className="ch-empty"><Camera size={25}/><strong>Belum ada kamera terdaftar</strong>
-        <p>Klik Tambah kamera untuk membuka perangkat. Preview dan skeleton muncul setelah koneksi aktif.</p></div>}
+
        {sources.map(n=><button type="button" key={n.id} className={`ch-node ch-source ch-camera-node ${selected===n.id?'ch-selected':''}`}
         onClick={()=>setSelected(n.id)} aria-label={`Pilih ${n.name}`}>
         <div className="ch-node-top"><span className="ch-camera-icon"><Camera size={16}/></span>
          <span className="ch-node-name">{n.name}</span></div>
         <div className="ch-node-preview"><CameraPreview registry={registry} nodeId={n.id} borrowed={n.borrowed}
-         showSkeleton={n.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef}/></div>
+         showSkeleton={n.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef} active={active}/></div>
         <div className="ch-node-bottom"><span className={`ch-dot ${n.phase==='live'?'ch-green':''}`}/>
          {n.phase==='live'?'LIVE · '+(n.record?.detectedBodies??0)+' tubuh':n.message}</div>
         <span className="ch-port" aria-hidden="true"/>
        </button>)}
+       <button ref={addTriggerRef} type="button" className="ch-add-node" aria-label="Tambah kamera di kanvas"
+        aria-expanded={showAdd} onClick={()=>{setAddStep('kind');setShowAdd(v=>!v);setError('');}}>
+        <span className="ch-add-node-icon"><Plus size={20}/></span>
+        <span><strong>Tambah kamera</strong><small>Kamera biasa atau HP</small></span>
+       </button>
       </div>
+      {showAdd&&<div ref={pickerRef} className="ch-canvas-picker" role="dialog" aria-label="Tambah sumber kamera">
+       <header className="ch-picker-head">
+        {addStep!=='kind'&&<button type="button" aria-label="Kembali ke pilihan sumber"
+         onClick={()=>setAddStep(addStep==='phone-cable'?'phone':'kind')}><ChevronLeft size={17}/></button>}
+        <strong>{addStep==='kind'?'Pilih sumber':addStep==='phone'?'Kamera HP':addStep==='phone-cable'?'HP lewat kabel':'Kamera biasa'}</strong>
+        <button type="button" aria-label="Tutup tambah kamera" onClick={()=>setShowAdd(false)}><X size={16}/></button>
+       </header>
+       {addStep==='kind'&&<div className="ch-picker-choices">
+        <button type="button" onClick={()=>setAddStep('camera')}>
+         <span className="ch-choice-icon"><Camera size={20}/></span>
+         <span><strong>Kamera biasa</strong><small>Webcam · USB · HDMI · OBS</small></span>
+         <ChevronRight size={16}/></button>
+        <button type="button" onClick={()=>setAddStep('phone')}>
+         <span className="ch-choice-icon"><Smartphone size={20}/></span>
+         <span><strong>Kamera HP</strong><small>Kabel atau nirkabel</small></span>
+         <ChevronRight size={16}/></button>
+       </div>}
+       {addStep==='phone'&&<div className="ch-picker-choices">
+        <button type="button" onClick={()=>{setAllPhoneDevices(false);setAddStep('phone-cable');}}>
+         <span className="ch-choice-icon"><Cable size={20}/></span>
+         <span><strong>Lewat kabel</strong><small>Android Webcam · iPhone Continuity</small></span>
+         <ChevronRight size={16}/></button>
+        <button type="button" onClick={addWirelessPhone}>
+         <span className="ch-choice-icon"><Wifi size={20}/></span>
+         <span><strong>Nirkabel / QR</strong><small>Pasangkan HP di inspector kamera</small></span>
+         <Plus size={16}/></button>
+       </div>}
+       {(addStep==='camera'||addStep==='phone-cable')&&<div className="ch-picker-devices">
+        <p>{addStep==='phone-cable'?'Pilih HP yang sudah muncul sebagai kamera di komputer.':'Pilih perangkat untuk langsung melihat preview.'}</p>
+        {(addStep==='camera'?freeDevices:
+          freeDevices.filter(d=>allPhoneDevices||looksLikePhoneWebcam(d.label))).map((d,i)=>
+         <button type="button" key={d.deviceId} disabled={busy}
+          onClick={()=>void newCamera(d.deviceId)}>
+          {addStep==='phone-cable'?<Smartphone size={17}/>:<Camera size={17}/>}
+          <span>{d.label||'Kamera '+(i+1)}</span><Plus size={15}/>
+         </button>)}
+        {addStep==='phone-cable'&&!allPhoneDevices&&
+          !freeDevices.some(d=>looksLikePhoneWebcam(d.label))&&
+          <button type="button" onClick={()=>setAllPhoneDevices(true)}>
+           <Camera size={17}/> <span>Lihat semua perangkat USB</span><ChevronRight size={15}/></button>}
+        <button type="button" className="ch-device-refresh" disabled={busy||refreshing}
+         onClick={()=>void requestPermission()}><RefreshCw size={15}/> <span>Periksa / izinkan kamera</span></button>
+        {freeDevices.length===0&&<p>Perangkat belum terdeteksi. Periksa kabel atau izin kamera pada browser.</p>}
+       </div>}
+      </div>}
       <div className="ch-targets">
        {targets.map((t,i)=><div key={t.id} className={`ch-node ch-target ${!t.enabled?'ch-disabled':''}`}>
         <span className="ch-port ch-input-port" aria-hidden="true"/>
@@ -229,8 +279,16 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
     <p className="ch-inspector-eyebrow">INSPECTOR</p><h2>{selectedNode?.name||'Pilih kamera'}</h2>
     <div className="ch-preview">
      {selectedNode?<CameraPreview registry={registry} nodeId={selectedNode.id} borrowed={selectedNode.borrowed}
-      showSkeleton={selectedNode.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef} large/>:
+      showSkeleton={selectedNode.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef} large active={active}/>:
       <div className="ch-preview-empty"><Camera size={25}/><span>Pilih node kamera di kanvas</span></div>}
+    </div>
+    <div className="ch-phone-docks">
+     {records.filter(r=>r.kind==='phone').map(r=><div key={r.id}
+      className={`ch-phone-dock ${selected===r.id?'ch-phone-dock-active':''}`}>
+      <PhoneCameraReceiver initialMode="qr"
+       onStream={stream=>registry.connectPhone(r.id,stream)}
+       onDisconnect={()=>registry.disconnect(r.id)}/>
+     </div>)}
     </div>
     {selectedNode?<div className="ch-inspector-body">
      <div className="ch-row"><span>Status</span><strong>{selectedNode.phase==='live'?'LIVE':selectedNode.message}</strong></div>
@@ -243,6 +301,12 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
       <label htmlFor="ch-rename">Nama kamera</label>
       <div className="ch-inline"><input id="ch-rename" maxLength={64} value={renameValue} onChange={e=>setRenameValue(e.target.value)}/>
        <button type="button" onClick={()=>registry.rename(selectedNode.id,renameValue)} disabled={!renameValue.trim()}>Simpan</button></div>
+      {selectedNode.record?.kind==='phone'?<>
+       <p className="ch-inspector-note">Gunakan panel pairing di bawah preview. Saat tersambung, video dan skeleton langsung muncul di node.</p>
+       <button type="button" className="ch-remove ch-phone-remove" onClick={()=>{registry.remove(selectedNode.id);setSelected(null);}}>
+        <Trash2 size={15}/> Hapus kamera HP
+       </button>
+      </>:<>
       <label htmlFor="ch-swap">Ganti perangkat</label>
       <div className="ch-inline"><select id="ch-swap" value={swapDevice} onChange={e=>setSwapDevice(e.target.value)}>
        <option value="">Pilih kamera…</option>
@@ -258,13 +322,14 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
         registry.remove(selectedNode.id);setSelected(null);
        }}><Trash2 size={15}/> Hapus</button>
       </div>
+      </>}
      </>}
-     <button type="button" className="ch-route-button" onClick={sendTrack} disabled={busy||!selectedNode.deviceId}>
-      <Check size={15}/> {selectedNode.borrowed?'Dipakai Stage 1':'Gunakan di Stage 1'}</button>
-     <p className="ch-inspector-note">Memindahkan kamera ke Stage 1 melepaskan sesi Hub untuk perangkat itu. Kalibrasi lantai harus diperiksa ulang. Stage 2 dan F3 masih memiliki jalur input sendiri.</p>
-    </div>:<p className="ch-inspector-note">Pilih kamera untuk melihat preview, mengubah nama, mengganti sumber, mengatur skeleton, atau menghapus perangkat.</p>}
+     {selectedNode.record?.kind!=='phone'&&<button type="button" className="ch-route-button" onClick={sendTrack} disabled={busy||!selectedNode.deviceId}>
+      <Check size={15}/> {selectedNode.borrowed?'Dipakai Stage 1':'Gunakan di Stage 1'}</button>}
+     <p className="ch-inspector-note">{selectedNode.record?.kind==='phone'?'Kamera HP nirkabel saat ini bisa dipantau di Hub. Jalur proyeksi Stage 1 tetap menggunakan input Track.':'Kamera Stage 1 harus memeriksa ulang kalibrasi lantai setelah penggantian sumber.'}</p>
+    </div>:<p className="ch-inspector-note">Klik node kamera untuk melihat preview dan pengaturan. Tambahkan sumber langsung dari tanda + di kanvas.</p>}
     <div className="ch-note"><Unplug size={16}/>Kamera terlihat di daftar belum tentu streaming. Node LIVE muncul setelah video aktif; skeleton hanya menggambar pose yang benar-benar terdeteksi.</div>
-    <button type="button" className="ch-track-link" onClick={onGoStageOne}>Buka Track untuk sumber MP4, HP nirkabel atau Simulasi 3D</button>
+    <button type="button" className="ch-track-link" onClick={onGoStageOne}>Buka Stage 1 / Track</button>
    </aside>
   </div>
  </section>;

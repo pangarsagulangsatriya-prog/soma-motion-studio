@@ -585,7 +585,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
     preset={activePreset}/>}
    <main style={{position:'relative'}}>
      {f3CaptureActive&&!clean&&<F3CaptureWorkspace/>}
-     {cameraHubActive&&<CameraHubWorkspace devices={devices} selectedId={deviceId} cameraOn={cameraOn}
+     <CameraHubWorkspace active={cameraHubActive} devices={devices} selectedId={deviceId} cameraOn={cameraOn}
       cameraBusy={cameraBusy} cameraError={cameraError} videoRef={video} frameRef={frameRef}
       registry={hubRegistry}
       onSelectStageOne={async id=>{
@@ -597,7 +597,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
        }
        await selectFootprintsCameraDevice(id);
       }}
-      onGoStageOne={()=>{setCameraHubActive(false);setClean(false);setArchiveActive(false);setProjectionActive(false);selectScene('footprints');setSelectedStageTool('tracking');setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));}}/>}
+      onGoStageOne={()=>{setCameraHubActive(false);setClean(false);setArchiveActive(false);setProjectionActive(false);selectScene('footprints');setSelectedStageTool('tracking');setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));}}/>
     {stageTwo&&!clean&&!archiveActive&&!projectionActive&&<StageTwoInstrumentNav
      active={stageTwoActive} onSelect={selectStageTwoLab}/>}
 

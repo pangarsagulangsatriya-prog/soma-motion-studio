@@ -13,8 +13,9 @@ export {hubDisplayName,hubSourceAvailable,hubFrameIsFresh,hubBodyCount} from './
  * The Stage 1 source is observed separately, never opened here a second time.
  */
 export type HubCameraPhase='idle'|'connecting'|'live'|'stale'|'error';
+export type HubCameraKind='device'|'phone';
 export type HubCameraRecord={
- id:string;deviceId:string;name:string;
+ id:string;deviceId:string;name:string;kind:HubCameraKind;
  phase:HubCameraPhase;message:string;showSkeleton:boolean;
  frames:number;frameAt:number;fps:number;detectedBodies:number;
 };
@@ -44,18 +45,28 @@ export class CameraHubRegistry {
  create(deviceId:string,label:string):string{
   if(!hubSourceAvailable(deviceId,this.snapshot()))
    throw Error('Kamera ini sudah terdaftar. Pilih node yang ada.');
+  return this.add('device',deviceId,label);
+ }
+ /** Wireless phone sources are registered as real camera nodes. Pairing and
+  * MediaStream ownership stay with the persistent PhoneCameraReceiver. */
+ createPhone(label='Kamera HP nirkabel'):string{
+  return this.add('phone','',label);
+ }
+ private add(kind:HubCameraKind,deviceId:string,label:string):string{
   const id=crypto.randomUUID();
   const video=document.createElement('video');
   video.autoplay=true;video.muted=true;video.playsInline=true;
   // Preview video is DOM-detached, preserving source processing when changing
   // internal SOMA workspaces without re-requesting browser permissions.
   const entry:Entry={tracker:new CameraTracker(),video,frame:null,epoch:0,lastNotify:0,
-   record:{id,deviceId,name:hubDisplayName(label),phase:'idle',message:'Siap dihubungkan',
+   record:{id,deviceId,name:hubDisplayName(label),kind,phase:'idle',message:kind==='phone'?'Pilih nirkabel lalu pasangkan HP':'Siap dihubungkan',
     showSkeleton:true,frames:0,frameAt:0,fps:0,detectedBodies:0}};
   this.entries.set(id,entry);this.emit();return id;
  }
- async connect(id:string):Promise<void>{
+ async connect(id:string,externalStream?:MediaStream):Promise<void>{
   const entry=this.entries.get(id);if(!entry)return;
+  if(entry.record.kind==='phone'&&!externalStream)throw Error('Pasangkan HP dengan QR atau kode terlebih dahulu.');
+  if(entry.record.kind==='device'&&externalStream)throw Error('Gunakan perangkat kamera yang dipilih.');
   entry.epoch++;const epoch=entry.epoch;
   entry.tracker.stop(entry.video);
   entry.frame=null;entry.record.frameAt=0;entry.record.frames=0;entry.record.detectedBodies=0;
@@ -83,7 +94,7 @@ export class CameraHubRegistry {
     if(!current())return;
     entry.frame=null;entry.record.frameAt=0;entry.record.phase='error';
     entry.record.message=error;this.emit();
-   },entry.record.deviceId);
+   },entry.record.kind==='phone'?undefined:entry.record.deviceId,externalStream);
    if(current()&&entry.record.phase==='connecting'&&entry.video.readyState>=2){
     entry.record.phase='live';entry.record.message='Video LIVE · mencari tubuh';this.emit();
    }
@@ -92,6 +103,9 @@ export class CameraHubRegistry {
    entry.record.phase='error';entry.record.message=cameraErrorMessage(error);this.emit();
   }
  }
+ /** Feed a WebRTC phone stream through the same Body CameraTracker as Track.
+  * A receiver is kept mounted across SOMA sidebar changes. */
+ connectPhone(id:string,stream:MediaStream):Promise<void>{return this.connect(id,stream);}
  rename(id:string,name:string){
   const entry=this.entries.get(id);if(!entry)return;
   entry.record.name=hubDisplayName(name);this.emit();
@@ -102,6 +116,7 @@ export class CameraHubRegistry {
  }
  async replace(id:string,deviceId:string,label:string){
   const entry=this.entries.get(id);if(!entry)return;
+  if(entry.record.kind==='phone')throw Error('Ganti jalur HP melalui pairing.');
   if(deviceId!==entry.record.deviceId&&!hubSourceAvailable(deviceId,this.snapshot()))
    throw Error('Kamera sudah digunakan oleh node lain.');
   this.disconnect(id);
