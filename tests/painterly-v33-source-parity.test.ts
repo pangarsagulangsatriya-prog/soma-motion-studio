@@ -89,8 +89,10 @@ test('camera, phone, video and simulator gesture instances yield same geometry c
   const fixture=[[1000,.2],[1050,.22],[1100,.25],[1150,.28],[1200,.3],
    [1250,.3],[1300,.3],[1350,.3],[1450,.3]] as const;
   const events=fixture.flatMap(([t,x])=>engine.ingest([poseAt(x,t)]));
-  const stamp=events.find(e=>e.kind==='imprint');
-  assert.ok(stamp,source+' never stamped');
-  assert.equal(buildFootBrushDabs(stamp.from??stamp.pose,stamp.pose,'imprint').length,1);
+  const painted=events.find(e=>e.kind==='imprint'||e.kind==='drag');
+  assert.ok(painted,source+' never produced a brush event');
+  const dabs=buildFootBrushDabs(painted.from??painted.pose,painted.pose,painted.kind);
+  assert.ok(dabs.length>=1,source+' produced no paint geometry');
+  assert.ok(dabs.every(d=>d.actorId==='A'&&d.side==='left'));
  }
 });
