@@ -155,7 +155,7 @@ test('S0.6.1: primary Footprints pipeline passes D2 verified identities to regis
  assert.match(buffer,/frame\.persistentActors\?\.find/);
  assert.doesNotMatch(buffer,/if\(frame\.ambiguous\)\{\s*for\(const bank of this\.actors\.values/);
  assert.match(ui,/snapshot\.persistentActors\?\.filter/);
- assert.match(ui,/snapshot\.actorStates\.map/);
+ assert.match(ui,/snapshot\.actorStates\.filter\(actor=>performerCount===2\|\|actor\.id==='A'\)\.map/);
  assert.match(ui,/actor\.presence==='visible'/);
  assert.doesNotMatch(ui,/D1MoveNetBenchmark/);
 });
