@@ -16,6 +16,9 @@ export class PersistentInkStore{
  get paintingSessionId(){return this.paintingIndex;}
  get depositCount(){return this.accepted;}
  getBounds():PaintingBounds|null{return this.inkBounds?{...this.inkBounds}:null;}
+ get diagnostics(){return {deposits:this.accepted,liveIds:this.playedIds.size,
+  coveredRanges:[...this.mediaIntervals.values()].reduce((n,parts)=>n+parts.length,0),
+  rasterBytes:WIDTH*HEIGHT*4};}
  private ensureCanvas(){
   if(!this.canvas){this.canvas=document.createElement('canvas');
    this.canvas.width=WIDTH;this.canvas.height=HEIGHT;}
@@ -56,12 +59,17 @@ export class PersistentInkStore{
   if(right<=left||bottom<=top)return false;
   if(!this.scratch)this.scratch=document.createElement('canvas');
   const scratch=this.scratch;
-  scratch.width=right-left;scratch.height=bottom-top;
+  const neededW=right-left,neededH=bottom-top;
+  // Pool the backing texture; allocate only when a new stroke exceeds capacity.
+  if(scratch.width<neededW)scratch.width=Math.min(WIDTH,Math.max(64,Math.ceil(neededW/64)*64));
+  if(scratch.height<neededH)scratch.height=Math.min(HEIGHT,Math.max(64,Math.ceil(neededH/64)*64));
   const temp=scratch.getContext('2d');
   if(!temp)return false;
-  temp.save();temp.translate(-left,-top);
+  temp.save();temp.setTransform(1,0,0,1,0,0);
+  temp.clearRect(0,0,scratch.width,scratch.height);
+  temp.translate(-left,-top);
   renderSumiMaterial(temp,geometry,style);temp.restore();
-  target.drawImage(scratch,left,top);
+  target.drawImage(scratch,0,0,neededW,neededH,left,top,neededW,neededH);
   this.playedIds.add(event.id);this.idOrder.push(event.id);
   while(this.idOrder.length>3000)this.playedIds.delete(this.idOrder.shift()!);
   this.indexInterval(event);this.accepted++;
