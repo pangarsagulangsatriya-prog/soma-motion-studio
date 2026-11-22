@@ -15,8 +15,9 @@ async function openV3(page){
 }
 test('V3 uses two-foot precise default, a compact control panel and a clean canvas',async({page})=>{
  const {panel}=await openV3(page);
- await expect(panel.getByRole('button',{name:'Lintasan'})).toHaveAttribute('aria-pressed','true');
- await expect(panel.getByRole('button',{name:/Pijakan/})).toBeDisabled();
+ await expect(panel.getByRole('group',{name:'Material lukisan'}).getByRole('button',{name:'Tinta'}))
+  .toHaveAttribute('aria-pressed','true');
+ await expect(panel.getByLabel('Tampilkan tapak kaki')).toBeChecked();
  await expect(panel.getByLabel('Warna Aktor A')).toHaveValue('#e44f32');
  await panel.locator('.lt-painterly-characters summary').click();
  await expect(panel.getByRole('group',{name:'Karakter garis'}).getByRole('button',{name:'Luwes'}))
