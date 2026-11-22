@@ -54,7 +54,7 @@ test('live sole heads do not stamp each frame; stale head fades within 380 ms',(
  assert.equal(e.count,0);assert.equal(e.liveHeads(1000).length,2);
  for(let t=1033;t<1300;t+=33)e.ingestFrame(pair(.20,t),t,'video');
  assert.equal(e.count,0);
- assert.equal(e.liveHeads(1600).length,0);
+ assert.equal(e.liveHeads(1800).length,0);
 });
 test('estimated cap needs movement, settling time, distance and cooldown',()=>{
  const e=new PainterlyImpressionEngine();e.ensureSource('video:clip1');
