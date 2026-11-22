@@ -3,10 +3,12 @@ import {resolveActorColor,actorChannel} from './ActorPaletteResolver.ts';
 import type {DualFootTrajectoryEngine} from './DualFootTrajectoryEngine.ts';
 import {paintTrajectory,type V3Settings} from './TrajectoryRenderer.ts';
 import {PainterlyImpressionEngine,lifetimeOpacity} from './PainterlyImpressionEngine.ts';
+import {paintFootBrushDeposits,type FootBrushDepositStore} from './FootBrushStrokeRenderer.ts';
 
 export type PainterlyMaterial='ink'|'charcoal'|'pigment';
 export type PainterlySettings={
  enabled:boolean;
+ painterlyEngine?:'legacy-v32'|'foot-brush-v33';
  material:PainterlyMaterial;
  showSoles:boolean;showTrails:boolean;
  footprintLifeMs:number;trailLifeMs:number;
@@ -14,7 +16,7 @@ export type PainterlySettings={
  sizePx:number;
 };
 export const DEFAULT_PAINTERLY_SETTINGS:PainterlySettings={
- enabled:true,material:'ink',showSoles:true,showTrails:true,
+ enabled:true,painterlyEngine:'legacy-v32',material:'ink',showSoles:true,showTrails:true,
  footprintLifeMs:8000,trailLifeMs:4000,
  footprintKeep:false,trailKeep:false,sizePx:70
 };
@@ -52,7 +54,8 @@ function grainWithinSole(ctx:CanvasRenderingContext2D,side:'left'|'right',
 export function paintPainterlyCanvas(
  ctx:CanvasRenderingContext2D,trajectory:DualFootTrajectoryEngine,
  impressions:PainterlyImpressionEngine,settings:V3Settings,
- painterly:PainterlySettings,presentationMs:number,blackout=false,fullscreen=false
+ painterly:PainterlySettings,presentationMs:number,blackout=false,fullscreen=false,
+ brushStore?:FootBrushDepositStore
 ){
  if(!painterly.enabled){
   paintTrajectory(ctx,trajectory,settings,presentationMs,blackout,fullscreen);
@@ -64,6 +67,14 @@ export function paintPainterlyCanvas(
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,w,h);ctx.fillStyle='#000000';ctx.fillRect(0,0,w,h);
   ctx.restore();return;
+ }
+ // V3.3 is opt-in until the P0 QA gate. Legacy remains pixel-identical.
+ if(painterly.painterlyEngine==='foot-brush-v33'&&brushStore){
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);
+  ctx.restore();
+  paintFootBrushDeposits(ctx,brushStore.entries,settings,painterly,presentationMs);
+  return;
  }
  // One white-canvas raster pipeline for the Stage Monitor and fullscreen.
  if(painterly.showTrails){
