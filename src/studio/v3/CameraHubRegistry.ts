@@ -40,7 +40,6 @@ export function hubBodyCount(frame:MotionFrame|null):number{
 export class CameraHubRegistry {
  private entries=new Map<string,Entry>();
  private listeners=new Set<()=>void>();
- private terminated=false;
  subscribe=(listener:()=>void)=>{
   this.listeners.add(listener);
   return()=>{this.listeners.delete(listener);};
@@ -56,7 +55,6 @@ export class CameraHubRegistry {
   return this.snapshot().find(x=>x.deviceId===deviceId)??null;
  }
  create(deviceId:string,label:string):string{
-  if(this.terminated)throw Error('Camera Hub sudah ditutup.');
   if(!hubSourceAvailable(deviceId,this.snapshot()))
    throw Error('Kamera ini sudah terdaftar. Pilih node yang ada.');
   const id=crypto.randomUUID();
@@ -70,12 +68,12 @@ export class CameraHubRegistry {
   this.entries.set(id,entry);this.emit();return id;
  }
  async connect(id:string):Promise<void>{
-  const entry=this.entries.get(id);if(!entry||this.terminated)return;
+  const entry=this.entries.get(id);if(!entry)return;
   entry.epoch++;const epoch=entry.epoch;
   entry.tracker.stop(entry.video);
   entry.frame=null;entry.record.frameAt=0;entry.record.frames=0;entry.record.detectedBodies=0;
   entry.record.phase='connecting';entry.record.message='Meminta izin kamera…';this.emit();
-  const current=()=>!this.terminated&&this.entries.get(id)===entry&&entry.epoch===epoch;
+  const current=()=>this.entries.get(id)===entry&&entry.epoch===epoch;
   try{
    await entry.tracker.start(entry.video,()=>settings,frame=>{
     if(!current())return;
@@ -135,8 +133,7 @@ export class CameraHubRegistry {
   this.disconnect(id);entry.tracker.dispose(entry.video);this.entries.delete(id);this.emit();
  }
  dispose(){
-  if(this.terminated)return;
   for(const id of [...this.entries.keys()])this.remove(id);
-  this.terminated=true;this.listeners.clear();
+  this.listeners.clear();
  }
 }
