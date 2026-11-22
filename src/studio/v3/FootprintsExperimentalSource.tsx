@@ -226,11 +226,12 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
      clip?'Menyiapkan AI':'Belum ada video'}
    </span>
    {snapshot&&<div className="fp-duet-engine-status" role="group"
-    aria-label="TRACKING OTOMATIS dua aktor">
+    aria-label={`TRACKING OTOMATIS ${performerCount} aktor`}>
     <b>TRACKING</b>
     <span className="fp-tracking-summary"
-     title={snapshot.visibleCount===2?'Dua aktor terbaca':snapshot.visibleCount===1?
-      'Satu aktor terbaca; menunggu aktor lainnya':'Menunggu tubuh yang dapat diatribusikan'}>
+     title={performerCount===1?(snapshot.visibleCount>0?'Satu aktor terbaca':'Menunggu aktor'):
+      snapshot.visibleCount===2?'Dua aktor terbaca':snapshot.visibleCount===1?
+       'Satu aktor terbaca; menunggu aktor lainnya':'Menunggu tubuh yang dapat diatribusikan'}>
      {performerCount===1?(snapshot.visibleCount>0?'1/1 aktif':'Mencari'):
       snapshot.visibleCount===2?'2/2 aktif':
       snapshot.persistentActors?.filter(a=>a.registered).length===2?

@@ -1119,6 +1119,7 @@ export function FootprintsStageWorkspace({
       {experimentalKind&&<FootprintsExperimentalSource
        key={experimentalKind} kind={experimentalKind}
        model={experimentPuppet} externalRevision={experimentPuppetRevision}
+       performerCount={performerCount}
        clip={experimentClip} onClip={onExperimentClip} onFrame={onExperimentFrame}
        onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
        onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}

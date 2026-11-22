@@ -26,9 +26,10 @@ export class MotionProcessor {
     point.x>=0&&point.x<=1&&point.y>=0&&point.y<=1?
     (point.visibility??0):0);
   },0);
-  const selectedPoseIndex=f.poses.reduce((bestIndex,body,index)=>
-   torsoScore(body)>torsoScore(f.poses[bestIndex]??[])?index:bestIndex,0);
-  f.pose=f.poses[selectedPoseIndex]??[];
+  const observedPoses=f.poses??[];
+  const selectedPoseIndex=observedPoses.reduce((bestIndex,body,index)=>
+   torsoScore(body)>torsoScore(observedPoses[bestIndex]??[])?index:bestIndex,0);
+  f.pose=observedPoses[selectedPoseIndex]??[];
   f.handCount=f.hands.length;f.face=face?.faceLandmarks[0]??[];
   const dt=this.previous?clamp((time-this.previous.time)/1000,.008,.25):.033;
   const screenX=(x:number)=>s.mirror?1-x:x;
