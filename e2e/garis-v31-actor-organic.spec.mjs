@@ -12,9 +12,10 @@ async function openLines(page){
 
 test('V3.1 default is actor-first: A red, Luwes, compact controls, no foot color on top',async({page})=>{
  const {panel}=await openLines(page);
- await expect(panel.getByText('V3.1 BETA')).toBeVisible();
+ await expect(panel.getByText('V3.2 BETA')).toBeVisible();
  await expect(panel.getByLabel('Warna Aktor A')).toHaveValue('#e44f32');
  await expect(panel.getByLabel('Tampilkan Aktor A')).toBeChecked();
+ await panel.locator('.lt-painterly-characters summary').click();
  const character=panel.getByRole('group',{name:'Karakter garis'});
  await expect(character.getByRole('button',{name:'Luwes'})).toHaveAttribute('aria-pressed','true');
  await expect(character.getByRole('button',{name:'Presisi'})).toBeVisible();
