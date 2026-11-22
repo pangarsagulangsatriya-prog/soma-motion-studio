@@ -289,12 +289,11 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
   aria-label="QR pairing kamera HP">
   {!room&&(phase==='idle'||phase==='error')&&<button type="button"
    className="soma-setup-primary soma-track-create-qr"
-   onClick={()=>void start(readPhoneSession('desktop')??undefined)} disabled={phase==='creating'}
-   aria-label={phase==='creating'?'Menyiapkan kode QR':'Tampilkan QR kamera HP'}>
-   {phase==='creating'?<LoaderCircle size={17} className="soma-track-spinning" aria-hidden="true"/>:
-    phase==='error'?<RefreshCw size={17} aria-hidden="true"/>:
+   onClick={()=>void start(readPhoneSession('desktop')??undefined)}
+   aria-label={phase==='error'?'Coba pulihkan kamera HP':'Tampilkan QR kamera HP'}>
+   {phase==='error'?<RefreshCw size={17} aria-hidden="true"/>:
     <QrCode size={20} aria-hidden="true"/>}
-   <span>{phase==='creating'?'Menyiapkan QR…':phase==='error'?'Coba lagi':'Tampilkan QR'}</span>
+   <span>{phase==='error'?'Coba lagi':'Tampilkan QR'}</span>
   </button>}
   {room&&<div className="soma-auto-pair-code" aria-label="Kode QR kamera HP aktif">
    <div className="soma-track-qr-frame">
