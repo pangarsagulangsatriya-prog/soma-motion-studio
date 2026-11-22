@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
-test('IA-R1: Stage 1 retains four local workspaces alongside Stage 2, F3 Capture and Camera Hub',()=>{
+test('IA-R1: fixed rail has Engine and Camera Hub with three floating stage choices',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
  const local=read('../src/studio/v3/StageModuleNav.tsx');
  const global=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
   nav.indexOf('className="soma-primary-labs-launch"'));
- assert.equal((global.match(/soma-primary-destination/g)||[]).length,4);
+ assert.equal((global.match(/soma-primary-destination/g)||[]).length,2);
+ assert.match(global,/aria-label="Engine"/);
+ assert.match(nav,/className="soma-engine-flyout"/);
+ assert.match(nav,/aria-expanded=\{engineMenuOpen\}/);
  assert.match(global,/aria-label="Stage 1"/);
  assert.match(global,/aria-label="Stage 2"/);
  assert.match(global,/aria-label="Camera Hub"/);
@@ -100,7 +103,9 @@ test('IA-R1: minimal status/source and keyboard work on 390px viewport',()=>{
  assert.match(css,/@media\(max-width:430px\)/);
  assert.match(css,/soma-uxr1-health\{display:flex!important/);
  assert.match(nav,/const \[mobile,setMobile\]=useState/);
- assert.match(nav,/aria-expanded=\{expanded\}/);
+ assert.match(nav,/aria-expanded=\{engineMenuOpen\}/);
+ assert.doesNotMatch(nav,/setExpanded\(/);
+ assert.match(nav,/className="soma-engine-flyout"/);
  assert.match(nav,/onClick=\{openStageStudio\}/);
  const local=read('../src/studio/v3/StageModuleNav.tsx');
  assert.match(local,/className="soma-stage-module-nav"/);
