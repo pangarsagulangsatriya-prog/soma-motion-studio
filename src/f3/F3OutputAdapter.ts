@@ -5,13 +5,20 @@ import type {F3StageFrame} from './F3Types.ts';
  * Stage 1 FLOOR channel remains untouched. This prototype does NOT open a physical
  * output window or bypass the existing Perform authorization.
  */
+/** A Stage 1 BODY authorization cannot authorize a different F3 pixel source.
+ * Until the F3 source binding + acknowledgement + physical calibration are
+ * implemented and checked, the projection adapter must never claim READY.
+ */
 export function f3ProjectorGate(){
  const route=getDualSurfaceState();
- const plan=route.plans.body,proof=route.proofs.body;
- return {ready:STAGE_HARDWARE_ENABLED&&route.armed.body&&route.requested.body==='live'&&
-  route.devices.body.connected&&!!proof&&!!plan,
-  reason:!STAGE_HARDWARE_ENABLED?'Output fisik belum diaktifkan.':!route.devices.body.connected?
-   'Output BODY belum tersambung.':'Otorisasi Perform / QA BODY belum lengkap.'};
+ const bodyAuthorized=STAGE_HARDWARE_ENABLED&&route.armed.body&&
+  route.requested.body==='live'&&route.devices.body.connected&&
+  !!route.proofs.body&&!!route.plans.body;
+ return {
+  ready:false,
+  bodyAuthorized,
+  reason:'F3 belum memiliki binding dan QA fisik BODY tersendiri. Output proyektor F3 tetap BLACKOUT.'
+ };
 }
 export function f3Blackout(){urgentBlackoutDualSurface('body');}
 export function renderF3ProjectorFrame(canvas:HTMLCanvasElement,frame:F3StageFrame,video:HTMLVideoElement|null){
