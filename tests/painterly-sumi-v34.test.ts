@@ -119,3 +119,49 @@ test('persistent store paints once, cuts without clearing, and clears on command
   (globalThis as any).document=saved;
  }
 });
+
+test('accelerated 30-minute 2-actor/4-foot stream bounds the ink cache and metadata',()=>{
+ const saved=(globalThis as any).document;
+ let frames=0;
+ class FakeCanvas{
+  width=0;height=0;
+  getContext(){
+   return {canvas:this,save(){},restore(){},translate(){},setTransform(){},
+    clearRect(){},drawImage(){frames++;},beginPath(){},moveTo(){},
+    lineTo(){},closePath(){},fill(){},stroke(){},clip(){},ellipse(){},
+    set globalAlpha(_n:number){},set globalCompositeOperation(_s:string){},
+    set strokeStyle(_s:string){},set fillStyle(_s:string){},
+    set lineWidth(_n:number){},set lineJoin(_s:string){},set lineCap(_s:string){}
+   };
+  }
+ }
+ (globalThis as any).document={createElement:()=>new FakeCanvas()};
+ try{
+  const engine=new ObservedMotionInkEngine();
+  const store=new PersistentInkStore();
+  for(let i=0;i<5401;i++){
+   const atMs=1000+i*333;
+   const poses:FootBrushPose[]=[];
+   for(const [actor,foot,offset] of [
+    ['A','left',0],['A','right',.14],['B','left',.35],['B','right',.49]
+   ] as const){
+    poses.push({...pose(.16+offset+.04*Math.sin(i/5),atMs,
+     'video:thirty-minute-clip:0:2',actor,foot),
+     center:{x:.16+offset+.04*Math.sin(i/5),y:foot==='left'?.48:.61}});
+   }
+   for(const event of engine.ingest(poses)){
+    const g=buildSumiStrokeGeometry(event,{weightPx:36,expression:'bold'});
+    if(g)store.appendOnce(event,g,{color:event.actorId==='A'?'#e44f32':'#242424',
+     material:'sumi',weightPx:36,expression:'bold',seed:i});
+   }
+  }
+  const s=store.diagnostics;
+  assert.ok(s.deposits>1000);
+  assert.ok(s.liveIds<=3000);
+  assert.ok(s.coveredRanges<=16);
+  assert.equal(s.rasterBytes,1600*900*4);
+  assert.ok(frames>=s.deposits);
+  store.cutMotionSegment('camera-disconnect');
+  assert.equal(store.depositCount,s.deposits);
+ }finally{(globalThis as any).document=saved;}
+});
