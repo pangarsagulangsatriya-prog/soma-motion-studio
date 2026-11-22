@@ -103,6 +103,16 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
  const live=sources.filter(s=>s.phase==='live').length;
  const trackLinked=borrowed?1:0;
  const freeDevices=inventory.filter(d=>hubSourceAvailable(d.deviceId,records)&&!(borrowed&&trackDevice===d.deviceId));
+ const requestPermission=async()=>{
+  setBusy(true);setError('');
+  try{
+   if(!navigator.mediaDevices?.getUserMedia)throw Error('Izin kamera memerlukan HTTPS.');
+   const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:true});
+   stream.getTracks().forEach(t=>t.stop());
+   await refresh();
+  }catch(e){setError(cameraErrorMessage(e));}
+  finally{setBusy(false);}
+ };
  const newCamera=async()=>{
   const device=inventory.find(d=>d.deviceId===picked);
   if(!device){setError('Pilih kamera terlebih dahulu.');return;}
@@ -157,6 +167,8 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
     <Plus size={15}/> Sambungkan
    </button>
    <button type="button" className="ch-add-close" onClick={()=>setShowAdd(false)}>Batal</button>
+   {!inventory.length&&<button type="button" className="ch-add-close" disabled={busy}
+    onClick={()=>void requestPermission()}><Camera size={15}/> Izinkan kamera</button>}
    {!freeDevices.length&&<p className="ch-add-help">Tidak ada kamera bebas. Sambungkan perangkat lain atau perbarui daftar. HP nirkabel tetap bisa dipasangkan melalui Track.</p>}
   </section>}
   {(error||cameraError)&&<div className="ch-error" role="alert"><AlertCircle size={17}/>{error||cameraError}</div>}
@@ -240,7 +252,8 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
       <div className="ch-operations">
        {selectedNode.phase==='live'||selectedNode.phase==='connecting'?
         <button type="button" onClick={()=>registry.disconnect(selectedNode.id)}><VideoOff size={15}/> Putus</button>:
-        <button type="button" disabled={busy} onClick={()=>void act(()=>registry.connect(selectedNode.id))}><Video size={15}/> Sambungkan ulang</button>}
+        <button type="button" disabled={busy||(borrowed&&selectedNode.deviceId===trackDevice)}
+         onClick={()=>void act(()=>registry.connect(selectedNode.id))}><Video size={15}/> {borrowed&&selectedNode.deviceId===trackDevice?'Dipakai Stage 1':'Sambungkan ulang'}</button>}
        <button type="button" className="ch-remove" onClick={()=>{
         registry.remove(selectedNode.id);setSelected(null);
        }}><Trash2 size={15}/> Hapus</button>
