@@ -21,12 +21,12 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,cameraHubActive=false,captureActive=false,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,cameraHubActive=false,captureActive=false,onF3Capture,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
  onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
- onCameraHub:()=>void;cameraHubActive?:boolean;captureActive?:boolean;
+ onCameraHub:()=>void;cameraHubActive?:boolean;captureActive?:boolean;onF3Capture:()=>void;
  onStageTool:(tool:StageNavigationTool)=>void;
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
@@ -246,9 +246,9 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
     <ChevronRight size={15} aria-hidden="true"/>
    </button>
    <button type="button" className="soma-engine-choice" aria-current={captureActive?'page':undefined}
-    onClick={()=>{setEngineMenuOpen(false);onCaptureLab();}}>
+    onClick={()=>{setEngineMenuOpen(false);onF3Capture();}}>
     <span className="soma-engine-choice-icon"><Camera size={17}/></span>
-    <span className="soma-engine-choice-text"><strong>F3 Capture</strong><small>Foto · Rekaman</small></span>
+    <span className="soma-engine-choice-text"><strong>F3 Capture</strong><small>Input · Motion · Perform</small></span>
     <ChevronRight size={15} aria-hidden="true"/>
    </button>
   </section>}

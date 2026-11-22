@@ -1,0 +1,57 @@
+import type {PoseLandmarker,HandLandmarker} from '@mediapipe/tasks-vision';
+import type {F3MotionFrame} from './F3Types.ts';
+/** Same decoded video A frame and one monotonic timestamp for both MediaPipe calls. */
+export class F3MotionFusion{
+ private pose:PoseLandmarker|null=null;
+ private hand:HandLandmarker|null=null;
+ private loading:Promise<void>|null=null;
+ private lastFrame=-1;
+ private lastTime=0;
+ private sharedCanvas:HTMLCanvasElement|null=null;
+ status:'idle'|'loading'|'ready'|'error'='idle';
+ error='';
+ async init(){
+  if(this.loading)return this.loading;
+  this.status='loading';
+  this.loading=(async()=>{
+   try{
+    const vision=await import('@mediapipe/tasks-vision');
+    const files=await vision.FilesetResolver.forVisionTasks(`${import.meta.env.BASE_URL}wasm`);
+    const base={runningMode:'VIDEO' as const,minTrackingConfidence:.6};
+    const [pose,hand]=await Promise.all([
+     vision.PoseLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`,delegate:'CPU'},numPoses:1,minPoseDetectionConfidence:.55,minPosePresenceConfidence:.55}),
+     vision.HandLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/hand_landmarker.task`,delegate:'CPU'},numHands:2,minHandDetectionConfidence:.55,minHandPresenceConfidence:.55})
+    ]);
+    this.pose=pose;this.hand=hand;this.status='ready';
+   }catch(e){this.status='error';this.error=e instanceof Error?e.message:'Gagal memuat gestur';throw e;}
+  })();
+  return this.loading;
+ }
+ sample(video:HTMLVideoElement,frameId:number,now:number):F3MotionFrame|null{
+  if(this.status!=='ready'||!this.pose||!this.hand||video.readyState<2||frameId===this.lastFrame)return null;
+  this.lastFrame=frameId;
+  const timestamp=Math.max(this.lastTime+1,Math.floor(now));
+  this.lastTime=timestamp;
+  // One frozen decoded A pixel buffer for BOTH models. Never sample the live
+  // video element twice: its media frame may advance between CPU inferences.
+  const width=video.videoWidth,height=video.videoHeight;
+  if(!width||!height)return null;
+  this.sharedCanvas??=document.createElement('canvas');
+  const shared=this.sharedCanvas;
+  if(shared.width!==width||shared.height!==height){shared.width=width;shared.height=height;}
+  const ctx=shared.getContext('2d',{willReadFrequently:true});
+  if(!ctx)return null;
+  ctx.drawImage(video,0,0,width,height);
+  const pose=this.pose.detectForVideo(shared,timestamp);
+  const hands=this.hand.detectForVideo(shared,timestamp);
+  const body=pose.landmarks[0]??[];
+  const joints=[11,12,13,14,15,16].map(index=>body[index]).filter(Boolean);
+  const quality=joints.length===6?
+   joints.reduce((sum,p)=>sum+(Number.isFinite(p.visibility)?Math.max(0,Math.min(1,p.visibility!)):1),0)/6:0;
+  return {frameId,timestamp,videoTime:video.currentTime,pose:body,hands:hands.landmarks??[],
+   confidence:quality,fresh:true};
+ }
+ resetFrames(){this.lastFrame=-1;this.lastTime=0;}
+ async retry(){this.dispose();this.error='';return this.init();}
+ dispose(){this.pose?.close();this.hand?.close();this.pose=null;this.hand=null;this.loading=null;this.status='idle';this.lastFrame=-1;this.lastTime=0;this.sharedCanvas=null;}
+}

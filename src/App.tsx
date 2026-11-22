@@ -22,6 +22,7 @@ import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
 import {CameraHubWorkspace} from './studio/v3/CameraHubWorkspace.tsx';
+import {F3CaptureWorkspace} from './f3/F3CaptureWorkspace.tsx';
 import {StageTwoInstrumentNav} from './studio/v3/StageTwoInstrumentNav.tsx';
 import type {StageTwoLabId} from './studio/v3/labsCatalog.ts';
 import './studio/v3/stage-two.css';
@@ -75,6 +76,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const stageSession=useStageSession();
  const [archiveActive,setArchiveActive]=useState(false);
  const [cameraHubActive,setCameraHubActive]=useState(false);
+ const [f3CaptureActive,setF3CaptureActive]=useState(()=>!stageTwo&&new URL(window.location.href).searchParams.get('f3')==='1');
  const [projectionActive,setProjectionActive]=useState(false);
  const [footprintsActive,setFootprintsActive]=useState<boolean>(()=>stageTwo?false:defaultFootprintsWorkspace());
  const [stageTwoActive,setStageTwoActive]=useState<StageTwoLabId>('liquid');
@@ -484,12 +486,13 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  const selectedPreset=settings.hydra?.preset;
  const currentScene:SceneId=footprintsActive?'footprints':selectedPreset==='echo'||selectedPreset==='cut'||selectedPreset==='body'?selectedPreset:'liquid';
  const archive=useArchive({pointerStart:e=>{pointer(e);mouse.current.down=true;e.currentTarget.setPointerCapture(e.pointerId);},pointerMove:pointer,pointerEnd:()=>{mouse.current.down=false;},active:archiveActive,engine,frameRef,videoRef:video,settings,cameraOn,cameraBusy,cameraStatus:cameraError||status,audioOn,muted,recording,recordSeconds,chooseInput,startCamera,stopCamera,enableAudio,panic,toggleRecording,openSessions:()=>{archive.setClean(false);setModal('sessions');},setMaster:master=>update({master}),exit:()=>{archive.hold();setArchiveActive(false);archive.setClean(false);}});
- return <div className={`app soma-v2 soma-v3 ${stageTwo?'soma-stage2-app ':''}${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
+ const clearF3=()=>{setF3CaptureActive(false);const url=new URL(window.location.href);url.searchParams.delete('f3');window.history.replaceState(null,'',url.toString());};
+ return <div className={`app soma-v2 soma-v3 ${f3CaptureActive?'f3-capture-active ':''}${stageTwo?'soma-stage2-app ':''}${archiveActive?'archive-mode':''} ${projectionActive?'projection-mode':''} ${clean&&!archiveActive?'clean-view':''} ${footprintsOperator&&footprintsActive?'soma-operator-mode':''} ${controlsOpen?'controls-open':''} ${hudVisible?'hud-visible':''}`} onPointerMove={()=>{if(clean)revealHUD();}} onTouchStart={()=>{if(clean)revealHUD();}}>
   <div className="workspace">
    {!clean&&<GlobalNav workspace={archiveActive?'archive':projectionActive?'projection':'studio'} scene={currentScene}
     stageTwo={stageTwo} stageTwoLab={stageTwoActive} onStageTwoLab={selectStageTwoLab}
     perform={footprintsOperator}
-    onFootprints={()=>{setCameraHubActive(false);if(stageTwo){openStageOneFromTwo();return;}
+    onFootprints={()=>{clearF3();setCameraHubActive(false);if(stageTwo){openStageOneFromTwo();return;}
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');
@@ -502,39 +505,49 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      requestStageBlackout(()=>projection.setTransport('blackout'));
      requestSoftwarePreviewBlackout();
      const url=new URL(window.location.href);
-     url.searchParams.set('stage','2');
+     url.searchParams.delete('f3');url.searchParams.set('stage','2');
      window.location.assign(url.toString());
     }}
-    onCameraHub={()=>{setCaptureOpen(false);setClean(false);setCameraHubActive(true);}}
-     cameraHubActive={cameraHubActive} captureActive={captureOpen}
-     onInstrument={scene=>{setCameraHubActive(false);requestStageBlackout(()=>projection.setTransport('blackout'));
+    onCameraHub={()=>{clearF3();setCaptureOpen(false);setClean(false);setCameraHubActive(true);}}
+     onF3Capture={()=>{
+      if(stageTwo){const url=new URL(window.location.href);url.searchParams.delete('stage');url.searchParams.set('f3','1');window.location.assign(url.toString());return;}
+      requestStageBlackout(()=>projection.setTransport('blackout'));
+      requestSoftwarePreviewBlackout();if(cameraOn)stopCamera();
+      setCameraHubActive(false);setCaptureOpen(false);setFootprintsOperator(false);
+      setArchiveActive(false);setProjectionActive(false);setClean(false);setModal(null);
+      setF3CaptureActive(true);
+      const url=new URL(window.location.href);url.searchParams.set('f3','1');
+      window.history.replaceState(null,'',url.toString());
+     }}
+     cameraHubActive={cameraHubActive} captureActive={f3CaptureActive}
+     onInstrument={scene=>{clearF3();setCameraHubActive(false);requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene(scene);setTab('visual');setInspectorOpen(true);}}
-    onArchive={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+    onArchive={()=>{clearF3();requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setModal(null);setClean(false);
      setProjectionActive(false);setArchiveActive(true);}}
-    onProjection={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));
+    onProjection={()=>{clearF3();requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setModal(null);setClean(false);cameraCue.close();setProjectionActive(true);}}
-    onSoundLab={()=>{
+    onSoundLab={()=>{clearF3();
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      setFootprintsOperator(false);selectScene('liquid');
      setTab('sound');setInspectorOpen(true);setControlsOpen(true);
     }}
-    onHydraLab={()=>{
+    onHydraLab={()=>{clearF3();
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      setFootprintsOperator(false);selectScene('liquid');
      setTab('visual');setInspectorOpen(true);setControlsOpen(true);
     }}
-    onCaptureLab={()=>{
+    onCaptureLab={()=>{clearF3();
      setCameraHubActive(false);
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      setFootprintsOperator(false);selectScene('liquid');
      setCaptureTab('photo');setCaptureOpen(true);
     }}
-    onStageTool={(tool:StageNavigationTool)=>{
+    onStageTool={(tool:StageNavigationTool)=>{clearF3();
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');setSelectedStageTool(tool);
@@ -542,7 +555,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
     }}
     selectedTool={selectedStageTool}
     sourceSelection={footprintsChoice} sourceBusy={sourceSwitchBusy}
-    onSelectSource={choice=>{
+    onSelectSource={choice=>{clearF3();
      // Route new sources into Track for upload, pairing and pose diagnostics.
      setFootprintsOperator(false);setArchiveActive(false);setProjectionActive(false);
      setClean(false);selectScene('footprints');setSelectedStageTool('tracking');
@@ -553,7 +566,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
     trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
     outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Output terkunci':projection.status.connected?'QA diperlukan':'Output terkunci'}
     onPreset={()=>setModal('presets')}
-    onPerform={()=>{
+    onPerform={()=>{clearF3();
      requestStageBlackout(()=>projection.setTransport('blackout'));
      setArchiveActive(false);setProjectionActive(false);setClean(false);
      selectScene('footprints');
@@ -566,6 +579,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
     }} onHelp={()=>setModal('help')}
     preset={activePreset}/>}
    <main style={{position:'relative'}}>
+     {f3CaptureActive&&!clean&&<F3CaptureWorkspace/>}
      {cameraHubActive&&<CameraHubWorkspace devices={devices} selectedId={deviceId} cameraOn={cameraOn}
       cameraBusy={cameraBusy} cameraError={cameraError} videoRef={video}
       onSelectStageOne={selectFootprintsCameraDevice}
@@ -573,7 +587,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
     {stageTwo&&!clean&&!archiveActive&&!projectionActive&&<StageTwoInstrumentNav
      active={stageTwoActive} onSelect={selectStageTwoLab}/>}
 
-    {footprintsActive&&!clean&&<FootprintsStageWorkspace
+    {footprintsActive&&!f3CaptureActive&&!clean&&<FootprintsStageWorkspace
      navigationRequest={stageNavigation} onActiveToolChange={setSelectedStageTool}
      onNavigateStageWorkspace={workspace=>{
       // Only Stage Studio owns these local destinations; internal tab switches preserve active mapping and projector links.
