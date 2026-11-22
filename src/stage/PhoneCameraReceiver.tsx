@@ -140,10 +140,11 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
 }
 
 /** Camera transport modes. Long instructions stay behind contextual help. */
-export function PhoneCameraReceiver({onStream,onDisconnect}:{
+export function PhoneCameraReceiver({onStream,onDisconnect,initialMode='usb'}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+ initialMode?:'usb'|'qr';
 }){
- const [mode,setMode]=useState<'usb'|'qr'|'manual'>('usb');
+ const [mode,setMode]=useState<'usb'|'qr'|'manual'>(initialMode);
  const [helpOpen,setHelpOpen]=useState(false);
  const helpId=useId();
  const helpButton=useRef<HTMLButtonElement>(null);
