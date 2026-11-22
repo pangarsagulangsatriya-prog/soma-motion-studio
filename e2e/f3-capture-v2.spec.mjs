@@ -59,7 +59,7 @@ async function enterStage(page){
  // CSS visibility checks see other DOM nodes even though native fullscreen excludes them.
  return stage;
 }
-test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; B-only pixels and Esc keep sources alive',async({page},testInfo)=>{
+test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; A background, B-only photos and Esc keep sources alive',async({page},testInfo)=>{
  if(!['laptop-1366','wide-1440'].includes(testInfo.project.name))test.skip();
  await startFixtures(page);
  await stageScreenshot(page,'setup',testInfo.project.name);
@@ -162,7 +162,8 @@ test('F3 V3.1: operator sees actor camera and near-square stage slots without le
  await expect(page.locator('.f3-operator-preview canvas')).toHaveCount(1);
  const output=page.locator('.f3-stage-shell canvas');
  await expect(output).toBeVisible();
- // Actor monitor is a sibling of output canvas; projection always reads B-only.
+ // Camera A is painted into the same fullscreen canvas as photo grid and live camera B.
+ // Operator monitor stays outside fullscreen; saved JPEGs still sample camera B only.
  await expect(page.locator('.f3-stage-shell .f3-monitor-perform')).toHaveCount(0);
  await page.getByRole('button',{name:/02 Motion/}).click();
  await expect(page.getByRole('checkbox',{name:/Skeleton/})).toBeChecked();
@@ -171,6 +172,12 @@ test('F3 V3.1: operator sees actor camera and near-square stage slots without le
  await enterStage(page);
  await expect(page.locator('.f3-stage-shell canvas')).toBeVisible();
  await expect(page.locator('.f3-stage-shell .f3-operator-preview')).toHaveCount(0);
+ await expect(page.locator('.f3-stage-shell canvas')).toHaveAttribute(
+  'aria-label',/video aktor A sebagai latar/);
+ const sources=await page.locator('.f3-source-host video').evaluateAll(videos=>
+  videos.map(video=>({w:video.videoWidth,h:video.videoHeight,paused:video.paused})));
+ expect(sources).toHaveLength(2);
+ expect(sources.every(v=>v.w>0&&v.h>0&&!v.paused)).toBe(true);
  await page.keyboard.press('Escape');
  await expect(page.locator('.f3-operator-preview')).toBeVisible();
 });

@@ -32,30 +32,41 @@ function tilePhoto(ctx:CanvasRenderingContext2D,item:F3Photo,x:number,y:number,w
  ctx.restore();
 }
 /** Canonical painter for operator preview, inline/local fullscreen and gated projector canvas. */
-export function drawF3Stage(ctx:CanvasRenderingContext2D,frame:F3StageFrame,videoB:HTMLVideoElement|null){
+export function drawF3Stage(ctx:CanvasRenderingContext2D,frame:F3StageFrame,videoA:HTMLVideoElement|null,videoB:HTMLVideoElement|null){
  const W=ctx.canvas.width,H=ctx.canvas.height,gap=Math.round(W*frame.layout.gapFraction);
  const left=Math.round(W*frame.layout.gridFraction),rightX=left+gap,rightW=W-rightX;
  ctx.save();ctx.fillStyle='#050807';ctx.fillRect(0,0,W,H);
+ // Camera A forms the moving background of this single 2:1 canvas.
+ // Neither the photo capture nor the B crop ever samples from A.
+ const active=frame.state==='LIVE'||frame.state==='SIMULATION';
+ const actorReady=active&&!!videoA&&videoA.readyState>=2&&videoA.videoWidth>0&&videoA.videoHeight>0;
+ if(actorReady){
+  const a=fitCover(videoA!.videoWidth,videoA!.videoHeight,0,0,W,H);
+  try{ctx.drawImage(videoA!,a.sx,a.sy,a.sw,a.sh,0,0,W,H);}catch{/* Camera changed mid-frame. */}
+  ctx.fillStyle='rgba(2,6,4,.43)';ctx.fillRect(0,0,W,H);
+ }
  const tiles=f3PhotoTileRects(W,H,frame.layout.gridFraction,frame.layout.gapFraction);
  for(let i=0;i<4;i++){
   const {x,y,width:tileW,height:tileH}=tiles[i];
-  ctx.fillStyle='#0c1310';ctx.fillRect(x,y,tileW,tileH);
+  ctx.fillStyle=actorReady?'rgba(9,18,13,.48)':'#0c1310';ctx.fillRect(x,y,tileW,tileH);
   const item=frame.photoSlots[i];if(item)tilePhoto(ctx,item,x,y,tileW,tileH);
   ctx.strokeStyle=item?'#718976':'#24392c';ctx.lineWidth=2;ctx.strokeRect(x+.5,y+.5,tileW-1,tileH-1);
   if(!item){ctx.fillStyle='#466151';ctx.font='500 24px system-ui';ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),x+tileW/2,y+tileH/2);}
  }
- ctx.fillStyle='#050807';ctx.fillRect(rightX,0,rightW,H);
+ ctx.fillStyle=actorReady?'rgba(2,7,5,.30)':'#050807';ctx.fillRect(rightX,0,rightW,H);
  const crop=frame.cameraB.crop;
  const canDraw=videoB?.readyState&&videoB.readyState>=2&&
   crop.width>0&&crop.height>0&&crop.x>=0&&crop.y>=0&&
   crop.x+crop.width<=videoB.videoWidth&&crop.y+crop.height<=videoB.videoHeight;
  if(canDraw&&frame.state!=='BLACKOUT'&&frame.state!=='FREEZE'){
   try{
+   ctx.save();ctx.globalAlpha=actorReady?.94:1;
    if(frame.cameraB.mirror){
-    ctx.save();ctx.translate(rightX+rightW,0);ctx.scale(-1,1);
-    ctx.drawImage(videoB!,crop.x,crop.y,crop.width,crop.height,0,0,rightW,H);ctx.restore();
+    ctx.translate(rightX+rightW,0);ctx.scale(-1,1);
+    ctx.drawImage(videoB!,crop.x,crop.y,crop.width,crop.height,0,0,rightW,H);
    }else ctx.drawImage(videoB!,crop.x,crop.y,crop.width,crop.height,rightX,0,rightW,H);
-  }catch{/* Invalidated source: next frame remains dark. */}
+   ctx.restore();
+  }catch{ctx.restore();/* Invalidated source: next frame remains dark. */}
  }
  if(frame.state==='BLACKOUT'){ctx.fillStyle='#050807';ctx.fillRect(0,0,W,H);ctx.restore();return;}
  if(frame.overlay.corners){

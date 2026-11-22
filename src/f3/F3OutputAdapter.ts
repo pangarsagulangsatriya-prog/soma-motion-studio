@@ -25,5 +25,5 @@ export function renderF3ProjectorFrame(canvas:HTMLCanvasElement,frame:F3StageFra
  const gate=f3ProjectorGate(),ctx=canvas.getContext('2d');
  if(!ctx)return false;
  if(!gate.ready){ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);return false;}
- drawF3Stage(ctx,frame,video);return true;
+ drawF3Stage(ctx,frame,null,video);return true;
 }

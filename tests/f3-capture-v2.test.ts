@@ -86,8 +86,9 @@ test('F3 role registry never silently swaps A and B or approves stale/duplicated
  assert.notEqual(r.status('A'),r.status('B'));
 });
 
-test('F3 preview and saved JPEG draw exactly the same source B crop; no A substitution',async()=>{
+test('F3 composites actor A behind B and photos, while JPEG remains B-only',async()=>{
  const crop={x:130,y:40,width:640,height:470};
+ const videoA={readyState:4,videoWidth:1920,videoHeight:1080,srcObject:null} as HTMLVideoElement;
  const videoB={readyState:4,videoWidth:1280,videoHeight:720,srcObject:null} as HTMLVideoElement;
  const calls:unknown[][]=[];
  const ctx={
@@ -97,8 +98,18 @@ test('F3 preview and saved JPEG draw exactly the same source B crop; no A substi
   drawImage(...args:unknown[]){calls.push(args);}
  } as unknown as CanvasRenderingContext2D;
  const frame=makeF3StageFrame({sourceId:'B-fixture',frameId:7,timestamp:345,crop,slots:[null,null,null,null],state:'LIVE'});
- drawF3Stage(ctx,frame,videoB);
+ drawF3Stage(ctx,frame,videoA,videoB);
+ const actorCall=calls.find(c=>c[0]===videoA);
  const previewCall=calls.find(c=>c[0]===videoB);
+ assert.ok(actorCall,'Camera A must be rendered into the Stage View canvas');
+ assert.ok(previewCall,'Camera B must remain in the Stage View canvas');
+ assert.deepEqual(actorCall!.slice(-4),[0,0,1600,800],'A covers the entire background');
+ assert.ok(calls.indexOf(actorCall!)<calls.indexOf(previewCall!),'A must be behind B');
+ const blackout=makeF3StageFrame({sourceId:'B-fixture',frameId:8,timestamp:346,crop,
+  slots:[null,null,null,null],state:'BLACKOUT'});
+ const count=calls.length;
+ drawF3Stage(ctx,blackout,videoA,videoB);
+ assert.equal(calls.length,count,'Blackout must not reveal either camera');
  assert.ok(previewCall);
  assert.deepEqual(previewCall!.slice(1,5),[crop.x,crop.y,crop.width,crop.height]);
  let captureCall:unknown[]=[];

@@ -515,10 +515,10 @@ export function F3CaptureWorkspace(){
     </section>
     <section className="f3-surface-panel" aria-label="Pratinjau Stage View" hidden={activeStep!=='perform'&&!screenActive}>
      <header className="f3-surface-header f3-setup">
-      <div><strong>Stage View</strong><small>Empat foto kiri · Live kamera B kanan</small></div>
+      <div><strong>Stage View</strong><small>Latar aktor A · Empat foto kiri · Live kamera B kanan</small></div>
       <span className="f3-ratio-label">2:1</span>
      </header>
-     <F3StageView hostRef={stageHost} frameRef={stageFrame} videoRef={videoB}
+     <F3StageView hostRef={stageHost} frameRef={stageFrame} videoARef={videoA} videoBRef={videoB}
       stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
       onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
      <div className="f3-surface-footer f3-setup" role="status">
