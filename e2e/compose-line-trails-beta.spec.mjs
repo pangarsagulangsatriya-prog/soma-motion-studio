@@ -70,3 +70,24 @@ test('Line Trails Beta: clear, visibility switches and blackout preserve Track',
  await expect(panel.getByText(/0 sampel tersimpan/)).toBeVisible();
  await expect(page.locator('.lt-beta-frame canvas')).toBeVisible();
 });
+
+test('Line Trails V2: switch four styles and three motion smoothness levels without restarting Track',async({page})=>{
+ const {panel}=await openBeta(page);
+ await panel.getByRole('button',{name:'Coba Demo'}).click();
+ await expect(panel.getByText(/DEMO/)).toBeVisible({timeout:7000});
+ const canvas=page.locator('.lt-beta-frame canvas');
+ await expect(canvas).toHaveCount(1);
+ for(const label of ['Kontur','Pita','Serat','Tinta']){
+  const choice=panel.getByRole('button',{name:'Gaya '+label});
+  await choice.click();
+  await expect(choice).toHaveAttribute('aria-pressed','true');
+  await expect(canvas).toBeVisible();
+ }
+ for(const label of ['Responsif','Sangat halus','Halus']){
+  const choice=panel.getByRole('button',{name:'Kehalusan '+label});
+  await choice.click();
+  await expect(choice).toHaveAttribute('aria-pressed','true');
+ }
+ await expect(panel.getByRole('button',{name:'Hentikan Demo'})).toBeVisible();
+ await expect(page.locator('.lt-beta-frame canvas')).toHaveCount(1);
+});

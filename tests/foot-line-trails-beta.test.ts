@@ -93,3 +93,48 @@ test('Line Trails: blackout paints only black, colored strokes use independent c
  assert.equal(strokes.length,count);
  assert.equal(fills.at(-1),'#000000');
 });
+
+test('Line Trails V2: motion smoothing is adjustable, while source points remain bounded',()=>{
+ const exercise=(mode:'responsive'|'smooth'|'silky')=>{
+  const engine=new FootLineTrailEngine();engine.ensureSource('mp4');
+  engine.ingest([sample('left',.2,.3,1000)],1000,mode);
+  engine.ingest([sample('left',.28,.37,1033)],1033,mode);
+  engine.ingest([sample('left',.35,.42,1066)],1066,mode);
+  return engine.allStrokes[0].points.at(-1)!;
+ };
+ const fast=exercise('responsive'),fine=exercise('silky');
+ assert.ok(fast.x>fine.x,'responsive should follow the observed foot sooner');
+ assert.ok(fast.x<=.35&&fine.x>=.2,'filter must stay inside observed x range');
+});
+test('Line Trails V2: 60 FPS display interpolates only observed segments',()=>{
+ const engine=new FootLineTrailEngine();engine.ensureSource('video');
+ engine.ingest([sample('left',.2,.2,1000)],1000);
+ engine.ingest([sample('left',.3,.3,1033)],1033);
+ const early=engine.renderVisible(1050,'keep',8000,55)[0];
+ assert.equal(early,undefined,'reveal stays hidden until the first observed point');
+ const later=engine.renderVisible(1070,'keep',8000,55)[0];
+ assert.ok(later&&later.points.length===2,'partial observed stroke is rendered');
+ assert.ok(later.points[1].x>=.2);
+ assert.ok(later.points[1].x<=engine.allStrokes[0].points[1].x,'never extrapolates beyond last position');
+});
+test('Line Trails V2: all styles paint the same observed history, blackout stops them all',()=>{
+ const engine=new FootLineTrailEngine();engine.ensureSource('source');
+ engine.ingest([sample('left',.2,.3,1000),sample('right',.8,.7,1000)],1000);
+ engine.ingest([sample('left',.3,.4,1033),sample('right',.7,.6,1033)],1033);
+ const seen:Record<string,number>={};
+ const ctx={
+  canvas:{width:1600,height:900},fillStyle:'',strokeStyle:'',lineWidth:1,globalAlpha:1,
+  save(){},restore(){},setTransform(){},clearRect(){},fillRect(){},
+  beginPath(){},moveTo(){},lineTo(){},quadraticCurveTo(){},
+  stroke(){seen[this.strokeStyle]=(seen[this.strokeStyle]??0)+1;}
+ } as unknown as CanvasRenderingContext2D;
+ for(const style of ['ink','contour','ribbon','fiber'] as const){
+  seen['#F34725']=0;seen['#1D1D1D']=0;
+  paintLineTrails(ctx,engine,{...DEFAULT_LINE_TRAILS_OPTIONS,style},1100);
+  assert.ok(seen['#F34725']>0&&seen['#1D1D1D']>0,style);
+  if(style==='fiber')assert.ok(seen['#F34725']>=5,'fiber uses multiple anchored strands');
+ }
+ seen['#F34725']=0;seen['#1D1D1D']=0;
+ paintLineTrails(ctx,engine,{...DEFAULT_LINE_TRAILS_OPTIONS,style:'fiber'},1100,true);
+ assert.equal(seen['#F34725']+seen['#1D1D1D'],0);
+});

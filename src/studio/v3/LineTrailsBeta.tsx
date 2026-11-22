@@ -4,7 +4,7 @@ import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRoute
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {demoFootSamples,footSamplesFromExperiment,footSamplesFromLive} from '../../footprints/lines/FootLineSampleAdapter.ts';
-import {paintLineTrails,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
+import {paintLineTrails,type LineTrailsOptions,type LineStyle} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 
 export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,router,engine,settings,
  blackout,previewLive,cameraOn,bodySelected,performerCount,experimentSource,sourceKind,selectedActor,
@@ -28,10 +28,19 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
  const demoStart=useRef(0);
  useEffect(()=>{demoStart.current=performance.now();},[demo]);
  useEffect(()=>{
-  let raf=0,lastDraw=0,lastMessage='',lastStatus=0,lastSourceAt=-1;
+  let raf=0,lastDraw=0,lastMessage='',lastStatus=0,lastSourceAt=-1,lastSourceKey='';
+  let lastVisualKey='';
+  const redraw=(ctx:CanvasRenderingContext2D,p:typeof source.current,now:number,off:boolean)=>{
+   const key=JSON.stringify([p.engine.sampleCount,p.settings,off]);
+   const moving=p.engine.lastObservedAt>0&&now-p.engine.lastObservedAt<135;
+   if(key!==lastVisualKey||moving||(p.settings.decay==='fade'&&!off&&p.engine.sampleCount>0)){
+    paintLineTrails(ctx,p.engine,p.settings,now,off);
+    lastVisualKey=key;
+   }
+  };
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);
-   if(now-lastDraw<1000/30)return;
+   if(now-lastDraw<1000/60)return;
    lastDraw=now;
    const p=source.current;
    const c=canvas.current,ctx=c?.getContext('2d');
@@ -39,7 +48,7 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
    let message='Menunggu kaki';
    if(p.blackout||!p.previewLive){
     p.engine.disconnect();
-    paintLineTrails(ctx,p.engine,p.settings,now,true);
+    redraw(ctx,p,now,true);
     message='Preview padam';
    }else{
     let samples=[] as ReturnType<typeof footSamplesFromLive>;
@@ -65,6 +74,7 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
      }
      message='Track · preview 2D';
     }
+    if(nextSource!==lastSourceKey){lastSourceAt=-1;lastSourceKey=nextSource;}
     p.engine.ensureSource(nextSource);
     if(samples.length&&lastSourceAt>=0&&samples[0].atMs<lastSourceAt-60)p.engine.disconnect();
     if(samples.length)lastSourceAt=samples[0].atMs;
@@ -73,8 +83,8 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
      const sides=new Set(samples.map(v=>v.foot));
      message=sides.size===2?'Kaki 1 & 2 terbaca · Preview 2D':'Satu kaki terbaca';
     }
-    p.engine.ingest(samples,now);
-    paintLineTrails(ctx,p.engine,p.settings,now,false);
+    p.engine.ingest(samples,now,p.settings.smoothness);
+    redraw(ctx,p,now,false);
    }
    if(message!==lastMessage&&now-lastStatus>150){
     lastMessage=message;lastStatus=now;p.onStatus(message);
@@ -88,6 +98,14 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
  </div>;
 }
 
+const LINE_STYLES:{id:LineStyle;label:string;stroke:number}[]=[
+ {id:'ink',label:'Tinta',stroke:4.5},
+ {id:'contour',label:'Kontur',stroke:2},
+ {id:'ribbon',label:'Pita',stroke:8},
+ {id:'fiber',label:'Serat',stroke:1.4}
+];
+const SMOOTH_CHOICES=[{id:'responsive',label:'Responsif'},{id:'smooth',label:'Halus'},
+ {id:'silky',label:'Sangat halus'}] as const;
 export function LineTrailsBetaPanel({settings,onChange,engine,onClear,demo,onDemo,status,
  performerCount,selectedActor,onActor}:{
  settings:LineTrailsOptions;onChange:(next:LineTrailsOptions)=>void;
@@ -105,6 +123,24 @@ export function LineTrailsBetaPanel({settings,onChange,engine,onClear,demo,onDem
  return <section className="lt-beta-controls" aria-label="Kontrol Garis Beta">
   <header><strong>Garis</strong><span>BETA</span></header>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
+  <div className="lt-beta-style-section">
+   <strong className="lt-beta-subheading">Gaya garis</strong>
+   <div className="lt-beta-style-picker" role="group" aria-label="Gaya garis">
+    {LINE_STYLES.map(style=><button type="button" key={style.id}
+     aria-label={'Gaya '+style.label} aria-pressed={settings.style===style.id}
+     onClick={()=>onChange({...settings,style:style.id})}>
+     <svg viewBox="0 0 60 28" aria-hidden="true">
+      {style.id==='ribbon'&&<path d="M3 22 Q17 1 29 13 T57 7"
+       fill="none" stroke="#F34725" strokeOpacity=".24" strokeWidth="11" strokeLinecap="round"/>}
+      <path d="M3 22 Q17 1 29 13 T57 7" fill="none" stroke="#F34725"
+       strokeWidth={style.stroke} strokeLinecap="round"/>
+      {style.id==='fiber'&&[-3,3].map(offset=><path key={offset}
+       d="M3 22 Q17 1 29 13 T57 7" transform={'translate(0 '+offset+')'}
+       fill="none" stroke="#F34725" strokeOpacity=".55" strokeWidth="1" strokeLinecap="round"/>)}
+     </svg><span>{style.label}</span>
+    </button>)}
+   </div>
+  </div>
   {performerCount===2&&<div className="lt-beta-actor-choice" role="group" aria-label="Performer garis">
    <button type="button" aria-pressed={selectedActor==='A'} onClick={()=>onActor('A')}>Performer A</button>
    <button type="button" aria-pressed={selectedActor==='B'} onClick={()=>onActor('B')}>Performer B</button>
@@ -118,6 +154,15 @@ export function LineTrailsBetaPanel({settings,onChange,engine,onClear,demo,onDem
    <input type="checkbox" checked={settings.visible[foot]}
     onChange={e=>setVisible(foot,e.currentTarget.checked)} aria-label={'Tampilkan Kaki '+(index+1)}/>
   </div>)}
+  <div className="lt-beta-smooth-wrap">
+   <strong className="lt-beta-subheading">Kehalusan</strong>
+   <div className="lt-beta-smoothness" role="group" aria-label="Kehalusan gerak">
+    {SMOOTH_CHOICES.map(choice=><button key={choice.id} type="button"
+     aria-label={'Kehalusan '+choice.label}
+     aria-pressed={settings.smoothness===choice.id}
+     onClick={()=>onChange({...settings,smoothness:choice.id})}>{choice.label}</button>)}
+   </div>
+  </div>
   <label className="lt-beta-width">Ketebalan <output>{settings.width}px</output>
    <input type="range" min={2} max={28} step={1} value={settings.width}
     onChange={e=>onChange({...settings,width:Number(e.currentTarget.value)})}
@@ -146,6 +191,6 @@ export function LineTrailsBetaPanel({settings,onChange,engine,onClear,demo,onDem
      onClick={()=>onChange({...settings,background:'#111512'})}>Gelap</button>
    </div>
   </details>
-  <p className="lt-beta-note">Visual software. Garis mengikuti kaki dari Track; Demo memakai gerak sintetik.</p>
+  <p className="lt-beta-note">Preview 2D · Gerak dari Track, Demo memakai simulasi. Fullscreen tetap bersih.</p>
  </section>;
 }
