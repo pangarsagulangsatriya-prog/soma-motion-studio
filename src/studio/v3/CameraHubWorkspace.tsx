@@ -22,7 +22,6 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
  const [focused,setFocused]=useState<string|null>(null);
  const [error,setError]=useState('');
  const [zoom,setZoom]=useState(1);
- const [imageReady,setImageReady]=useState(false);
  const preview=useRef<HTMLVideoElement>(null);
  const refresh=useCallback(async()=>{
   setRefreshing(true);setError('');
@@ -52,7 +51,7 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
   return()=>{window.clearInterval(timer);video.pause();video.srcObject=null;};
  },[videoRef,cameraOn]);
  const list=useMemo(()=>inventory.map((d,i)=>({id:selectedKey(d,i),name:d.label||'Kamera '+(i+1),physicalId:d.deviceId})),[inventory]);
- const active=Boolean(cameraOn&&!cameraBusy&&!cameraError&&videoRef.current?.srcObject&&imageReady);
+ const active=Boolean(cameraOn&&!cameraBusy&&!cameraError&&videoRef.current?.srcObject);
  const connectedId=list.find(x=>x.physicalId===selectedId)?.id??(selectedId===''?list[0]?.id:undefined);
  const liveCount=active?1:0;
  const usedCount=active&&connectedId?1:0;
@@ -122,7 +121,7 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
    <aside className="ch-inspector" aria-label="Detail kamera">
     <p className="ch-inspector-eyebrow">INSPECTOR</p><h2>{chosen?.name||'Pilih kamera'}</h2>
     <div className="ch-preview">
-     {active&&connectedId===focused?<video ref={preview} autoPlay muted playsInline onLoadedData={()=>setImageReady(true)} aria-label="Preview kamera langsung"/>:<div className="ch-preview-empty"><Camera size={25}/><span>{focused?'Preview tersedia setelah kamera aktif':'Pilih sumber di kanvas'}</span></div>}
+     {active&&connectedId===focused?<video ref={preview} autoPlay muted playsInline aria-label="Preview kamera langsung"/>:<div className="ch-preview-empty"><Camera size={25}/><span>{focused?'Preview tersedia setelah kamera aktif':'Pilih sumber di kanvas'}</span></div>}
     </div>
     {chosen?<><div className="ch-row"><span>Perangkat</span><strong>Terdeteksi</strong></div>
      <div className="ch-row"><span>Stream</span><strong>{active&&connectedId===chosen.id?'LIVE':'Belum terverifikasi'}</strong></div>
