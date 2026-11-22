@@ -20,7 +20,7 @@ const makePoint=(pose:readonly Landmark[],side:'left'|'right'):FootPoint|null=>{
   x:(heel.x+toe.x)/2,y:(heel.y+toe.y)/2,
   confidence:Math.min(heel.visibility??1,toe.visibility??1),
   ...(Math.hypot(toe.x-heel.x,toe.y-heel.y)>.005?{
-   headingRad:Math.atan2(toe.x-heel.x,heel.y-toe.y)}:{})
+   headingRad:Math.atan2((toe.x-heel.x)*16,(heel.y-toe.y)*9)}:{})
  };
  if(valid(ankle,.64))return {x:ankle.x,y:ankle.y,confidence:(ankle.visibility??1)*.86};
  return null;

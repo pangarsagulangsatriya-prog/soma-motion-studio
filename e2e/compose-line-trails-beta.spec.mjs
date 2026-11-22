@@ -104,7 +104,7 @@ test('Footprint Brush V3: toggle, sweep/step, layering, size and native fullscre
  await expect(panel.getByText(/DEMO/)).toBeVisible({timeout:7000});
  await expect.poll(async()=>{
   const text=await panel.locator('.lt-beta-count').textContent();
-  return Number(text?.split('·').at(-1)?.trim().split(' ')[0]??0);
+  return Number(text?.split('·')[1]?.trim().split(' ')[0]??0);
  },{timeout:12000}).toBeGreaterThan(0);
  await panel.getByRole('checkbox',{name:'Tampilkan garis'}).uncheck();
  await expect(panel.getByRole('group',{name:'Gaya garis'})).toHaveCount(0);
@@ -127,6 +127,6 @@ test('Footprint Brush V3: toggle, sweep/step, layering, size and native fullscre
  await expect(brush).not.toBeChecked();
  await panel.getByRole('button',{name:'Hentikan Demo'}).click();
  await panel.getByRole('button',{name:'Bersihkan'}).click();
- await expect(panel.locator('.lt-beta-count')).toContainText('0 telapak');
+ await expect(panel.locator('.lt-beta-count')).toContainText('0 sapuan');
  await expect(page.locator('.lt-beta-frame canvas')).toBeVisible();
 });

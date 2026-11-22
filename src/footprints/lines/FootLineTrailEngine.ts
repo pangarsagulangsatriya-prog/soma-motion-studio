@@ -7,6 +7,12 @@ export type FootLineStroke={id:string;actorId:string;foot:FootLineChannel;points
 type Vector={x:number;y:number};
 type Anchor={stroke:FootLineStroke;rawAt:number;rawPoint:Vector;filtered:Vector;velocity:Vector};
 const distance=(a:Vector,b:Vector)=>Math.hypot(a.x-b.x,a.y-b.y);
+const smoothHeading=(previous:number|undefined,next:number|undefined)=>{
+ if(!Number.isFinite(next))return previous;
+ if(!Number.isFinite(previous))return next;
+ const delta=Math.atan2(Math.sin(next!-previous!),Math.cos(next!-previous!));
+ return previous!+delta*.38;
+};
 const bounded=(v:number)=>Number.isFinite(v)&&v>=0&&v<=1;
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const alpha=(cutoff:number,dt:number)=>1/(1+1/(2*Math.PI*cutoff*Math.max(.001,dt)));
@@ -77,7 +83,9 @@ export class FootLineTrailEngine{
     const last=prev.stroke.points.at(-1)!;
     if(distance(filtered,last)>.0032){
      const speed=clamp(Math.hypot(velocity.x,velocity.y)/2.5,0,1);
-     prev.stroke.points.push({...filtered,atMs:nowMs,speed,...(Number.isFinite(sample.headingRad)?{headingRad:sample.headingRad}:{})});
+     const angle=smoothHeading(last.headingRad,sample.headingRad);
+     prev.stroke.points.push({...filtered,atMs:nowMs,speed,
+      ...(Number.isFinite(angle)?{headingRad:angle}:{})});
      this.lastMotionAt=nowMs;
     }
    }

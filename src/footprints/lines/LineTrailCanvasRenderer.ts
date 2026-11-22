@@ -40,21 +40,65 @@ export function paintLineTrails(
  }
  if(settings.brush.enabled){
   const size=bound(settings.brush.size,20,100)*(w/1600);
+  const tips=new Map<string,{last:FootLinePoint;foot:'left'|'right';headingRad:number}>();
+  if(settings.brush.mode==='sweep'){
+   // A single continuous paint stroke per tracked performer, instead of
+   // stamping the anatomical sole once every few pixels.
+   const paths=engine.renderVisible(nowMs,settings.decay,life,55);
+   for(const stroke of paths){
+    if(!settings.visible[stroke.foot])continue;
+    const color=settings.colors[stroke.foot];
+    ctx.strokeStyle=validColor(color)?color:'#F34725';
+    const last=stroke.points.at(-1)!;
+    const before=stroke.points.at(-2)!;
+    tips.set(stroke.actorId,{last,foot:stroke.foot,
+     headingRad:Number.isFinite(last.headingRad)?last.headingRad!:
+      Math.atan2((last.x-before.x)*w,-(last.y-before.y)*h)});
+    const alpha=settings.decay==='keep'?1:fadeAlpha(last.atMs,nowMs,life);
+    if(alpha<=0)continue;
+    traceBrush(ctx,stroke.points,w,h);
+    ctx.globalAlpha=alpha*.20;ctx.lineWidth=size*.72;ctx.stroke();
+    ctx.globalAlpha=alpha*.75;ctx.lineWidth=size*.32;ctx.stroke();
+   }
+  }
+  const heads=settings.brush.mode==='sweep'?new Map<string,FootprintBrushStamp>():null;
+  if(heads)for(const mark of brushMarks){
+   if(mark.mode!=='sweep')continue;
+   const previous=heads.get(mark.actorId);
+   if(!previous||previous.atMs<=mark.atMs)heads.set(mark.actorId,mark);
+  }
   for(const mark of brushMarks){
    if(mark.mode!==settings.brush.mode||!settings.visible[mark.foot])continue;
-   const opacity=settings.decay==='keep'?1:fadeAlpha(mark.atMs,nowMs,life);
+   if(heads&&heads.get(mark.actorId)!==mark)continue;
+   const tip=heads?tips.get(mark.actorId):null;
+   if(heads&&(!tip||tip.foot!==mark.foot))continue;
+   const atMs=tip?.last.atMs??mark.atMs;
+   const opacity=settings.decay==='keep'?1:fadeAlpha(atMs,nowMs,life);
    if(opacity<=0)continue;
    const color=settings.colors[mark.foot];
    ctx.globalAlpha=1;
    paintAuthenticFootprint(ctx,{
-    x:mark.x*w,y:mark.y*h,side:mark.foot,headingRad:mark.headingRad,
-    widthPx:size*.43,lengthPx:size,alpha:opacity*.73,
+    x:(tip?.last.x??mark.x)*w,y:(tip?.last.y??mark.y)*h,
+    side:mark.foot,headingRad:tip?.headingRad??mark.headingRad,
+    widthPx:size*.43,lengthPx:size,alpha:opacity*.80,
     color:validColor(color)?color:'#F34725'
    });
   }
  }
  ctx.globalAlpha=1;
  ctx.restore();
+}
+/** Stroke path uses only observed foot positions. One path, one brush head. */
+function traceBrush(ctx:CanvasRenderingContext2D,points:readonly FootLinePoint[],w:number,h:number){
+ if(points.length<2)return;
+ ctx.beginPath();
+ ctx.moveTo(points[0].x*w,points[0].y*h);
+ for(let i=1;i<points.length;i++){
+  const a=points[i-1],b=points[i];
+  ctx.quadraticCurveTo(a.x*w,a.y*h,(a.x+b.x)*w/2,(a.y+b.y)*h/2);
+ }
+ const last=points[points.length-1];
+ ctx.lineTo(last.x*w,last.y*h);
 }
 function pixel(points:readonly FootLinePoint[],i:number,w:number,h:number,offset=0):Pixel{
  const p=points[i];

@@ -4,6 +4,7 @@ import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRoute
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
+import {ActiveFootSelector} from '../../footprints/lines/ActiveFootSelector.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import {demoFootSamples,footSamplesFromExperiment,footSamplesFromLive} from '../../footprints/lines/FootLineSampleAdapter.ts';
 import {paintLineTrails,type LineTrailsOptions,type LineStyle} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
@@ -22,6 +23,7 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
  motionEvents?:()=>readonly FootMotionEventV2[];
 }){
  const canvas=useRef<HTMLCanvasElement>(null);
+ const singleBrush=useRef(new ActiveFootSelector());
  const source=useRef({frameRef,experimentFrameRef,router,engine,settings,
   blackout,previewLive,cameraOn,bodySelected,performerCount,experimentSource,
   sourceKind,selectedActor,demo,onStatus,onBrushCount,motionSession,motionEvents,brushEngine});
@@ -50,7 +52,7 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
    if(!ctx)return;
    let message='Menunggu kaki';
    if(p.blackout||!p.previewLive){
-    p.engine.disconnect();p.brushEngine.disconnect();
+    p.engine.disconnect();p.brushEngine.disconnect();singleBrush.current.reset();
     redraw(ctx,p,now,true);
     message='Preview padam';
    }else{
@@ -77,19 +79,28 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
      }
      message='Track · preview 2D';
     }
-    if(nextSource!==lastSourceKey){lastSourceAt=-1;lastSourceKey=nextSource;p.brushEngine.disconnect();}
+    if(nextSource!==lastSourceKey){
+     lastSourceAt=-1;lastSourceKey=nextSource;
+     // Old MP4, webcam and demo marks must never contaminate a new source.
+     p.engine.clear();p.brushEngine.clear();singleBrush.current.reset();
+    }
     p.engine.ensureSource(nextSource);
     if(samples.length&&lastSourceAt>=0&&samples[0].atMs<lastSourceAt-60)p.engine.disconnect();
     if(samples.length)lastSourceAt=samples[0].atMs;
-    if(!samples.length){p.engine.disconnect();message=p.demo?'DEMO':'Kaki belum terbaca';}
-    else if(!p.demo){
-     const sides=new Set(samples.map(v=>v.foot));
-     message=sides.size===2?'Kaki 1 & 2 terbaca · Preview 2D':'Satu kaki terbaca';
+    if(!samples.length){
+     p.engine.disconnect();p.brushEngine.disconnect();singleBrush.current.reset();
+     message=p.demo?'DEMO · menunggu gerak':'Kaki belum terbaca · jejak terakhir tersimpan';
+    }else{
+     const selected=singleBrush.current.select(samples);
+     // Duplicate camera frames do not reset the previous pen stroke.
+     if(selected.length)p.engine.ingest(selected,now,p.settings.smoothness);
+     if(!p.demo)message=selected.length?
+      '1 sapuan aktif · kaki '+(selected[0].foot==='left'?'kiri':'kanan')+' · Preview 2D':
+      'Menunggu frame kaki berikutnya';
     }
-    p.engine.ingest(samples,now,p.settings.smoothness);
     p.brushEngine.ingestSweeps(p.engine.allStrokes,now,
      p.settings.brush.size,p.settings.brush.spacing,ctx.canvas.width,ctx.canvas.height,p.demo);
-    if(p.demo)p.brushEngine.demoStepsFromSweeps();
+    if(p.demo)p.brushEngine.demoStepsFromSweeps(now);
     else p.brushEngine.ingestContacts(p.motionEvents?.()??[],
      p.performerCount===2?p.selectedActor:'all',p.motionSession?.(),now);
     redraw(ctx,p,now,false);
@@ -170,7 +181,9 @@ export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClea
     <span><strong>Jejak Kaki</strong><small>Lukis dengan gerakan kaki</small></span>
     <input type="checkbox" id="lt-beta-brush-enabled" aria-label="Jejak Kaki"
      checked={settings.brush.enabled}
-     onChange={e=>onChange({...settings,brush:{...settings.brush,enabled:e.target.checked}})}/>
+     onChange={e=>onChange({...settings,
+      showLines:e.target.checked?false:settings.showLines,
+      brush:{...settings.brush,enabled:e.target.checked}})}/>
    </label>
    {settings.brush.enabled&&<>
     <div className="lt-beta-modes" role="group" aria-label="Mode Jejak Kaki">
@@ -184,13 +197,6 @@ export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClea
       value={settings.brush.size}
       onChange={e=>onChange({...settings,brush:{...settings.brush,size:Number(e.currentTarget.value)}})}/>
     </label>
-    <details className="lt-beta-brush-more"><summary>Jarak cetak</summary>
-     <label className="lt-beta-width">Kerapatan sapuan <output>{Math.round(settings.brush.spacing*100)}%</output>
-      <input type="range" min={.3} max={1.3} step={.05} aria-label="Jarak cetak"
-       value={settings.brush.spacing}
-       onChange={e=>onChange({...settings,brush:{...settings.brush,spacing:Number(e.currentTarget.value)}})}/>
-     </label>
-    </details>
     {settings.brush.mode==='step'&&!demo&&
      <small className="lt-beta-note">Pijakan menunggu event kontak kaki yang terdeteksi.</small>}
    </>}
@@ -226,7 +232,7 @@ export function LineTrailsBetaPanel({settings,onChange,engine,brushEngine,onClea
     {demo?'Hentikan Demo':'Coba Demo'}
    </button>
   </div>
-  <small className="lt-beta-count">{engine.sampleCount} sampel tersimpan · {brushEngine.count} telapak</small>
+  <small className="lt-beta-count">{engine.sampleCount} sampel · {brushEngine.sweepCount} sapuan · {brushEngine.count-brushEngine.sweepCount} pijakan</small>
   {contrast&&<p className="lt-beta-warning">Warna hitam sulit terlihat pada latar gelap. Pilih warna yang lebih terang.</p>}
   <details className="lt-beta-more">
    <summary>Pengaturan latar</summary>
