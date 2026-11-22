@@ -107,10 +107,10 @@ export class PainterlyImpressionEngine {
    }
    const provenance:ImpressionProvenance=source==='demo'||source==='simulator'?
     'simulated':source==='video'?'video-estimate':'detected-estimate';
-   const prior=this.motion.get(k)??{
+   const prior:MotionState=this.motion.get(k)??{
     last:null,traveledPx:0,lastCapAt:-Infinity,lastCapPos:null,
     stableSince:null,wasMoving:false,headingRad:undefined
-   } satisfies MotionState;
+   };
    const dt=prior.last?sourceFrameMs-prior.last.atMs:0;
    if(prior.last&&(dt<=0||dt>390||distance(sample,prior.last)>370)){
     this.heads.delete(k);this.motion.delete(k);
