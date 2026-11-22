@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/f3-capture-v2-fullscreen-stage
   workflow_dispatch:
 permissions:
   contents: read
@@ -69,18 +70,31 @@ jobs:
       - name: Install Chromium
         run: npx playwright install chromium
       - name: TRK-05 — visual regression and source E2E
+        if: github.ref_name == 'main'
         # Do not block publication of a TypeScript-built release on legacy visual baselines.
         # The QA report and failure screenshots are still uploaded for investigation.
         continue-on-error: true
         run: node scripts/trk05-browser-qa.mjs
       - name: Upload TRK-05 screenshots and QA report
-        if: always()
+        if: always() && github.ref_name == 'main'
         uses: actions/upload-artifact@v4
         with:
           name: trk05-browser-qa-${{ github.sha }}
           path: artifacts/trk05/
           if-no-files-found: warn
           retention-days: 30
+      # F3 branch preview must pass its complete fullscreen browser contract
+      # before replacing the existing GitHub Pages static artifact. No Vercel/main push.
+      - name: Install F3 QA dependencies for feature-branch Pages release
+        if: github.ref_name == 'feat/f3-capture-v2-fullscreen-stage'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          node scripts/f3-generate-fixtures.mjs
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - name: Gate F3 Pages release on real Chromium fullscreen E2E
+        if: github.ref_name == 'feat/f3-capture-v2-fullscreen-stage'
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 f3-capture-v2.spec.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -89,7 +103,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
+      name: ${{ github.ref_name == 'feat/f3-capture-v2-fullscreen-stage' && 'f3-pages-preview' || 'github-pages' }}
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment

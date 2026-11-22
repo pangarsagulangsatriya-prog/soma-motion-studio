@@ -1,0 +1,55 @@
+name: F3 Capture V2 isolated QA (never deploy)
+on:
+  pull_request:
+    paths:
+      - 'src/f3/**'
+      - 'src/App.tsx'
+      - 'src/studio/v3/GlobalNav.tsx'
+      - 'tests/f3-capture-v2.test.ts'
+      - 'e2e/f3-capture-v2.spec.mjs'
+      - 'scripts/f3-generate-fixtures.mjs'
+      - '.github/workflows/f3-capture-v2.yml'
+  push:
+    branches:
+      - 'feat/f3-capture-v2-fullscreen-stage'
+permissions:
+  contents: read
+jobs:
+  f3-capture-v2:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: All regression tests including F3
+        run: npm test
+      - name: Build F3 prototype
+        run: npm run build
+      - name: Install local video fixture encoder
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Generate distinct synthetic MP4 fixtures A/B
+        run: node scripts/f3-generate-fixtures.mjs
+      - name: Install browser QA dependencies
+        run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Local fullscreen QA, never physical projector
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 f3-capture-v2.spec.mjs
+      - name: Preserve screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f3-v2-fullscreen-qa-${{ github.sha }}
+          path: |
+            artifacts/f3-capture/
+            artifacts/f3-fixtures/
+            e2e/test-results/
+            e2e/playwright-report/
+            e2e/qa-result.json
+          if-no-files-found: warn
+          retention-days: 14

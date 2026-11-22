@@ -8,7 +8,8 @@ test('IA-R1: Stage 1 owns four local workspaces beside separate Stage 2',()=>{
  const local=read('../src/studio/v3/StageModuleNav.tsx');
  const global=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
   nav.indexOf('className="soma-primary-labs-launch"'));
- assert.equal((global.match(/soma-primary-destination/g)||[]).length,2);
+ assert.equal((global.match(/soma-primary-destination/g)||[]).length,3);
+ assert.match(global,/aria-label="F3 Capture"/);
  assert.match(global,/aria-label="Stage 1"/);
  assert.match(global,/aria-label="Stage 2"/);
  for(const name of ['Track','Compose','Map','Perform'])
