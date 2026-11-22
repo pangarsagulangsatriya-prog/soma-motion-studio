@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8');
 
-test('IA-R1: Stage 1 owns four local workspaces beside separate Stage 2',()=>{
+test('IA-R1: Stage 1 retains four local workspaces alongside Stage 2 and Camera Hub',()=>{
  const nav=read('../src/studio/v3/GlobalNav.tsx');
  const local=read('../src/studio/v3/StageModuleNav.tsx');
  const global=nav.slice(nav.indexOf('className="soma-rail-scroll soma-primary-nav-list"'),
   nav.indexOf('className="soma-primary-labs-launch"'));
- assert.equal((global.match(/soma-primary-destination/g)||[]).length,2);
+ assert.equal((global.match(/soma-primary-destination/g)||[]).length,3);
  assert.match(global,/aria-label="Stage 1"/);
  assert.match(global,/aria-label="Stage 2"/);
+ assert.match(global,/aria-label="Camera Hub"/);
  for(const name of ['Track','Compose','Map','Perform'])
   assert.match(local,new RegExp("id:'"+name.toLowerCase()+"'"));
  assert.match(local,/aria-label="Stage 1 — workspace"/);
