@@ -164,7 +164,11 @@ test('MAP-V5: camera overlay and mapped result, with physical protection outside
  assert.match(editor,/mapOverlay\('output'\)/);
  assert.match(editor,/Bekukan gambar/);
  assert.match(editor,/Coba simulasi/);
- assert.match(editor,/paintAuthenticFootprint/);
+ assert.match(editor,/paintMapPerspectiveFootprints/);
+ const perspective=read('../src/studio/v3/mapFootprintPerspective.ts');
+ assert.match(perspective,/footprintOutline/);
+ assert.match(perspective,/footprintToes/);
+ assert.match(perspective,/homography\(destination\)/);
  assert.match(model,/correspondence\(identityQuad\(\),destinationQuad\)/);
  assert.match(model,/pointerInSource/);
  assert.ok(!panel.includes('getUserMedia('));
