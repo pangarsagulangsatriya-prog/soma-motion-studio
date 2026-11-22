@@ -141,3 +141,31 @@
 @media(prefers-reduced-motion:reduce){
  .fp-stage-workspace[data-workspace="compose"] .lt-beta-controls .lt-beta-style-picker button{transition:none}
 }
+
+/* V3 Footprint Brush: compact controls with accessible state and no extra screen. */
+.lt-beta-style-section:empty{display:none}
+.lt-beta-brush-wrap{
+ display:flex;flex-direction:column;gap:9px;padding:10px 9px;
+ border:1px solid #47604b;border-radius:8px;background:#142018
+}
+.lt-beta-brush-toggle,.lt-beta-show-lines{
+ display:flex!important;align-items:center;justify-content:space-between;gap:8px;
+ font-size:11px!important;color:#e6f2e4;cursor:pointer
+}
+.lt-beta-brush-toggle span{display:flex;flex-direction:column;gap:3px}
+.lt-beta-brush-toggle strong{font-size:12px;color:#e6f2e4}
+.lt-beta-brush-toggle small{font-size:10px;color:#99b6a1}
+.lt-beta-show-lines{padding:6px 3px;border-bottom:1px solid #344437}
+.fp-stage-workspace[data-workspace="compose"] .lt-beta-controls
+ :is(.lt-beta-brush-toggle,.lt-beta-show-lines) input[type="checkbox"]{
+ display:block!important;appearance:auto!important;flex:none;width:17px!important;height:17px!important;
+ padding:0!important;margin:0!important;accent-color:#b5db9e;cursor:pointer
+}
+.lt-beta-brush-wrap .lt-beta-modes{grid-template-columns:1fr 1fr}
+.lt-beta-brush-wrap .lt-beta-width{margin:0}
+.lt-beta-brush-more{border-top:1px solid #35503d;padding-top:7px}
+.lt-beta-brush-more summary{color:#afc5b0;font-size:10px;cursor:pointer}
+.lt-beta-brush-more .lt-beta-width{margin-top:7px}
+@media(max-width:720px){
+ .lt-beta-brush-wrap{padding:9px 8px}
+}

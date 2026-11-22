@@ -91,3 +91,42 @@ test('Line Trails V2: switch four styles and three motion smoothness levels with
  await expect(panel.getByRole('button',{name:'Hentikan Demo'})).toBeVisible();
  await expect(page.locator('.lt-beta-frame canvas')).toHaveCount(1);
 });
+
+test('Footprint Brush V3: toggle, sweep/step, layering, size and native fullscreen',async({page})=>{
+ const {monitor,panel}=await openBeta(page);
+ const brush=panel.getByRole('checkbox',{name:'Jejak Kaki'});
+ await expect(brush).not.toBeChecked();
+ await brush.check();
+ await expect(brush).toBeChecked();
+ const sweep=panel.getByRole('button',{name:'Sapuan'});
+ await expect(sweep).toHaveAttribute('aria-pressed','true');
+ await panel.getByRole('button',{name:'Coba Demo'}).click();
+ await expect(panel.getByText(/DEMO/)).toBeVisible({timeout:7000});
+ await expect.poll(async()=>{
+  const text=await panel.locator('.lt-beta-count').textContent();
+  const match=text?.match(/(\\d+) telapak/);
+  return match?Number(match[1]):0;
+ },{timeout:12000}).toBeGreaterThan(0);
+ await panel.getByRole('checkbox',{name:'Tampilkan garis'}).uncheck();
+ await expect(panel.getByRole('group',{name:'Gaya garis'})).toHaveCount(0);
+ await panel.getByLabel('Ukuran telapak').focus();
+ await panel.getByLabel('Ukuran telapak').press('End');
+ await expect(panel.getByLabel('Ukuran telapak')).toHaveValue('100');
+ await panel.getByRole('button',{name:'Pijakan'}).click();
+ await expect(panel.getByRole('button',{name:'Pijakan'})).toHaveAttribute('aria-pressed','true');
+ await monitor.getByRole('button',{name:'Fullscreen Stage Monitor'}).click();
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.classList.contains('lt-beta-frame')??false)).toBe(true);
+ const clean=await page.evaluate(()=>({
+  children:document.fullscreenElement?.children.length,
+  buttons:document.fullscreenElement?.querySelectorAll('button').length,
+  canvases:document.fullscreenElement?.querySelectorAll('canvas').length
+ }));
+ expect(clean).toEqual({children:1,buttons:0,canvases:1});
+ await page.keyboard.press('Escape');
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
+ await brush.uncheck();
+ await expect(brush).not.toBeChecked();
+ await panel.getByRole('button',{name:'Bersihkan'}).click();
+ await expect(panel.locator('.lt-beta-count')).toContainText('0 telapak');
+ await expect(page.locator('.lt-beta-frame canvas')).toBeVisible();
+});

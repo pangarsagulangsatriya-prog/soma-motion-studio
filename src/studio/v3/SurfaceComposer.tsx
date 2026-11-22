@@ -46,6 +46,7 @@ import {paintComposeSkeletonMonitor,type ComposeSkeletonBackdrop} from './compos
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
+import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
 import './line-trails-beta.css';
@@ -123,7 +124,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineDemo,setLineDemo]=useState(false);
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
  const [lineStatus,setLineStatus]=useState('Menunggu kaki');
+ const [,setLineBrushCount]=useState(0);
  const lineEngine=useRef(new FootLineTrailEngine());
+ const brushEngine=useRef(new FootprintBrushEngine());
  const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
  const monitorFullscreenRef=useRef<HTMLElement|null>(null);
  const [monitorFullscreen,setMonitorFullscreen]=useState(false);
@@ -945,12 +948,13 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     </div>
     {lineTrails&&<LineTrailsBetaStage
      fullscreenRef={lineFullscreenRef} frameRef={frameRef} experimentFrameRef={experimentFrameRef}
-     router={router} engine={lineEngine.current} settings={lineOptions}
+     router={router} engine={lineEngine.current} brushEngine={brushEngine.current}
+     settings={lineOptions} motionEvents={motionEvents}
      blackout={blackout||previewBlackout} previewLive={previewLive}
      cameraOn={cameraOn} bodySelected={bodySelected}
      performerCount={performerCount} experimentSource={experimentSource}
      sourceKind={lineSource} selectedActor={lineActor} demo={lineDemo}
-     onStatus={setLineStatus} motionSession={motionSession}/>}
+     onStatus={setLineStatus} onBrushCount={setLineBrushCount} motionSession={motionSession}/>}
     {!lineTrails&&<div className="s64-stage"><canvas width={960} height={540} ref={canvas} onPointerDown={points} aria-label="Visual preview composer — klik objek untuk membuka Inspector"/>
  {inspectorTab==='object'&&layer&&previewArrangement==='surface'&&monitorView==='FLOOR'&&
   <div className="cp07-stage-selected" aria-hidden="true">
@@ -1014,11 +1018,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   {lineTrails?<LineTrailsBetaPanel
-   settings={lineOptions} onChange={setLineOptions} engine={lineEngine.current}
-   onClear={()=>{lineEngine.current.clear();setLineStatus('Gambar dibersihkan');}} demo={lineDemo}
-   onDemo={()=>{lineEngine.current.disconnect();setLineDemo(v=>!v);}}
+   settings={lineOptions} onChange={setLineOptions}
+   engine={lineEngine.current} brushEngine={brushEngine.current}
+   onClear={()=>{lineEngine.current.clear();brushEngine.current.clear();setLineBrushCount(0);setLineStatus('Gambar dibersihkan');}} demo={lineDemo}
+   onDemo={()=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineDemo(v=>!v);}}
    status={lineStatus} performerCount={performerCount}
-   selectedActor={lineActor} onActor={actor=>{lineEngine.current.disconnect();setLineActor(actor);}}
+   selectedActor={lineActor} onActor={actor=>{lineEngine.current.disconnect();brushEngine.current.disconnect();setLineActor(actor);}}
   />:<>
   <h3>{monitorView==='FLOOR'?getComposeVisualStyle(steering.styleId).name:monitorView==='SKELETON'?'Skeleton 33 titik':'Visual Kaki · '+monitorView}</h3>
   {monitorView==='SKELETON'&&<p className="cp-compose-detection-note">Skeleton mengikuti Track. Pengaturan di bawah memengaruhi visual LEG A/B dan SPLIT.</p>}

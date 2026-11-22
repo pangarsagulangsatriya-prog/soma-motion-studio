@@ -7,10 +7,10 @@ import {floorToUV} from '../spatial/coordinates.ts';
 export type FootLineSample={
  sessionId:string;generation:number;source:'camera'|'phone'|'video'|'simulator';
  actorId:string;foot:'left'|'right';x:number;y:number;atMs:number;
- confidence:number;coordinateBasis:'image-2d'|'calibrated-estimate'|'simulated';
+ confidence:number;headingRad?:number;coordinateBasis:'image-2d'|'calibrated-estimate'|'simulated';
 };
 type Metadata=Pick<FootLineSample,'sessionId'|'generation'|'source'|'actorId'|'atMs'|'coordinateBasis'>;
-type FootPoint={x:number;y:number;confidence:number};
+type FootPoint={x:number;y:number;confidence:number;headingRad?:number};
 const valid=(p:Landmark|undefined,confidence=.52):p is Landmark=>!!p&&
  Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&
  (p.visibility??1)>=confidence;
@@ -18,7 +18,9 @@ const makePoint=(pose:readonly Landmark[],side:'left'|'right'):FootPoint|null=>{
  const i=side==='left'?0:1,heel=pose[29+i],toe=pose[31+i],ankle=pose[27+i];
  if(valid(heel)&&valid(toe))return {
   x:(heel.x+toe.x)/2,y:(heel.y+toe.y)/2,
-  confidence:Math.min(heel.visibility??1,toe.visibility??1)
+  confidence:Math.min(heel.visibility??1,toe.visibility??1),
+  ...(Math.hypot(toe.x-heel.x,toe.y-heel.y)>.005?{
+   headingRad:Math.atan2(toe.x-heel.x,heel.y-toe.y)}:{})
  };
  if(valid(ankle,.64))return {x:ankle.x,y:ankle.y,confidence:(ankle.visibility??1)*.86};
  return null;

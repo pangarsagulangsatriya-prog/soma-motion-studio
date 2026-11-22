@@ -2,7 +2,7 @@ import type {FootLineSample} from './FootLineSampleAdapter.ts';
 
 export type FootLineChannel='left'|'right';
 export type LineSmoothness='responsive'|'smooth'|'silky';
-export type FootLinePoint={x:number;y:number;atMs:number;speed:number};
+export type FootLinePoint={x:number;y:number;atMs:number;speed:number;headingRad?:number};
 export type FootLineStroke={id:string;actorId:string;foot:FootLineChannel;points:FootLinePoint[]};
 type Vector={x:number;y:number};
 type Anchor={stroke:FootLineStroke;rawAt:number;rawPoint:Vector;filtered:Vector;velocity:Vector};
@@ -51,7 +51,7 @@ export class FootLineTrailEngine{
    if(cut){
     const stroke:FootLineStroke={
      id:'line-'+(++this.serial),actorId:sample.actorId,foot:sample.foot,
-     points:[{...next,atMs:nowMs,speed:0}]
+     points:[{...next,atMs:nowMs,speed:0,...(Number.isFinite(sample.headingRad)?{headingRad:sample.headingRad}:{})}]
     };
     this.strokes.push(stroke);
     this.anchors.set(key,{stroke,rawAt:sample.atMs,rawPoint:next,
@@ -77,7 +77,7 @@ export class FootLineTrailEngine{
     const last=prev.stroke.points.at(-1)!;
     if(distance(filtered,last)>.0032){
      const speed=clamp(Math.hypot(velocity.x,velocity.y)/2.5,0,1);
-     prev.stroke.points.push({...filtered,atMs:nowMs,speed});
+     prev.stroke.points.push({...filtered,atMs:nowMs,speed,...(Number.isFinite(sample.headingRad)?{headingRad:sample.headingRad}:{})});
      this.lastMotionAt=nowMs;
     }
    }
