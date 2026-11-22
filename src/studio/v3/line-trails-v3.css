@@ -1,0 +1,48 @@
+/* Garis V3: small, readable control surface. V2 stays behind rollback. */
+.fp-stage-workspace[data-workspace="compose"] .lt-v3-controls{
+ gap:10px;padding:0 0 14px
+}
+.lt-v3-controls .lt-beta-status{min-height:32px}
+.lt-v3-controls .lt-v3-mode{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.lt-v3-controls .lt-v3-mode button:disabled{
+ opacity:.48;cursor:not-allowed
+}
+.lt-v3-controls .lt-beta-foot{
+ padding:8px 9px;grid-template-columns:minmax(0,1fr) 48px 24px
+}
+.lt-v3-controls .lt-v3-duration{display:flex;flex-direction:column;gap:8px}
+.lt-v3-controls .lt-v3-duration strong{font-size:11px;color:#b9cfbb}
+.lt-v3-controls .lt-v3-three{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px
+}
+.lt-v3-controls .lt-v3-three button{white-space:nowrap;padding:7px 4px}
+.lt-v3-controls .lt-v3-actors{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lt-v3-controls .lt-v3-actors label{
+ display:flex;gap:6px;align-items:center;justify-content:center;padding:8px 2px;
+ background:#1b3021;border:1px solid #3b5942;border-radius:7px;
+ font-size:11px;color:#d1e3d1
+}
+.lt-v3-controls :is(.lt-v3-debug,.lt-v3-advanced){
+ border-top:1px solid #2f4433;padding-top:10px
+}
+.lt-v3-controls :is(.lt-v3-debug,.lt-v3-advanced) summary{
+ cursor:pointer;font-size:11px;color:#cbe6cd;font-weight:700
+}
+.lt-v3-controls :is(.lt-v3-debug,.lt-v3-advanced)>label{
+ display:flex;gap:8px;align-items:center;font-size:11px;
+ color:#b9c9bd;margin:11px 0
+}
+.lt-v3-controls .lt-v3-debug p{
+ border:1px solid #36543e;border-radius:6px;
+ padding:8px;margin:8px 0;word-break:break-word;font-size:10px;
+ font-variant-numeric:tabular-nums;line-height:1.6;color:#aaccb0
+}
+.lt-v3-controls .lt-v3-debug small{
+ font-size:10px;line-height:1.4;color:#a3b6aa
+}
+.lt-v3-controls .lt-v3-advanced>.lt-v3-three{margin-top:9px}
+.lt-v3-controls .lt-v3-advanced>button{
+ width:100%;border-color:#8a5649!important;color:#f9cebd!important;
+ margin-top:8px
+}
+.lt-v3-stage{background:#f5f5f2}
