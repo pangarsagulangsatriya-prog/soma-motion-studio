@@ -83,7 +83,8 @@ test('Redis-backed QR rooms enforce same-origin, single-use join, SDP roles and 
   const args=command.slice(4).map(String);
   let result:unknown=null;
   const room=rooms.get(key);
-  if(script.includes("redis.call('INCR'")){
+  if(script.includes("KEYS[2]")){result=1; // Dedicated stress suite checks scoped limits.
+  }else if(script.includes("redis.call('INCR'")){
    result=(counts.get(key)??0)+1;counts.set(key,result as number);
   }else if(script.includes("redis.call('EXISTS'")){
    if(room)result=0;

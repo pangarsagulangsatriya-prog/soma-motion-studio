@@ -6,7 +6,7 @@ export const PHONE_PAIR_TTL_MS=180_000;
 export const PHONE_SESSION_TTL_MS=3*60*60*1000;
 export const PHONE_PAIR_POLL_MS=850;
 export const PHONE_PAIR_MAX_SDP=90_000;
-export type PhonePairState='waiting'|'joined'|'offered'|'answered';
+export type PhonePairState='waiting'|'joined'|'offered'|'answered'|'connected';
 export type PairRoom={
  room:string; desktopToken:string; ticket:string; expiresAt:number;
 };
@@ -38,7 +38,7 @@ export function parsePairResponse(value:unknown):PairResponse{
  return obj;
 }
 export async function phonePairRequest(
- action:'create'|'join'|'poll'|'offer'|'answer'|'resume'|'close',
+ action:'create'|'join'|'poll'|'offer'|'answer'|'ack'|'resume'|'close',
  payload:Record<string,string>={},
  signal?:AbortSignal
 ):Promise<PairResponse>{
@@ -56,5 +56,6 @@ export async function phonePairRequest(
 }
 export function describePairState(value:PhonePairState):string{
  return ({waiting:'Menunggu HP memindai QR',joined:'HP bergabung. Menyiapkan WebRTC',
-  offered:'Menunggu izin kamera dan jawaban HP',answered:'Membangun jalur video'})[value];
+  offered:'Menunggu izin kamera dan jawaban HP',answered:'Membangun jalur video',
+  connected:'Video terhubung'})[value];
 }

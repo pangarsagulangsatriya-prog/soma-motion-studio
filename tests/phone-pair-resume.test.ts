@@ -56,7 +56,8 @@ test('authenticated QR room resumes on either device; epoch rejects stale offers
   const text=String(script),id=String(key),a=args.map(String);
   const room=rooms.get(id);
   let result:unknown;
-  if(text.includes("redis.call('INCR'")){
+  if(text.includes("KEYS[2]")){result=1; // Dedicated stress suite checks scoped limits.
+  }else if(text.includes("redis.call('INCR'")){
    result=(rates.get(id)??0)+1;rates.set(id,result as number);
   }else if(text.includes("redis.call('EXISTS'")){
    if(room)result=0;

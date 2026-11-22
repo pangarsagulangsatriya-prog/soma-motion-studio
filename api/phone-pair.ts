@@ -13,7 +13,7 @@ const validRoom=(value:unknown):value is string=>
 const validToken=(value:unknown):value is string=>
  typeof value==='string'&&/^[a-zA-Z0-9_-]{24,64}$/.test(value);
 
-type Action='create'|'join'|'poll'|'offer'|'answer'|'resume'|'close';
+type Action='create'|'join'|'poll'|'offer'|'answer'|'ack'|'resume'|'close';
 type RedisPrimitive=string|number|null|Array<string|number|null>;
 type RequestPayload={action?:Action;room?:string;token?:string;ticket?:string;sdp?:string;epoch?:string};
 const TTL_SECONDS=PHONE_PAIR_TTL_MS/1000;
@@ -58,6 +58,16 @@ const SEND_ANSWER=[
  "if ARGV[3]~=epoch and not (ARGV[3]=='' and epoch=='1') then return 'stale' end",
  "redis.call('HSET',KEYS[1],'state','answered','answer',ARGV[2])",
  "return 'answered'"
+].join('\n');
+/** Desktop acknowledgement drops SDP/ICE candidates immediately after the
+ * receiver has consumed the answer, minimizing retention of network addresses.
+ */
+const ACK=[
+ "if redis.call('HGET',KEYS[1],'desktop')~=ARGV[1] then return 'denied' end",
+ "if redis.call('HGET',KEYS[1],'epoch')~=ARGV[2] then return 'stale' end",
+ "if redis.call('HGET',KEYS[1],'state')~='answered' then return 'expired' end",
+ "redis.call('HSET',KEYS[1],'state','connected','offer','','answer','')",
+ "return 'connected'"
 ].join('\n');
 const READ=[
  "local s=redis.call('HGET',KEYS[1],'state')",
@@ -137,7 +147,7 @@ export async function POST(request:Request):Promise<Response>{
   if(raw.length>110000)return json({ok:false,error:'Payload pairing terlalu panjang.'},413);
   let value:RequestPayload;
   try{value=JSON.parse(raw) as RequestPayload;}catch{return json({ok:false,error:'JSON pairing tidak valid.'},400);}
-  if(!value||!['create','join','poll','offer','answer','resume','close'].includes(value.action??''))
+  if(!value||!['create','join','poll','offer','answer','ack','resume','close'].includes(value.action??''))
    return json({ok:false,error:'Aksi pairing tidak dikenal.'},400);
   const action=value.action!;
   if(!await rateLimit(request,action))return json({ok:false,error:'Terlalu banyak permintaan. Coba lagi.',code:'RATE_LIMIT'},429);
@@ -177,6 +187,15 @@ export async function POST(request:Request):Promise<Response>{
    const ttl=Array.isArray(metadata)?Number(metadata[4]):0;
    return json({ok:true,state:result[0],epoch:Number(result[1])||0,
     expiresAt:Date.now()+Math.max(0,ttl||0)*1000});
+  }
+  if(action==='ack'){
+   if(typeof value.epoch!=='string'||!/^[1-9][0-9]{0,5}$/.test(value.epoch))
+    return json({ok:false,error:'Nomor koneksi tidak valid.'},400);
+   const state=await evalRedis(ACK,roomKey,auth,value.epoch);
+   if(state==='connected')return json({ok:true,state});
+   if(state==='denied')return json({ok:false,error:'Token bukan milik laptop.'},403);
+   if(state==='stale')return json({ok:false,error:'Generasi koneksi lama.',code:'STALE_EPOCH'},409);
+   return json({ok:false,error:'Sesi belum siap untuk dibersihkan.',code:'ROOM_EXPIRED'},410);
   }
   if(action==='poll'){
    const result=await evalRedis(READ,roomKey,auth);

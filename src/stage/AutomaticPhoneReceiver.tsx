@@ -247,6 +247,9 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUs
      if(!info.sdp)throw Error('Jawaban HP belum tersedia.');
      answeredEpoch=epoch;
      await pcRef.current.setRemoteDescription({type:'answer',sdp:info.sdp});
+     // Clear SDP/ICE address candidates after receiver consumes the answer.
+     void phonePairRequest('ack',{room:current.room,
+      token:current.desktopToken,epoch:String(epoch)},controller.signal).catch(()=>{});
      // Room persists for authenticated reoffer after laptop refresh.
      roomRef.current=current;setRoom(null);
      setStatus('WebRTC sedang menyambungkan video HP…');
