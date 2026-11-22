@@ -32,14 +32,19 @@ export class FootContactGestureEngine {
      lastImprint:-Infinity,contactEstimated:false});continue;
    }
    const moved=distance(old.pose.center,p.center);
+   if(old.contactEstimated&&p.atMs-old.lastImprint>180)old.contactEstimated=false;
    const turning=p.headingRad!==undefined&&old.pose.headingRad!==undefined?
     angle(p.headingRad,old.pose.headingRad):0;
    const heelStable=p.heel&&old.pose.heel&&distance(p.heel,old.pose.heel)<5;
    const toeStable=p.toe&&old.pose.toe&&distance(p.toe,old.pose.toe)<5;
    const pivot=turning>.12&&moved<50?(heelStable?'heel':toeStable?'toe':undefined):undefined;
    let kind:BrushGesture|undefined;
-   if(old.contactEstimated&&pivot)kind='pivot';
-   else if(old.contactEstimated&&moved>3.7&&moved<110)kind='drag';
+   // Explicit simulated/demo input can depict a painted continuous walk.
+   // Camera/video contact remains conservative: never paint aerial transit.
+   const simulated=p.provenance==='simulated';
+   const recentContact=old.contactEstimated&&p.atMs-old.lastImprint<=180;
+   if(recentContact&&pivot)kind='pivot';
+   else if((simulated||recentContact)&&moved>3.7&&moved<110)kind='drag';
    else if(moved>3.7){
     old.moving=true;old.stillSince=null;old.traveled+=Math.min(110,moved);
     old.contactEstimated=false;
