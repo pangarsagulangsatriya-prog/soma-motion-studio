@@ -35,7 +35,7 @@ jobs:
           npm install --no-save --package-lock=false @playwright/test@1.56.1
           npx playwright install --with-deps chromium
       - name: Compose V3 end-to-end
-        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 garis-v3-dual-foot.spec.mjs
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 garis-v3-dual-foot.spec.mjs compose-line-trails-beta.spec.mjs
       - name: Evidence on failure
         if: always()
         uses: actions/upload-artifact@v4
