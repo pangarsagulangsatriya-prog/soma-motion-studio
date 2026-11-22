@@ -1,0 +1,46 @@
+name: Garis BETA restoration isolated browser QA
+on:
+  push:
+    branches:
+      - 'fix/restore-compose-garis-beta'
+  pull_request:
+    paths:
+      - 'src/studio/v3/LineTrailsBeta.tsx'
+      - 'src/studio/v3/SurfaceComposer.tsx'
+      - 'src/studio/v3/line-trails-beta.css'
+      - 'src/footprints/lines/**'
+      - 'e2e/compose-line-trails-beta.spec.mjs'
+      - '.github/workflows/line-trails-restore-qa.yml'
+permissions:
+  contents: read
+jobs:
+  browser-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Compose Garis BETA on laptop and desktop
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 compose-line-trails-beta.spec.mjs
+      - name: Upload failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: garis-beta-restore-qa
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+            e2e/qa-result.json
+          if-no-files-found: warn
