@@ -18,13 +18,14 @@ type Feed={video:HTMLVideoElement|null;frame:MotionFrame|null;frameAt:number};
 type PreviewProps={
  registry:CameraHubRegistry;nodeId:string;borrowed:boolean;showSkeleton:boolean;
  cameraOn:boolean;videoRef:RefObject<HTMLVideoElement|null>;frameRef:RefObject<MotionFrame>;
- large?:boolean;
+ large?:boolean;active:boolean;
 };
 /** Each visible node paints its own independent Track source, including its own
  * 33-point skeleton. Rendering stops on unmount, capture stays alive in App. */
-function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large=false}:PreviewProps){
+function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large=false,active}:PreviewProps){
  const canvas=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
+  if(!active)return;
   let raf=0,last=0;
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);
@@ -49,7 +50,7 @@ function CameraPreview({registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,
   };
   raf=requestAnimationFrame(paint);
   return()=>cancelAnimationFrame(raf);
- },[registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large]);
+ },[registry,nodeId,borrowed,showSkeleton,cameraOn,videoRef,frameRef,large,active]);
  return <canvas ref={canvas} width={large?640:320} height={large?360:180}
   className="ch-camera-canvas" aria-label={showSkeleton?'Preview kamera dengan skeleton':'Preview video asli'} role="img"/>;
 }
@@ -76,7 +77,8 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [zoom,setZoom]=useState(1);
- useEffect(()=>registry.subscribe(()=>setRecords(registry.snapshot())),[registry]);
+ useEffect(()=>registry.subscribe(()=>{if(active)setRecords(registry.snapshot());}),[registry,active]);
+ useEffect(()=>{if(active)setRecords(registry.snapshot());},[registry,active]);
  useEffect(()=>{
   if(!showAdd)return;
   const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();setShowAdd(false);addTriggerRef.current?.focus();}};
@@ -200,7 +202,7 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
         <div className="ch-node-top"><span className="ch-camera-icon"><Camera size={16}/></span>
          <span className="ch-node-name">{n.name}</span></div>
         <div className="ch-node-preview"><CameraPreview registry={registry} nodeId={n.id} borrowed={n.borrowed}
-         showSkeleton={n.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef}/></div>
+         showSkeleton={n.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef} active={active}/></div>
         <div className="ch-node-bottom"><span className={`ch-dot ${n.phase==='live'?'ch-green':''}`}/>
          {n.phase==='live'?'LIVE · '+(n.record?.detectedBodies??0)+' tubuh':n.message}</div>
         <span className="ch-port" aria-hidden="true"/>
@@ -277,8 +279,16 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
     <p className="ch-inspector-eyebrow">INSPECTOR</p><h2>{selectedNode?.name||'Pilih kamera'}</h2>
     <div className="ch-preview">
      {selectedNode?<CameraPreview registry={registry} nodeId={selectedNode.id} borrowed={selectedNode.borrowed}
-      showSkeleton={selectedNode.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef} large/>:
+      showSkeleton={selectedNode.showSkeleton} cameraOn={cameraOn} videoRef={videoRef} frameRef={frameRef} large active={active}/>:
       <div className="ch-preview-empty"><Camera size={25}/><span>Pilih node kamera di kanvas</span></div>}
+    </div>
+    <div className="ch-phone-docks">
+     {records.filter(r=>r.kind==='phone').map(r=><div key={r.id}
+      className={`ch-phone-dock ${selected===r.id?'ch-phone-dock-active':''}`}>
+      <PhoneCameraReceiver initialMode="qr"
+       onStream={stream=>registry.connectPhone(r.id,stream)}
+       onDisconnect={()=>registry.disconnect(r.id)}/>
+     </div>)}
     </div>
     {selectedNode?<div className="ch-inspector-body">
      <div className="ch-row"><span>Status</span><strong>{selectedNode.phase==='live'?'LIVE':selectedNode.message}</strong></div>
@@ -292,7 +302,7 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
       <div className="ch-inline"><input id="ch-rename" maxLength={64} value={renameValue} onChange={e=>setRenameValue(e.target.value)}/>
        <button type="button" onClick={()=>registry.rename(selectedNode.id,renameValue)} disabled={!renameValue.trim()}>Simpan</button></div>
       {selectedNode.record?.kind==='phone'?<>
-       <p className="ch-inspector-note">Gunakan Kabel atau Nirkabel pada panel pairing di atas. Saat tersambung, video dan skeleton langsung muncul di node.</p>
+       <p className="ch-inspector-note">Gunakan panel pairing di bawah preview. Saat tersambung, video dan skeleton langsung muncul di node.</p>
        <button type="button" className="ch-remove ch-phone-remove" onClick={()=>{registry.remove(selectedNode.id);setSelected(null);}}>
         <Trash2 size={15}/> Hapus kamera HP
        </button>
@@ -315,17 +325,9 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
       </>}
      </>}
      {selectedNode.record?.kind!=='phone'&&<button type="button" className="ch-route-button" onClick={sendTrack} disabled={busy||!selectedNode.deviceId}>
-      <Check size={15}/> {selectedNode.borrowed?'Dipakai Stage 1':'Gunakan di Stage 1'}</button>}}
+      <Check size={15}/> {selectedNode.borrowed?'Dipakai Stage 1':'Gunakan di Stage 1'}</button>}
      <p className="ch-inspector-note">{selectedNode.record?.kind==='phone'?'Kamera HP nirkabel saat ini bisa dipantau di Hub. Jalur proyeksi Stage 1 tetap menggunakan input Track.':'Kamera Stage 1 harus memeriksa ulang kalibrasi lantai setelah penggantian sumber.'}</p>
     </div>:<p className="ch-inspector-note">Klik node kamera untuk melihat preview dan pengaturan. Tambahkan sumber langsung dari tanda + di kanvas.</p>}
-    <div className="ch-phone-docks">
-     {records.filter(r=>r.kind==='phone').map(r=><div key={r.id}
-      className={`ch-phone-dock ${selected===r.id?'ch-phone-dock-active':''}`}>
-      <PhoneCameraReceiver initialMode="qr"
-       onStream={stream=>registry.connectPhone(r.id,stream)}
-       onDisconnect={()=>registry.disconnect(r.id)}/>
-     </div>)}
-    </div>
     <div className="ch-note"><Unplug size={16}/>Kamera terlihat di daftar belum tentu streaming. Node LIVE muncul setelah video aktif; skeleton hanya menggambar pose yang benar-benar terdeteksi.</div>
     <button type="button" className="ch-track-link" onClick={onGoStageOne}>Buka Stage 1 / Track</button>
    </aside>
