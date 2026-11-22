@@ -1,6 +1,7 @@
 import type {InkSegmentEvent} from './ObservedMotionInkEngine.ts';
 import type {SumiStrokeGeometry} from './SumiStrokeGeometryBuilder.ts';
 import {renderSumiMaterial,type SumiInkStyle} from './SumiMaterialRenderer.ts';
+import {extendPaintingBounds,type PaintingBounds} from './PainterlyPreviewTransform.ts';
 const WIDTH=1600,HEIGHT=900;
 /** One painting session survives source, track, and media epoch changes. */
 export class PersistentInkStore{
@@ -11,8 +12,10 @@ export class PersistentInkStore{
  private mediaIntervals=new Map<string,Array<[number,number]>>();
  private paintingIndex=0;
  private accepted=0;
+ private inkBounds:PaintingBounds|null=null;
  get paintingSessionId(){return this.paintingIndex;}
  get depositCount(){return this.accepted;}
+ getBounds():PaintingBounds|null{return this.inkBounds?{...this.inkBounds}:null;}
  private ensureCanvas(){
   if(!this.canvas){this.canvas=document.createElement('canvas');
    this.canvas.width=WIDTH;this.canvas.height=HEIGHT;}
@@ -62,12 +65,13 @@ export class PersistentInkStore{
   this.playedIds.add(event.id);this.idOrder.push(event.id);
   while(this.idOrder.length>3000)this.playedIds.delete(this.idOrder.shift()!);
   this.indexInterval(event);this.accepted++;
+  this.inkBounds=extendPaintingBounds(this.inkBounds,geometry);
   return true;
  }
  clearPainting(){
   this.paintingIndex++;this.accepted=0;
   this.canvas?.getContext('2d')?.clearRect(0,0,WIDTH,HEIGHT);
-  this.playedIds.clear();this.idOrder=[];this.mediaIntervals.clear();
+  this.playedIds.clear();this.idOrder=[];this.mediaIntervals.clear();this.inkBounds=null;
  }
  exportPNG(includeBackground=true):string|null{
   if(!this.canvas)return null;
