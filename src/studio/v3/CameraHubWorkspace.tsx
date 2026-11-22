@@ -90,7 +90,7 @@ export function CameraHubWorkspace({devices,selectedId,cameraOn,cameraBusy,camer
  const borrowed=Boolean(cameraOn&&!cameraBusy&&!cameraError&&videoRef.current?.srcObject);
  const trackDevice=selectedId||((videoRef.current?.srcObject as MediaStream|null)?.getVideoTracks()[0]?.getSettings().deviceId??'');
  const sources=useMemo<NodeView[]>(()=>{
-  const active=records.map(r=>({...r,borrowed:false,record:r}));
+  const active:NodeView[]=records.map(r=>({...r,borrowed:false,record:r}));
   if(borrowed){
    active.unshift({id:stageKey,deviceId:trackDevice,name:'Stage 1 · Kamera aktif',
     phase:'live',message:'Dipakai Track',showSkeleton:stageSkeleton,borrowed:true});
