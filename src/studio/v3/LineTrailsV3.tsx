@@ -32,7 +32,7 @@ export function LineTrailsV3Stage(props:StageProps){
  useEffect(()=>{demoStart.current=performance.now();},[props.demo]);
  useEffect(()=>{
   let raf=0,lastDraw=0,lastStatus='',lastStatusAt=0,lastSource='';
-  let lastFrameMs=-1,lastPaused=false,lastSeeking=false,lastStale=false;
+  let lastFrameMs=-1,lastPaused=false,lastSeeking=false,lastStale=false,lastGoodAt=0;
   let lastDiag=0;
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);
@@ -50,7 +50,7 @@ export function LineTrailsV3Stage(props:StageProps){
    });
    let message=input.status;
    if(input.sourceKey!==lastSource){
-    lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;
+    lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
    }
    const off=p.blackout||!p.previewLive;
@@ -65,14 +65,18 @@ export function LineTrailsV3Stage(props:StageProps){
     }else{
      lastSeeking=false;
      if(!input.ready){
-      if(!lastStale&&(input.status.includes('tertunda')||input.status.includes('menunggu')||
-       input.status.includes('belum'))){
-       p.engine.cutAll('stale-frame');
-       lastStale=true;
+      const waiting=input.status.includes('tertunda')||input.status.includes('menunggu')||
+       input.status.includes('belum');
+      // Pose inference in MP4 is asynchronous. Do not cut all four feet
+      // immediately because a single decoded frame overtook its pose result.
+      // A later valid frame will still cut a >390ms gap in the tracking engine.
+      const graceMs=input.source==='video'?1000:500;
+      if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
+       p.engine.cutAll('stale-frame');lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
-      lastFrameMs=input.frameMs;
+      lastFrameMs=input.frameMs;lastGoodAt=now;
       lastStale=false;
      }
      if(input.paused)message='MP4 dijeda · jejak dipertahankan';
@@ -98,10 +102,17 @@ export function LineTrailsV3Stage(props:StageProps){
     lastDiag=now;
     const recent=p.engine.diagnostics.slice(-4);
     const reasons=recent.filter(x=>!x.accepted).map(x=>x.id+': '+x.reason);
+    const cutSummary=p.engine.diagnostics.filter(x=>!x.accepted)
+     .reduce<Record<string,number>>((sum,x)=>{const key=x.reason??'invalid';
+      sum[key]=(sum[key]??0)+1;return sum;},{});
+    const lag=input.source==='video'&&input.frameMs>=0?
+     Math.round(input.presentationMs-input.frameMs):null;
     p.onDiagnostics?.([
      'Sumber: '+input.source+' · '+(input.ready?'frame siap':'frame belum siap'),
-     'Waktu frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
+     'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
+     ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
+     'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
     ].join(' | '));
    }
@@ -124,33 +135,49 @@ type PanelProps={
 };
 export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,status,
  diagnostics,performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
- const color=(foot:'left'|'right',value:string)=>onChange({
-  ...settings,colors:{...settings.colors,[foot]:value}
+ const actorColor=(actor:'A'|'B',value:string)=>onChange({
+  ...settings,actorColors:{...settings.actorColors,[actor]:value}
  });
- const show=(foot:'left'|'right',value:boolean)=>onChange({
-  ...settings,visible:{...settings.visible,[foot]:value}
+ const actorVisible=(actor:'A'|'B',value:boolean)=>onChange({
+  ...settings,actors:{...settings.actors,[actor]:value}
  });
+ const footVisible=(actor:'A'|'B',foot:'left'|'right',value:boolean)=>onChange({
+  ...settings,footVisible:{...settings.footVisible,
+   [actor]:{...settings.footVisible[actor],[foot]:value}}
+ });
+ const footOverride=(actor:'A'|'B',foot:'left'|'right',value:string|undefined)=>{
+  const previous={...(settings.footOverrides[actor]??{})};
+  if(value)previous[foot]=value;else delete previous[foot];
+  const next={...settings.footOverrides};
+  if(Object.keys(previous).length)next[actor]=previous;else delete next[actor];
+  onChange({...settings,footOverrides:next});
+ };
+ const activeActors=performerCount===2?(['A','B'] as const):(['A'] as const);
  return <section className="lt-beta-controls lt-v3-controls" aria-label="Kontrol Garis V3">
-  <header><strong>Garis · Lintasan</strong><span>V3 BETA</span></header>
+  <header><strong>Garis · Lintasan</strong><span>V3.1 BETA</span></header>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
   <div className="lt-v3-mode" role="group" aria-label="Mode Garis">
    <button type="button" aria-pressed="true">Lintasan</button>
    <button type="button" disabled title="Menunggu gate kontak kaki yang terverifikasi">Pijakan · P1</button>
   </div>
-  {(['left','right'] as const).map(foot=><div key={foot} className="lt-beta-foot">
-   <label htmlFor={'v3-color-'+foot}><strong>Kaki {foot==='left'?'kiri':'kanan'}</strong>
-    <small>Lintasan terdeteksi</small></label>
-   <input type="color" id={'v3-color-'+foot} aria-label={'Warna kaki '+foot}
-    value={settings.colors[foot]} onChange={e=>color(foot,e.target.value)}/>
-   <input type="checkbox" checked={settings.visible[foot]}
-    aria-label={'Tampilkan kaki '+foot} onChange={e=>show(foot,e.target.checked)}/>
+  {activeActors.map(actor=><div key={actor} className="lt-v31-actor">
+   <label htmlFor={'v31-actor-color-'+actor}><strong>Aktor {actor}</strong>
+    <small>{actor==='A'?'Merah':'Hitam arang'} · dua kaki</small></label>
+   <input type="color" id={'v31-actor-color-'+actor}
+    aria-label={'Warna Aktor '+actor} value={settings.actorColors[actor]}
+    onChange={e=>actorColor(actor,e.target.value)}/>
+   <input type="checkbox" checked={settings.actors[actor]}
+    aria-label={'Tampilkan Aktor '+actor}
+    onChange={e=>actorVisible(actor,e.target.checked)}/>
   </div>)}
-  {performerCount===2&&<div className="lt-v3-actors">
-   {(['A','B'] as const).map(actor=><label key={actor}>
-    <input type="checkbox" checked={settings.actors[actor]}
-     onChange={e=>onChange({...settings,actors:{...settings.actors,[actor]:e.target.checked}})}/>
-    Aktor {actor}</label>)}
-  </div>}
+  <div className="lt-v31-character" role="group" aria-label="Karakter garis">
+   {([{value:'precision',label:'Presisi'},
+      {value:'fluid',label:'Luwes'},
+      {value:'paint',label:'Lukis'}] as const).map(mode=>
+    <button key={mode.value} type="button"
+     aria-pressed={settings.styleMode===mode.value}
+     onClick={()=>onChange({...settings,styleMode:mode.value})}>{mode.label}</button>)}
+  </div>
   <label className="lt-beta-width">Ketebalan <output>{settings.width} px</output>
    <input type="range" min={1} max={12} step={1}
     aria-label="Ketebalan lintasan" value={settings.width}
@@ -174,12 +201,36 @@ export function LineTrailsV3Panel({settings,onChange,engine,onClear,demo,onDemo,
   </div>
   <small className="lt-beta-count">{engine.sampleCount} titik · {engine.allStrokes.length} segmen ·
    Preview posisi 2D, belum diproyeksikan</small>
+  <details className="lt-v31-foot-details">
+   <summary>Detail kaki</summary>
+   <p>Warna kedua kaki mengikuti aktor, kecuali saat warna khusus diaktifkan.</p>
+   {activeActors.map(actor=><div key={actor} className="lt-v31-foot-group">
+    <strong>Aktor {actor}</strong>
+    {(['left','right'] as const).map(foot=>{
+     const override=settings.footOverrides[actor]?.[foot];
+     return <div className="lt-v31-foot-row" key={foot}>
+      <span>{foot==='left'?'Kiri':'Kanan'}</span>
+      <label><input type="checkbox" checked={Boolean(override)}
+       aria-label={'Warna khusus '+actor+' '+foot}
+       onChange={e=>footOverride(actor,foot,
+        e.target.checked?settings.actorColors[actor]:undefined)}/> Khusus</label>
+      <input type="color" aria-label={'Warna '+actor+' '+foot}
+       value={override??settings.actorColors[actor]} disabled={!override}
+       onChange={e=>footOverride(actor,foot,e.target.value)}/>
+      <input type="checkbox" aria-label={'Tampilkan '+actor+' '+foot}
+       checked={settings.footVisible[actor][foot]}
+       onChange={e=>footVisible(actor,foot,e.target.checked)}/>
+     </div>;
+    })}
+   </div>)}
+  </details>
   <details className="lt-v3-debug">
    <summary>Periksa jalur</summary>
    <label><input type="checkbox" checked={settings.debug}
     onChange={e=>onChange({...settings,debug:e.target.checked})}/> Titik mentah dan hasil filter</label>
    <p>{diagnostics}</p>
-   <small>Garis putus saat kaki hilang, identitas tidak pasti, atau frame tidak cocok.</small>
+   <small>Jejak pendek tetap tersimpan di engine. Luwes/Lukis hanya merapikan visual;
+    Presisi menampilkan seluruh segmen valid.</small>
   </details>
   <details className="lt-v3-advanced">
    <summary>Pengaturan lanjutan</summary>
