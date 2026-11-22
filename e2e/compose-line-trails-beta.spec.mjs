@@ -52,6 +52,7 @@ test('Line Trails Beta: two colored strokes in one editor canvas; clean fullscre
 test('Line Trails Beta: switch back to the previous Mineral Ink controls',async({page})=>{
  const {beta}=await openBeta(page);
  await beta.click({noWaitAfter:true});
+ await expect.poll(async()=>await page.locator('.s64-layout').getAttribute('data-line-trails-active'),{timeout:8000}).toBe('false');
  await expect(beta).toHaveAttribute('aria-pressed','false',{timeout:8000});
  await expect(page.getByText('Style Library')).toBeVisible();
  await expect(page.locator('.lt-beta-frame')).toHaveCount(0);

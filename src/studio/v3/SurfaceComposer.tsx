@@ -242,7 +242,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  };
  useEffect(()=>{liquidDemoStart.current=performance.now();},[liquidMode,liquidPhase]);
  useEffect(()=>{
-  if(!liquidEnabled||lineTrails)return;
+  if(!liquidEnabled)return;
   const surface=liquidCanvas.current;
   if(!surface)return;
   let canceled=false;
@@ -269,7 +269,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    liquidRenderer.current=null;
    active?.destroy();
   };
- },[mapMode,liquidEnabled,lineTrails]);
+ },[mapMode,liquidEnabled]);
  useEffect(()=>{
   const onGlobalBlackout=()=>setBlackout(true);
   window.addEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,onGlobalBlackout);
