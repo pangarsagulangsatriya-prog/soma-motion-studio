@@ -1,9 +1,18 @@
 import type {DualFootTrajectoryEngine,V3Stroke} from './DualFootTrajectoryEngine.ts';
+import {
+ DEFAULT_ACTOR_PALETTE,DEFAULT_FOOT_VISIBILITY,actorChannel,resolveActorColor,
+ type ActorPalette,type FootColorOverrides,type FootVisibility
+} from './ActorPaletteResolver.ts';
+import {
+ buildPresentationStroke,type StrokeCharacter,type PresentationVertex
+} from './PresentationStrokeBuilder.ts';
 
 export type V3Settings={
- colors:{left:string;right:string};
- visible:{left:boolean;right:boolean};
+ actorColors:ActorPalette;
+ footOverrides:FootColorOverrides;
+ footVisible:FootVisibility;
  actors:{A:boolean;B:boolean};
+ styleMode:StrokeCharacter;
  width:number;
  decay:'keep'|'fade';
  lifeMs:number;
@@ -11,14 +20,15 @@ export type V3Settings={
  debug:boolean;
 };
 export const DEFAULT_V3_SETTINGS:V3Settings={
- colors:{left:'#E44F32',right:'#289B92'},
- visible:{left:true,right:true},actors:{A:true,B:true},width:3,
+ actorColors:{...DEFAULT_ACTOR_PALETTE},footOverrides:{},
+ footVisible:{A:{...DEFAULT_FOOT_VISIBILITY.A},B:{...DEFAULT_FOOT_VISIBILITY.B}},
+ actors:{A:true,B:true},styleMode:'fluid',width:3,
  decay:'keep',lifeMs:8000,background:'#F5F5F2',debug:false
 };
-const validColor=(s:string)=>/^#[0-9a-f]{6}$/i.test(s);
 const bounded=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
-/** A straight polyline through accepted coordinates only. No smoothing curve,
- * glow, blur, interpolation or projection beyond the observed frame. */
+
+/** Actor-first styling wraps the same immutable, accepted trajectories as V3.
+ * Precision, fluid and paint share the same stored source points and cut gates. */
 export function paintTrajectory(
  ctx:CanvasRenderingContext2D,engine:DualFootTrajectoryEngine,
  settings:V3Settings,presentationMs:number,blackout=false,fullscreen=false
@@ -29,11 +39,11 @@ export function paintTrajectory(
  ctx.fillStyle=blackout?'#000000':settings.background;
  ctx.fillRect(0,0,w,h);
  if(blackout){ctx.restore();return;}
- ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
  const width=bounded(settings.width,1,16)*w/1600;
  for(const stroke of engine.visible(presentationMs,settings.decay,settings.lifeMs)){
-  if(!settings.visible[stroke.foot])continue;
-  if((stroke.actorId==='A'||stroke.actorId==='B')&&!settings.actors[stroke.actorId])continue;
+  const actor=actorChannel(stroke.actorId);
+  if(!settings.actors[actor]||!settings.footVisible[actor][stroke.foot])continue;
   paintOne(ctx,stroke,settings,width,w,h,presentationMs);
  }
  if(settings.debug&&!fullscreen){
@@ -47,24 +57,42 @@ export function paintTrajectory(
    }
   }
  }
- ctx.restore();
+ ctx.globalAlpha=1;ctx.setLineDash([]);ctx.restore();
 }
 function paintOne(ctx:CanvasRenderingContext2D,stroke:V3Stroke,settings:V3Settings,
  width:number,w:number,h:number,now:number):void{
- const points=stroke.points;if(points.length<2)return;
- const color=settings.colors[stroke.foot];
- ctx.strokeStyle=validColor(color)?color:'#E44F32';
- ctx.lineWidth=width;
- // Actor B uses a subtle dashed channel as a backup to the color differences.
- ctx.setLineDash(stroke.actorId==='B'?[10*w/1600,5*w/1600]:[]);
- for(let i=1;i<points.length;i++){
-  const a=points[i-1],b=points[i];
+ const result=buildPresentationStroke(stroke,settings.styleMode,w,h);
+ const nodes=result.points;
+ if(nodes.length<2)return;
+ ctx.strokeStyle=resolveActorColor(stroke.actorId,stroke.foot,
+  settings.actorColors,settings.footOverrides,settings.background);
+ ctx.setLineDash([]); // Same actor's two feet share a continuous primary color.
+ // Large histories are drawn in one stroke to avoid thousands of canvas commands
+ // per frame. Fade and expressive widths use a bounded number of segments.
+ if(settings.decay==='keep'&&nodes.length>400){
+  ctx.globalAlpha=1;ctx.lineWidth=width;
+  ctx.beginPath();ctx.moveTo(nodes[0].x,nodes[0].y);
+  for(let i=1;i<nodes.length;i++)ctx.lineTo(nodes[i].x,nodes[i].y);
+  ctx.stroke();return;
+ }
+ for(let i=1;i<nodes.length;i++){
+  const a=nodes[i-1],b=nodes[i];
   if(settings.decay==='fade'){
    const age=now-b.atMs;
    ctx.globalAlpha=bounded(1-age/settings.lifeMs,0,1);
   }else ctx.globalAlpha=1;
   if(ctx.globalAlpha<=0)continue;
-  ctx.beginPath();ctx.moveTo(a.x*w,a.y*h);ctx.lineTo(b.x*w,b.y*h);ctx.stroke();
+  const progress=(i-.5)/Math.max(1,nodes.length-1);
+  const tip=Math.min(1,progress*8,(1-progress)*8);
+  const taper=settings.styleMode==='precision'?1:.78+.22*bounded(tip,0,1);
+  let expression=1;
+  if(settings.styleMode==='paint'){
+   // Image-plane velocity is a display parameter, not measured foot pressure.
+   const speed=bounded(b.speedPxPerSec,0,550);
+   expression=bounded(1.18-speed/2400,.94,1.18);
+  }
+  ctx.lineWidth=width*taper*expression;
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
  }
- ctx.globalAlpha=1;ctx.setLineDash([]);
+ ctx.globalAlpha=1;
 }
