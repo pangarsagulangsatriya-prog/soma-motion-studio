@@ -103,7 +103,7 @@ type Props={
  onStartBody:()=>void;onOpenSimulator:()=>void;onOpenLiveFloor:()=>void;
  onOpenProjection:()=>void;
  onPhoneStream:(stream:MediaStream)=>Promise<void>|void;
- onPhoneDisconnect:()=>void;onRotatePhone:()=>void;onMirrorCamera:()=>void;onEnterOperator:()=>void;
+ onPhoneInterrupted:()=>void;onPhoneDisconnect:()=>void;onRotatePhone:()=>void;onMirrorCamera:()=>void;onEnterOperator:()=>void;
  onBlackout:()=>void;onToggleCamera:()=>void;onRecordVideo:()=>void;onCapture:()=>void;
  operatorMode:boolean;onExitOperator:()=>void;
  softwareBlackout:boolean;onResumeSoftwarePreview:()=>void;
@@ -119,7 +119,7 @@ export function FootprintsStageWorkspace({
  cameraDevices,selectedCameraId,onSelectCameraDevice,
  phoneActive,sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
- onPhoneStream,onPhoneDisconnect,onRotatePhone,onMirrorCamera,
+ onPhoneStream,onPhoneInterrupted,onPhoneDisconnect,onRotatePhone,onMirrorCamera,
  onBlackout,onToggleCamera,onRecordVideo,onCapture,videoRecording,canRecordVideo,
  operatorMode,onExitOperator,softwareBlackout,onResumeSoftwarePreview,footprint,updateFootprint
 }:Props){
@@ -1114,7 +1114,7 @@ export function FootprintsStageWorkspace({
        <header className="soma-track-phone-heading"><strong>Kamera HP</strong>
         <button type="button" aria-label="Tutup pilihan kamera" onClick={closePhonePanel}>×</button>
        </header>
-       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
+       <PhoneCameraReceiver onStream={onPhoneStream} onInterrupted={onPhoneInterrupted} onDisconnect={onPhoneDisconnect}/>
       </section>}
       {experimentalKind&&<FootprintsExperimentalSource
        key={experimentalKind} kind={experimentalKind}

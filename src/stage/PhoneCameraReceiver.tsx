@@ -5,18 +5,22 @@ import {UsbPhoneCameraReceiver} from './UsbPhoneCameraReceiver.tsx';
 import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
  samplePhonePeer} from './PhoneDeviceTelemetry.ts';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal,phoneCameraUrl} from './PhoneSignal.ts';
+import {PHONE_LINK_GRACE_MS,phoneLinkAction} from './phoneLinkRecovery.ts';
 
-function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
- onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+function ManualPhoneCameraReceiver({onStream,onDisconnect,onInterrupted}:{
+ onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;onInterrupted?:()=>void;
 }){
  const [offer,setOffer]=useState(''),[answer,setAnswer]=useState('');
  const [busy,setBusy]=useState(false),[connection,setConnection]=useState('Belum dipasangkan');
  const pc=useRef<RTCPeerConnection|null>(null);
  const active=useRef<MediaStream|null>(null),generation=useRef(0);
  const statsTimer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const retryTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const interruptSent=useRef(false);
  const telemetryOwner=useRef('manual-'+crypto.randomUUID()).current;
+ const clearRetry=()=>{if(retryTimer.current)clearTimeout(retryTimer.current);retryTimer.current=null;};
  const stop=()=>{
-  generation.current++;
+  generation.current++;clearRetry();interruptSent.current=false;
   if(statsTimer.current)clearInterval(statsTimer.current);statsTimer.current=null;
   releasePhoneTransport(telemetryOwner);
   pc.current?.close();pc.current=null;
@@ -25,9 +29,19 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
   setConnection('Koneksi HP ditutup.');onDisconnect();
  };
  const onDisconnectRef=useRef(onDisconnect);onDisconnectRef.current=onDisconnect;
+ const onInterruptedRef=useRef(onInterrupted);onInterruptedRef.current=onInterrupted;
+ useEffect(()=>{
+  const warn=(event:BeforeUnloadEvent)=>{
+   if(pc.current?.connectionState==='connected'){
+    event.preventDefault();event.returnValue='';
+   }
+  };
+  window.addEventListener('beforeunload',warn);
+  return()=>window.removeEventListener('beforeunload',warn);
+ },[]);
  useEffect(()=>()=>{generation.current++;
   if(statsTimer.current)clearInterval(statsTimer.current);
-  releasePhoneTransport(telemetryOwner);pc.current?.close();
+  clearRetry();releasePhoneTransport(telemetryOwner);pc.current?.close();
   const hadActive=!!active.current;
   active.current?.getTracks().forEach(t=>t.stop());active.current=null;
   if(hadActive)onDisconnectRef.current();
@@ -52,17 +66,33 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
    });
    p.addEventListener('connectionstatechange',()=>{
     if(pc.current!==p||generation.current!==version)return;
-    const state=p.connectionState;
-    if(state==='connected'){
-     reportPhoneTransport(telemetryOwner,{state:'connected',reason:'WebRTC manual tersambung.'});
+    const action=phoneLinkAction(p.connectionState);
+    if(action==='healthy'){
+     clearRetry();interruptSent.current=false;
+     reportPhoneTransport(telemetryOwner,{state:'connected',
+      reason:'WebRTC manual tersambung.'});
      void samplePhonePeer(telemetryOwner,p,'manual');
+     setConnection('Kamera HP tersambung ke SOMA.');
+     return;
     }
-    if(state==='failed'||state==='disconnected')
-     reportPhoneTransport(telemetryOwner,{state:'interrupted',reason:'Koneksi manual terputus.'});
-    setConnection(state==='connected'?'Kamera HP tersambung ke engine SOMA.':
-     state==='failed'?'Koneksi gagal. Coba Wi-Fi sama atau periksa firewall.':
-     'Jalur HP: '+state);
-    if(state==='failed'||state==='disconnected')onDisconnect();
+    if(action==='recovering'){
+     reportPhoneTransport(telemetryOwner,{state:'interrupted',
+      reason:'Koneksi HP melemah; sedang mencoba pulih.'});
+     if(!interruptSent.current){interruptSent.current=true;onInterruptedRef.current?.();}
+     setConnection('Sinyal HP terputus sementara. Mencoba pulih…');
+     if(!retryTimer.current)retryTimer.current=setTimeout(()=>{
+      if(pc.current!==p||generation.current!==version||p.connectionState==='connected')return;
+      stop();setConnection('Koneksi tidak pulih. Buat kode sambungan baru.');
+     },PHONE_LINK_GRACE_MS);
+     return;
+    }
+    if(action==='fatal'){
+     clearRetry();
+     reportPhoneTransport(telemetryOwner,{state:'interrupted',
+      reason:'Koneksi HP gagal.'});
+     if(!interruptSent.current){interruptSent.current=true;onInterruptedRef.current?.();}
+     stop();setConnection('Koneksi HP gagal. Buat kode sambungan baru.');
+    }
    });
    await p.setLocalDescription(await p.createOffer());
    setConnection('Mengumpulkan alamat jaringan…');
@@ -140,8 +170,8 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
 }
 
 /** Camera transport modes. Long instructions stay behind contextual help. */
-export function PhoneCameraReceiver({onStream,onDisconnect}:{
- onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+export function PhoneCameraReceiver({onStream,onDisconnect,onInterrupted}:{
+ onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;onInterrupted?:()=>void;
 }){
  const [mode,setMode]=useState<'usb'|'qr'|'manual'>('usb');
  const [helpOpen,setHelpOpen]=useState(false);
@@ -207,13 +237,13 @@ export function PhoneCameraReceiver({onStream,onDisconnect}:{
    {mode==='qr'&&staticPages&&<p>GitHub Pages membutuhkan pertukaran kode manual setelah QR dibuka.</p>}
   </section>}
   {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect} intent="phone"/>:mode==='qr'?
-   <><AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
+   <><AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect} onInterrupted={onInterrupted}
     onUseManual={()=>setMode('manual')}/>
     {!staticPages&&<button type="button" className="soma-phone-manual-fallback" onClick={()=>setMode('manual')}>
      <KeyRound size={14} aria-hidden="true"/> Kode manual
     </button>}</>:
    <><button type="button" className="soma-phone-manual-back" onClick={()=>setMode('qr')}>
      Kembali ke QR
-    </button><ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/></>}
+    </button><ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect} onInterrupted={onInterrupted}/></>}
  </div>;
 }

@@ -4,6 +4,7 @@
  * leave pose landmarks and calibrated floor coordinates in portrait space.
  */
 import {isPortraitStreamDimensions} from './cameraConstraints.ts';
+import {PHONE_LINK_GRACE_MS} from '../stage/phoneLinkRecovery.ts';
 
 export const PHONE_LANDSCAPE_WIDTH=1280;
 export const PHONE_LANDSCAPE_HEIGHT=720;
@@ -44,7 +45,7 @@ export type LandscapePhoneCamera={stream:MediaStream;stop:()=>void;rotate90:()=>
  * source switch. On source disconnect, the caller must blackout/recalibrate.
  */
 export async function createLandscapePhoneCamera(input:MediaStream,
- onSourceEnded:()=>void):Promise<LandscapePhoneCamera>{
+ onSourceEnded:()=>void,onSourceInterrupted?:()=>void):Promise<LandscapePhoneCamera>{
  const track=input.getVideoTracks()[0];
  if(!track||track.readyState!=='live')throw Error('HP belum mengirim video.');
  if(typeof HTMLCanvasElement==='undefined' ||
@@ -59,11 +60,26 @@ export async function createLandscapePhoneCamera(input:MediaStream,
  let raf=0,stopped=false,output:MediaStream|null=null,mutedTimer:ReturnType<typeof setTimeout>|null=null;
  let overrideRotation:LandscapeRotation|null=null,mirrored=false;
  let frameCallbackId:number|null=null,frameWatchdog:ReturnType<typeof setInterval>|null=null;
- let lastDecodedFrame=performance.now();
+ let lastDecodedFrame=performance.now(),interruptionSince:number|null=null;
+ const decodedCallbackSupported=typeof source.requestVideoFrameCallback==='function';
+ const frameIsFresh=(now:number)=>!decodedCallbackSupported||now-lastDecodedFrame<=2200;
+ const checkHealth=()=>{
+  if(stopped||document.visibilityState!=='visible')return;
+  const now=performance.now();
+  const stalled=track.muted||(decodedCallbackSupported&&now-lastDecodedFrame>2800);
+  if(!stalled){interruptionSince=null;return;}
+  if(interruptionSince===null){
+   interruptionSince=now;
+   onSourceInterrupted?.();
+  }else if(now-interruptionSince>=PHONE_LINK_GRACE_MS){
+   onEnded();
+  }
+ };
  const onEnded=()=>{if(stopped)return;stop();onSourceEnded();};
  const onMute=()=>{if(mutedTimer)clearTimeout(mutedTimer);
-  mutedTimer=setTimeout(()=>{if(track.muted)onEnded();},1500);};
- const onUnmute=()=>{if(mutedTimer)clearTimeout(mutedTimer);mutedTimer=null;};
+  // Mobile browsers often mute a stream briefly while switching app focus.
+  mutedTimer=setTimeout(checkHealth,850);};
+ const onUnmute=()=>{if(mutedTimer)clearTimeout(mutedTimer);mutedTimer=null;checkHealth();};
  const stop=()=>{
   if(stopped)return;
   stopped=true;cancelAnimationFrame(raf);
@@ -86,14 +102,12 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   if(!source.videoWidth||!source.videoHeight)throw Error('Frame kamera HP belum tersedia.');
   // requestVideoFrameCallback confirms newly decoded frames, not merely a live track.
   // In hidden tabs a browser can throttle callbacks: avoid false disconnection there.
-  if(typeof source.requestVideoFrameCallback==='function'){
-   const onDecoded=()=>{lastDecodedFrame=performance.now();
+  if(decodedCallbackSupported){
+   const onDecoded=()=>{lastDecodedFrame=performance.now();interruptionSince=null;
     if(!stopped)frameCallbackId=source.requestVideoFrameCallback(onDecoded);};
    frameCallbackId=source.requestVideoFrameCallback(onDecoded);
-   frameWatchdog=setInterval(()=>{
-    if(!stopped&&document.visibilityState==='visible'&&performance.now()-lastDecodedFrame>3200)onEnded();
-   },550);
   }
+  frameWatchdog=setInterval(checkHealth,550);
   let lastPaint=0;
   const paint=(time:number)=>{
    if(stopped)return;
@@ -104,6 +118,9 @@ export async function createLandscapePhoneCamera(input:MediaStream,
    if(!sw||!sh)return;
    const p=landscapeFramePlan(sw,sh,canvas.width,canvas.height,overrideRotation);
    ctx.fillStyle='#050807';ctx.fillRect(0,0,canvas.width,canvas.height);
+   // Never repeat a stale decoded image as though it were a fresh observation.
+   // The canvas track stays alive for transient network recovery.
+   if(track.muted||!frameIsFresh(time))return;
    ctx.save();ctx.translate(canvas.width/2,canvas.height/2);
    if(p.rotation)ctx.rotate(p.rotation*Math.PI/180);
    if(mirrored)ctx.scale(-1,1);

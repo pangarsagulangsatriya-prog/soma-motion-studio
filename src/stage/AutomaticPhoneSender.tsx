@@ -2,6 +2,8 @@ import {useEffect,useRef,useState} from 'react';
 import {collectPhoneIce,ICE_SERVERS} from './PhoneSignal.ts';
 import {phonePairRequest,PHONE_PAIR_POLL_MS,type PhoneJoin} from './PhonePairProtocol.ts';
 import {buildHorizontalCameraConstraints} from '../engine/cameraConstraints.ts';
+import {PHONE_LINK_GRACE_MS,phoneLinkAction} from './phoneLinkRecovery.ts';
+import {usePhoneWakeLock} from './usePhoneWakeLock.ts';
 
 const pause=(ms:number,signal:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  if(signal.aborted){reject(Error('Pairing dibatalkan.'));return;}
@@ -12,15 +14,18 @@ const pause=(ms:number,signal:AbortSignal)=>new Promise<void>((resolve,reject)=>
 export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
  const [status,setStatus]=useState('QR terbaca. Posisikan HP horizontal (landscape) untuk wide view lalu izinkan kamera.');
  const [facing,setFacing]=useState<'environment'|'user'>('environment');
- const [phase,setPhase]=useState<'idle'|'connecting'|'connected'|'error'>('idle');
+ const [phase,setPhase]=useState<'idle'|'connecting'|'connected'|'recovering'|'error'>('idle');
  const video=useRef<HTMLVideoElement>(null),pc=useRef<RTCPeerConnection|null>(null);
  const stream=useRef<MediaStream|null>(null),ctrl=useRef<AbortController|null>(null);
  const generation=useRef(0),phoneToken=useRef('');
  const pulseTimer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const retryTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const {awake,supported}=usePhoneWakeLock(phase==='connecting'||phase==='connected'||phase==='recovering');
+ const clearRetry=()=>{if(retryTimer.current)clearTimeout(retryTimer.current);retryTimer.current=null;};
  const terminate=(show=true)=>{
   generation.current++;ctrl.current?.abort();ctrl.current=null;
   if(pulseTimer.current)clearInterval(pulseTimer.current);
-  pulseTimer.current=null;
+  pulseTimer.current=null;clearRetry();
   const key=phoneToken.current;phoneToken.current='';
   if(key)void phonePairRequest('close',{room:invite.room,token:key}).catch(()=>{});
   pc.current?.close();pc.current=null;
@@ -29,6 +34,21 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
   if(show){setPhase('idle');setStatus('Kamera berhenti. Minta QR baru pada laptop untuk menyambung ulang.');}
  };
  useEffect(()=>()=>terminate(false),[]);
+ // A page refresh destroys the peer, so ask before unloading a live camera.
+ useEffect(()=>{
+  if(phase!=='connected'&&phase!=='recovering')return;
+  const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
+  window.addEventListener('beforeunload',warn);
+  return()=>window.removeEventListener('beforeunload',warn);
+ },[phase]);
+ useEffect(()=>{
+  const resume=()=>{
+   if(document.visibilityState==='visible'&&video.current&&stream.current?.active)
+    void video.current.play().catch(()=>{});
+  };
+  document.addEventListener('visibilitychange',resume);
+  return()=>document.removeEventListener('visibilitychange',resume);
+ },[]);
  const connect=async()=>{
   terminate(false);
   const version=++generation.current;
@@ -70,10 +90,19 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
    });
    peer.addEventListener('connectionstatechange',()=>{
     if(pc.current!==peer||version!==generation.current)return;
-    if(peer.connectionState==='connected'){
+    const action=phoneLinkAction(peer.connectionState);
+    if(action==='healthy'){
+     clearRetry();
      setPhase('connected');setStatus('Video HP dikirim ke SOMA laptop. Biarkan halaman terbuka.');
-    }else if(peer.connectionState==='failed'||peer.connectionState==='disconnected'){
-     setStatus('Sambungan laptop terputus. Kamera dihentikan.');setPhase('error');
+    }else if(action==='recovering'){
+     setPhase('recovering');setStatus('Sinyal terganggu. Menyambungkan kembali ke laptop…');
+     if(!retryTimer.current)retryTimer.current=setTimeout(()=>{
+      if(version!==generation.current||pc.current!==peer||peer.connectionState==='connected')return;
+      setPhase('error');setStatus('Sambungan tidak pulih. Minta pairing baru di laptop.');
+      terminate(false);
+     },PHONE_LINK_GRACE_MS);
+    }else if(action==='fatal'){
+     setStatus('Koneksi WebRTC gagal. Minta pairing baru di laptop.');setPhase('error');
      terminate(false);
     }
    });
@@ -121,8 +150,15 @@ export function AutomaticPhoneSender({invite}:{invite:PhoneJoin}){
    {phase==='idle'&&<button type="button" className="soma-setup-primary"
     onClick={()=>void connect()}>Aktifkan kamera dan hubungkan ke SOMA</button>}
    {phase==='connecting'&&<button type="button" disabled>Menyiapkan video…</button>}
-   {(phase==='connecting'||phase==='connected')&&<button type="button"
-    className="soma-setup-secondary" onClick={()=>terminate()}>Putuskan kamera</button>}
+   {(phase==='connecting'||phase==='connected'||phase==='recovering')&&<button type="button"
+    className="soma-setup-secondary" onClick={()=>{
+     if(window.confirm('Hentikan kamera HP dan putuskan sambungan SOMA?'))terminate();
+    }}>Hentikan kamera</button>}
+   {phase==='recovering'&&<p className="soma-setup-hint" role="status">
+    Kamera dipertahankan sementara. Periksa Wi-Fi dan biarkan halaman HP aktif.</p>}
+   <small role="status">{awake?'Layar HP dijaga tetap menyala':
+    supported?'Aktifkan layar HP agar video tetap terkirim.':
+    'Jaga layar HP tetap aktif; browser tidak mendukung pengunci layar.'}</small>
    {phase==='error'&&<p className="soma-setup-hint">Kode QR mungkin kedaluwarsa,
     telah digunakan, atau jaringan memblokir koneksi peer-to-peer. Buat QR baru pada laptop.</p>}
    <small>Biarkan layar aktif, letakkan HP pada tripod, dan pastikan seluruh kaki terlihat.

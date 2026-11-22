@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {QrCode,LoaderCircle,RefreshCw,Copy,Check,AlertCircle} from 'lucide-react';
 import {collectPhoneIce,ICE_SERVERS,phoneCameraUrl} from './PhoneSignal.ts';
+import {PHONE_LINK_GRACE_MS,phoneHeartbeatAction,phoneLinkAction} from './phoneLinkRecovery.ts';
 import {phonePairRequest,pairedPhoneUrl,PHONE_PAIR_POLL_MS,
  type PairRoom} from './PhonePairProtocol.ts';
 import {PhonePairQr} from './PhonePairQr.tsx';
@@ -13,9 +14,10 @@ const wait=(signal:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  const cancel=()=>{clearTimeout(timer);reject(Error('Pairing dibatalkan.'));};
  signal.addEventListener('abort',cancel,{once:true});
 });
-export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
+export function AutomaticPhoneReceiver({onStream,onDisconnect,onInterrupted,onUseManual}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;
  onDisconnect:()=>void;
+ onInterrupted?:()=>void;
  onUseManual?:()=>void;
 }){
  // GitHub Pages cannot run /api/phone-pair. Show a real scan-able link to
@@ -31,18 +33,25 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
   return()=>clearInterval(timer);
  },[room]);
  const [status,setStatus]=useState('Scan QR untuk mengirim video HP ke SOMA.');
- const [phase,setPhase]=useState<'idle'|'creating'|'waiting'|'negotiating'|'connected'|'error'>('idle');
+ const [phase,setPhase]=useState<'idle'|'creating'|'waiting'|'negotiating'|'connected'|'recovering'|'error'>('idle');
  const roomRef=useRef<PairRoom|null>(null),pcRef=useRef<RTCPeerConnection|null>(null);
  const controllerRef=useRef<AbortController|null>(null);
  const generation=useRef(0),streamRef=useRef<MediaStream|null>(null);
  const heartbeatTimer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const recoveryTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const interrupted=useRef(false);
  const statsTimer=useRef<ReturnType<typeof setInterval>|null>(null);
  const telemetryOwner=useRef('qr-'+crypto.randomUUID()).current;
- const callback=useRef({onStream,onDisconnect});callback.current={onStream,onDisconnect};
+ const callback=useRef({onStream,onDisconnect,onInterrupted});
+ callback.current={onStream,onDisconnect,onInterrupted};
+ const resetRecovery=()=>{
+  if(recoveryTimer.current)clearTimeout(recoveryTimer.current);
+  recoveryTimer.current=null;interrupted.current=false;
+ };
  const terminate=(feedback=true)=>{
   ++generation.current;controllerRef.current?.abort();controllerRef.current=null;
   if(heartbeatTimer.current)clearInterval(heartbeatTimer.current);
-  heartbeatTimer.current=null;
+  heartbeatTimer.current=null;resetRecovery();
   if(statsTimer.current)clearInterval(statsTimer.current);
   statsTimer.current=null;
   releasePhoneTransport(telemetryOwner);
@@ -58,6 +67,16 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
   if(feedback){setStatus('Pairing dihentikan. Buat QR baru untuk menyambung.');setPhase('idle');}
  };
  useEffect(()=>()=>terminate(false),[]);
+ // Full refresh destroys RTCPeerConnection; warn before accidentally
+ // replacing the live desktop tab. In-app Track/Compose/Map navigation is safe.
+ useEffect(()=>{
+  if(phase!=='connected'&&phase!=='recovering')return;
+  const warn=(event:BeforeUnloadEvent)=>{
+   event.preventDefault();event.returnValue='';
+  };
+  window.addEventListener('beforeunload',warn);
+  return()=>window.removeEventListener('beforeunload',warn);
+ },[phase]);
  const start=async()=>{
   terminate(false);
   const version=++generation.current;
@@ -84,25 +103,48 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
      offerSent=true;setPhase('negotiating');setStatus('HP terhubung ke ruang. Menyiapkan WebRTC…');
      const pc=new RTCPeerConnection(ICE_SERVERS);pcRef.current=pc;
      statsTimer.current=setInterval(()=>{
-      if(generation.current===version)
+      if(generation.current===version&&!interrupted.current)
        void samplePhonePeer(telemetryOwner,pc,'qr');
      },1000);
      pc.addTransceiver('video',{direction:'recvonly'});
-     // Phone sends a local WebRTC heartbeat while capture remains visible.
-     // A frozen phone/tab must trigger the same fail-closed disconnect as a dropped peer.
+     // Keep the peer alive briefly for transient ICE/Wi-Fi interruptions.
+     // The parent revokes projector approval before any reconnect attempt.
      let lastHeartbeat=performance.now();
      const channel=pc.createDataChannel('soma-stage-health');
-     channel.addEventListener('message',e=>{
-      if(e.data==='pulse')lastHeartbeat=performance.now();
+     const hold=(reason:string)=>{
+      if(generation.current!==version||pcRef.current!==pc)return;
+      if(!interrupted.current){
+       interrupted.current=true;
+       callback.current.onInterrupted?.();
+      }
+      reportPhoneTransport(telemetryOwner,{state:'interrupted',reason});
+      setPhase('recovering');setStatus(reason+' Mencoba menyambung kembali…');
+      if(!recoveryTimer.current)recoveryTimer.current=setTimeout(()=>{
+       if(generation.current!==version||pcRef.current!==pc||!interrupted.current)return;
+       setPhase('error');setStatus('Kamera tidak pulih. QR lama sekali pakai; pasangkan ulang.');
+       terminate(false);
+      },PHONE_LINK_GRACE_MS);
+     };
+     const recover=()=>{
+      if(!interrupted.current)return;
+      resetRecovery();
+      reportPhoneTransport(telemetryOwner,{state:'connected',
+       reason:'Video HP pulih; kalibrasi perlu dikonfirmasi ulang.'});
+      setPhase('connected');setStatus('HP tersambung lagi. Periksa Map sebelum proyeksi.');
+     };
+     channel.addEventListener('message',event=>{
+      if(event.data!=='pulse')return;
+      lastHeartbeat=performance.now();
+      if(pc.connectionState==='connected')recover();
      });
      heartbeatTimer.current=setInterval(()=>{
-      if(generation.current!==version)return;
-      if(pc.connectionState==='connected'&&
-       (channel.readyState!=='open'||performance.now()-lastHeartbeat>4500)){
-       setPhase('error');
-       setStatus('Kamera HP berhenti mengirim heartbeat. Blackout dan kalibrasi ulang.');
-       terminate(false);
-      }
+      if(generation.current!==version||pcRef.current!==pc)return;
+      const assessment=phoneHeartbeatAction(
+       performance.now()-lastHeartbeat,pc.connectionState,channel.readyState==='open');
+      if(assessment==='fatal')hold('Video HP tidak mengirim heartbeat.');
+      else if(assessment==='recovering')hold(pc.connectionState==='disconnected'?
+       'Wi-Fi HP terputus sementara.':'Video HP tertahan atau layar tidak aktif.');
+      else if(assessment==='healthy')recover();
      },850);
      pc.addEventListener('track',event=>{
       if(pcRef.current!==pc||generation.current!==version)return;
@@ -120,16 +162,20 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
      });
      pc.addEventListener('connectionstatechange',()=>{
       if(pcRef.current!==pc||generation.current!==version)return;
-      if(pc.connectionState==='connected'){
-       reportPhoneTransport(telemetryOwner,{state:'connected',
-        reason:'WebRTC QR tersambung; statistik video dipantau.'});
-       void samplePhonePeer(telemetryOwner,pc,'qr');
-       setPhase('connected');setRoom(null);
-       setStatus('Kamera HP tersambung. Kalibrasi ulang lantai sebelum proyeksi.');
-      }else if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
-       reportPhoneTransport(telemetryOwner,{state:'interrupted',
-        reason:'Koneksi HP terputus; ulangi pairing dan kalibrasi.'});
-       setPhase('error');setStatus('Jaringan HP terputus. Output harus Blackout.');
+      const action=phoneLinkAction(pc.connectionState);
+      if(action==='healthy'){
+       setRoom(null);
+       if(!interrupted.current){
+        reportPhoneTransport(telemetryOwner,{state:'connected',
+         reason:'WebRTC QR tersambung; statistik video dipantau.'});
+        void samplePhonePeer(telemetryOwner,pc,'qr');
+        setPhase('connected');
+        setStatus('Kamera HP tersambung. Kalibrasi ulang lantai sebelum proyeksi.');
+       }else if(channel.readyState==='open'&&performance.now()-lastHeartbeat<4500)recover();
+      }else if(action==='recovering')hold('Sinyal kamera HP terganggu.');
+      else if(action==='fatal'){
+       hold('Koneksi kamera HP gagal.');
+       setPhase('error');setStatus('Koneksi HP gagal. QR lama sekali pakai; pasangkan ulang.');
        terminate(false);
       }
      });
@@ -209,12 +255,12 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
      aria-label="Buat ulang kode QR"><RefreshCw size={15} aria-hidden="true"/></button>
    </div>
   </div>}
-  {phase==='connected'&&<div className="soma-track-pair-connected" role="status">
-   <Check size={15} aria-hidden="true"/> HP tersambung
+  {(phase==='connected'||phase==='recovering')&&<div className="soma-track-pair-connected" role="status" data-phase={phase}>
+   <Check size={15} aria-hidden="true"/> {phase==='recovering'?'Menyambung ulang HP…':'HP tersambung'}
    <button type="button" className="soma-setup-secondary"
     onClick={()=>terminate()}>Putuskan</button>
   </div>}
-  {(phase==='creating'||phase==='negotiating'||phase==='error')&&
+  {(phase==='creating'||phase==='negotiating'||phase==='recovering'||phase==='error')&&
    <div className="soma-setup-status" data-phase={phase} role="status" aria-live="polite">
     {phase==='error'&&<AlertCircle size={16} aria-hidden="true"/>}
     <span>{phase==='error'&&window.location.hostname.endsWith('github.io')?

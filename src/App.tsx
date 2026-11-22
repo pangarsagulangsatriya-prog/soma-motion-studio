@@ -236,6 +236,8 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
    // coordinates and FLOOR/BODY outputs see the same horizontal 16:9 frame.
    const landscape=await createLandscapePhoneCamera(stream,()=>{
     if(op===cameraOperation.current)stopPhoneCamera();
+   },()=>{
+    if(op===cameraOperation.current)interruptPhoneCamera();
    });
    if(op!==cameraOperation.current||requestedFootprintsChoice.current!=='phone'){
     landscape.stop();return;
@@ -276,6 +278,15 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   multiPoseRouter.reset();setLiveFloorApproval(null);
   const angle=phoneLandscapeRef.current.rotate90();
   notify(`Gambar HP diputar ${angle}°. Periksa kaki dan kalibrasi ulang Map.`);
+ }
+ function interruptPhoneCamera(){
+  if(activeCameraMode.current!=='phone')return;
+  // A short Wi-Fi gap must revoke projector approval immediately without
+  // destroying the camera tracker/peer that may recover on the same stream.
+  requestStageBlackout(()=>projection.setTransport('blackout'));
+  liveFloorEngine.revoke('Video kamera HP tertahan; kalibrasi ulang sebelum LIVE.');
+  multiPoseRouter.reset();setLiveFloorApproval(null);
+  notify('Sinyal HP terputus sementara. Kamera mencoba pulih, output Blackout.');
  }
  function stopPhoneCamera(){
   if(activeCameraMode.current!=='phone')return;
@@ -612,7 +623,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      onSelectCameraDevice={selectFootprintsCameraDevice}
      performerCount={liveFloorCount} onPerformerCount={changeLiveFloorCount}
      onStartBody={()=>{void switchFootprintsSource('webcam');}}
-     onPhoneStream={startPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
+     onPhoneStream={startPhoneCamera} onPhoneInterrupted={interruptPhoneCamera} onPhoneDisconnect={stopPhoneCamera}
      onRotatePhone={rotatePhoneCamera} onMirrorCamera={mirrorPhoneCamera}
      onEnterOperator={()=>{
       requestStageBlackout(()=>projection.setTransport('blackout'));
