@@ -4,11 +4,16 @@ import type {DualFootTrajectoryEngine} from './DualFootTrajectoryEngine.ts';
 import {paintTrajectory,type V3Settings} from './TrajectoryRenderer.ts';
 import {PainterlyImpressionEngine,lifetimeOpacity} from './PainterlyImpressionEngine.ts';
 import {paintFootBrushDeposits,type FootBrushDepositStore} from './FootBrushStrokeRenderer.ts';
+import type {PersistentInkStore} from './PersistentInkStore.ts';
+import type {SumiMaterial} from './SumiMaterialRenderer.ts';
 
 export type PainterlyMaterial='ink'|'charcoal'|'pigment';
 export type PainterlySettings={
  enabled:boolean;
- painterlyEngine?:'legacy-v32'|'foot-brush-v33';
+ painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34';
+ sumiMaterial?:SumiMaterial;
+ sumiWeightPx?:number;
+ sumiExpression?:'natural'|'bold';
  material:PainterlyMaterial;
  showSoles:boolean;showTrails:boolean;
  footprintLifeMs:number;trailLifeMs:number;
@@ -55,7 +60,7 @@ export function paintPainterlyCanvas(
  ctx:CanvasRenderingContext2D,trajectory:DualFootTrajectoryEngine,
  impressions:PainterlyImpressionEngine,settings:V3Settings,
  painterly:PainterlySettings,presentationMs:number,blackout=false,fullscreen=false,
- brushStore?:FootBrushDepositStore
+ brushStore?:FootBrushDepositStore,sumiStore?:PersistentInkStore
 ){
  if(!painterly.enabled){
   paintTrajectory(ctx,trajectory,settings,presentationMs,blackout,fullscreen);
@@ -76,8 +81,15 @@ export function paintPainterlyCanvas(
   paintFootBrushDeposits(ctx,brushStore.entries,settings,painterly,presentationMs);
   return;
  }
- // One white-canvas raster pipeline for the Stage Monitor and fullscreen.
- if(painterly.showTrails){
+ // V3.4 is composited from cached ink; stamping a new image is prohibited in paint().
+ // Footprints remain a separate transient layer below.
+ if(painterly.painterlyEngine==='sumi-v34'&&sumiStore){
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);
+  const ink=sumiStore.getCanvas();
+  if(ink&&painterly.showTrails)ctx.drawImage(ink,0,0,w,h);
+  ctx.restore();
+ }else if(painterly.showTrails){
   paintTrajectory(ctx,trajectory,{
    ...settings,background:white,materialTreatment:painterly.material,
    decay:painterly.trailKeep?'keep':'fade',lifeMs:Math.max(1000,painterly.trailLifeMs),
