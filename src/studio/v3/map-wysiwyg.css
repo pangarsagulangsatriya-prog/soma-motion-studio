@@ -204,3 +204,18 @@
 @media(prefers-reduced-motion:reduce){
  .soma-map-wysiwyg-bottom button{transition:none}
 }
+
+/* Map perspective-checking footprints, operator-only / not projector output. */
+.soma-map-warp-head-tools{display:flex;align-items:center;justify-content:flex-end;
+ flex-wrap:wrap;gap:7px;min-width:0}
+.soma-map-foot-preview-toggle{border:1px solid #4f7158;border-radius:6px;
+ background:#20382a;color:#d7eecb;min-height:27px;
+ padding:4px 8px;font:600 10px system-ui;cursor:pointer;
+ transition:background 150ms ease,border-color 150ms ease}
+.soma-map-foot-preview-toggle[aria-pressed=true]{background:#31523b;border-color:#94c89b}
+.soma-map-foot-preview-toggle:hover{border-color:#b1d9ac;background:#385d42}
+.soma-map-foot-preview-toggle:focus-visible{outline:2px solid #d1ebb5;outline-offset:2px}
+.soma-map-warp-head-tools>small{font-size:10px;color:#a4c3a9}
+@media(max-width:560px){.soma-map-wysiwyg-pane-head{align-items:flex-start}
+ .soma-map-foot-preview-toggle{min-height:30px}}
+@media(prefers-reduced-motion:reduce){.soma-map-foot-preview-toggle{transition:none}}

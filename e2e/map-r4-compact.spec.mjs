@@ -53,3 +53,29 @@ test('MAP-V5: compact footer retains only inline status and top navigation owns 
  await nav.getByRole('button',{name:'Lanjut Perform'}).click();
  await expect(page.locator('[data-workspace="perform"]')).toBeVisible();
 });
+
+test('MAP-V6: perspective footprint preview has visible sample/live provenance and safe ON/OFF',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Map workspace'}).click();
+ const map=page.locator('.soma-map-wysiwyg');
+ await map.getByRole('button',{name:'Coba simulasi'}).click();
+ const output=map.locator('.soma-map-wysiwyg-pane').last();
+ const input=map.locator('.soma-map-wysiwyg-pane').first();
+ const toggle=output.getByRole('button',{name:'Tampilkan jejak kaki perspektif'});
+ await expect(toggle).toHaveAttribute('aria-pressed','true');
+ await expect(toggle).toContainText('ON');
+ await expect(output.locator('canvas[aria-label="Hasil visual Compose dengan perspektif proyeksi"]')).toBeVisible();
+ await expect(input.locator('canvas[aria-label="Gambar input kamera atau video"]')).toBeVisible();
+ await toggle.click();
+ await expect(toggle).toHaveAttribute('aria-pressed','false');
+ await expect(toggle).toContainText('OFF');
+ await toggle.click();
+ await expect(toggle).toHaveAttribute('aria-pressed','true');
+ await map.getByRole('button',{name:'Layar penuh Map'}).click();
+ await expect(toggle).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.getAttribute('aria-label'))).toBe('Kalibrasi Map langsung');
+ await map.getByRole('button',{name:'Tutup layar penuh'}).click();
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
+ // Diagnostic preview must not unlock physical output.
+ await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);
+});

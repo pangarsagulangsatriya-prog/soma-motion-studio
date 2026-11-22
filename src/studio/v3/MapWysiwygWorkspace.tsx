@@ -3,11 +3,11 @@ import {useEffect,useRef,useState,type PointerEvent,type RefObject,type Keyboard
 import {Check,Maximize2,Minimize2,Pause,Play,RotateCcw,ScanLine} from 'lucide-react';
 import type {Quad,Point} from '../../projection/geometry.ts';
 import type {MotionFrame} from '../../engine/types.ts';
-import {identityQuad,transform,homography,inverse3} from '../../projection/geometry.ts';
+import {identityQuad,transform,homography} from '../../projection/geometry.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
-import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
+import {EXAMPLE_MAP_FOOTPRINTS,mapTrackedFootPreview,paintMapPerspectiveFootprints,type MapFootPreview} from './mapFootprintPerspective.ts';
 import {containedImageRect,initialCameraQuad,pointerInSource,replaceValidCorner,paintMapWarp} from './mapWysiwygModel.ts';
 import './map-wysiwyg.css';
 
@@ -40,7 +40,7 @@ type Props={
 };
 const W=640,H=360;
 const SIM_CAMERA_QUAD:Quad=[{x:.18,y:.2},{x:.82,y:.2},{x:.98,y:.92},{x:.02,y:.92}];
-const drawSimulatedSource=(ctx:CanvasRenderingContext2D,sim:MapSimState)=>{
+const drawSimulatedSource=(ctx:CanvasRenderingContext2D,sim:MapSimState,stage:MapStageDimensions,showFeet:boolean)=>{
  const matrix=homography(SIM_CAMERA_QUAD);
  const project=(u:number,v:number)=>transform(matrix,{x:u,y:v});
  ctx.fillStyle='#16221a';ctx.fillRect(0,0,W,H);
@@ -53,11 +53,13 @@ const drawSimulatedSource=(ctx:CanvasRenderingContext2D,sim:MapSimState)=>{
   ctx.beginPath();ctx.moveTo(a.x*W,a.y*H);ctx.lineTo(b.x*W,b.y*H);ctx.stroke();
   ctx.beginPath();ctx.moveTo(c.x*W,c.y*H);ctx.lineTo(d.x*W,d.y*H);ctx.stroke();
  }
- for(const foot of sim.footprints.slice(-32)){
-  const p=project(foot.x,foot.y);const age=Math.max(0,(sim.elapsedMs-foot.atMs)/1000);
-  paintAuthenticFootprint(ctx,{x:p.x*W,y:p.y*H,side:foot.foot,
-   headingRad:foot.headingRad-Math.PI/2,widthPx:9,lengthPx:21,
-   alpha:Math.max(.15,.8-age*.055),color:foot.actorId==='B'?'#8ad8e2':'#cbe9a7'});
+ if(showFeet){
+  const mapped:MapFootPreview[]=sim.footprints.slice(-32).map(foot=>({
+   actorId:foot.actorId,foot:foot.foot,uv:{x:foot.x,y:foot.y},
+   headingRad:foot.headingRad-Math.PI/2,source:'tracked' as const,
+   alpha:Math.max(.15,.86-Math.max(0,sim.elapsedMs-foot.atMs)/1000*.055)
+  }));
+  paintMapPerspectiveFootprints(ctx,mapped,SIM_CAMERA_QUAD,stage,{x:0,y:0,width:W,height:H});
  }
  for(const performer of sim.performers){
   const p=project(performer.x,performer.y),x=p.x*W,y=p.y*H;
@@ -96,6 +98,9 @@ export function MapWysiwygWorkspace({
  const [frozen,setFrozen]=useState(false);
  const [projectorEdit,setProjectorEdit]=useState(false);
  const [fullScreen,setFullScreen]=useState(false);
+ const [showFootPreview,setShowFootPreview]=useState(true);
+ const [footPreviewMode,setFootPreviewMode]=useState<'tracked'|'example'>('example');
+ const footPreviewModeRef=useRef<'tracked'|'example'>('example');
  const [resetArmed,setResetArmed]=useState(false);
  const [sourceBox,setSourceBox]=useState({x:0,y:0,width:W,height:H});
  const [sourceAvailable,setSourceAvailable]=useState(false);
@@ -118,6 +123,17 @@ export function MapWysiwygWorkspace({
  const cameraDraftRef=useRef(cameraDraft);
  const outputDraftRef=useRef(outputDraft);
  cameraDraftRef.current=cameraDraft;outputDraftRef.current=outputDraft;
+ const visibleMapFeet=(now:number):MapFootPreview[]=>{
+  if(sourceKind==='camera'&&hasLiveSource){
+   const frame=motionFrameRef?.current;
+   if(frame?.tracked&&frame.source==='camera'&&frame.time>0&&
+    now>=frame.time&&now-frame.time<=450){
+    const measured=mapTrackedFootPreview(frame.pose,cameraDraftRef.current,stageDimensions);
+    if(measured.length)return measured;
+   }
+  }
+  return [...EXAMPLE_MAP_FOOTPRINTS];
+ };
  useEffect(()=>{
   const q=floorTracker?.calibrationData?.cameraQuad;
   if(q&&!cameraDirty)setCameraDraft(q.map(p=>({...p})) as Quad);
@@ -159,7 +175,7 @@ export function MapWysiwygWorkspace({
    const c=sourceCanvas.current,ctx=c?.getContext('2d');if(!c||!ctx)return;
    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0a100d';ctx.fillRect(0,0,W,H);
    if(sourceKind==='demo-sim'){
-    drawSimulatedSource(ctx,simRef.current);return;
+    drawSimulatedSource(ctx,simRef.current,stageDimensions,showFootPreview);return;
    }
    const src=validSource(sourceKind,videoRef?.current,experimentInputCanvas?.current);
    if(frozen&&src)return;
@@ -167,6 +183,9 @@ export function MapWysiwygWorkspace({
     const box=containedImageRect(src.width,src.height,W,H);
     if(box){
      try{ctx.drawImage(src.media,box.x,box.y,box.width,box.height);}catch{/* changing input frame */}
+     if(showFootPreview&&selected==='floor'&&sourceKind!=='simulator')
+      paintMapPerspectiveFootprints(ctx,visibleMapFeet(now),cameraDraftRef.current,
+       stageDimensions,box);
      const signature=[box.x,box.y,box.width,box.height].join(':');
      if(signature!==oldBox){oldBox=signature;setSourceBox(box);}
      if(!seen){seen=true;setSourceAvailable(true);}
@@ -186,7 +205,7 @@ export function MapWysiwygWorkspace({
    }
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[sourceKind,videoRef,experimentInputCanvas,frozen,onSourceLost]);
+ },[sourceKind,videoRef,experimentInputCanvas,frozen,onSourceLost,stageDimensions,hasLiveSource,selected,showFootPreview,motionFrameRef]);
  useEffect(()=>{
   let raf=0,last=0;
   const paint=(now:number)=>{
@@ -197,36 +216,31 @@ export function MapWysiwygWorkspace({
    const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
    if(ready)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
-   // Preview each detected foot against the draft camera quad.
-   // This does not touch the actual tracking stream until Apply.
-   if(sourceKind==='camera'&&cameraDirty&&motionFrameRef?.current?.pose?.length){
-    try{
-     const inverseCamera=inverse3(homography(cameraDraftRef.current));
-     const outputMatrix=homography(outputDraftRef.current);
-     for(const index of [27,28,29,30,31,32]){
-      const landmark=motionFrameRef.current.pose[index];
-      if(!landmark||(landmark.visibility??1)<.35)continue;
-      const floor=transform(inverseCamera,{x:landmark.x,y:landmark.y});
-      if(floor.x<0||floor.x>1||floor.y<0||floor.y>1)continue;
-      const target=transform(outputMatrix,floor);
-      ctx.save();ctx.beginPath();ctx.arc(target.x*W,target.y*H,9,0,Math.PI*2);
-      ctx.fillStyle=index%2===0?'#8ad8e27a':'#cbe9a77a';ctx.fill();
-      ctx.strokeStyle='#f4ffe9';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
-     }
-    }catch{/* Draft geometry never authorizes tracking or projection. */}
+   // Projective anatomical preview. Real tracked soles replace explicitly
+   // labeled examples; only this editor canvas changes, never physical output.
+   if(selected==='floor'&&showFootPreview&&sourceKind!=='demo-sim'&&sourceKind!=='none'){
+    const feet=visibleMapFeet(now);
+    const kind=feet[0]?.source??'example';
+    if(kind!==footPreviewModeRef.current){
+     footPreviewModeRef.current=kind;setFootPreviewMode(kind);
+    }
+    paintMapPerspectiveFootprints(ctx,feet,outputDraftRef.current,stageDimensions,
+     {x:0,y:0,width:W,height:H});
+    ctx.save();ctx.globalAlpha=.9;ctx.font='600 11px system-ui';
+    ctx.fillStyle='#d6f5d7';ctx.textAlign='left';
+    ctx.fillText(kind==='tracked'?'JEJAK TERDETEKSI · 2D':'CONTOH LANGKAH · PERSPEKTIF',14,24);
+    ctx.restore();
    }
    if(!hasLiveSource&&simState.active){
     const matrix=homography(outputDraftRef.current);
-    const recent=simState.footprints.slice(-28);
-    for(const foot of recent){
-     const p=transform(matrix,{x:foot.x,y:foot.y});
-     const age=Math.max(0,(simState.elapsedMs-foot.atMs)/1000);
-     paintAuthenticFootprint(ctx,{
-      x:p.x*W,y:p.y*H,side:foot.foot,
-      headingRad:foot.headingRad-Math.PI/2,
-      widthPx:10,lengthPx:23,alpha:Math.max(.15,.75-age*.055),
-      color:foot.actorId==='B'?'#8ad8e2':'#cbe9a7'
-     });
+    if(selected==='floor'&&showFootPreview){
+     const mapped:MapFootPreview[]=simState.footprints.slice(-28).map(foot=>({
+      actorId:foot.actorId,foot:foot.foot,uv:{x:foot.x,y:foot.y},
+      headingRad:foot.headingRad-Math.PI/2,source:'tracked' as const,
+      alpha:Math.max(.15,.86-Math.max(0,simState.elapsedMs-foot.atMs)/1000*.055)
+     }));
+     paintMapPerspectiveFootprints(ctx,mapped,outputDraftRef.current,stageDimensions,
+      {x:0,y:0,width:W,height:H});
     }
     for(const person of simState.performers){
      const p=transform(matrix,{x:person.x,y:person.y});
@@ -240,7 +254,7 @@ export function MapWysiwygWorkspace({
    ctx.stroke();
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,sourceKind,cameraDirty,cameraDraft,motionFrameRef,floorCanvas,bodyCanvas]);
+ },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,sourceKind,cameraDirty,cameraDraft,motionFrameRef,floorCanvas,bodyCanvas,showFootPreview,stageDimensions]);
  const currentBox=sourceBox;
  const projectorBox={x:0,y:0,width:W,height:H};
  const overlayQuad=(where:'source'|'output')=>where==='source'?cameraDraft:outputDraft;
@@ -419,7 +433,13 @@ export function MapWysiwygWorkspace({
    </div>
    <div className="soma-map-wysiwyg-pane">
     <div className="soma-map-wysiwyg-pane-head"><b>Hasil visual {selected==='floor'?'lantai':'tubuh'}</b>
-    <small data-live={visibleSource}>{simulating?'SIMULASI':visibleSource?'Pratinjau Compose':'Belum ada hasil'}</small></div>
+     <div className="soma-map-warp-head-tools">
+      {selected==='floor'&&<button type="button" className="soma-map-foot-preview-toggle"
+       aria-label="Tampilkan jejak kaki perspektif" aria-pressed={showFootPreview}
+       onClick={()=>setShowFootPreview(v=>!v)}>Jejak kaki {showFootPreview?'ON':'OFF'}</button>}
+      <small data-live={visibleSource}>{simulating?'SIMULASI':selected==='floor'&&showFootPreview&&visibleSource?
+       footPreviewMode==='tracked'?'Kaki terlacak':'Contoh perspektif':visibleSource?'Pratinjau Compose':'Belum ada hasil'}</small>
+     </div></div>
     <div className="soma-map-wysiwyg-image">
      <canvas ref={outputCanvas} width={W} height={H} aria-label="Hasil visual Compose dengan perspektif proyeksi"/>
      {visibleSource&&mapOverlay('output')}
