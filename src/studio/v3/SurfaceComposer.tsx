@@ -47,6 +47,8 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
+import {footSamplesFromExperiment,footSamplesFromLive} from '../../footprints/lines/FootLineSampleAdapter.ts';
+import {ComposeFloorPosePreview,useComposeFloorPoseFallback} from './ComposeFloorPosePreview.ts';
 import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
  from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
@@ -122,12 +124,16 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [selected,setSelected]=useState<Surface>('FLOOR');
  const [monitorView,setMonitorView]=useState<ComposeMonitorView>('FLOOR');
  const [lineTrails,setLineTrails]=useState(false);
+ const lineTrailsRef=useRef(lineTrails);lineTrailsRef.current=lineTrails;
  const [lineOptions,setLineOptions]=useState<LineTrailsOptions>(DEFAULT_LINE_TRAILS_OPTIONS);
  const [lineDemo,setLineDemo]=useState(false);
  const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
  const [lineStatus,setLineStatus]=useState('Menunggu kaki');
  const [,setLineBrushCount]=useState(0);
+ const floorPosePreview=useRef(new ComposeFloorPosePreview());
+ const [floorPosePreviewActive,setFloorPosePreviewActive]=useState(false);
+ const floorPosePreviewActiveRef=useRef(false);
  const lineEngine=useRef(new FootLineTrailEngine());
  const brushEngine=useRef(new FootprintBrushEngine());
  const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
@@ -347,6 +353,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const routerRef=useRef(router);routerRef.current=router;
  const floorRef=useRef(floorTracker);floorRef.current=floorTracker;
  const cameraOnRef=useRef(cameraOn);cameraOnRef.current=cameraOn;
+ const lineSourceRef=useRef(lineSource);lineSourceRef.current=lineSource;
  const bodySelectedRef=useRef(bodySelected);bodySelectedRef.current=bodySelected;
  const performerRef=useRef(performerCount);performerRef.current=performerCount;
  const floorReadyRef=useRef(floorReady);floorReadyRef.current=floorReady;
@@ -741,6 +748,44 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      g.globalAlpha=1;g.drawImage(liquidCanvas.current,0,0,preview.width,preview.height);
      g.restore();}
    }
+   // A 1P camera can track feet without verified floor contact.
+   // Draw observed image-space soles only into the SOFTWARE Stage Monitor.
+   // Physical FLOOR output and Map/Perform authorization remain unchanged.
+   const floorPreviewVisible=useComposeFloorPoseFallback({
+    softwareMonitor:!!preview&&monitorViewRef.current==='FLOOR'&&
+     selectedRef.current==='FLOOR'&&previewArrangementRef.current==='surface',
+    lineTrails:lineTrailsRef.current,liquidEnabled:liquidEnabledRef.current,
+    liquidMode:liquidModeRef.current,timelineMode:timelineModeRef.current,
+    previewLive:previewLiveRef.current,blackout:blackoutRef.current,
+    verifiedImprints:liquidFrame?(liquidRenderer.current?.stats.activeImprints??0):0
+   });
+   if(floorPreviewVisible){
+    const frame=frameRefLive.current.current;
+    const experiment=experimentFrameRef?.current??null;
+    const experimentType=experimentSourceRef.current;
+    const session=motionSessionRef.current?.()??'live-camera';
+    const sourceKey=experimentType==='video'&&experiment?.kind==='video'
+     ?'video:'+experiment.name+':'+(experiment.snapshot?.segment??0)
+     :experimentType==='simulator'?'simulator':lineSourceRef.current+':'+session;
+    const samples=experimentType
+     ?(experiment&&experiment.kind===experimentType?
+      footSamplesFromExperiment(experiment,'compose-floor-preview',0,'A'):[])
+     :cameraOnRef.current&&bodySelectedRef.current&&frame.tracked&&
+       frame.source==='camera'&&frame.time>0&&now>=frame.time&&now-frame.time<450
+      ?footSamplesFromLive(frame,routerRef.current.status,performerRef.current,
+         lineSourceRef.current,session,0,'A'):[];
+    floorPosePreview.current.ingest(samples,now,sourceKey);
+    const ctx=preview.getContext('2d');
+    const painted=!!ctx&&floorPosePreview.current.paint(
+     ctx,now,preview.width,preview.height);
+    if(painted!==floorPosePreviewActiveRef.current){
+     floorPosePreviewActiveRef.current=painted;
+     setFloorPosePreviewActive(painted);
+    }
+   }else if(floorPosePreviewActiveRef.current){
+    floorPosePreviewActiveRef.current=false;
+    setFloorPosePreviewActive(false);
+   }
    if(preview&&timelineModeRef.current==='replay'&&selectedRef.current==='FLOOR'&&
     previewArrangementRef.current==='surface'&&!blackoutRef.current&&previewLiveRef.current&&!liquidFrame){
     const g=preview.getContext('2d');
@@ -986,7 +1031,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    </div>}
    <div className="s64-bar">
     {lineTrails&&<span role="status">{lineStatus}</span>}
-    {!lineTrails&&monitorView==='FLOOR'&&liquidMode==='track'&&timelineCapture.events.length===0&&
+    {!lineTrails&&monitorView==='FLOOR'&&liquidMode==='track'&&floorPosePreviewActive&&
+     <span role="status">Jejak 2D aktif · Kalibrasi Map diperlukan untuk proyektor</span>}
+    {!lineTrails&&monitorView==='FLOOR'&&liquidMode==='track'&&!floorPosePreviewActive&&timelineCapture.events.length===0&&
      <span role="status">Belum ada jejak dari Track</span>}
     {monitorView!=='FLOOR'&&monitorView!=='SKELETON'&&<span>{cameraOn&&bodySelected?bodyStatus:'Simulasi aktif · uji mask paha, warna, tekstur, atau crossing'}</span>}
     {monitorView==='FLOOR'&&inspectorTab==='object'&&
