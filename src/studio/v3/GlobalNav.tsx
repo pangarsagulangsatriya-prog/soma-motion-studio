@@ -21,12 +21,12 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,cameraHubActive=false,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,cameraHubActive=false,captureActive=false,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
  onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
- onCameraHub:()=>void;cameraHubActive?:boolean;
+ onCameraHub:()=>void;cameraHubActive?:boolean;captureActive?:boolean;
  onStageTool:(tool:StageNavigationTool)=>void;
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
@@ -220,6 +220,16 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
      onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onStageTwo();}}>
      <Layers3 size={20} aria-hidden="true"/>
      <span className="soma-rail-item-copy"><b>Stage 2</b></span>
+    </button>
+    <button type="button" className="soma-rail-item soma-primary-destination soma-stage-module-launch"
+     aria-label="F3 Capture" aria-current={captureActive?'page':undefined}
+     title={expanded?'F3 Capture · foto dan rekaman':undefined}
+     onMouseEnter={e=>showTip('F3 Capture',e.currentTarget,'hover')}
+     onMouseLeave={clearTip} onFocus={e=>showTip('F3 Capture',e.currentTarget,'focus')}
+     onBlur={clearTip}
+     onClick={()=>{setLabsOpen(false);clearTip();if(mobile)setExpanded(false);onCaptureLab();}}>
+     <Camera size={20} aria-hidden="true"/>
+     <span className="soma-rail-item-copy"><b>F3 Capture</b></span>
     </button>
     <button type="button" className="soma-rail-item soma-primary-destination soma-stage-module-launch"
      aria-label="Camera Hub" aria-current={cameraHubActive?'page':undefined}
