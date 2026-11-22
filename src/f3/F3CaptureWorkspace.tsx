@@ -249,7 +249,7 @@ export function F3CaptureWorkspace(){
    <aside className="f3-setup f3-left-column" aria-label="Kontrol F3">
     <section className="f3-source-panel f3-step-panel" data-active={activeStep==='camera'} hidden={activeStep!=='camera'}>
      <header className="f3-panel-heading"><h2>Sumber</h2></header>
-     <details className="f3-device-details" defaultOpen>
+     <details className="f3-device-details" open>
       <summary>Pilih kamera A dan B <ChevronDown size={15}/></summary>
       {cameraSelect('A')}{cameraSelect('B')}
       <div className="f3-source-utilities">
