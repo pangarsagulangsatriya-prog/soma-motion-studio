@@ -87,8 +87,8 @@ export function LineTrailsV3Stage(props:StageProps){
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
      frameRef:p.frameRef,videoRef:p.videoRef,
      experimentInputCanvas:p.experimentInputCanvas,experimentFrameRef:p.experimentFrameRef,
-     experimentSource:p.experimentSource,cameraOn:p.cameraOn,bodySelected:p.bodySelected,
-     performerCount:p.performerCount,sourceKind:p.sourceKind
+     experimentSource:p.experimentSource,cameraOn:p.cameraOn,
+     performerCount:p.performerCount,router:p.router,selectedActor:'A',demo:p.demo
     },now));
    }
    if(message!==lastStatus&&now-lastStatusAt>150){
