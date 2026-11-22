@@ -88,7 +88,7 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,experimentFrameRef,r
     }
     p.engine.ingest(samples,now,p.settings.smoothness);
     p.brushEngine.ingestSweeps(p.engine.allStrokes,now,
-     p.settings.brush.size,p.settings.brush.spacing,c.width,c.height,p.demo);
+     p.settings.brush.size,p.settings.brush.spacing,ctx.canvas.width,ctx.canvas.height,p.demo);
     if(p.demo)p.brushEngine.demoStepsFromSweeps();
     else p.brushEngine.ingestContacts(p.motionEvents?.()??[],
      p.performerCount===2?p.selectedActor:'all',p.motionSession?.(),now);
