@@ -55,6 +55,8 @@ import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprin
 import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
 import {LineTrailsV3Stage,LineTrailsV3Panel} from './LineTrailsV3.tsx';
 import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajectoryEngine.ts';
+import {PainterlyImpressionEngine} from '../../footprints/lines/v3/PainterlyImpressionEngine.ts';
+import {DEFAULT_PAINTERLY_SETTINGS,type PainterlySettings} from '../../footprints/lines/v3/PainterlyCanvasRenderer.ts';
 import {DEFAULT_V3_SETTINGS,type V3Settings} from '../../footprints/lines/v3/TrajectoryRenderer.ts';
 import './line-trails-beta.css';
 
@@ -131,6 +133,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineOptions,setLineOptions]=useState<LineTrailsOptions>(DEFAULT_LINE_TRAILS_OPTIONS);
  const [lineVersion,setLineVersion]=useState<'v2'|'v3'>('v3');
  const [v3Options,setV3Options]=useState<V3Settings>(DEFAULT_V3_SETTINGS);
+ const [painterlyOptions,setPainterlyOptions]=useState<PainterlySettings>(DEFAULT_PAINTERLY_SETTINGS);
  const [v3Diagnostics,setV3Diagnostics]=useState('Menunggu observasi pertama');
  const [lineDemo,setLineDemo]=useState(false);
  const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
@@ -142,6 +145,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const floorPosePreviewActiveRef=useRef(false);
  const lineEngine=useRef(new FootLineTrailEngine());
  const lineV3Engine=useRef(new DualFootTrajectoryEngine());
+ const painterlyEngine=useRef(new PainterlyImpressionEngine());
  const brushEngine=useRef(new FootprintBrushEngine());
  const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
  const monitorFullscreenRef=useRef<HTMLElement|null>(null);
@@ -1016,6 +1020,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
      fullscreenDiagnostics={lineFullscreenDiagnostics}
      router={router} engine={lineV3Engine.current} settings={v3Options}
+      impressions={painterlyEngine.current} painterly={painterlyOptions}
+      motionEvents={motionEvents}
      blackout={blackout||previewBlackout} previewLive={previewLive}
      cameraOn={cameraOn} bodySelected={bodySelected}
      performerCount={performerCount} experimentSource={experimentSource}
@@ -1098,13 +1104,15 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   {lineTrails&&lineVersion==='v3'?<LineTrailsV3Panel
    settings={v3Options} onChange={setV3Options} engine={lineV3Engine.current}
-   onClear={()=>{lineV3Engine.current.reset();setLineStatus('Garis dibersihkan');}}
+   painterly={painterlyOptions} onPainterlyChange={setPainterlyOptions}
+   impressions={painterlyEngine.current}
+   onClear={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setLineStatus('Gambar dibersihkan');}}
    demo={lineDemo}
-   onDemo={()=>{lineV3Engine.current.reset();setLineDemo(v=>!v);}}
+   onDemo={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setLineDemo(v=>!v);}}
    status={lineStatus} diagnostics={v3Diagnostics} performerCount={performerCount}
    fullscreenDiagnostics={lineFullscreenDiagnostics}
    onFullscreenDiagnostics={setLineFullscreenDiagnostics}
-   onUseV2={()=>{lineV3Engine.current.reset();setLineVersion('v2');setLineDemo(false);}}
+   onUseV2={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setLineVersion('v2');setLineDemo(false);}}
   />:lineTrails&&lineVersion==='v2'?<>
    <button type="button" className="lt-v3-return" onClick={()=>{
     lineEngine.current.clear();brushEngine.current.clear();setLineVersion('v3');setLineDemo(false);
