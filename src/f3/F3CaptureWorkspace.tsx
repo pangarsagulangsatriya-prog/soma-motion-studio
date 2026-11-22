@@ -32,6 +32,7 @@ export function F3CaptureWorkspace(){
  const [modelState,setModelState]=useState('Menunggu Kamera A');
  const [zoom,setZoom]=useState(.6),[message,setMessage]=useState('Hubungkan dua kamera untuk mencoba fullscreen.');
  const [busy,setBusy]=useState(false),[flash,setFlash]=useState(0);
+ const shutterEpoch=useRef(0);
  const sourceFiles=useRef<{A:string|null;B:string|null}>({A:null,B:null});
  const statusRef=useRef(statuses),control=useRef({consent,armed,rehearsal,stageMode,replacement,verified});
  statusRef.current=statuses;control.current={consent,armed,rehearsal,stageMode,replacement,verified};
@@ -66,10 +67,12 @@ export function F3CaptureWorkspace(){
   }catch(e){setMessage(e instanceof Error?e.message:'MP4 gagal dibuka.');}
  };
  const disarm=useCallback(()=>{
+  shutterEpoch.current++;
   session.current.disarm();setArmed(false);setMessage('Rana gestur dikunci.');
  },[]);
  const capture=useCallback(async(presetValue:F3PunchPreset|'manual',eventId:string)=>{
   const b=registry.current.status('B'),now=performance.now(),settings=control.current;
+  const requestEpoch=shutterEpoch.current;
   if(!settings.consent||!registry.current.fresh('B',now)){setMessage('Persetujuan penonton dan Kamera B yang live diperlukan.');return;}
   const v=videoB.current;if(!v)return;
   if(archive.current.busy)return;
@@ -84,7 +87,9 @@ export function F3CaptureWorkspace(){
    await archive.current.capture({video:v,crop:area,cameraId:b.id,frameId:b.frameId,
     sourceTimestamp:b.lastFrameAt,preset:presetValue,consent:settings.consent,
     replace:settings.replacement,eventId,fresh:registry.current.fresh('B',performance.now()),
-    stillValid:()=>control.current.consent&&registry.current.fresh('B',performance.now())&&registry.current.status('B').id===b.id});
+    stillValid:()=>shutterEpoch.current===requestEpoch&&control.current.consent&&
+     registry.current.fresh('B',performance.now())&&registry.current.status('B').id===b.id&&
+     (presetValue==='manual'||control.current.armed)});
    const count=archive.current.count;setStageCount(count);setReplacement(null);
    setFlash(performance.now()+220);
    setMessage('Foto '+count+'/4 tersimpan dari Kamera B.');
@@ -240,10 +245,15 @@ export function F3CaptureWorkspace(){
     </section>
     <section className="f3-video-card"><div className="f3-card-head"><strong>KAMERA A — AKTOR 1</strong><small>Pose + hands</small></div>
      <div className="f3-video-frame"><video ref={videoA} autoPlay muted playsInline aria-label="Live video Kamera A"/></div>
-     <p>{modelState}</p>
+     <p role="status">{modelState}</p>
+     {fusion.current.status==='error'&&<button type="button" onClick={()=>{
+       setModelState('Memuat ulang Pose + Hands…');
+       void fusion.current.retry().then(()=>setModelState('Pose + Hands siap'))
+        .catch(e=>setModelState('Model gagal: '+String(e)));
+      }}>Coba lagi model gestur</button>}
     </section>
    </div>
-   <details className="f3-device-details"><summary>Input & perangkat <ChevronDown size={14}/></summary>
+   <details className="f3-device-details" open={!readyA||!readyB}><summary>Input & perangkat <ChevronDown size={14}/></summary>
     {cameraSelect('A')}{cameraSelect('B')}
     <button type="button" onClick={()=>void refreshDevices()}><RotateCcw size={14}/> Cari kamera</button>
     <p>Fixture MP4 untuk QA memakai dua rekaman berbeda. Foto dan video tidak diunggah.</p>
@@ -255,7 +265,7 @@ export function F3CaptureWorkspace(){
       <button aria-pressed={preset==='uppercut'} onClick={()=>updatePreset('uppercut')}>Uppercut</button>
      </div>
      <p>Pinch untuk resize. Pukulan tidak bekerja selama resize dan cooldown.</p>
-     <div className="f3-actions"><button onClick={()=>{setRehearsal(true);session.current.startRehearsal();setPositive(0);setNegativeConfirmed(false);disarm();}}>
+     <div className="f3-actions"><button onClick={()=>{setRehearsal(true);disarm();session.current.startRehearsal();setPositive(0);setNegativeConfirmed(false);}}>
       <Hand size={14}/> Mulai latihan</button>
       <button disabled={!rehearsal} onClick={()=>setNegativeConfirmed(true)}>Konfirmasi uji negatif</button>
       <button disabled={!rehearsal||!positive||!negativeConfirmed} onClick={()=>{
