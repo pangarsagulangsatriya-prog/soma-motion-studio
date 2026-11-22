@@ -2,7 +2,7 @@ name: Camera Hub multi-camera isolated browser QA
 on:
   push:
     branches:
-      - 'feat/camera-hub-multicam-track'
+      - 'feat/camera-hub-canvas-add-phone'
   pull_request:
     paths:
       - 'src/studio/v3/CameraHub*'
