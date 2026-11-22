@@ -48,7 +48,8 @@ test('AUDIT-RECOVERY F-04/F-07/F-09/F-10: Perform 2-column layout, humanized sou
  assert.match(stage,/Baca ulang kedua orang/);
  assert.match(consoleSrc,/Edit Compose/);
  assert.doesNotMatch(consoleSrc,/Kembali Build/);
- assert.match(nav,/localStorage\.getItem\(NAV_KEY\)==='true'/);
+ assert.match(nav,/const expanded=false/);
+ assert.match(nav,/className="soma-engine-flyout"/);
  assert.match(nav,/Sumber: \{sourceLabel\}/);
  assert.match(performCss,/grid-template-columns:minmax\(0,1\.35fr\) minmax\(360px,450px\)/);
 });
