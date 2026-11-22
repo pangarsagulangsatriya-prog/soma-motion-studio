@@ -21,7 +21,7 @@ test('one pairing CTA, no duplicate waiting copy inside camera',()=>{
 test('QR-first UI has real scannable SVG and clear creation/retry action',()=>{
  assert.match(auto,/className="soma-setup-primary soma-track-create-qr"/);
  assert.match(auto,/Tampilkan QR/);
- assert.match(auto,/aria-label=\{phase==='creating'\?'Menyiapkan kode QR':'Tampilkan QR kamera HP'\}/);
+ assert.match(auto,/aria-label=\{phase==='error'\?'Coba pulihkan kamera HP':'Tampilkan QR kamera HP'\}/);
  assert.match(auto,/<PhonePairQr value=\{url\}\/>/);
  assert.match(auto,/className="soma-track-qr-frame"/);
  assert.match(auto,/className="soma-track-qr-actions"/);
