@@ -24,7 +24,8 @@ type StageProps={
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  router:MultiPoseGaitRouter;engine:DualFootTrajectoryEngine;settings:V3Settings;
- impressions:PainterlyImpressionEngine;painterly:PainterlySettings;motionEvents?:()=>readonly FootMotionEventV2[];
+ impressions:PainterlyImpressionEngine;painterly:PainterlySettings;brushResetRevision?:number;
+ motionEvents?:()=>readonly FootMotionEventV2[];
  fullscreenDiagnostics:FullscreenDiagnostics;blackout:boolean;previewLive:boolean;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;
  experimentSource:'video'|'simulator'|null;sourceKind:'camera'|'phone';
@@ -47,6 +48,7 @@ export function LineTrailsV3Stage(props:StageProps){
   let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
   let brushSource='';
   let brushMode=false;
+  let lastBrushResetRevision=args.current.brushResetRevision??0;
   const clearBrush=()=>{brushStore.reset();gestures.reset();
    brushAdapter={lastFrameMs:-1,epoch:brushAdapter.epoch+1,sourceKey:''};};
   const paint=(now:number)=>{
@@ -64,6 +66,10 @@ export function LineTrailsV3Stage(props:StageProps){
     motionSession:p.motionSession?.()??'track'
    });
    let message=input.status;
+   const resetRevision=p.brushResetRevision??0;
+   if(resetRevision!==lastBrushResetRevision){
+    clearBrush();lastBrushResetRevision=resetRevision;
+   }
    const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
    if(input.sourceKey!==brushSource){clearBrush();brushSource=input.sourceKey;}
