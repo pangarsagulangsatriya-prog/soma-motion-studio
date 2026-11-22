@@ -81,6 +81,49 @@ export class PersistentInkStore{
   this.canvas?.getContext('2d')?.clearRect(0,0,WIDTH,HEIGHT);
   this.playedIds.clear();this.idOrder=[];this.mediaIntervals.clear();this.inkBounds=null;
  }
+ /** Portable final painting snapshot plus MP4 replay index. It carries no camera footage. */
+ exportSessionJSON():string|null{
+  const png=this.exportPNG(false);if(!png)return null;
+  return JSON.stringify({schema:'soma.sumi.painting',version:1,
+   width:WIDTH,height:HEIGHT,createdAt:new Date().toISOString(),
+   accepted:this.accepted,png,
+   mediaIntervals:[...this.mediaIntervals.entries()]});
+ }
+ /** Restores a final painting snapshot; future frames continue painting from it. */
+ async importSessionJSON(raw:string):Promise<void>{
+  if(raw.length>16_000_000)throw Error('Arsip lukisan terlalu besar.');
+  const value=JSON.parse(raw) as Record<string,unknown>;
+  if(value.schema!=='soma.sumi.painting'||value.version!==1||
+   value.width!==WIDTH||value.height!==HEIGHT||
+   typeof value.png!=='string'||!/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(value.png))
+   throw Error('Format arsip Sumi tidak sesuai.');
+  const lines=new Map<string,Array<[number,number]>>();
+  if(Array.isArray(value.mediaIntervals)){
+   for(const pair of value.mediaIntervals){
+    if(!Array.isArray(pair)||typeof pair[0]!=='string'||pair[0].length>512||
+     !Array.isArray(pair[1])||pair[1].length>4096)throw Error('Indeks video rusak.');
+    const intervals:Array<[number,number]>=[];
+    for(const interval of pair[1]){
+     if(!Array.isArray(interval)||interval.length!==2||
+      !Number.isFinite(interval[0])||!Number.isFinite(interval[1])||
+      interval[0]<0||interval[1]<interval[0])throw Error('Interval video rusak.');
+     intervals.push([interval[0],interval[1]]);
+    }
+    lines.set(pair[0],intervals);
+   }
+  }
+  const image=new Image();image.src=value.png;
+  await image.decode();
+  if(image.naturalWidth!==WIDTH||image.naturalHeight!==HEIGHT)
+   throw Error('Resolusi lukisan tidak sesuai.');
+  this.clearPainting();
+  const ctx=this.ensureCanvas().getContext('2d');if(!ctx)throw Error('Canvas tidak siap.');
+  ctx.drawImage(image,0,0);
+  this.mediaIntervals=lines;
+  this.accepted=typeof value.accepted==='number'&&Number.isFinite(value.accepted)?
+   Math.max(0,Math.min(1_000_000,Math.round(value.accepted))):0;
+  this.inkBounds={x:0,y:0,width:WIDTH,height:HEIGHT};
+ }
  exportPNG(includeBackground=true):string|null{
   if(!this.canvas)return null;
   if(!includeBackground)return this.canvas.toDataURL('image/png');
