@@ -108,9 +108,9 @@ test('Footprint Brush V3: toggle, sweep/step, layering, size and native fullscre
  },{timeout:12000}).toBeGreaterThan(0);
  await panel.getByRole('checkbox',{name:'Tampilkan garis'}).uncheck();
  await expect(panel.getByRole('group',{name:'Gaya garis'})).toHaveCount(0);
- await panel.getByLabel('Ukuran telapak').focus();
- await panel.getByLabel('Ukuran telapak').press('End');
- await expect(panel.getByLabel('Ukuran telapak')).toHaveValue('100');
+ await panel.getByRole('slider',{name:'Ukuran telapak'}).focus();
+ await panel.getByRole('slider',{name:'Ukuran telapak'}).press('End');
+ await expect(panel.getByRole('slider',{name:'Ukuran telapak'})).toHaveValue('100');
  await panel.getByRole('button',{name:'Pijakan'}).click();
  await expect(panel.getByRole('button',{name:'Pijakan'})).toHaveAttribute('aria-pressed','true');
  await monitor.getByRole('button',{name:'Fullscreen Stage Monitor'}).click();
