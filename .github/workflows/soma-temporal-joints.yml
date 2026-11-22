@@ -2,9 +2,16 @@ name: SOMA S6.8.8.3 Temporal Joint QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/footprints/live/**'
+      - 'src/engine/**'
+      - 'e2e/temporal-joints.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   temporal-browser:
     runs-on: ubuntu-24.04

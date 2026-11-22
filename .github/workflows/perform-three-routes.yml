@@ -1,5 +1,6 @@
 name: Perform Three Routes UX QA
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'src/studio/v3/OperatorStageConsole.tsx'
@@ -9,20 +10,11 @@ on:
       - 'src/studio/v3/touchdesigner-perform.css'
       - 'tests/pfux-final-perform.test.ts'
       - 'e2e/perform-three-routes.spec.mjs'
-      - '.github/workflows/perform-three-routes.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'src/studio/v3/OperatorStageConsole.tsx'
-      - 'src/studio/v3/TouchDesignerPerformPanel.tsx'
-      - 'src/studio/v3/performDestinationModel.ts'
-      - 'src/studio/v3/perform-three-routes.css'
-      - 'src/studio/v3/touchdesigner-perform.css'
-      - 'tests/pfux-final-perform.test.ts'
-      - 'e2e/perform-three-routes.spec.mjs'
-      - '.github/workflows/perform-three-routes.yml'
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   output-ux:
     runs-on: ubuntu-24.04

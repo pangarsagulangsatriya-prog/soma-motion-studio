@@ -1,5 +1,6 @@
 name: F3 restore regression QA (no production deploy)
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'src/f3/**'
@@ -9,11 +10,11 @@ on:
       - 'e2e/f3-capture-v2.spec.mjs'
       - 'scripts/f3-generate-fixtures.mjs'
       - '.github/workflows/f3-capture-v2.yml'
-  push:
-    branches:
-      - 'fix/restore-f3-full-workspace'
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   f3-capture-v2:
     runs-on: ubuntu-24.04

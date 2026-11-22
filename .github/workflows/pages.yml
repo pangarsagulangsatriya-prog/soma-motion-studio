@@ -1,5 +1,5 @@
 name: Preview SOMA on GitHub Pages
-# Independent browser preview when Vercel production deployments are rate-limited.
+# Fast, independent GitHub Pages release. Heavy browser suites run in separate QA workflows.
 # A one-time Settings → Pages → Source: GitHub Actions is required if not enabled.
 on:
   push:
@@ -16,6 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,29 +64,13 @@ jobs:
           test -s dist/index.html
           test -s dist/gpu02-lab.html
           printf '%s\n' '2ee8ee3064df8f00042d34ad6e4c64d142119344' > dist/mat03-commit.txt
-      # Browser dependencies are pinned and deliberately ephemeral: npm ci stays reproducible.
-      - name: Install TRK-05 browser QA dependencies
-        run: npm install --no-save --package-lock=false playwright@1.56.1 pixelmatch@6.0.0 pngjs@7.0.0
-      - name: Install Chromium
-        run: npx playwright install chromium
-      - name: TRK-05 — visual regression and source E2E
-        # Do not block publication of a TypeScript-built release on legacy visual baselines.
-        # The QA report and failure screenshots are still uploaded for investigation.
-        continue-on-error: true
-        run: node scripts/trk05-browser-qa.mjs
-      - name: Upload TRK-05 screenshots and QA report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: trk05-browser-qa-${{ github.sha }}
-          path: artifacts/trk05/
-          if-no-files-found: warn
-          retention-days: 30
+      # Publish after tests and build. Extended browser visual QA is separate.
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
   deploy:
+    timeout-minutes: 10
     needs: build
     runs-on: ubuntu-latest
     environment:

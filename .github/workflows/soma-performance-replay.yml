@@ -1,10 +1,11 @@
 name: SOMA S6.8.8.7 Performance & Smoothness QA
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   replay-performance:
     runs-on: ubuntu-24.04

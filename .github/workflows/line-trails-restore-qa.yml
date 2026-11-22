@@ -1,8 +1,6 @@
 name: Garis BETA restoration isolated browser QA
 on:
-  push:
-    branches:
-      - 'fix/restore-compose-garis-beta'
+  workflow_dispatch:
   pull_request:
     paths:
       - 'src/studio/v3/LineTrailsBeta.tsx'
@@ -10,9 +8,11 @@ on:
       - 'src/studio/v3/line-trails-beta.css'
       - 'src/footprints/lines/**'
       - 'e2e/compose-line-trails-beta.spec.mjs'
-      - '.github/workflows/line-trails-restore-qa.yml'
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   browser-regression:
     runs-on: ubuntu-24.04

@@ -1,13 +1,5 @@
 name: SOMA Browser QA — S6.7.2.5
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'e2e/**'
-      - '.github/workflows/browser-qa.yml'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
 permissions:
   contents: write

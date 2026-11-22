@@ -2,9 +2,16 @@ name: SOMA S6.8.8.6 Motion Semantics QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/footprints/scenes/**'
+      - 'src/engine/**'
+      - 'e2e/motion-semantics.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   motion-semantics:
     runs-on: ubuntu-24.04

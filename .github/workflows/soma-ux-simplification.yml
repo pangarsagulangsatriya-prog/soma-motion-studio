@@ -2,9 +2,18 @@ name: SOMA S6.8.7 Simplified Stage QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/studio/v3/FootprintsStageWorkspace.tsx'
+      - 'src/studio/v3/OperatorStageConsole.tsx'
+      - 'src/studio/v3/GlobalNav.tsx'
+      - 'e2e/simplified-stage.spec.mjs'
+      - 'e2e/soma-direct-readiness.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   browser-ux:
     runs-on: ubuntu-24.04

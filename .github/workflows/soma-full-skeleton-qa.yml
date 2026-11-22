@@ -2,9 +2,16 @@ name: SOMA S6.8.8.1 Full Skeleton QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/footprints/live/**'
+      - 'src/engine/**'
+      - 'e2e/full-skeleton.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   skeleton-browser:
     runs-on: ubuntu-24.04

@@ -2,9 +2,16 @@ name: SOMA S0 Real Worker Runtime QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/engine/**'
+      - 'src/footprints/live/**'
+      - 'e2e/s0-worker-runtime.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   s0-worker-browser:
     runs-on: ubuntu-24.04

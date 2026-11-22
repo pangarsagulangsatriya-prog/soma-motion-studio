@@ -1,16 +1,5 @@
 name: SOMA FLOOR — 13 Scene + Audio UAT
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/footprints/scenes/**'
-      - 'src/studio/v3/FootprintsStageWorkspace.tsx'
-      - 'src/studio/v3/FloorSceneAdvancedControls.tsx'
-      - 'src/studio/v3/floor-interaction.css'
-      - 'src/App.tsx'
-      - 'e2e/floor-scene-library-f5-f6.spec.mjs'
-      - 'tests/floor-scene-library-f5-f6.test.ts'
-      - '.github/workflows/floor-scenes-uat.yml'
   workflow_dispatch:
 permissions:
   contents: read

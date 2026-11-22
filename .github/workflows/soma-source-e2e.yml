@@ -2,9 +2,17 @@ name: SOMA Source Browser QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/studio/v3/CameraHub*'
+      - 'src/studio/v3/experimentSourceModel.ts'
+      - 'src/studio/v3/FootprintsExperimentalSource.tsx'
+      - 'e2e/source-flow.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   source-browser-qa:
     runs-on: ubuntu-24.04

@@ -2,9 +2,17 @@ name: SOMA S6.8.8.2 Multi-Actor QA
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/footprints/live/**'
+      - 'src/engine/**'
+      - 'tests/*multi-actor*'
+      - 'e2e/auto-multi-actor.spec.mjs'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   browser-multi-actor:
     runs-on: ubuntu-24.04

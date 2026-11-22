@@ -2,14 +2,9 @@ name: Verify SOMA changes
 on:
   pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'feat/**'
-      - 'fix/**'
-      - 'chore/**'
-      - 'wip/**'
-      - 'preview/**'
+concurrency:
+  group: soma-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-24.04
