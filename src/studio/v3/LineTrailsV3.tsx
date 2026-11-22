@@ -18,6 +18,7 @@ import {ObservedMotionInkEngine} from '../../footprints/lines/v3/ObservedMotionI
 import {buildSumiStrokeGeometry} from '../../footprints/lines/v3/SumiStrokeGeometryBuilder.ts';
 import {PersistentInkStore} from '../../footprints/lines/v3/PersistentInkStore.ts';
 import {resolveActorColor} from '../../footprints/lines/v3/ActorPaletteResolver.ts';
+import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPreviewTransform.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
 
@@ -52,6 +53,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const brushStore=new FootBrushDepositStore();
   const sumiMotion=new ObservedMotionInkEngine();
   const sumiStore=new PersistentInkStore();
+  const viewFit=new PainterlyPreviewTransform();
   args.current.onRegisterExportInk?.(()=>sumiStore.exportPNG());
   let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
   let brushSource='';
@@ -78,7 +80,7 @@ export function LineTrailsV3Stage(props:StageProps){
    const resetRevision=p.brushResetRevision??0;
    if(resetRevision!==lastBrushResetRevision){
     clearBrush();sumiMotion.cutMotionSegment('user-clear');
-    sumiStore.clearPainting();lastBrushResetRevision=resetRevision;
+    sumiStore.clearPainting();viewFit.reset();lastBrushResetRevision=resetRevision;
    }
    const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
    const nextSumiMode=p.painterly.enabled&&p.painterly.painterlyEngine==='sumi-v34';
@@ -157,7 +159,8 @@ export function LineTrailsV3Stage(props:StageProps){
     }
    }
    const fullscreen=document.fullscreenElement===p.fullscreenRef.current;
-   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen,brushStore,sumiStore);
+   const view=nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
+   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen,brushStore,sumiStore,view);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
     // Diagnostics live only on explicit V/K; V3 fullscreen default is clean.
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
@@ -311,6 +314,8 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
     aria-label="Bobot kuas Sumi" value={painterly.sumiWeightPx??36}
     onChange={e=>change({sumiWeightPx:Number(e.target.value)})}/>
    </label>
+   <label className="lt-painterly-stay"><input type="checkbox" aria-label="Komposisi preview" checked={!!painterly.previewFit}
+     onChange={e=>change({previewFit:e.target.checked})}/>Komposisi preview (tidak mengubah Map)</label>
    <div className="lt-v31-character" role="group" aria-label="Ekspresi kuas">
     {([{id:'bold',label:'Tebal'},{id:'natural',label:'Natural'}] as const).map(x=>
      <button key={x.id} type="button"
