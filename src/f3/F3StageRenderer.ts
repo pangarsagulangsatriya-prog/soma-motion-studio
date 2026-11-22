@@ -5,23 +5,40 @@ const fitCover=(srcWidth:number,srcHeight:number,dstX:number,dstY:number,dstW:nu
  const scale=Math.max(dstW/srcWidth,dstH/srcHeight),sw=dstW/scale,sh=dstH/scale;
  return {sx:(srcWidth-sw)/2,sy:(srcHeight-sh)/2,sw,sh,dstX,dstY,dstW,dstH};
 };
+export function f3PhotoTileRects(width:number,height:number,gridFraction=F3_LAYOUT.gridFraction,
+ gapFraction=F3_LAYOUT.gapFraction){
+ const left=Math.round(width*gridFraction),gap=Math.round(width*gapFraction);
+ const pad=Math.round(width*.009),tileGap=Math.round(width*.008);
+ const tileW=(left-2*pad-tileGap)/2;
+ // V3.1: near-square photo cards, visually centered as a 2×2 group.
+ const tileH=Math.min(tileW*1.04,(height-2*pad-tileGap)/2);
+ const firstY=(height-(tileH*2+tileGap))/2;
+ return Array.from({length:4},(_,i)=>({
+  x:pad+(i%2)*(tileW+tileGap),y:firstY+Math.floor(i/2)*(tileH+tileGap),
+  width:tileW,height:tileH
+ }));
+}
 const archiveCache=new Map<string,HTMLImageElement>();
 function tilePhoto(ctx:CanvasRenderingContext2D,item:F3Photo,x:number,y:number,w:number,h:number){
  let img=archiveCache.get(item.url);
  if(!img){img=new Image();img.src=item.url;archiveCache.set(item.url,img);}
  if(!img.complete||!img.naturalWidth)return;
  const f=fitCover(img.naturalWidth,img.naturalHeight,x,y,w,h);
+ const since=Date.now()-Date.parse(item.createdAt);
+ const progress=Number.isFinite(since)?Math.min(1,Math.max(0,since/280)):1;
+ const eased=1-Math.pow(1-progress,3);
+ ctx.save();ctx.globalAlpha=eased;
  ctx.drawImage(img,f.sx,f.sy,f.sw,f.sh,x,y,w,h);
+ ctx.restore();
 }
 /** Canonical painter for operator preview, inline/local fullscreen and gated projector canvas. */
 export function drawF3Stage(ctx:CanvasRenderingContext2D,frame:F3StageFrame,videoB:HTMLVideoElement|null){
  const W=ctx.canvas.width,H=ctx.canvas.height,gap=Math.round(W*frame.layout.gapFraction);
  const left=Math.round(W*frame.layout.gridFraction),rightX=left+gap,rightW=W-rightX;
  ctx.save();ctx.fillStyle='#050807';ctx.fillRect(0,0,W,H);
- const pad=Math.round(W*.009),tileGap=Math.round(W*.008);
- const tileW=(left-2*pad-tileGap)/2,tileH=(H-2*pad-tileGap)/2;
+ const tiles=f3PhotoTileRects(W,H,frame.layout.gridFraction,frame.layout.gapFraction);
  for(let i=0;i<4;i++){
-  const x=pad+(i%2)*(tileW+tileGap),y=pad+Math.floor(i/2)*(tileH+tileGap);
+  const {x,y,width:tileW,height:tileH}=tiles[i];
   ctx.fillStyle='#0c1310';ctx.fillRect(x,y,tileW,tileH);
   const item=frame.photoSlots[i];if(item)tilePhoto(ctx,item,x,y,tileW,tileH);
   ctx.strokeStyle=item?'#718976':'#24392c';ctx.lineWidth=2;ctx.strokeRect(x+.5,y+.5,tileW-1,tileH-1);

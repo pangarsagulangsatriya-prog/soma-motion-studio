@@ -81,7 +81,7 @@ test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; B-only pixels and Esc keep sourc
  await stageScreenshot(page,'fullscreen-2-of-4',testInfo.project.name);
  await page.keyboard.press('Escape');
  await page.getByRole('button',{name:/02 Motion/}).click();
- await expect(page.getByRole('button',{name:/Skeleton On/})).toBeVisible();
+ await expect(page.getByRole('checkbox',{name:/Skeleton/})).toBeVisible();
  await page.getByRole('button',{name:'Mulai latihan'}).click();
  // Resize deliberately uses two hands; it must not add photographs.
  let count=await page.locator('.f3-photo-ops>div').filter({hasText:'Terisi'}).count();
@@ -144,12 +144,33 @@ test('V3 separates input monitor, actor motion diagnostics and clean Perform sta
  await page.getByRole('button',{name:/02 Motion/}).click();
  await expect(page.getByRole('heading',{name:'Deteksi gerak'})).toBeVisible();
  await expect(page.locator('.f3-monitor-motion canvas')).toHaveCount(2);
- await page.getByRole('button',{name:'Skeleton On'}).click();
- await expect(page.getByRole('button',{name:'Skeleton Off'})).toBeVisible();
+ await page.getByRole('checkbox',{name:/Skeleton/}).uncheck();
+ await expect(page.getByRole('checkbox',{name:/Skeleton/})).not.toBeChecked();
  await expect(page.getByRole('button',{name:'Jepret manual'})).toHaveCount(0);
  await page.getByRole('button',{name:/03 Perform/}).click();
  await expect(page.getByRole('button',{name:'Aktifkan Gestur'})).toBeDisabled();
  await expect(page.locator('.f3-stage-shell')).toBeVisible();
+ await expect(page.locator('.f3-operator-preview')).toBeVisible();
+ await expect(page.locator('.f3-monitor-perform canvas')).toHaveCount(1);
+ await expect(page.locator('.f3-motion-light').last()).toBeVisible();
  await expect(page.locator('.f3-monitor-input canvas')).toHaveCount(0);
  await expect(page.locator('.f3-monitor-motion canvas')).toHaveCount(0);
+});
+
+test('F3 V3.1: operator sees actor camera and near-square stage slots without leaking A into fullscreen',async({page})=>{
+ await startFixtures(page);
+ await expect(page.locator('.f3-operator-preview canvas')).toHaveCount(1);
+ const output=page.locator('.f3-stage-shell canvas');
+ await expect(output).toBeVisible();
+ // Actor monitor is a sibling of output canvas; projection always reads B-only.
+ await expect(page.locator('.f3-stage-shell .f3-monitor-perform')).toHaveCount(0);
+ await page.getByRole('button',{name:/02 Motion/}).click();
+ await expect(page.getByRole('checkbox',{name:/Skeleton/})).toBeChecked();
+ await expect(page.getByRole('progressbar',{name:'Perbesaran Kamera B'})).toHaveCount(1);
+ await page.getByRole('button',{name:/03 Perform/}).click();
+ await enterStage(page);
+ await expect(page.locator('.f3-stage-shell canvas')).toBeVisible();
+ await expect(page.locator('.f3-stage-shell .f3-operator-preview')).toHaveCount(0);
+ await page.keyboard.press('Escape');
+ await expect(page.locator('.f3-operator-preview')).toBeVisible();
 });

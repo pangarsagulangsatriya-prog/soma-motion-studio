@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {F3PunchEngine} from '../src/f3/F3PunchEngine.ts';
-import {F3FramingController,f3Crop} from '../src/f3/F3FramingController.ts';
+import {F3FramingController,f3Crop,f3SmoothCrop} from '../src/f3/F3FramingController.ts';
 import {F3SessionMachine} from '../src/f3/F3SessionMachine.ts';
 import {F3CameraRegistry} from '../src/f3/F3CameraRegistry.ts';
 import {F3PhotoStore} from '../src/f3/F3PhotoStore.ts';
-import {drawF3Stage,makeF3StageFrame} from '../src/f3/F3StageRenderer.ts';
+import {drawF3Stage,makeF3StageFrame,f3PhotoTileRects} from '../src/f3/F3StageRenderer.ts';
 import type {F3MotionFrame,F3Landmark} from '../src/f3/F3Types.ts';
 const point=(x:number,y:number):F3Landmark=>({x,y,z:0,visibility:1});
 function hand(x:number,y:number,fist=true,pinch=false):F3Landmark[]{
@@ -202,4 +202,28 @@ test('F3 V3: unilateral hand movement does not start body zoom',()=>{
  assert.equal(f.step(frame(1,.7,.54,{otherX:.35}),1000),.6);
  assert.equal(f.step(frame(2,.92,.54,{otherX:.35}),1150),.6);
  assert.equal(f.resizing,false);
+});
+
+test('F3 V3.1: 2x2 photo slots are near-square, centered and stay inside the left column',()=>{
+ const rects=f3PhotoTileRects(1600,800);
+ assert.equal(rects.length,4);
+ for(const r of rects){
+  assert.ok(Math.abs(r.width/r.height-1)<.12,'photo tile must be close to square');
+  assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<480&&r.y+r.height<=800);
+ }
+ assert.ok(rects[0].y>50,'photo grid vertically centered, not stretching full stage height');
+ assert.ok(Math.abs(rects[0].width-rects[2].width)<.001);
+ assert.ok(rects[1].x>rects[0].x+rects[0].width);
+ assert.ok(rects[2].y>rects[0].y+rects[0].height);
+});
+test('F3 V3.1: smooth ROI approaches target, stays in frame and never jumps on source change',()=>{
+ const first={x:320,y:110,width:1100,height:800};
+ const next={x:450,y:200,width:750,height:550};
+ const a=f3SmoothCrop(first,next,16,1920,1080);
+ assert.ok(a.width<first.width&&a.width>next.width,'crop interpolates');
+ assert.ok(a.x>first.x&&a.x<next.x);
+ const b=f3SmoothCrop(a,next,16,1920,1080);
+ assert.ok(b.width<a.width&&b.width>next.width);
+ for(const r of [a,b])assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=1920&&r.y+r.height<=1080);
+ assert.deepEqual(f3SmoothCrop(null,next,16,1920,1080),next,'new source bypasses prior crop');
 });

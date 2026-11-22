@@ -10,6 +10,18 @@ export function f3Crop(width:number,height:number,fraction:number,aspect=1.36,ce
  const h=Math.max(1,Math.floor(w/ratio));
  return {x:Math.round(clamp(center.x*width-w/2,0,width-w)),y:Math.round(clamp(center.y*height-h/2,0,height-h)),width:w,height:h};
 }
+/** Eased display crop. Both Stage View and saved photo use this same visible ROI. */
+export function f3SmoothCrop(previous:F3Rect|null,target:F3Rect,dtMs:number,
+ sourceWidth:number,sourceHeight:number):F3Rect{
+ if(!previous||target.width<=0||target.height<=0||sourceWidth<=0||sourceHeight<=0)return target;
+ const k=1-Math.exp(-Math.min(120,Math.max(0,dtMs))/125);
+ const lerp=(a:number,b:number)=>a+(b-a)*k;
+ const width=clamp(Math.round(lerp(previous.width,target.width)),1,sourceWidth);
+ const height=clamp(Math.round(lerp(previous.height,target.height)),1,sourceHeight);
+ const x=clamp(Math.round(lerp(previous.x,target.x)),0,sourceWidth-width);
+ const y=clamp(Math.round(lerp(previous.y,target.y)),0,sourceHeight-height);
+ return {x,y,width,height};
+}
 export class F3FramingController{
  fraction=.6;
  resizing=false;
@@ -47,7 +59,7 @@ export class F3FramingController{
      const moved=previous?Math.abs(l-previous.left)+Math.abs(r-previous.right)>.026:false;
      if(balanced){
       this.resizing=true;this.lastPinchAt=now;
-      if(moved)this.bodyMovedAt=now;
+      if(moved||!this.bodyMovedAt)this.bodyMovedAt=now;
       const target=clamp(base.fraction*(base.spread/Math.max(.18,spread)),.2,1);
       if(Math.abs(target-this.fraction)>.007)
        this.fraction=clamp(this.fraction+(target-this.fraction)*.25,.2,1);

@@ -5,7 +5,7 @@ import {PhoneCameraReceiver} from '../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,SOURCE_LABELS} from '../studio/v3/sourceSwitchModel.ts';
 import {normalizeCameraDevices,cameraDeviceLabel,cameraErrorMessage} from '../engine/universalCamera.ts';
 import {F3MotionFusion} from './F3MotionFusion.ts';
-import {F3FramingController} from './F3FramingController.ts';
+import {F3FramingController,f3SmoothCrop} from './F3FramingController.ts';
 import {F3PunchEngine} from './F3PunchEngine.ts';
 import {F3PhotoStore} from './F3PhotoStore.ts';
 import {F3SessionMachine} from './F3SessionMachine.ts';
@@ -14,7 +14,7 @@ import {F3StageView} from './F3StageView.tsx';
 import {F3VideoMonitor} from './F3VideoMonitor.tsx';
 import {makeF3StageFrame} from './F3StageRenderer.ts';
 import {f3ProjectorGate,f3Blackout} from './F3OutputAdapter.ts';
-import type {F3Role,F3CameraStatus,F3PunchPreset,F3StageFrame,F3MotionFrame} from './F3Types.ts';
+import type {F3Role,F3CameraStatus,F3PunchPreset,F3StageFrame,F3MotionFrame,F3Rect} from './F3Types.ts';
 import './f3.css';
 const emptyStatus=(role:F3Role):F3CameraStatus=>({role,id:'',kind:'camera',state:'idle',lastFrameAt:0,frameId:0,videoTime:-1,message:'Pilih sumber'});
 type F3SourceChoice='webcam'|'phone'|'video';
@@ -43,6 +43,7 @@ export function F3CaptureWorkspace(){
  const [activeStep,setActiveStep]=useState<'input'|'motion'|'perform'>('input');
  const [skeletonVisible,setSkeletonVisible]=useState(true);
  const motionSnapshot=useRef<F3MotionFrame|null>(null);
+ const displayCrop=useRef<{crop:F3Rect;sourceId:string;time:number}|null>(null);
  const motionLastUi=useRef(0);
  const [motionSummary,setMotionSummary]=useState({body:false,hands:0,label:'Menunggu Kamera A'});
  const shutterEpoch=useRef(0);
@@ -91,7 +92,7 @@ export function F3CaptureWorkspace(){
  const invalidateMotion=()=>{
   disarm();setVerified(false);session.current.setVerified(false);setRehearsal(false);
   framing.current.reset();punch.current.reset();fusion.current.resetFrames();
-  motionSnapshot.current=null;motionLastUi.current=0;
+  motionSnapshot.current=null;motionLastUi.current=0;displayCrop.current=null;
   setMotionSummary({body:false,hands:0,label:'Menunggu deteksi'});
   setZoom(.6);
  };
@@ -108,7 +109,12 @@ export function F3CaptureWorkspace(){
   }
   setBusy(true);
   try{
-   const area=framing.current.crop(v.videoWidth,v.videoHeight,1.36);
+   // Save the exact visible crop, including animated interpolation.
+   const shown=stageFrame.current.cameraB;
+   const valid=shown.sourceId===b.id&&shown.crop.width>0&&shown.crop.height>0&&
+    shown.crop.x>=0&&shown.crop.y>=0&&shown.crop.x+shown.crop.width<=v.videoWidth&&
+    shown.crop.y+shown.crop.height<=v.videoHeight;
+   const area=valid?{...shown.crop}:framing.current.crop(v.videoWidth,v.videoHeight,1.36);
    await archive.current.capture({video:v,crop:area,cameraId:b.id,frameId:b.frameId,
     sourceTimestamp:b.lastFrameAt,preset:presetValue,consent:settings.consent,
     replace:settings.replacement,eventId,fresh:registry.current.fresh('B',performance.now()),
@@ -209,8 +215,13 @@ export function F3CaptureWorkspace(){
     }catch(e){fusion.current.dispose();setModelState('Pelacakan berhenti: '+String(e));disarm();}
    }
    const v=videoB.current;
-   const crop=v&&v.videoWidth&&v.videoHeight?framing.current.crop(v.videoWidth,v.videoHeight,1.36):
+   const target=v&&v.videoWidth&&v.videoHeight?framing.current.crop(v.videoWidth,v.videoHeight,1.36):
     {x:0,y:0,width:0,height:0};
+   const former=displayCrop.current;
+   const crop=v&&v.videoWidth&&v.videoHeight&&bLive?
+    f3SmoothCrop(former?.sourceId===b.id?former.crop:null,target,
+     former?.sourceId===b.id?now-former.time:0,v.videoWidth,v.videoHeight):target;
+   displayCrop.current=bLive?{crop,sourceId:b.id,time:now}:null;
    stageFrame.current=makeF3StageFrame({sourceId:b.id,frameId:b.frameId,timestamp:b.lastFrameAt,crop,
     slots:archive.current.slots,state:aLive&&bLive?(b.kind==='fixture'?'SIMULATION':'LIVE'):'FREEZE',flashUntil:flash});
    if(now-last.current.ui>130){last.current.ui=now;refresh();}
@@ -378,12 +389,25 @@ export function F3CaptureWorkspace(){
      </details>
     </section>
     <section className="f3-motion-panel f3-step-panel" data-active={activeStep==='motion'} hidden={activeStep!=='motion'}>
-     <header className="f3-panel-heading"><h2>Deteksi gerak</h2><span>{readyA?'Kamera A LIVE':'Menunggu A'}</span></header>
+     <header className="f3-panel-heading">
+      <h2>Deteksi gerak</h2>
+      <span className="f3-motion-light" data-live={readyA&&motionSummary.body}>
+       <i aria-hidden="true"/>{readyA?(motionSummary.body?'Tracking aktif':'Mencari tubuh'):'Menunggu A'}
+      </span>
+     </header>
      <div className="f3-readiness-rows">
       <div><span>Tubuh</span><strong>{readyA?(motionSummary.body?'Terdeteksi':'Mencari tubuh'):'Belum terhubung'}</strong></div>
       <div><span>Tangan</span><strong>{readyA?motionSummary.hands+' terbaca':'–'}</strong></div>
       <div><span>Zoom B</span><strong>{Math.round(zoom*100)}%</strong></div>
       <div><span>Gerak</span><strong>{motionSummary.label}</strong></div>
+     </div>
+     <div className="f3-zoom-feedback" data-active={readyA&&motionSummary.label==='Zoom aktif'}>
+      <div className="f3-zoom-feedback-caption"><span>Zoom Kamera B</span><strong>{(1/zoom).toFixed(1)}×</strong></div>
+      <div className="f3-zoom-track" role="progressbar" aria-label="Perbesaran Kamera B"
+       aria-valuemin={1} aria-valuemax={5} aria-valuenow={Number((1/zoom).toFixed(1))}>
+       <span style={{width:(100-zoom*100)+'%'}}/>
+      </div>
+      <small>Rentangkan dua tangan untuk memperbesar · rapatkan untuk memperkecil</small>
      </div>
      <div className="f3-motion-presets">
       <h3>Gestur foto</h3>
@@ -469,11 +493,25 @@ export function F3CaptureWorkspace(){
     <section className="f3-workspace-monitor f3-step-panel" hidden={activeStep!=='motion'}>
      <header className="f3-panel-heading">
       <h2>Motion · Kamera A</h2>
-      <button type="button" className="f3-text-action" aria-pressed={skeletonVisible}
-       onClick={()=>setSkeletonVisible(v=>!v)}>Skeleton {skeletonVisible?'On':'Off'}</button>
+      <label className="f3-skeleton-toggle">
+       <input type="checkbox" checked={skeletonVisible} onChange={event=>setSkeletonVisible(event.target.checked)}/>
+       Skeleton <span>{skeletonVisible?'On':'Off'}</span>
+      </label>
      </header>
      {activeStep==='motion'&&<F3VideoMonitor mode="motion" videoA={videoA} videoB={videoB}
       motion={motionSnapshot} stage={stageFrame} showSkeleton={skeletonVisible}/>}
+    </section>
+    <section className="f3-operator-preview f3-setup" aria-label="Preview operator Kamera A"
+     hidden={activeStep!=='perform'}>
+     <div className="f3-operator-preview-copy">
+      <strong>Kamera A · Aktor</strong>
+      <span className="f3-motion-light" data-live={readyA&&motionSummary.body}>
+       <i aria-hidden="true"/>{readyA?(motionSummary.body?'Tubuh terbaca':'Video terhubung'):'Menunggu kamera'}
+      </span>
+      <small>Hanya untuk operator. Tidak muncul di layar fullscreen.</small>
+     </div>
+     {activeStep==='perform'&&<F3VideoMonitor mode="perform" videoA={videoA} videoB={videoB}
+      motion={motionSnapshot} stage={stageFrame} showSkeleton={false}/>}
     </section>
     <section className="f3-surface-panel" aria-label="Pratinjau Stage View" hidden={activeStep!=='perform'&&!screenActive}>
      <header className="f3-surface-header f3-setup">

@@ -3,7 +3,7 @@ import {drawSkeletonBodies} from '../stage/fullBodySkeleton.ts';
 import type {F3MotionFrame,F3StageFrame} from './F3Types.ts';
 
 type Props={
- mode:'input'|'motion';
+ mode:'input'|'motion'|'perform';
  videoA:RefObject<HTMLVideoElement|null>;
  videoB:RefObject<HTMLVideoElement|null>;
  motion:RefObject<F3MotionFrame|null>;
@@ -43,7 +43,7 @@ export function F3VideoMonitor({mode,videoA,videoB,motion,stage,showSkeleton}:Pr
    if(time-previous<50)return;
    previous=time;
    const a=aCanvas.current,b=bCanvas.current;
-   if(a)paintSource(a,videoA.current,motion.current,mode==='motion'&&showSkeleton);
+   if(a)paintSource(a,videoA.current,motion.current,(mode==='motion'||mode==='perform')&&showSkeleton);
    if(b)paintSource(b,videoB.current,null,false,mode==='motion'?stage.current.cameraB.crop:undefined);
   };
   raf=requestAnimationFrame(draw);
@@ -51,12 +51,12 @@ export function F3VideoMonitor({mode,videoA,videoB,motion,stage,showSkeleton}:Pr
  },[mode,videoA,videoB,motion,stage,showSkeleton]);
  return <div className={'f3-monitor-pair f3-monitor-'+mode}>
   <section className="f3-monitor-tile">
-   <header><strong>Kamera A · Aktor</strong><small>{mode==='motion'?(showSkeleton?'Skeleton aktif':'Video asli'):'Input asli'}</small></header>
+   <header><strong>Kamera A · Aktor</strong><small>{mode==='perform'?'Preview operator':mode==='motion'?(showSkeleton?'Skeleton aktif':'Video asli'):'Input asli'}</small></header>
    <canvas ref={aCanvas} width={960} height={540} aria-label={mode==='motion'?'Monitor Kamera A dengan pilihan skeleton':'Monitor sumber Kamera A'}/>
   </section>
-  <section className="f3-monitor-tile">
+  {mode!=='perform'&&<section className="f3-monitor-tile">
    <header><strong>Kamera B · Kaki penonton</strong><small>{mode==='motion'?'Crop live':'Input asli'}</small></header>
    <canvas ref={bCanvas} width={960} height={540} aria-label="Monitor sumber Kamera B"/>
-  </section>
+  </section>}
  </div>;
 }

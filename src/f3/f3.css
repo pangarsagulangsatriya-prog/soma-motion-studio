@@ -216,3 +216,68 @@
  .f3-role-source-options{gap:2px}
  .f3-phone-connection .soma-setup-phone-choices{width:100%}
 }
+
+
+/* F3 V3.1 · camera A operator monitor, live diagnostics and restrained motion cues. */
+.f3-operator-preview{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0;
+ min-height:114px;margin:0 0 12px;padding:10px 13px;
+ border:1px solid #304838;border-radius:10px;background:#111e16;
+ animation:f3-enter .2s ease-out both;
+}
+.f3-operator-preview-copy{display:flex;flex-direction:column;align-items:flex-start;gap:8px;flex:1;min-width:0}
+.f3-operator-preview-copy>strong{font-size:12px;color:#e4f0df;font-weight:650}
+.f3-operator-preview-copy>small{font-size:10px;color:#97ad9b;line-height:1.45}
+.f3-operator-preview .f3-monitor-perform{width:190px;max-width:41%;flex:0 0 190px;min-width:0}
+.f3-monitor-perform .f3-monitor-tile{border-radius:7px}
+.f3-monitor-perform .f3-monitor-tile>header{padding:5px 7px;gap:8px}
+.f3-monitor-perform .f3-monitor-tile strong,.f3-monitor-perform .f3-monitor-tile small{font-size:9px}
+.f3-monitor-perform .f3-monitor-tile canvas{max-height:106px}
+.f3-motion-light{display:inline-flex;align-items:center;gap:7px;max-width:100%;
+ font-size:10px;line-height:1.4;color:#a6b6a4;white-space:nowrap}
+.f3-motion-light i{width:7px;height:7px;border-radius:50%;flex:0 0 7px;
+ background:#627166;box-shadow:0 0 0 2px #2b3e30}
+.f3-motion-light[data-live=true]{color:#c6e6bc}
+.f3-motion-light[data-live=true] i{
+ background:#9cd398;box-shadow:0 0 0 2px #37533c,0 0 11px #9cd39844;
+ animation:f3-live-glow 2.2s ease-in-out infinite;
+}
+.f3-skeleton-toggle{display:inline-flex;align-items:center;gap:8px;font-size:11px;color:#c6dcc3;
+ white-space:nowrap;cursor:pointer}
+.f3-skeleton-toggle input{width:15px;height:15px;accent-color:#a1c793;cursor:pointer}
+.f3-skeleton-toggle span{min-width:22px;color:#9bb49e}
+.f3-skeleton-toggle:focus-within{outline:2px solid #cbe9a7;outline-offset:3px;border-radius:4px}
+.f3-zoom-feedback{border:1px solid #344d3a;border-radius:9px;background:#0e1a12;padding:12px;
+ margin:6px 0 15px;transition:border-color .24s ease,background .24s ease}
+.f3-zoom-feedback[data-active=true]{border-color:#79a377;background:#17281a}
+.f3-zoom-feedback-caption{display:flex;justify-content:space-between;gap:8px;margin-bottom:9px}
+.f3-zoom-feedback-caption span{font-size:11px;color:#b7cbb7}
+.f3-zoom-feedback-caption strong{font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;color:#e0f1d8}
+.f3-zoom-track{height:5px;border-radius:99px;background:#28392b;overflow:hidden}
+.f3-zoom-track>span{display:block;height:100%;min-width:3px;border-radius:99px;background:#9bc58e;
+ transition:width .19s cubic-bezier(.2,.7,.3,1);will-change:width}
+.f3-zoom-feedback>small{display:block;margin-top:9px;font-size:10px;line-height:1.4;color:#8fa792}
+.f3-step-panel:not([hidden]),.f3-workspace-monitor:not([hidden]){animation:f3-enter .18s ease-out both}
+.f3-workspace .f3-photo-ops>div[data-selected=true]{
+ background:#263d2c;box-shadow:inset 2px 0 #a5cc9c;
+ transition:background .16s ease,box-shadow .16s ease;
+}
+.f3-workspace .f3-primary:not(:disabled){transition:background .16s ease,border-color .16s ease,transform .13s ease,box-shadow .2s ease}
+.f3-workspace .f3-primary:hover:not(:disabled){box-shadow:0 0 0 2px #789e6836}
+.f3-monitor-tile canvas{transition:opacity .2s ease}
+@keyframes f3-enter{from{opacity:.75;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes f3-live-glow{0%,100%{opacity:1}50%{opacity:.65}}
+@media(max-width:880px){
+ .f3-operator-preview .f3-monitor-perform{flex-basis:155px;max-width:42%}
+ .f3-operator-preview-copy>small{font-size:9px}
+}
+@media(max-width:540px){
+ .f3-operator-preview{gap:9px;padding:9px}
+ .f3-operator-preview .f3-monitor-perform{flex-basis:135px;max-width:47%}
+ .f3-operator-preview-copy>small{max-width:150px}
+ .f3-zoom-feedback{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .f3-workspace *{animation:none!important;transition:none!important}
+ .f3-zoom-track>span{transition:none!important}
+}
