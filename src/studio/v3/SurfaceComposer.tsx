@@ -775,8 +775,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       ?footSamplesFromLive(frame,routerRef.current.status,performerRef.current,
          lineSourceRef.current,session,0,'A'):[];
     floorPosePreview.current.ingest(samples,now,sourceKey);
-    const ctx=preview.getContext('2d');
-    const painted=!!ctx&&floorPosePreview.current.paint(
+    const ctx=preview?.getContext('2d');
+    const painted=!!preview&&!!ctx&&floorPosePreview.current.paint(
      ctx,now,preview.width,preview.height);
     if(painted!==floorPosePreviewActiveRef.current){
      floorPosePreviewActiveRef.current=painted;
