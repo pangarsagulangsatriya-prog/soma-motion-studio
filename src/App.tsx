@@ -22,6 +22,7 @@ import {PhotoWall,PhotoPanel} from './photos/PhotoArchive';
 import {cameraAvailable} from './photos/store';
 import {GlobalNav} from './studio/v3/GlobalNav';
 import {CameraHubWorkspace} from './studio/v3/CameraHubWorkspace.tsx';
+import {CameraHubRegistry} from './studio/v3/CameraHubRegistry.ts';
 import {F3CaptureWorkspace} from './f3/F3CaptureWorkspace.tsx';
 import {StageTwoInstrumentNav} from './studio/v3/StageTwoInstrumentNav.tsx';
 import type {StageTwoLabId} from './studio/v3/labsCatalog.ts';
@@ -122,6 +123,10 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  }),[devices,setDevices]=useState<MediaDeviceInfo[]>([]);
  const [mousePinch,setMousePinch]=useState(0),[mouseOpen,setMouseOpen]=useState(true);
  const video=useRef<HTMLVideoElement>(null),stage=useRef<HTMLDivElement>(null),importRef=useRef<HTMLInputElement>(null),playback=useRef<HTMLAudioElement|null>(null);
+ const hubRegistryRef=useRef<CameraHubRegistry|null>(null);
+ if(!hubRegistryRef.current)hubRegistryRef.current=new CameraHubRegistry();
+ const hubRegistry=hubRegistryRef.current;
+ useEffect(()=>()=>hubRegistry.dispose(),[hubRegistry]);
  const frameRef=useRef<MotionFrame>(emptyFrame()),engine=useRef(new AudioEngine()).current,mapper=useRef(new MappingEngine()).current,tracker=useRef(new CameraTracker()).current,recorder=useRef(new Recorder()).current,motionLog=useRef(new MotionLog()).current;
  const activeCameraMode=useRef<'laptop'|'phone'>('laptop');
  const phoneLandscapeRef=useRef<LandscapePhoneCamera|null>(null);
@@ -581,8 +586,17 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
    <main style={{position:'relative'}}>
      {f3CaptureActive&&!clean&&<F3CaptureWorkspace/>}
      {cameraHubActive&&<CameraHubWorkspace devices={devices} selectedId={deviceId} cameraOn={cameraOn}
-      cameraBusy={cameraBusy} cameraError={cameraError} videoRef={video}
-      onSelectStageOne={selectFootprintsCameraDevice}
+      cameraBusy={cameraBusy} cameraError={cameraError} videoRef={video} frameRef={frameRef}
+      registry={hubRegistry}
+      onSelectStageOne={async id=>{
+       // Stage 1 receives an exclusive camera. The Hub releases its stream first.
+       if(requestedFootprintsChoice.current!=='webcam'){
+        requestedFootprintsChoice.current='webcam';setFootprintsChoice('webcam');
+        if(sr.current.input!=='body')update({input:'body',mappings:defaultMappings(sr.current.mode,'body'),
+         visual:{...sr.current.visual,mappings:defaultVisualMappings('body')}});
+       }
+       await selectFootprintsCameraDevice(id);
+      }}
       onGoStageOne={()=>{setCameraHubActive(false);setClean(false);setArchiveActive(false);setProjectionActive(false);selectScene('footprints');setSelectedStageTool('tracking');setStageNavigation(last=>({id:(last?.id??0)+1,tool:'tracking'}));}}/>}
     {stageTwo&&!clean&&!archiveActive&&!projectionActive&&<StageTwoInstrumentNav
      active={stageTwoActive} onSelect={selectStageTwoLab}/>}

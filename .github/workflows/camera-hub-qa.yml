@@ -1,0 +1,42 @@
+name: Camera Hub multi-camera isolated browser QA
+on:
+  push:
+    branches:
+      - 'feat/camera-hub-multicam-track'
+  pull_request:
+    paths:
+      - 'src/studio/v3/CameraHub*'
+      - 'src/studio/v3/cameraHubModel.ts'
+      - 'e2e/camera-hub-multicam.spec.mjs'
+      - '.github/workflows/camera-hub-qa.yml'
+permissions:
+  contents: read
+jobs:
+  camera-hub:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Install browser tools
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: CRUD and camera preview smoke
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 camera-hub-multicam.spec.mjs
+      - name: Upload trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: camera-hub-qa
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          if-no-files-found: warn
