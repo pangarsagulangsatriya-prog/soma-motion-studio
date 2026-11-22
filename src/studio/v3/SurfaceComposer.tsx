@@ -134,6 +134,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineVersion,setLineVersion]=useState<'v2'|'v3'>('v3');
  const [v3Options,setV3Options]=useState<V3Settings>(DEFAULT_V3_SETTINGS);
  const [painterlyOptions,setPainterlyOptions]=useState<PainterlySettings>(DEFAULT_PAINTERLY_SETTINGS);
+ const [brushResetRevision,setBrushResetRevision]=useState(0);
  const [v3Diagnostics,setV3Diagnostics]=useState('Menunggu observasi pertama');
  const [lineDemo,setLineDemo]=useState(false);
  const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
@@ -1021,6 +1022,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      fullscreenDiagnostics={lineFullscreenDiagnostics}
      router={router} engine={lineV3Engine.current} settings={v3Options}
       impressions={painterlyEngine.current} painterly={painterlyOptions}
+      brushResetRevision={brushResetRevision}
       motionEvents={motionEvents}
      blackout={blackout||previewBlackout} previewLive={previewLive}
      cameraOn={cameraOn} bodySelected={bodySelected}
@@ -1106,9 +1108,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    settings={v3Options} onChange={setV3Options} engine={lineV3Engine.current}
    painterly={painterlyOptions} onPainterlyChange={setPainterlyOptions}
    impressions={painterlyEngine.current}
-   onClear={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setLineStatus('Gambar dibersihkan');}}
+   onClear={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setBrushResetRevision(n=>n+1);setLineStatus('Gambar dibersihkan');}}
    demo={lineDemo}
-   onDemo={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setLineDemo(v=>!v);}}
+   onDemo={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();setBrushResetRevision(n=>n+1);setLineDemo(v=>!v);}}
    status={lineStatus} diagnostics={v3Diagnostics} performerCount={performerCount}
    fullscreenDiagnostics={lineFullscreenDiagnostics}
    onFullscreenDiagnostics={setLineFullscreenDiagnostics}

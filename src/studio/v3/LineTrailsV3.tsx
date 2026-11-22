@@ -10,6 +10,10 @@ import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajec
 import type {V3Settings} from '../../footprints/lines/v3/TrajectoryRenderer.ts';
 import {PainterlyImpressionEngine} from '../../footprints/lines/v3/PainterlyImpressionEngine.ts';
 import {paintPainterlyCanvas,type PainterlySettings} from '../../footprints/lines/v3/PainterlyCanvasRenderer.ts';
+import {adaptFootBrushFrame,type PoseAdapterState} from '../../footprints/lines/v3/FootBrushPoseAdapter.ts';
+import {FootContactGestureEngine} from '../../footprints/lines/v3/FootContactGestureEngine.ts';
+import {buildFootBrushDabs} from '../../footprints/lines/v3/FootBrushGeometryBuilder.ts';
+import {FootBrushDepositStore} from '../../footprints/lines/v3/FootBrushStrokeRenderer.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
 
@@ -20,7 +24,8 @@ type StageProps={
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  router:MultiPoseGaitRouter;engine:DualFootTrajectoryEngine;settings:V3Settings;
- impressions:PainterlyImpressionEngine;painterly:PainterlySettings;motionEvents?:()=>readonly FootMotionEventV2[];
+ impressions:PainterlyImpressionEngine;painterly:PainterlySettings;brushResetRevision?:number;
+ motionEvents?:()=>readonly FootMotionEventV2[];
  fullscreenDiagnostics:FullscreenDiagnostics;blackout:boolean;previewLive:boolean;
  cameraOn:boolean;bodySelected:boolean;performerCount:1|2;
  experimentSource:'video'|'simulator'|null;sourceKind:'camera'|'phone';
@@ -38,6 +43,14 @@ export function LineTrailsV3Stage(props:StageProps){
   let raf=0,lastDraw=0,lastStatus='',lastStatusAt=0,lastSource='';
   let lastFrameMs=-1,lastPaused=false,lastSeeking=false,lastStale=false,lastGoodAt=0;
   let lastDiag=0;
+  const gestures=new FootContactGestureEngine();
+  const brushStore=new FootBrushDepositStore();
+  let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
+  let brushSource='';
+  let brushMode=false;
+  let lastBrushResetRevision=args.current.brushResetRevision??0;
+  const clearBrush=()=>{brushStore.reset();gestures.reset();
+   brushAdapter={lastFrameMs:-1,epoch:brushAdapter.epoch+1,sourceKey:''};};
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);
    if(now-lastDraw<1000/45)return;
@@ -53,6 +66,13 @@ export function LineTrailsV3Stage(props:StageProps){
     motionSession:p.motionSession?.()??'track'
    });
    let message=input.status;
+   const resetRevision=p.brushResetRevision??0;
+   if(resetRevision!==lastBrushResetRevision){
+    clearBrush();lastBrushResetRevision=resetRevision;
+   }
+   const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
+   if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
+   if(input.sourceKey!==brushSource){clearBrush();brushSource=input.sourceKey;}
    if(input.sourceKey!==lastSource){
     lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
@@ -61,10 +81,12 @@ export function LineTrailsV3Stage(props:StageProps){
    const off=p.blackout||!p.previewLive;
    if(off){
     p.engine.cutAll('manual-reset');
+    // Any later frame must start a fresh stroke; retained pigment stays until cleared.
+    gestures.reset();
     message='Preview padam';
    }else{
     if(input.seeking){
-     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();}
+     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();clearBrush();}
      lastSeeking=true;
      message='MP4 · memindahkan posisi video';
     }else{
@@ -77,11 +99,23 @@ export function LineTrailsV3Stage(props:StageProps){
       // A later valid frame will still cut a >390ms gap in the tracking engine.
       const graceMs=input.source==='video'?1000:500;
       if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
-       p.engine.cutAll('stale-frame');lastStale=true;
+       p.engine.cutAll('stale-frame');gestures.reset();lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
       p.impressions.ingestFrame(input.samples,input.frameMs,input.source);
+      if(nextBrushMode){
+       const batch=adaptFootBrushFrame(input.samples,input.sourceKey,
+        input.frameMs,brushAdapter);
+       brushAdapter=batch.state;
+       if(batch.cut)gestures.reset();
+       for(const event of gestures.ingest(batch.poses)){
+        if(event.kind!=='imprint'&&event.kind!=='drag'&&event.kind!=='pivot')continue;
+        const dabs=buildFootBrushDabs(event.from??event.pose,event.pose,
+         event.kind,{pivot:event.pivot});
+        brushStore.append(dabs,event.id);
+       }
+      }
       if(input.source!=='demo'&&p.motionEvents)
        p.impressions.ingestContacts(p.motionEvents(),input.source,input.frameMs);
       lastFrameMs=input.frameMs;lastGoodAt=now;
@@ -93,7 +127,7 @@ export function LineTrailsV3Stage(props:StageProps){
     }
    }
    const fullscreen=document.fullscreenElement===p.fullscreenRef.current;
-   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen);
+   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen,brushStore);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
     // Diagnostics live only on explicit V/K; V3 fullscreen default is clean.
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
@@ -271,6 +305,11 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
   </details>
   <details className="lt-v3-advanced">
    <summary>Pengaturan lanjutan</summary>
+   <label><input type="checkbox"
+    aria-label="Aktifkan Kuas V3.3 eksperimental"
+    checked={painterly.painterlyEngine==='foot-brush-v33'}
+    onChange={e=>change({painterlyEngine:e.target.checked?'foot-brush-v33':'legacy-v32'})}/>
+    Kuas V3.3 (eksperimental · fallback V3.2 tersedia)</label>
    <label><input type="checkbox" checked={painterly.enabled}
     onChange={e=>change({enabled:e.target.checked})}/> Painterly aktif (matikan untuk Lintasan klasik)</label>
    <label>Ukuran tapak <output>{painterly.sizePx} px</output>
