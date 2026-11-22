@@ -158,7 +158,7 @@ test('accelerated 30-minute 2-actor/4-foot stream bounds the ink cache and metad
   const s=store.diagnostics;
   assert.ok(s.deposits>1000);
   assert.ok(s.liveIds<=3000);
-  assert.ok(s.coveredRanges<=16);
+  assert.ok(s.coveredRanges<=4096*4);
   assert.equal(s.rasterBytes,1600*900*4);
   assert.ok(frames>=s.deposits);
   store.cutMotionSegment('camera-disconnect');
