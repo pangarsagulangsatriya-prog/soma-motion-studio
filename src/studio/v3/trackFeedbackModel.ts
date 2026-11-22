@@ -116,7 +116,7 @@ export function deriveTrackFeedback(input:{
   const visibleFeet=actors.reduce((sum,actor)=>sum+actor.feet,0);
   const missingId=actorIds.find(id=>!identity.visible.includes(id))??'B';
   return {state:'framing',label:`Aktor ${identity.visible.length}/${performerCount}`,
-   hint:`Aktor ${missingId} belum terbaca · beri jarak, tampilkan kepala sampai kaki`,
+   hint:`Aktor ${missingId} belum terbaca · pastikan kedua aktor terpisah dan terlihat dari kepala sampai kaki`,
    actors,visibleFeet,expectedFeet:performerCount*2};
  }
  if(!identity||identity.observedFrameTime!==liveFrame.time){
