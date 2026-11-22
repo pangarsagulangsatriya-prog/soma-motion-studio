@@ -1,0 +1,47 @@
+name: Garis BETA V3.1 actor-organic QA
+on:
+  push:
+    branches:
+      - 'feat/garis-beta-v3-1-actor-organic'
+  pull_request:
+    paths:
+      - 'src/footprints/lines/v3/**'
+      - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/studio/v3/line-trails-v3.css'
+      - 'tests/garis-v31-actor-organic.test.ts'
+      - 'e2e/garis-v31-actor-organic.spec.mjs'
+      - '.github/workflows/garis-v31-actor-organic-qa.yml'
+permissions:
+  contents: read
+jobs:
+  v31-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: V3.1 engine regression
+        run: npm test
+      - name: Production TypeScript and build
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: V3.1, V3, V2 browser regression at two viewports
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=laptop-1366 garis-v31-actor-organic.spec.mjs garis-v3-dual-foot.spec.mjs compose-line-trails-beta.spec.mjs
+      - name: Save failure screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: garis-v31-regression-evidence
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          if-no-files-found: warn
