@@ -237,14 +237,14 @@ export function F3CaptureWorkspace(){
     <span data-ready={readyA&&readyB}><b>02</b> Stage View</span>
     <span data-ready={stageCount===4}><b>03</b> Foto</span>
    </nav>
-   <div className="f3-status">{status('A')}{status('B')}<span className="f3-pill">{verified?'Gestur terverifikasi':'Rana belum diverifikasi'}</span>
-    <span className="f3-pill">FOTO {stageCount}/4</span></div>
+   <div className="f3-status">{status('A')}{status('B')}</div>
    <div className="f3-step-heading"><b>01</b><div><h2>Hubungkan kamera</h2><p>Kamera A untuk gerak aktor. Kamera B untuk foto kaki penonton.</p></div></div>
    <details className="f3-device-details" open={!readyA||!readyB}><summary>Input & perangkat <ChevronDown size={14}/></summary>
     {cameraSelect('A')}{cameraSelect('B')}
     <button type="button" onClick={()=>void refreshDevices()}><RotateCcw size={14}/> Cari kamera</button>
     <p>Fixture MP4 untuk QA memakai dua rekaman berbeda. Foto dan video tidak diunggah.</p>
    </details>
+   <p className="f3-source-feedback" role="status">{message}</p>
    <details className="f3-monitor-details"><summary>Periksa gambar kamera <ChevronDown size={14}/></summary>
    <div className="f3-input-grid">
     <section className="f3-video-card f3-b-card"><div className="f3-card-head"><strong>KAMERA B — KAKI PENONTON</strong><small>Foto & crop</small></div>

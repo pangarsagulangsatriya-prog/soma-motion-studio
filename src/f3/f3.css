@@ -150,3 +150,5 @@
 .f3-gesture-inner{padding:12px;border-top:1px solid #304936}
 .f3-gesture-inner>p:first-child{margin:0 0 12px}
 .f3-gesture-inner>.f3-actions{margin-top:11px}
+
+.f3-source-feedback{font-size:11px;color:#aac4ac;margin:6px 3px 10px;line-height:1.5}
