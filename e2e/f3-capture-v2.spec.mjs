@@ -33,6 +33,8 @@ async function startFixtures(page){
  await inputs.nth(1).setInputFiles('artifacts/f3-fixtures/feet-b.mp4');
  await expect(page.getByRole('button',{name:'Coba Fullscreen'}).first()).toBeEnabled({timeout:20000});
  await expect(page.locator('.f3-pill[data-live="true"]')).toHaveCount(2);
+ await expect(page.locator('.f3-pipeline-nav')).toBeVisible();
+ await expect(page.locator('.f3-main-layout')).toBeVisible();
  const ids=await page.evaluate(()=>window.__SOMA_F3_QA__.registry());
  expect(ids.A.id).not.toEqual(ids.B.id);
  expect(ids.A.kind).toEqual('fixture');expect(ids.B.kind).toEqual('fixture');
@@ -64,10 +66,12 @@ test('F3 V2: Setup -> fullscreen 0/4, 2/4, 4/4; B-only pixels and Esc keep sourc
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
  const after=await page.locator('video[aria-label="Live video Kamera B"]').evaluate(v=>({src:v.src,time:v.currentTime}));
  expect(after.src).toBe(before.src);expect(after.time).toBeGreaterThanOrEqual(before.time);
+ await page.getByRole('button',{name:/03 Foto/}).click();
+ await expect(page.locator('.f3-control-panel')).toBeVisible();
  await page.locator('.f3-consent input[type="checkbox"]').check();
  for(let i=0;i<2;i++){
   await page.getByRole('button',{name:'Jepret manual'}).click();
-  await expect(page.locator('.f3-operator-card').last().getByText(`${i+1}/4`)).toBeVisible();
+  await expect(page.locator('.f3-archive-heading').getByText(`${i+1}/4`)).toBeVisible();
  }
  await enterStage(page);
  await stageScreenshot(page,'fullscreen-2-of-4',testInfo.project.name);
