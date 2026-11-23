@@ -1009,6 +1009,7 @@ export function FootprintsStageWorkspace({
      experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFloorCanvas={floorCanvas} experimentFrameRef={experimentFrameRef}
      videoFloorProfile={videoFloorProfile}
      onComposeRasterChange={setComposeRasterReady} onMapOutputSaved={()=>setMapOutputSaved(true)}
+     onMapOutputInvalidated={()=>setMapOutputSaved(false)} mapOutputSaved={mapOutputSaved}
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput}
