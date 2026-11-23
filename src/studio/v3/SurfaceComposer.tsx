@@ -123,11 +123,11 @@ type Props={
  onOpenMapTrack?:()=>void;
  onOpenMapCompose?:()=>void;
  onComposeRasterChange?:(ready:boolean)=>void;
- onMapOutputSaved?:()=>void;
- onMapOutputInvalidated?:()=>void;
- mapOutputSaved?:boolean;
+ onMapOutputSaved?:(surface:'floor'|'body')=>void;
+ onMapOutputInvalidated?:(surface?:'floor'|'body')=>void;
+ mapOutputSaved?:{floor:boolean;body:boolean};
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved=false}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
  const rasterReadyCallback=useRef(onComposeRasterChange);rasterReadyCallback.current=onComposeRasterChange;
  const lastRasterReady=useRef<boolean|null>(null);
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
