@@ -1,5 +1,6 @@
 import {useEffect,useState,useSyncExternalStore,type RefObject} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
+import type {ExperimentalFrame} from '../../studio/v3/experimentSourceModel.ts';
 import type {Quad} from '../../projection/geometry.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import {cameraBinding,type LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
@@ -39,6 +40,9 @@ type Props={
  experimentLocked?:boolean;
  liquidCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentFrameRef?:RefObject<ExperimentalFrame|null>;
+ motionSession?:()=>string;
+ liveSourceKind?:'camera'|'phone';
  videoRef?:RefObject<HTMLVideoElement|null>;
  motionFrameRef?:RefObject<MotionFrame>;
  floorTracker?:LiveFloorTrackingEngine;
@@ -55,7 +59,7 @@ type Props={
 
 export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
- liquidCanvas,experimentInputCanvas,videoRef,motionFrameRef,floorTracker,router,motionEvents,
+ liquidCanvas,experimentInputCanvas,experimentFrameRef,motionSession,liveSourceKind='camera',videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
  onOpenTrack,onOpenCompose
 }:Props){
@@ -199,6 +203,8 @@ export function DualSurfaceRoutingPanel({
  <MapWysiwygWorkspace selected={selected} stageDimensions={stageDimensions} plan={activePlan}
   sourceKind={sourceKind} hasLiveSource={hasLiveSource}
   videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
+  router={router} experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={liveSourceKind}
+  performerCount={performerCount} cameraOn={cameraOn}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
   onStartSim={()=>{setSimState(prev=>({...prev,active:true,playing:true}));setMessage('Simulasi jejak berjalan di Map.');}}
