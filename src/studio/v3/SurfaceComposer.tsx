@@ -162,6 +162,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const lineV3Engine=useRef(new DualFootTrajectoryEngine());
  const painterlyEngine=useRef(new PainterlyImpressionEngine());
  const inkExportRef=useRef<()=>string|null>(()=>null);
+ const motionTraceRef=useRef<()=>string|null>(()=>null);
  const inkArchiveRef=useRef<{save:()=>string|null;load:(data:string)=>Promise<void>}>({save:()=>null,load:async()=>{}});
  const brushEngine=useRef(new FootprintBrushEngine());
  const lineFullscreenRef=useRef<HTMLDivElement|null>(null);
@@ -1087,6 +1088,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       impressions={painterlyEngine.current} painterly={painterlyOptions}
       brushResetRevision={brushResetRevision}
       onRegisterExportInk={fn=>{inkExportRef.current=fn;}}
+      onRegisterMotionTrace={fn=>{motionTraceRef.current=fn;}}
       onRegisterInkArchive={api=>{inkArchiveRef.current=api;}}
       motionEvents={motionEvents}
      blackout={blackout||previewBlackout} previewLive={previewLive}
@@ -1179,6 +1181,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     if(!png){setLineStatus('Belum ada lukisan untuk disimpan');return;}
     const a=document.createElement('a');a.href=png;a.download='soma-sumi-v34-lukisan.png';
     document.body.appendChild(a);a.click();a.remove();
+   }}
+   onExportTrace={()=>{
+    const json=motionTraceRef.current();
+    if(!json){setLineStatus('Belum ada data gerak V2.4 untuk diekspor');return;}
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;
+    a.download='soma-v24-trace-aktor-A-B.json';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    setLineStatus('Data posisi A/B disimpan di perangkat');
    }}
    onSaveSession={()=>{
     const json=inkArchiveRef.current.save();
