@@ -951,6 +951,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    floorCanvas={floorOutput} legacyProjection={projection} experimentLocked={experimentLocked}
    liquidCanvas={liquidCanvas} experimentInputCanvas={experimentInputCanvas}
    experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={lineSource}
+   videoFloorCalibration={activeVideoFloor}
    videoRef={videoRef} motionFrameRef={frameRef} floorTracker={floorTracker} router={router}
    motionEvents={motionEvents} cameraOn={cameraOn} floorReady={floorReady}
    performerCount={performerCount} identitySafe={identitySafe}
