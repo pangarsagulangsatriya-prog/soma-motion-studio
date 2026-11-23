@@ -6,7 +6,7 @@ type Props={
  onChange:(next:PainterlySettings)=>void;
  onClearAll:()=>void;onExportPNG:()=>void;
  demo:boolean;onDemo:()=>void;onExit:()=>void;onLegacy:()=>void;
- status:string;
+ status:string;diagnostics?:string;
 };
 const channels:{id:DualTraceChannel;label:string}[]=[
  {id:'path',label:'Garis'},
@@ -29,7 +29,10 @@ export function DualTraceControlsV2(p:Props){
  return <section className="lt-beta-controls lt-v3-controls dual-v2-controls"
   aria-label="Kontrol Dual Trace V2">
   <header><strong>Dual Trace</strong><span>V2 · SATU KANVAS</span></header>
-  <p className="lt-beta-status" role="status">{p.status}</p>
+  <div className="dual-v21-status" role="group" aria-label="Status sumber dan lukisan">
+   <p className="lt-beta-status" role="status">Sumber sekarang · {p.status}</p>
+   <p className="dual-v21-ink-status">Lukisan · {p.diagnostics?.match(/Path tinta: ([^|]+)/)?.[1]?.trim()??'Jalur disimpan sampai dibersihkan'}</p>
+  </div>
   <div className="dual-v2-group" aria-label="Mode tampilan">
    <strong>Tampilan</strong>
    <div className="dual-v2-toggle">
@@ -80,11 +83,11 @@ export function DualTraceControlsV2(p:Props){
     onChange={e=>patch({dualShoulderEnabled:e.target.checked})}/> Bahu</label>
    {slider('Ketebalan kepala',p.settings.dualHeadWidth??8,8,40,2,v=>patch({dualHeadWidth:v}))}
    {slider('Ketebalan bahu',p.settings.dualShoulderWidth??16,8,48,2,v=>patch({dualShoulderWidth:v}))}
-   {slider('Opasitas garis',Math.round((p.settings.dualV2PathOpacity??.8)*100),10,100,5,
+   {slider('Opasitas garis',Math.round((p.settings.dualV2PathOpacity??.95)*100),10,100,5,
     v=>patch({dualV2PathOpacity:v/100}))}
    {slider('Opasitas tapak',Math.round((p.settings.dualV2FootOpacity??.85)*100),10,100,5,
     v=>patch({dualV2FootOpacity:v/100}))}
-   {slider('Opasitas gesture',Math.round((p.settings.dualV2UpperOpacity??.52)*100),10,100,5,
+   {slider('Opasitas gesture',Math.round((p.settings.dualV2UpperOpacity??.35)*100),10,100,5,
     v=>patch({dualV2UpperOpacity:v/100}))}
   </details>
   <div className="dual-v2-group">
@@ -99,6 +102,10 @@ export function DualTraceControlsV2(p:Props){
    <button type="button" onClick={p.onDemo}>{p.demo?'Stop demo':'Coba demo'}</button>
    <button type="button" onClick={p.onExit}>Kembali ke Path Sumi</button>
   </div>
+  <details className="dual-v21-diagnostics">
+   <summary>Diagnostik jalur</summary>
+   <p>{p.diagnostics||'Menunggu pengukuran pose dan jalur.'}</p>
+  </details>
   <details className="dual-v2-legacy"><summary>Mode lama</summary>
    <button type="button" onClick={p.onLegacy}>Dual Trace V1 · Pisah</button>
   </details>
