@@ -7,6 +7,8 @@ export type ActorMotionFrame={
  actorId:ActorChannel;sourceKey:string;timeMs:number;sourceEpoch:number;
  identityConfidence:number;hipPx:PathPoint;hipConfidence:number;
  torsoScalePx:number;feetCount:0|1|2;footImageAnchorPx?:PathPoint;
+ /** Raw stage-image side points for V2.4. These are foot estimates, NOT confirmed contacts. */
+ feetStagePx?:Partial<Record<'left'|'right',{point:PathPoint;confidence:number}>>;
  shoulderVector?:PathPoint;headImagePx?:PathPoint;
 };
 const finite=(x:number)=>Number.isFinite(x);
@@ -44,6 +46,8 @@ export function buildActorMotionFrames(
    p.sourceKey===frame.sourceKey&&p.atMs===frame.timeMs&&p.confidence>=.55);
   const sides=new Set(same.map(p=>p.foot));
   const count=Math.min(2,sides.size) as 0|1|2;
+  const feetStagePx:NonNullable<ActorMotionFrame['feetStagePx']>={};
+  for(const p of same)feetStagePx[p.foot]={point:stage(p.center),confidence:p.confidence};
   const anchor=same.length?{
    x:same.reduce((n,p)=>n+p.center.x*1600,0)/same.length,
    y:same.reduce((n,p)=>n+p.center.y*900,0)/same.length
@@ -53,6 +57,7 @@ export function buildActorMotionFrames(
    identityConfidence:frame.identityConfidence,hipPx,hipConfidence,
    torsoScalePx:Math.max(30,Math.min(300,torso)),
    feetCount:count,...(anchor?{footImageAnchorPx:anchor}:{}),
+   ...(same.length?{feetStagePx}:{}),
    ...(shoulderVector?{shoulderVector}:{}),
    ...(headImagePx?{headImagePx}:{})});
  }
