@@ -23,6 +23,7 @@ import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPrev
 import type {ActorPathObservation} from '../../footprints/lines/v3/PathObservationRouter.ts';
 import {GroundTrajectoryEngineV2} from '../../footprints/lines/v3/GroundTrajectoryEngineV2.ts';
 import {buildActorMotionFrames} from '../../footprints/lines/v3/ActorMotionFrameBuilder.ts';
+import {UpperBodyInkModulator} from '../../footprints/dual-trace/UpperBodyInkModulator.ts';
 import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
 import {dualTracePoseFrames} from '../../footprints/dual-trace/DualTracePoseFrameBus.ts';
 import {upperGestureAnchors} from '../../footprints/dual-trace/UpperGestureAnchorAdapter.ts';
@@ -116,6 +117,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const upperTracker=new UpperGestureStrokeTracker();
   const upperInk=new UpperGestureInkRenderer();
   const v2=new DualTraceV2Renderer();v2EngineRef.current=v2;
+  const upperInkModulation=new UpperBodyInkModulator();
   let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number}|undefined;
   let lastFusionMode=true;
   let lastFootClear=0,lastUpperClear=0,upperMode=false;
@@ -145,6 +147,7 @@ export function LineTrailsV3Stage(props:StageProps){
     accents:options.pathAccents??'subtle'} as const;
   };
   const cutPath=(reason:string)=>{
+   upperInkModulation.reset();
    for(const event of trajectory.cutAll(reason))
     if(args.current.painterly.painterlyEngine==='dual-trace-v2')
      v2.ingestPath(event,args.current.painterly.pathWeightPx??36,
@@ -281,6 +284,8 @@ export function LineTrailsV3Stage(props:StageProps){
         live:p.frameRef.current,performers:p.performerCount,status:p.router.status
        }).filter(frame=>p.settings.actors[frame.actorId]):[];
        const actorMotionFrames=buildActorMotionFrames(poseFrames,batch.poses);
+       const upperBrushFactors=nextDualV2?
+        upperInkModulation.update(actorMotionFrames):{A:1,B:1};
        if(nextPathMode&&!input.paused){
         const mp4Video=p.experimentFrameRef?.current?.kind==='video'?
          p.experimentFrameRef.current.video:null;
@@ -306,7 +311,8 @@ export function LineTrailsV3Stage(props:StageProps){
          if(!p.settings.actors[event.actorId])continue;
          if(nextDualV2)
           v2.ingestPath(event,p.painterly.pathWeightPx??36,
-           p.painterly.dualV2Material??'path-sumi',p.painterly.dualV2Expressive??true);
+           p.painterly.dualV2Material??'path-sumi',p.painterly.dualV2Expressive??true,
+           p.painterly.dualV2UpperModulation===false?1:upperBrushFactors[event.actorId]);
          else pathStore.ingest(event,pathStyle(event.actorId));
         }
        }
