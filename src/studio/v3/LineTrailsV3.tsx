@@ -117,6 +117,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const upperInk=new UpperGestureInkRenderer();
   const v2=new DualTraceV2Renderer();v2EngineRef.current=v2;
   let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number}|undefined;
+  let lastFusionMode=true;
   let lastFootClear=0,lastUpperClear=0,upperMode=false;
   const upperReady=(ready:boolean)=>{
    if(available.current!==ready){available.current=ready;setHasUpper(ready);}
@@ -215,6 +216,12 @@ export function LineTrailsV3Stage(props:StageProps){
    const nextDualMode=nextDualV2||nextDualLegacy;
    const nextPathMode=p.painterly.enabled&&
     (p.painterly.painterlyEngine==='path-first-v35'||nextDualMode);
+   const useHipFusion=p.painterly.trajectoryV22Enabled!==false;
+   if(nextPathMode&&useHipFusion!==lastFusionMode){
+    cutPath('trajectory-version-switch');
+    cutUpper('trajectory-version-switch');
+   }
+   lastFusionMode=useHipFusion;
    if(nextDualMode!==upperMode){
     cutUpper('renderer-switch');upperMode=nextDualMode;
     if(!upperMode)upperReady(false);
@@ -222,6 +229,10 @@ export function LineTrailsV3Stage(props:StageProps){
    if(nextPathMode!==pathMode){cutPath('renderer-switch');pathMode=nextPathMode;}
    if(nextSumiMode!==sumiMode){sumiMotion.cutMotionSegment('renderer-switch');sumiMode=nextSumiMode;}
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
+   if(nextPathMode&&input.status.includes('identitas belum stabil')&&
+      input.frameMs!==lastFrameMs){
+    cutPath('identity-ambiguous');cutUpper('identity-ambiguous');
+   }
    if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');
     cutPath('source-switch');cutUpper('source-switch');upperReady(false);
     brushSource=input.sourceKey;activeSpatial=undefined;v2.invalidateFootprints();}
@@ -289,7 +300,7 @@ export function LineTrailsV3Stage(props:StageProps){
           input.sourceKey,input.frameMs,batch.poses,input.supportHints,spatial,
           o=>nextDualV2?v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
            pathStore.isReplayCovered(o),
-          actorMotionFrames,p.painterly.trajectoryV22Enabled!==false);
+          actorMotionFrames,useHipFusion);
          lastPathObservations=observations;
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
