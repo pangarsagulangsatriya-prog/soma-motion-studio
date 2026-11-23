@@ -70,11 +70,15 @@ export function DualTraceControlsV2(p:Props){
     <select aria-label="Karakter tinta" value={p.settings.dualV2Material??'path-sumi'}
      onChange={e=>patch({dualV2Material:e.target.value as NonNullable<PainterlySettings['dualV2Material']>})}>
      <option value="path-sumi">Natural Sumi</option>
+     <option value="rough-sumi">Rough Sumi · serat kasar</option>
      <option value="dry-ink">Dry Brush</option>
      <option value="pigment-mass">Dense Ink</option>
     </select>
    </label>
    {slider('Bobot garis',p.settings.pathWeightPx??36,8,42,2,v=>patch({pathWeightPx:v}))}
+   {p.settings.dualV2Material==='rough-sumi'&&
+    slider('Kekasaran tepi (%)',Math.round((p.settings.dualV2Roughness??.74)*100),
+     0,100,5,v=>patch({dualV2Roughness:v/100}))}
    <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualV2Expressive??true}
     onChange={e=>patch({dualV2Expressive:e.target.checked})}/> Respons gerak ekspresif</label>
    <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualV2UpperModulation!==false}
@@ -120,6 +124,23 @@ export function DualTraceControlsV2(p:Props){
     Path Continuity V2.3 (beta) · sambung gap tervalidasi
    </label>
    <small>V2.3 memeriksa identitas, waktu, jarak dan arah sebelum menyambung. Matikan untuk fallback V2.2.</small>
+   <label className="dual-v2-setting">
+    <input type="checkbox" checked={p.settings.trajectoryV24Enabled===true}
+     disabled={p.settings.trajectoryV22Enabled===false}
+     onChange={e=>patch({trajectoryV24Enabled:e.target.checked})}/>
+    Spatial V2.4 (beta) · jangkauan ruang + gerak halus
+   </label>
+   <small>V2.4 memakai V2.3 sebagai pengaman crossing dan gap; dapat dimatikan untuk kembali ke V2.3/V2.2.</small>
+   {p.settings.trajectoryV24Enabled===true&&
+    <label className="dual-v2-setting">Stabilitas gerak
+     <select aria-label="Stabilitas gerak V2.4"
+      value={p.settings.v24MotionPreset??'balanced'}
+      onChange={e=>patch({v24MotionPreset:e.target.value as NonNullable<PainterlySettings['v24MotionPreset']>})}>
+      <option value="responsive">Responsif · belokan cepat</option>
+      <option value="balanced">Seimbang</option>
+      <option value="stable">Stabil · jitter rendah</option>
+     </select>
+    </label>}
    <p>{p.diagnostics||'Menunggu pengukuran pose dan jalur.'}</p>
   </details>
   <details className="dual-v21-diagnostics">
