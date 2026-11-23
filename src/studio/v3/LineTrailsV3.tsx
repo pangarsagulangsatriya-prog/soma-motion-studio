@@ -20,8 +20,8 @@ import {buildSumiStrokeGeometry} from '../../footprints/lines/v3/SumiStrokeGeome
 import {PersistentInkStore} from '../../footprints/lines/v3/PersistentInkStore.ts';
 import {resolveActorColor} from '../../footprints/lines/v3/ActorPaletteResolver.ts';
 import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPreviewTransform.ts';
-import {PathObservationRouter,type ActorPathObservation} from '../../footprints/lines/v3/PathObservationRouter.ts';
-import {ActorPathTracker} from '../../footprints/lines/v3/ActorPathTracker.ts';
+import type {ActorPathObservation} from '../../footprints/lines/v3/PathObservationRouter.ts';
+import {GroundTrajectoryEngineV2} from '../../footprints/lines/v3/GroundTrajectoryEngineV2.ts';
 import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
 import {dualTracePoseFrames} from '../../footprints/dual-trace/DualTracePoseFrameBus.ts';
 import {upperGestureAnchors} from '../../footprints/dual-trace/UpperGestureAnchorAdapter.ts';
@@ -110,8 +110,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const brushStore=new FootBrushDepositStore();
   const sumiMotion=new ObservedMotionInkEngine();
   const sumiStore=new PersistentInkStore();
-  const pathRouter=new PathObservationRouter();
-  const pathTracker=new ActorPathTracker();
+  const trajectory=new GroundTrajectoryEngineV2();
   const pathStore=new PersistentPathStore();
   const upperTracker=new UpperGestureStrokeTracker();
   const upperInk=new UpperGestureInkRenderer();
@@ -144,12 +143,12 @@ export function LineTrailsV3Stage(props:StageProps){
     accents:options.pathAccents??'subtle'} as const;
   };
   const cutPath=(reason:string)=>{
-   for(const event of pathTracker.cutAll(reason))
+   for(const event of trajectory.cutAll(reason)
     if(args.current.painterly.painterlyEngine==='dual-trace-v2')
      v2.ingestPath(event,args.current.painterly.pathWeightPx??22,
       args.current.painterly.dualV2Material??'path-sumi',args.current.painterly.dualV2Expressive??false);
     else pathStore.ingest(event,pathStyle(event.actorId));
-   pathRouter.reset();lastPathObservations=[];
+   lastPathObservations=[];
   };
   const viewFit=new PainterlyPreviewTransform();
   args.current.onRegisterExportInk?.(()=>
@@ -284,11 +283,11 @@ export function LineTrailsV3Stage(props:StageProps){
           cutPath('camera-floor-profile-change');cutUpper('camera-floor-profile-change');
           v2.invalidateFootprints();
          }
-         const observations=pathRouter.ingest(batch.poses,input.supportHints,spatial)
-          .filter(o=>nextDualV2?!v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
-           !pathStore.isReplayCovered(o));
+         const {observations,events:pathEvents}=trajectory.ingest(
+          input.sourceKey,input.frameMs,batch.poses,input.supportHints,spatial,
+          o=>nextDualV2?v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
+           pathStore.isReplayCovered(o));
          lastPathObservations=observations;
-        const pathEvents=pathTracker.ingest(observations,input.frameMs);
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
          if(nextDualV2)
@@ -433,10 +432,12 @@ export function LineTrailsV3Stage(props:StageProps){
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
       ...(nextDualMode?['Upper: '+(nextDualV2?v2.upperActiveCount:upperInk.activeCount)+
        ' kanal · '+(nextDualV2?v2.upperCount:upperInk.committedCount)+' sapuan']:[]),
-      ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit',
+      ...(nextPathMode?['Path A/B: '+(nextDualV2?v2.path.A.activeCount+v2.path.B.activeCount:pathStore.activeCount)+
+       ' aktif · '+(nextDualV2?v2.pathCount:pathStore.depositCount)+' commit',
        'Ruang: '+((input.source==='video'?p.videoFloorCalibration:p.cameraFloorCalibration)?'lantai terkalibrasi (estimasi)':'image-2d / ruang perkiraan'),
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
-       'Cut: '+JSON.stringify(pathTracker.cutDiagnostics)]:[]),
+       'Trajectory V2.1: '+trajectory.telemetry.summary(),
+       'Path tinta: '+(nextDualV2?v2.pathCount:pathStore.depositCount)+' segmen deposit']:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
