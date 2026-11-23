@@ -326,7 +326,7 @@ export function LineTrailsV3Stage(props:StageProps){
     input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
    // Clean Compose raster feeds Map and Perform without debug markers.
    const shared=p.outputRaster?.current;
-   if(shared){
+   if(shared&&c){
     if(shared.width!==c.width)shared.width=c.width;
     if(shared.height!==c.height)shared.height=c.height;
     const out=shared.getContext('2d');
