@@ -175,12 +175,15 @@ test('MAP-V5: camera overlay and mapped result, with physical protection outside
 test('MAP-V5: Track is the navigation standard, Map has no projector test and no duplicate CTA',()=>{
  const panel=read('../src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx');
  const nav=read('../src/studio/v3/StageModuleNav.tsx');
+ const ia=read('../src/studio/v3/stageInformationArchitecture.ts');
  const workspace=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const editor=read('../src/studio/v3/MapWysiwygWorkspace.tsx');
  const css=read('../src/studio/v3/map-wysiwyg.css');
- assert.match(nav,/map:\{target:'perform',label:'Lanjut Perform'\}/);
+ assert.match(nav,/STAGE_NEXT\[active\]/);
+ assert.match(ia,/map:\{target:'perform',label:'Lanjut Perform'\}/);
  assert.match(nav,/active!=='perform'&&<button/);
- assert.match(workspace,/mapReady:tracker.isConfirmed/);
+ assert.match(workspace,/stageNavigationReadiness\(/);
+ assert.doesNotMatch(workspace,/mapReady:tracker.isConfirmed/);
  assert.doesNotMatch(panel,/map-r7-perform-cta|handleEnterPerform|Uji proyektor|stage-dual-qa-disclosure|QA Fisik 5 Titik/);
  assert.doesNotMatch(panel,/STAGE_HARDWARE_ENABLED&&<details|triggerProjectorTest/);
  assert.doesNotMatch(editor,/children\}|Uji proyektor|map-r8-projector-setup/);
