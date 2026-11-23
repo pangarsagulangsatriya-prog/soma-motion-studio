@@ -1,4 +1,5 @@
 import type {CameraFloorCalibration} from '../../footprints/spatial/coordinates.ts';
+import {makeSourceFrameGeometryV24,type SourceFrameGeometryV24} from '../../footprints/spatial/SourceFrameGeometryV24.ts';
 import {useEffect,useRef,useState,type RefObject} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
@@ -118,7 +119,8 @@ export function LineTrailsV3Stage(props:StageProps){
   const upperInk=new UpperGestureInkRenderer();
   const v2=new DualTraceV2Renderer();v2EngineRef.current=v2;
   const upperInkModulation=new UpperBodyInkModulator();
-  let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number}|undefined;
+  let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number;
+   sourceGeometry?:SourceFrameGeometryV24}|undefined;
   let lastFusionMode=true,lastContinuityV23=false,lastV24=false;
   let lastV24Preset='balanced';
   let lastFootClear=0,lastUpperClear=0,upperMode=false;
@@ -298,14 +300,20 @@ export function LineTrailsV3Stage(props:StageProps){
         const mp4Video=p.experimentFrameRef?.current?.kind==='video'?
          p.experimentFrameRef.current.video:null;
         const activeVideo=input.source==='video'?mp4Video:p.videoRef.current;
+        const geometry=input.sourceGeometry??(
+         activeVideo?.videoWidth&&activeVideo?.videoHeight?
+          makeSourceFrameGeometryV24(activeVideo.videoWidth,activeVideo.videoHeight):undefined);
+        for(const frame of actorMotionFrames)frame.geometryVersion=geometry?.version;
         const activeCalibration=input.source==='video'?p.videoFloorCalibration:
          input.source==='camera'||input.source==='phone'?p.cameraFloorCalibration:null;
         const spatial=activeCalibration&&activeVideo?.videoWidth&&activeVideo?.videoHeight?
          {calibration:activeCalibration,
           videoAspect:activeVideo.videoWidth/activeVideo.videoHeight,
-          calibrationId:input.source+':'+JSON.stringify(activeCalibration)}:undefined;
+          calibrationId:input.source+':'+(geometry?.version??'legacy')+':'+JSON.stringify(activeCalibration),
+          ...(geometry?{sourceGeometry:geometry}:{})}:undefined;
          activeSpatial=spatial;
-         if(nextDualV2&&v2.setSpatialSignature(spatial?.calibrationId??'image-2d:'+input.sourceKey)){
+         if(nextDualV2&&v2.setSpatialSignature(
+          spatial?.calibrationId??'image-2d:'+input.sourceKey+':'+(geometry?.version??'legacy'))){
           cutPath('camera-floor-profile-change');cutUpper('camera-floor-profile-change');
           v2.invalidateFootprints();
          }
