@@ -10,7 +10,7 @@ export type PathEvent={
  motionBasis?:ActorPathObservation['motionBasis'];
 };
 type State={strokeId:string;last:ActorPathObservation;lastMoveAt:number;
- lastPoint:PathPoint;lastDirection?:number;stopped:boolean};
+ lastPoint:PathPoint;lastDirection?:number;stopped:boolean;lastMotionAt:number};
 const dist=(a:PathPoint,b:PathPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const gapLimit=(sourceKey:string)=>sourceKey.startsWith('video:')?900:500;
@@ -66,15 +66,20 @@ export class ActorPathTracker{
    }
    if(!old){
     const state:State={strokeId:actor+'-'+(++this.nextId)+'-'+Math.round(obs.timeMs),
-      last:obs,lastMoveAt:obs.timeMs,lastPoint:obs.point,stopped:false};
+      last:obs,lastMoveAt:obs.timeMs,lastPoint:obs.point,stopped:false,
+      lastMotionAt:obs.timeMs};
     this.tracks.set(actor,state);
     events.push(this.event('START',actor,state,obs.timeMs));
     continue;
    }
+   const rawMove=dist(old.last.point,obs.point);
+   // Small consistent displacements still count as motion even before
+   // they accumulate enough to create an ADD/TURN knot.
+   if(rawMove>=.7)old.lastMotionAt=obs.timeMs;
    const d=dist(old.lastPoint,obs.point);
    old.last=obs;
    if(d<4){
-    if(!old.stopped&&obs.timeMs-old.lastMoveAt>=240){
+    if(!old.stopped&&obs.timeMs-Math.max(old.lastMoveAt,old.lastMotionAt)>=300){
      old.stopped=true;events.push(this.event('STOP',actor,old,obs.timeMs));
     }
     continue;
@@ -82,7 +87,7 @@ export class ActorPathTracker{
    const direction=Math.atan2(obs.point.y-old.lastPoint.y,obs.point.x-old.lastPoint.x);
    const turn=old.lastDirection===undefined?0:angle(old.lastDirection,direction);
    old.lastDirection=direction;old.lastPoint=obs.point;
-   old.lastMoveAt=obs.timeMs;old.stopped=false;
+   old.lastMoveAt=obs.timeMs;old.lastMotionAt=obs.timeMs;old.stopped=false;
    events.push({...this.event(Math.abs(turn)>Math.PI/15?'TURN':'ADD',actor,old,obs.timeMs),
     ...(Math.abs(turn)>Math.PI/15?{turnRad:turn}:{})});
   }
