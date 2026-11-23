@@ -54,6 +54,7 @@ import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
 import {LineTrailsV3Stage,LineTrailsV3Panel} from './LineTrailsV3.tsx';
+import {VideoSpatialCalibration,type VideoFloorProfile} from './VideoSpatialCalibration.tsx';
 import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajectoryEngine.ts';
 import {PainterlyImpressionEngine} from '../../footprints/lines/v3/PainterlyImpressionEngine.ts';
 import {DEFAULT_PAINTERLY_SETTINGS,type PainterlySettings} from '../../footprints/lines/v3/PainterlyCanvasRenderer.ts';
@@ -140,6 +141,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
  const [lineStatus,setLineStatus]=useState('Menunggu kaki');
+ const [videoFloorProfile,setVideoFloorProfile]=useState<VideoFloorProfile|null>(null);
+ const videoFloorReady=experimentSource==='video'&&experimentFrameRef?.current?.kind==='video'&&
+  videoFloorProfile?.clip===experimentFrameRef.current.clip&&
+  videoFloorProfile?.width===experimentFrameRef.current.video?.videoWidth&&
+  videoFloorProfile?.height===experimentFrameRef.current.video?.videoHeight;
+ const activeVideoFloor=videoFloorReady?videoFloorProfile.calibration:null;
  const [,setLineBrushCount]=useState(0);
  const floorPosePreview=useRef(new ComposeFloorPosePreview());
  const [floorPosePreviewActive,setFloorPosePreviewActive]=useState(false);
@@ -925,6 +932,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    fullscreenDiagnostics={lineFullscreenDiagnostics}
    router={router} engine={lineV3Engine.current} settings={v3Options}
    cameraFloorCalibration={!experimentSource&&floorReady&&floorTracker.isConfirmed?floorTracker.calibrationData:null}
+    videoFloorCalibration={activeVideoFloor}
    impressions={painterlyEngine.current} painterly={painterlyOptions}
    brushResetRevision={brushResetRevision}
    motionEvents={motionEvents}
@@ -1052,6 +1060,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      fullscreenDiagnostics={lineFullscreenDiagnostics}
      router={router} engine={lineV3Engine.current} settings={v3Options}
      cameraFloorCalibration={!experimentSource&&floorReady&&floorTracker.isConfirmed?floorTracker.calibrationData:null}
+    videoFloorCalibration={activeVideoFloor}
       impressions={painterlyEngine.current} painterly={painterlyOptions}
       brushResetRevision={brushResetRevision}
       onRegisterExportInk={fn=>{inkExportRef.current=fn;}}
@@ -1137,6 +1146,9 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
+  {lineTrails&&lineVersion==='v3'&&experimentSource==='video'&&experimentFrameRef&&
+   <VideoSpatialCalibration frameRef={experimentFrameRef} profile={videoFloorProfile}
+    onSave={setVideoFloorProfile}/>}
   {lineTrails&&lineVersion==='v3'?<LineTrailsV3Panel
    settings={v3Options} onChange={setV3Options} engine={lineV3Engine.current}
    painterly={painterlyOptions} onPainterlyChange={setPainterlyOptions}
