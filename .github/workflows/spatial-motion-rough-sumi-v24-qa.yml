@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths:
       - 'src/footprints/lines/v3/ActorSpatialFusionV24.ts'
+      - 'src/footprints/spatial/SourceFrameGeometryV24.ts'
+      - 'src/footprints/lines/v3/SourceFrameNormalizer.ts'
+      - 'src/footprints/lines/v3/PathObservationRouter.ts'
       - 'src/footprints/lines/v3/AdaptiveMotionSmootherV24.ts'
       - 'src/footprints/lines/v3/CoverageTraceRecorderV24.ts'
       - 'src/footprints/lines/v3/ActorMotionFrameBuilder.ts'
@@ -17,6 +20,7 @@ on:
       - 'src/studio/v3/LineTrailsV3.tsx'
       - 'src/studio/v3/DualTraceControlsV2.tsx'
       - 'tests/spatial-coverage-motion-ink-v24.test.ts'
+      - 'tests/source-frame-geometry-v24.test.ts'
       - 'e2e/spatial-motion-rough-sumi-v24.spec.mjs'
       - '.github/workflows/spatial-motion-rough-sumi-v24-qa.yml'
   workflow_dispatch:
