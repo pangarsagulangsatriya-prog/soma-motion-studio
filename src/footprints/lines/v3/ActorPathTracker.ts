@@ -31,6 +31,14 @@ export class ActorPathTracker{
   }));
   this.tracks.clear();if(events.length)this.countCut(reason);return events;
  }
+ /** Close only one actor. A/B crossing must never clear the other stroke. */
+ cutActor(actor:ActorChannel,reason:string):PathEvent|null{
+  const state=this.tracks.get(actor);
+  if(!state)return null;
+  const event={...this.event('CUT',actor,state,state.last.timeMs),reason};
+  this.tracks.delete(actor);this.countCut(reason);
+  return event;
+ }
  ingest(observations:readonly ActorPathObservation[],timeMs:number):PathEvent[]{
   const events:PathEvent[]=[];
   const seen=new Set<ActorChannel>();
