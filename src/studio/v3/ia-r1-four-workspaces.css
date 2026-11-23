@@ -487,3 +487,18 @@
 .soma-ia-four-workspaces[data-workspace=track] .fp-full-skeleton-switch[aria-pressed=false]{
  border-color:#526453;color:#b0c3ad;background:#233429;
 }
+
+
+/* IA V2: one Track-owned floor profile and one calm Compose source label. */
+.soma-ia-four-workspaces .soma-track-video-calibration{max-width:720px;margin:0 0 9px;min-width:0}
+.soma-ia-four-workspaces .soma-track-video-calibration details{margin-bottom:0!important;padding:8px 10px!important}
+.soma-ia-four-workspaces .soma-track-video-calibration summary{font-size:12px!important;min-height:26px}
+.soma-ia-four-workspaces .soma-ia-source-status{display:inline-flex;align-items:center;gap:8px;
+ font:500 10px/1.5 system-ui;color:#b0c8b3;flex-wrap:wrap}
+.soma-ia-four-workspaces .soma-ia-source-status button{min-height:25px;border:0;border-bottom:1px solid #69916f;
+ border-radius:0;background:transparent;color:#cae4c3;padding:1px 3px;font-size:10px;cursor:pointer}
+.soma-ia-four-workspaces .soma-ia-source-status button:focus-visible{outline:2px solid #e2f0c8}
+@media(max-width:720px){
+ .soma-ia-four-workspaces .soma-track-video-calibration{max-width:100%}
+ .soma-ia-four-workspaces .s64-heading{align-items:flex-start;flex-wrap:wrap}
+}
