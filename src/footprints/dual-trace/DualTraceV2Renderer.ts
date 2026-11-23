@@ -24,7 +24,7 @@ export type DualTraceV2Options={
  pathOpacity?:number;
  footprintOpacity?:number;
  upperOpacity?:number;
- material?:'path-sumi'|'dry-ink'|'pigment-mass';
+ material?:'path-sumi'|'rough-sumi'|'dry-ink'|'pigment-mass';
 };
 const ACTORS=['A','B'] as const;
 const W=1600,H=900;
@@ -82,12 +82,13 @@ export class DualTraceV2Renderer{
   return this.upper[anchor.actorId][anchor.channel]
    .isReplayCoveredAt(anchor.clipStableId,anchor.actorId,anchor.timeMs);
  }
- ingestPath(event:PathEvent,weight=36,material:'path-sumi'|'dry-ink'|'pigment-mass'='path-sumi',
-  expressive=false,upperMotionFactor=1){
+ ingestPath(event:PathEvent,weight=36,material:'path-sumi'|'rough-sumi'|'dry-ink'|'pigment-mass'='path-sumi',
+  expressive=false,upperMotionFactor=1,roughness=.74){
   const widthFactor=clamp(this.brushDynamics.weight(event,expressive)*
    clamp(upperMotionFactor,1,1.22),.68,1.30);
   this.path[event.actorId].ingest({...event,widthFactor},{
    color:'#ffffff',weightPx:clamp(weight,8,42),material,
+   roughness:material==='rough-sumi'?clamp(roughness,0,1):0,
    accents:expressive?'expressive':'subtle'
   });
  }
