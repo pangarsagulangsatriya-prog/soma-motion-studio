@@ -62,7 +62,7 @@ export class DualTraceV2Renderer{
  private lastSpatialSignature='';
  private footprintMask={A:blank(),B:blank()};
  private tintedFeet={A:blank(),B:blank()};
- private footprintCacheTime=-1;
+ private footprintCacheSignature='';
  get pathCount(){return this.path.A.depositCount+this.path.B.depositCount;}
  get upperCount(){return ACTORS.reduce((v,a)=>v+this.upper[a].head.depositCount+
   this.upper[a].shoulder.depositCount,0);}
@@ -106,8 +106,8 @@ export class DualTraceV2Renderer{
   for(const a of ACTORS){this.upper[a].head.clearPainting();this.upper[a].shoulder.clearPainting();}
   this.tinted.clear();
  }
- clearBoth(){this.clearPath();this.clearUpper();this.footprintCacheTime=-1;}
- invalidateFootprints(){this.footprintCacheTime=-1;}
+ clearBoth(){this.clearPath();this.clearUpper();this.footprintCacheSignature='';}
+ invalidateFootprints(){this.footprintCacheSignature='';}
  private tintedCanvas(id:string,store:PersistentPathStore,color:string){
   const source=store.getCanvas();
   if(!source)return null;
@@ -145,8 +145,12 @@ export class DualTraceV2Renderer{
   keep:boolean,opacity:number,visible:FootVisibility,spatial?:DualSpatialContext){
   // A/B masks are regenerated from the time-indexed stamps, which lets
   // palette changes recolor previously stamped feet immediately.
-  if(this.footprintCacheTime!==presentationMs){
-   this.footprintCacheTime=presentationMs;
+  const cacheKey=[presentationMs,lifeMs,keep,impressions.count,impressions.headsCount,
+   visible.A.left,visible.A.right,visible.B.left,visible.B.right,
+   spatial?.calibration.cameraQuad.map(p=>p.x+','+p.y).join(';')??'image-2d',
+   spatial?.videoAspect??0].join('|');
+  if(this.footprintCacheSignature!==cacheKey){
+   this.footprintCacheSignature=cacheKey;
    for(const actor of ACTORS){
     const atlas=this.footprintMask[actor],g=atlas.getContext('2d');
     if(g){g.clearRect(0,0,W,H);}
