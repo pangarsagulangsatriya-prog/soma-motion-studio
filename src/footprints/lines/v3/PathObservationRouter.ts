@@ -6,7 +6,8 @@ import {estimateAmbiguousCenterMovement,accumulateSmallMovement} from './Traject
 
 export type PathPoint={x:number;y:number};
 export type PathEvidence='supported-step'|'estimated-ground-projection';
-export type PathMotionBasis='dual-foot-coherent'|'estimated-support'|'held'|'single-foot';
+export type PathMotionBasis='dual-foot-coherent'|'estimated-support'|'held'|'single-foot'|
+ 'dual-foot-and-hip'|'one-foot-hip-assisted'|'hip-short-gap';
 export type PathStanceHint={actorId:string;foot:'left'|'right';
  kind:'contact'|'swing'|'pivot';atMs:number;confidence:number;
  basis:'video-2d-estimate'};
