@@ -1,6 +1,6 @@
 import type {PathPoint} from './PathObservationRouter.ts';
-export type PathKnot={point:PathPoint;timeMs:number;confidence:number};
-export type PathSample=PathPoint&{s:number;tx:number;ty:number;confidence:number};
+export type PathKnot={point:PathPoint;timeMs:number;confidence:number;widthFactor?:number};
+export type PathSample=PathPoint&{s:number;tx:number;ty:number;confidence:number;widthFactor?:number};
 const length=(a:PathPoint,b:PathPoint)=>Math.hypot(b.x-a.x,b.y-a.y);
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const interpolate=(a:PathPoint,b:PathPoint,t:number):PathPoint=>
@@ -43,7 +43,8 @@ export function samplePathSegment(knots:readonly PathKnot[],index:number,
   samples.push({...positions[i],s:arc,
    tx:dl>.001?(b.x-a.x)/dl:(p2.x-p1.x)/chord,
    ty:dl>.001?(b.y-a.y)/dl:(p2.y-p1.y)/chord,
-   confidence:mix(knots[index].confidence,knots[index+1].confidence,i/steps)});
+   confidence:mix(knots[index].confidence,knots[index+1].confidence,i/steps),
+   widthFactor:mix(knots[index].widthFactor??1,knots[index+1].widthFactor??1,i/steps)});
  }
  return samples;
 }
