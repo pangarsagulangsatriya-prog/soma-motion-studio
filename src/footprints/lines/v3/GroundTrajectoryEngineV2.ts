@@ -7,8 +7,10 @@ import {ActorGroundTrajectoryEstimator} from './ActorGroundTrajectoryEstimator.t
 import type {ActorMotionFrame} from './ActorMotionFrameBuilder.ts';
 import {AdaptiveMotionSmootherV24} from './AdaptiveMotionSmootherV24.ts';
 import {CoverageTraceRecorderV24} from './CoverageTraceRecorderV24.ts';
+import type {SourceFrameGeometryV24} from '../../spatial/SourceFrameGeometryV24.ts';
 
-type Spatial={calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string};
+type Spatial={calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string;
+ sourceGeometry?:SourceFrameGeometryV24};
 /** Shared Path Sumi and Dual Trace motion contract.
  * Keeps camera-to-floor in the router, threshold/hysteresis in the tracker,
  * and observability here. No second pose detector or output warp.
