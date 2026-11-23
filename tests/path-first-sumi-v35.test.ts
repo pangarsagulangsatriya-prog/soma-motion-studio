@@ -150,7 +150,11 @@ test('30-minute accelerated two-actor stream retains bounded active-tail knots',
    for(const e of t.ingest(r.ingest(four(ms,x,'track:camera:soak:2')),ms))
     store.ingest(e,style);
   }
-  assert.ok(store.depositCount>300);
+  // V2.3: depositCount now counts stable committed spans, not redraw calls.
+  // A long active tail can be repainted many times without new travel.
+  assert.ok(store.diagnostics.pathLengthPx>500);
+  assert.ok(store.diagnostics.rasterDraws>300);
+  assert.ok(store.depositCount<=store.diagnostics.rasterDraws);
   assert.equal(store.activeCount,2);
   assert.ok(store.diagnostics.atlasBytes<=1600*900*4*3);
   assert.ok(store.exportPNG());
