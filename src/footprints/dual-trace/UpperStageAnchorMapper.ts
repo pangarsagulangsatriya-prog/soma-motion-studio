@@ -25,8 +25,10 @@ export function mapUpperAnchorsToStage(
  for(const anchor of anchors){
   const frame=frames.find(f=>f.actorId===anchor.actorId&&f.timeMs===anchor.timeMs&&
    f.sourceKey===anchor.sourceKey&&f.epoch===anchor.epoch);
+  // The pose stream epoch (clip segment) and foot adapter epoch (source restarts)
+  // are different counters. Match their stable sourceKey and frame timestamp.
   const floor=observations.find(o=>o.actorId===anchor.actorId&&o.timeMs===anchor.timeMs&&
-   o.epoch===anchor.epoch&&o.sourceKey.startsWith(anchor.sourceKey));
+   o.sourceKey.startsWith(anchor.sourceKey));
   if(!frame||!floor||floor.confidence<.55)continue;
   const lh=frame.landmarks[23],rh=frame.landmarks[24];
   if(!visible(lh)||!visible(rh))continue;
