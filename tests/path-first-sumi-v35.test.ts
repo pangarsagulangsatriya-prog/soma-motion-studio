@@ -211,3 +211,51 @@ test('v3.5.1: full mesh painter fills joined polygon, without per-knot stroke',a
  assert.ok(fills>=1);
  assert.equal(strokes,0,'pigment mesh must be a joined fill rather than strokes');
 });
+
+test('v3.5.1: replay contact hint anchors the actor to an estimated supporting sole',()=>{
+ const r=new PathObservationRouter();
+ r.ingest([pose('A','left',.20,1000),pose('A','right',.22,1000)]);
+ const estimated=r.ingest(
+  [pose('A','left',.202,1100),pose('A','right',.28,1100)],
+  [{actorId:'A',foot:'left',kind:'contact',atMs:1090,
+   confidence:.95,basis:'video-2d-estimate'}]
+ )[0];
+ assert.equal(estimated.supportFoot,'left');
+ assert.equal(estimated.motionBasis,'estimated-support');
+ assert.equal(estimated.evidence,'estimated-ground-projection');
+ assert.ok(estimated.point.x<360,'swinging right foot must not dominate support');
+});
+test('v3.5.1: stale pivot event is rejected; fresh estimated pivot stays labeled',()=>{
+ const r=new PathObservationRouter();
+ r.ingest([pose('A','left',.20,1000),pose('A','right',.22,1000)]);
+ const stale=r.ingest(
+  [pose('A','left',.20,1100),pose('A','right',.25,1100)],
+  [{actorId:'A',foot:'left',kind:'pivot',atMs:700,
+   confidence:.97,basis:'video-2d-estimate'}]
+ )[0];
+ assert.equal(stale.footEvent,'none');
+ const fresh=r.ingest(
+  [pose('A','left',.20,1200),pose('A','right',.29,1200)],
+  [{actorId:'A',foot:'left',kind:'pivot',atMs:1180,
+   confidence:.93,basis:'video-2d-estimate'}]
+ )[0];
+ assert.equal(fresh.supportFoot,'left');
+ assert.equal(fresh.footEvent,'pivot');
+ assert.equal(fresh.evidence,'estimated-ground-projection');
+});
+test('v3.5.1: actual video frame normalizer preserves timestamped gait contact hints',async()=>{
+ const {normalizeTrajectoryInput}=await import('../src/footprints/lines/v3/SourceFrameNormalizer.ts');
+ const fakeVideo={currentTime:1.2,readyState:4,paused:false,seeking:false};
+ const snapshot={segment:0,atMs:1200,ambiguous:false,people:[],
+  events:[{performer:'A',foot:'left',kind:'contact',atMs:1170,
+   confidence:.91,basis:'video-2d-estimate'}]};
+ const input=normalizeTrajectoryInput({nowMs:1230,demo:false,demoStart:0,
+  experimentSource:'video',experiment:{kind:'video',ready:true,
+   name:'test.mp4',snapshot,video:fakeVideo,timeMs:1200} as any,
+  live:null,cameraOn:false,bodySelected:false,
+  performers:2,status:{} as any,sourceKind:'camera',motionSession:'test'});
+ assert.equal(input.supportHints?.length,1);
+ assert.equal(input.supportHints?.[0].foot,'left');
+ assert.equal(input.supportHints?.[0].basis,'video-2d-estimate');
+ assert.equal(input.supportHints?.[0].atMs,1170);
+});

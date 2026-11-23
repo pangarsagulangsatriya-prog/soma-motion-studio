@@ -5,6 +5,9 @@ import type {FootBrushPose} from './FootBrushPoseAdapter.ts';
 export type PathPoint={x:number;y:number};
 export type PathEvidence='supported-step'|'estimated-ground-projection';
 export type PathMotionBasis='dual-foot-coherent'|'estimated-support'|'held'|'single-foot';
+export type PathStanceHint={actorId:string;foot:'left'|'right';
+ kind:'contact'|'swing'|'pivot';atMs:number;confidence:number;
+ basis:'video-2d-estimate'};
 export type ActorPathObservation={
  actorId:ActorChannel;sourceKey:string;clipStableId:string;epoch:number;
  timeMs:number;point:PathPoint;confidence:number;evidence:PathEvidence;
@@ -37,7 +40,7 @@ const norm=(p:FootBrushPose):PathPoint=>({
 export class PathObservationRouter{
  private last=new Map<ActorChannel,Last>();
  reset(){this.last.clear();}
- ingest(poses:readonly FootBrushPose[]):ActorPathObservation[]{
+ ingest(poses:readonly FootBrushPose[],hints:readonly PathStanceHint[]=[]):ActorPathObservation[]{
   const grouped=new Map<ActorChannel,Partial<Record<Foot,FootBrushPose>>>();
   const invalid=new Set<ActorChannel>();
   for(const p of poses){
@@ -57,6 +60,18 @@ export class PathObservationRouter{
    const left=pair.left,right=pair.right,one=left??right;if(!one)continue;
    if(left&&right&&(left.atMs!==right.atMs||left.sourceKey!==right.sourceKey||
       left.epoch!==right.epoch||left.coordinateBasis!==right.coordinateBasis))continue;
+   // Ignore old estimated contact once the same foot reports swing.
+   const recent=new Map<Foot,PathStanceHint>();
+   for(const hint of hints){
+    if(actorChannel(hint.actorId)!==actor||hint.basis!=='video-2d-estimate'||
+       hint.confidence<.65||one.atMs-hint.atMs>220||
+       hint.atMs>one.atMs+50)continue;
+    const prior=recent.get(hint.foot);
+    if(!prior||hint.atMs>prior.atMs)recent.set(hint.foot,hint);
+   }
+   const hinted=[...recent.values()].filter(h=>h.kind!=='swing'&&
+     (h.foot==='left'?!!left:!!right))
+    .sort((a,b)=>b.atMs-a.atMs||b.confidence-a.confidence)[0];
    const previous=this.last.get(actor);
    const dt=previous?one.atMs-previous.timeMs:0;
    const continuous=!!previous&&previous.sourceKey===one.sourceKey&&
@@ -93,7 +108,14 @@ export class PathObservationRouter{
        Math.max(mL,mR)/Math.max(1,Math.min(mL,mR))<3.2;
       const leftGround=mL<=Math.max(8,mR*.37)&&mR>=10;
       const rightGround=mR<=Math.max(8,mL*.37)&&mL>=10;
-      if(similar){
+      if(hinted){
+       supportFoot=hinted.foot;
+       const planted=supportFoot==='left'?dl:dr;
+       const switched=!!old.supportFoot&&old.supportFoot!==supportFoot;
+       movement=add(multiply(planted,.70),
+        multiply(limit(dMid,40),switched?.24:.10));
+       basis='estimated-support';
+      }else if(similar){
        movement=multiply(dMid,.80);basis='dual-foot-coherent';
       }else if(leftGround!==rightGround){
        supportFoot=leftGround?'left':'right';
@@ -137,7 +159,9 @@ export class PathObservationRouter{
     timeMs:one.atMs,point,
     confidence:Math.min(...[left,right].filter(Boolean).map(p=>p!.confidence)),
     evidence:'estimated-ground-projection',provenance:one.provenance,
-    ...(supportFoot?{supportFoot}:{}),footEvent:'none',motionBasis:basis});
+    ...(supportFoot?{supportFoot}:{}),
+    footEvent:hinted?.kind==='pivot'&&supportFoot===hinted.foot&&hinted.confidence>=.8?
+      'pivot':'none',motionBasis:basis});
   }
   return result;
  }

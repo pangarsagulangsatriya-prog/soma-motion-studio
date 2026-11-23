@@ -85,7 +85,9 @@ export class PersistentPathStore{
   this.cover(rec,prev.timeMs,event.timeMs);
   rec.knots.push({point:{...event.point},timeMs:event.timeMs,confidence:event.confidence});
   rec.lastAt=event.timeMs;
-  if(event.kind==='TURN'&&Math.abs(event.turnRad??0)>.65&&
+  if(event.kind==='TURN'&&event.footEvent==='pivot'&&
+     event.motionBasis==='estimated-support'&&event.confidence>=.8&&
+     Math.abs(event.turnRad??0)>.55&&
      event.timeMs-rec.lastAccentAt>800){
     rec.lastAccentAt=event.timeMs;rec.accentKnot.add(rec.knots.length-1);
   }

@@ -195,7 +195,7 @@ export function LineTrailsV3Stage(props:StageProps){
        brushAdapter=batch.state;
        if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');}
        if(nextPathMode&&!input.paused){
-        const observations=pathRouter.ingest(batch.poses).filter(o=>!pathStore.isReplayCovered(o));
+        const observations=pathRouter.ingest(batch.poses,input.supportHints).filter(o=>!pathStore.isReplayCovered(o));
          lastPathObservations=observations;
         const pathEvents=pathTracker.ingest(observations,input.frameMs);
         for(const event of pathEvents){

@@ -6,6 +6,8 @@ export type PathEvent={
  timeMs:number;point:PathPoint;sourceKey:string;clipStableId:string;
  epoch:number;confidence:number;provenance:ActorPathObservation['provenance'];
  turnRad?:number;reason?:string;
+ footEvent?:ActorPathObservation['footEvent'];
+ motionBasis?:ActorPathObservation['motionBasis'];
 };
 type State={strokeId:string;last:ActorPathObservation;lastMoveAt:number;
  lastPoint:PathPoint;lastDirection?:number;stopped:boolean};
@@ -96,6 +98,7 @@ export class ActorPathTracker{
   const o=state.last;
   return {kind,actorId,strokeId:state.strokeId,timeMs,point:state.lastPoint,
    sourceKey:o.sourceKey,clipStableId:o.clipStableId,epoch:o.epoch,
-   confidence:o.confidence,provenance:o.provenance};
+   confidence:o.confidence,provenance:o.provenance,
+   footEvent:o.footEvent,motionBasis:o.motionBasis};
  }
 }
