@@ -184,7 +184,7 @@ export class PathObservationRouter{
    // can issue a measurable CUT with its own reason.
    const velocity=continuous&&previous?multiply(delta(point,previous.point),
     1000/Math.max(1,dt)):{x:0,y:0};
-   this.last.set(actor,{sourceKey:one.sourceKey+(spatial?'|floor:'+spatial.calibrationId:''),epoch:one.epoch,timeMs:one.atMs,
+   this.last.set(actor,{sourceKey:one.sourceKey,epoch:one.epoch,timeMs:one.atMs,
     point,midpoint,feet,supportFoot,velocity});
    result.push({actorId:actor,sourceKey:one.sourceKey+(spatial?'|floor:'+spatial.calibrationId:''),
     clipStableId:stableInkSourceIdentity(one.sourceKey),epoch:one.epoch,
