@@ -356,10 +356,23 @@ export function LineTrailsV3Stage(props:StageProps){
   return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');cutUpper('unmount');
     args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
- return <div ref={props.fullscreenRef} className="lt-beta-frame lt-v3-stage"
-  aria-label="Kanvas Garis V3, lintasan dua kaki">
-  <canvas ref={canvas} width={1600} height={900} aria-label="Lintasan nyata kaki kiri dan kanan"/>
- </div>;
+ const dualEnabled=props.painterly.enabled&&
+  props.painterly.painterlyEngine==='dual-trace-v1';
+ const exportUpper=()=>{
+  const png=upperCanvas.current?.toDataURL('image/png');
+  if(!png)return;
+  const link=document.createElement('a');link.href=png;
+  link.download='soma-dual-trace-upper.png';link.click();
+ };
+ return <DualTraceCanvasHost enabled={dualEnabled}
+  footRef={canvas} upperRef={upperCanvas} fullscreenRef={props.fullscreenRef}
+  footPaneRef={footPane} upperPaneRef={upperPane}
+  hasUpper={hasUpper}
+  sourceIsFootOnly={props.demo||props.experimentSource==='simulator'}
+  onClearFoot={()=>{clearTriggers.current.foot++;}}
+  onClearUpper={()=>{clearTriggers.current.upper++;}}
+  onClearBoth={()=>{clearTriggers.current.foot++;clearTriggers.current.upper++;}}
+  onExportUpper={exportUpper}/>;
 }
 
 type PanelProps={
@@ -396,11 +409,27 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
  const material=(value:PainterlySettings['material'])=>onPainterlyChange({...painterly,material:value});
  const sumi=painterly.painterlyEngine==='sumi-v34';
  const pathMode=painterly.painterlyEngine==='path-first-v35';
+ const dualMode=painterly.painterlyEngine==='dual-trace-v1';
  const inkMode=sumi||pathMode;
  const change=(patch:Partial<PainterlySettings>)=>onPainterlyChange({...painterly,...patch});
+ if(dualMode)return <DualTraceControls painterly={painterly}
+  onPainterlyChange={onPainterlyChange} settings={settings}
+  onSettingsChange={onChange} onClear={onClear} onDemo={onDemo}
+  demo={demo} status={status} onExportFoot={()=>onExportPNG?.()}
+  onExit={()=>change({painterlyEngine:'path-first-v35'})}/>;
  return <section className="lt-beta-controls lt-v3-controls lt-painterly-controls" aria-label="Kontrol Garis V3">
   <header><strong>Garis · Painterly</strong><span>{pathMode?'V3.5 PATH':sumi?'V3.4 SUMI':painterly.painterlyEngine==='foot-brush-v33'?'V3.3 BETA':'V3.2 BETA'}</span></header>
   <div className="lt-painterly-material" role="group" aria-label="Engine lukisan">
+   <button type="button" aria-pressed={false}
+    onClick={()=>{
+     onChange({...settings,actorColors:{A:'#E84B32',B:'#202226'}});
+     change({painterlyEngine:'dual-trace-v1',pathWeightPx:22,
+      footprintLifeMs:6000,footprintKeep:false,showSoles:true,showTrails:true,
+      trailKeep:true,dualGain:1.35,dualHeadEnabled:true,
+      dualShoulderEnabled:true,dualHeadWidth:8,dualShoulderWidth:16,
+      dualHeadOpacity:.75,dualShoulderOpacity:.9,dualSmoothing:.42,
+      previewFit:false});
+    }}>Dual Trace · BETA</button>
    <button type="button" aria-pressed={pathMode} onClick={()=>change({
      painterlyEngine:'path-first-v35',pathWeightPx:painterly.pathWeightPx??26,
      pathMaterial:painterly.pathMaterial??'path-sumi',pathAccents:painterly.pathAccents??'subtle',
