@@ -8,6 +8,7 @@ import {paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
 import {lifetimeOpacity,type PainterlyImpressionEngine} from '../lines/v3/PainterlyImpressionEngine.ts';
 import type {FootVisibility} from '../lines/v3/ActorPaletteResolver.ts';
 import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type CameraFloorCalibration} from '../spatial/coordinates.ts';
+import {stageUVToSourceUV,type SourceFrameGeometryV24} from '../spatial/SourceFrameGeometryV24.ts';
 
 export type DualTraceV2Mode='composite'|'split-debug';
 export type DualTraceV2Order='foot-on-top'|'upper-on-top';
@@ -35,11 +36,12 @@ export function dualTraceLayerOrder(order:DualTraceV2Order='foot-on-top'):
  return order==='foot-on-top'?['upper','path','footprint']:['footprint','path','upper'];
 }
 export type DualSpatialContext={
- calibration:CameraFloorCalibration;videoAspect:number;
+ calibration:CameraFloorCalibration;videoAspect:number;sourceGeometry?:SourceFrameGeometryV24;
 };
 function calibratedPoint(x:number,y:number,spatial?:DualSpatialContext){
  if(!spatial)return {x:x*W,y:y*H};
- const uv=stageUVToRawCamera({x,y},spatial.videoAspect);
+ const uv=spatial.sourceGeometry?stageUVToSourceUV({x,y},spatial.sourceGeometry):
+  stageUVToRawCamera({x,y},spatial.videoAspect);
  if(!uv)return null;
  const ground=cameraGroundToFloor(spatial.calibration,{
   cameraUV:uv,phase:'stance',confidence:.75});
@@ -155,7 +157,7 @@ export class DualTraceV2Renderer{
   const cacheKey=[presentationMs,lifeMs,keep,impressions.count,impressions.headsCount,
    visible.A.left,visible.A.right,visible.B.left,visible.B.right,
    spatial?.calibration.cameraQuad.map(p=>p.x+','+p.y).join(';')??'image-2d',
-   spatial?.videoAspect??0].join('|');
+   spatial?.videoAspect??0,spatial?.sourceGeometry?.version??'legacy'].join('|');
   if(this.footprintCacheSignature!==cacheKey){
    this.footprintCacheSignature=cacheKey;
    for(const actor of ACTORS){
