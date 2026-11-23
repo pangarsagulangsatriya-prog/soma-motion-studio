@@ -21,6 +21,8 @@ export type PainterlySettings={
  dualV2Palette?:DualTraceV2Palette;
  dualV2Material?:'path-sumi'|'dry-ink'|'pigment-mass';
  dualV2Expressive?:boolean;
+ /** Toggle rollback: false restores original V2.1 foot-only routing. */
+ trajectoryV22Enabled?:boolean;
  dualV2PathOpacity?:number;
  dualV2FootOpacity?:number;
  dualV2UpperOpacity?:number;
