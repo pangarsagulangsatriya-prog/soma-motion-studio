@@ -160,6 +160,12 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
     const opacity=0.87*Math.max(.18,1-age/5000)*Math.max(.45,e.confidence);
     const predicted=e.phase==='position-estimate';
     const paint=(ctx:CanvasRenderingContext2D,x:number,y:number,angle:number)=>{
+     // Charcoal soles need a subtle light ring over dark calibration footage.
+     if(e.actorId==='B'&&e.origin!=='synthetic-test'){
+      ctx.save();ctx.strokeStyle='rgba(240,244,233,0.68)';ctx.lineWidth=1;
+      ctx.globalAlpha=opacity;ctx.beginPath();ctx.arc(x,y,13,0,Math.PI*2);
+      ctx.stroke();ctx.restore();
+     }
      paintAuthenticFootprint(ctx,{x,y,side:e.foot,widthPx:11,lengthPx:25,
       headingRad:angle,color:e.origin==='synthetic-test'?'#e1b85e':assistColors[e.actorId],
       alpha:opacity,phase:predicted?'prediction':undefined});
