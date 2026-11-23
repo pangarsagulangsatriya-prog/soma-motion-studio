@@ -46,3 +46,61 @@
 @media(max-width:720px){.s64-root .dual-trace-layout{grid-template-columns:1fr}
  .dual-trace-two-settings{grid-template-columns:1fr}
  .dual-trace-bottom-controls{flex-wrap:wrap}}
+
+
+/* V2: one production canvas. Split Debug is presentation-only; the main
+ * canvas stays mounted for consistent FLOOR/Map/Perform raster publication. */
+.s64-root .dual-v2-host{padding:8px;display:flex;flex-direction:column;gap:8px}
+.dual-v2-topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d3e6d5;
+ font:600 11px system-ui;min-height:29px}
+.dual-v2-topbar button,.dual-v2-footer button{border:1px solid #55745f;border-radius:6px;
+ background:#24412e;color:#f0f3ec;padding:6px 10px;font:600 10px system-ui;cursor:pointer}
+.dual-v2-canvas-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#f7f6f2;
+ border-radius:7px;overflow:hidden;line-height:0}
+.dual-v2-canvas-wrap canvas{width:100%;height:100%;display:block;object-fit:contain}
+.dual-v2-canvas-wrap[data-hidden=true]{position:absolute!important;left:-10000px;top:0;
+ width:1600px;height:900px;visibility:hidden;pointer-events:none}
+.dual-v2-debug-layout{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}
+.dual-v2-debug-pane{overflow:hidden;min-width:0;border:1px solid #466451;border-radius:7px;
+ background:#f7f6f2}
+.dual-v2-debug-pane>strong{display:block;padding:8px;background:#1b3424;color:#e1ebe1;
+ font:700 11px system-ui}
+.dual-v2-debug-pane canvas{width:100%;height:auto;aspect-ratio:16/9;display:block}
+.dual-v2-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;
+ color:#b5c8b5;font:500 11px system-ui;flex-wrap:wrap}
+.dual-v2-footer>div{display:flex;gap:6px;flex-wrap:wrap}
+.dual-v2-host:fullscreen{padding:0!important;display:flex;align-items:center;justify-content:center;
+ background:#f7f6f2!important}
+.dual-v2-host:fullscreen .dual-v2-topbar,.dual-v2-host:fullscreen .dual-v2-footer{display:none!important}
+.dual-v2-host:fullscreen .dual-v2-canvas-wrap{width:100vw;height:100vh;border:0;border-radius:0;
+ display:flex;align-items:center;justify-content:center}
+.dual-v2-host:fullscreen .dual-v2-canvas-wrap canvas{object-fit:contain}
+.dual-v2-host:fullscreen .dual-v2-debug-layout{width:100vw;gap:0}
+.dual-v2-controls{display:flex;flex-direction:column;gap:10px}
+.dual-v2-controls>header{display:flex;justify-content:space-between;align-items:center}
+.dual-v2-controls>header span{font:700 10px system-ui;color:#eab5a4}
+.dual-v2-group{border:1px solid #3c5744;border-radius:8px;padding:9px;
+ display:flex;flex-direction:column;gap:9px}
+.dual-v2-group>strong,.dual-v2-group>summary{font:700 11px system-ui;color:#d9e9d9}
+.dual-v2-group>summary{cursor:pointer}
+.dual-v2-group small{font:500 10px/1.5 system-ui;color:#9eb6a3}
+.dual-v2-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dual-v2-toggle button,.dual-v2-actions button,.dual-v2-legacy button{border:1px solid #48694e;
+ border-radius:7px;background:#1e3928;color:#e2e9df;padding:8px 5px;font:600 11px system-ui;cursor:pointer}
+.dual-v2-toggle button[aria-pressed=true]{background:#375a42;border-color:#b8d5b4}
+.dual-v2-palette{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;gap:8px;
+ margin-top:10px;color:#bfd3bf;font:600 11px system-ui}
+.dual-v2-palette-row{display:contents}
+.dual-v2-palette input[type=color]{width:100%;height:32px;background:transparent;border:1px solid #47664d;border-radius:5px}
+.dual-v2-slider{display:grid;grid-template-columns:1fr auto;gap:6px;color:#c2d4c4;
+ font:500 11px system-ui;margin-top:7px}
+.dual-v2-slider input[type=range]{grid-column:1/-1;width:100%;accent-color:#b8d5b4}
+.dual-v2-setting{display:flex;align-items:center;gap:8px;font:500 11px system-ui;color:#c2d4c4;margin-top:8px}
+.dual-v2-setting select{flex:1;min-width:0;color:#edf1ed;background:#203a2b;border:1px solid #47664d}
+.dual-v2-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.dual-v2-legacy{color:#aabfac;font-size:11px}
+.dual-v2-legacy button{width:100%;margin-top:8px}
+@media(max-width:740px){
+ .dual-v2-debug-layout{grid-template-columns:1fr}
+ .dual-v2-footer{flex-direction:column;align-items:flex-start}
+}
