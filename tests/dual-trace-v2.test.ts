@@ -53,6 +53,10 @@ test('DTV2-06: calibrated upper anchors follow the actor floor anchor',()=>{
  assert.ok(Math.abs(imageAnchored[0].pointPx.x-anchored[0].pointPx.x)<.001);
  assert.ok(Math.abs(imageAnchored[0].pointPx.y-anchored[0].pointPx.y)<.001,
   'image 2D and calibrated sources must share actor-based painting coordinates');
+ // The foot adapter increments its own epoch on source changes; the MP4
+ // upper source uses clip-segment epoch. A different numeric epoch is valid.
+ const restartedFoot={...observation,epoch:7};
+ assert.equal(mapUpperAnchorsToStage([upper],[frame],[restartedFoot],false).length,1);
  assert.equal(mapUpperAnchorsToStage([upper],[frame],[],true).length,0);
  const other={...observation,actorId:'B' as const};
  assert.equal(mapUpperAnchorsToStage([upper],[frame],[other],false).length,0,
