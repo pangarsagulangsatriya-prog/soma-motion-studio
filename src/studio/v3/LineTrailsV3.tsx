@@ -145,8 +145,8 @@ export function LineTrailsV3Stage(props:StageProps){
   const cutPath=(reason:string)=>{
    for(const event of trajectory.cutAll(reason))
     if(args.current.painterly.painterlyEngine==='dual-trace-v2')
-     v2.ingestPath(event,args.current.painterly.pathWeightPx??22,
-      args.current.painterly.dualV2Material??'path-sumi',args.current.painterly.dualV2Expressive??false);
+     v2.ingestPath(event,args.current.painterly.pathWeightPx??36,
+      args.current.painterly.dualV2Material??'path-sumi',args.current.painterly.dualV2Expressive??true);
     else pathStore.ingest(event,pathStyle(event.actorId));
    lastPathObservations=[];
   };
@@ -291,8 +291,8 @@ export function LineTrailsV3Stage(props:StageProps){
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
          if(nextDualV2)
-          v2.ingestPath(event,p.painterly.pathWeightPx??22,
-           p.painterly.dualV2Material??'path-sumi',p.painterly.dualV2Expressive??false);
+          v2.ingestPath(event,p.painterly.pathWeightPx??36,
+           p.painterly.dualV2Material??'path-sumi',p.painterly.dualV2Expressive??true);
          else pathStore.ingest(event,pathStyle(event.actorId));
         }
        }
@@ -551,7 +551,7 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
     onClick={()=>{
      onChange({...settings,actorColors:{A:'#E84B32',B:'#202226'}});
      change({painterlyEngine:'dual-trace-v2',dualV2Display:'composite',
-      dualV2Order:'foot-on-top',pathWeightPx:22,
+      dualV2Order:'foot-on-top',pathWeightPx:36,dualV2Expressive:true,
       footprintLifeMs:6000,footprintKeep:false,showSoles:true,showTrails:true,
       trailKeep:true,dualGain:1.35,dualHeadEnabled:true,
       dualShoulderEnabled:true,dualHeadWidth:8,dualShoulderWidth:16,
