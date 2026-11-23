@@ -216,11 +216,11 @@ export class DualTraceV2Renderer{
    for(const channel of order){
     if(opts.only==='foot'&&channel==='upper'||opts.only==='upper'&&channel!=='upper')continue;
     if(channel==='path')
-     this.drawPath(ctx,palette,clamp(opts.pathOpacity??.8,0,1));
+     this.drawPath(ctx,palette,clamp(opts.pathOpacity??.95,0,1));
     else if(channel==='footprint')
      this.drawFeet(ctx,palette,impressions,timeMs,opts.footprintLifeMs,
       opts.footprintKeep,clamp(opts.footprintOpacity??.85,0,1),footVisible,spatial);
-    else this.drawUpper(ctx,palette,clamp(opts.upperOpacity??.52,0,1),
+    else this.drawUpper(ctx,palette,clamp(opts.upperOpacity??.35,0,1),
       opts.headEnabled,opts.shoulderEnabled,opts.headOpacity,opts.shoulderOpacity);
    }
   }
