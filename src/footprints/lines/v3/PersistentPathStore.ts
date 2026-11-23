@@ -66,14 +66,15 @@ export class PersistentPathStore{
   }
   this.ranges.set(key,merged.length<=2048?merged:merged.slice(-2048));
  }
- ingest(event:PathEvent,style:PathStyle){
+ ingest(event:PathEvent&{widthFactor?:number},style:PathStyle){
   this.canvases();
   if(event.kind==='START'){
    const prior=this.strokes.get(event.actorId);
    if(prior)this.finalize(prior);
    const rec:Stroke={id:event.strokeId,actorId:event.actorId,
     clipStableId:event.clipStableId,sourceKey:event.sourceKey,
-    knots:[{point:{...event.point},timeMs:event.timeMs,confidence:event.confidence}],
+    knots:[{point:{...event.point},timeMs:event.timeMs,confidence:event.confidence,
+     widthFactor:event.widthFactor}],
     baseArc:0,committedSeg:0,lastAt:event.timeMs,
     style:{...style,weightPx:clamp(style.weightPx,8,64),seed:h32(event.strokeId+this.index)},
     accentKnot:new Set<number>(),lastAccentAt:-Infinity};
@@ -88,7 +89,8 @@ export class PersistentPathStore{
   const prev=rec.knots[rec.knots.length-1],d=segment(prev.point,event.point);
   if(d<2||d>180)return;
   this.cover(rec,prev.timeMs,event.timeMs);
-  rec.knots.push({point:{...event.point},timeMs:event.timeMs,confidence:event.confidence});
+  rec.knots.push({point:{...event.point},timeMs:event.timeMs,confidence:event.confidence,
+   widthFactor:event.widthFactor});
   rec.lastAt=event.timeMs;
   if(event.kind==='TURN'&&event.footEvent==='pivot'&&
      event.motionBasis==='estimated-support'&&event.confidence>=.8&&
