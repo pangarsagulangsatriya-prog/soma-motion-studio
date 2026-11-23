@@ -104,6 +104,12 @@ export class ActorGroundTrajectoryEstimator{
    }
    if(!frame){
     if(foot){
+     // Losing an established body's reliable hip/identity must not silently
+     // fall back to one ankle and keep the old actor's stroke alive.
+     if(enableV23&&state){
+      if(this.continuity.has(actor))this.continuity.reject(actor,'bridge-missing-hip');
+      cuts.push({actorId:actor,reason:'identity-or-hip-unavailable'});
+     }
      if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'bridge-missing-hip');
      // Pure foot-only V2.1 fallback (simulator, demo or missing hip).
      observations.push(foot);
