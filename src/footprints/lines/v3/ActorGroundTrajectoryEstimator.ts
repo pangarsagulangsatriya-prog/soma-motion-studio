@@ -6,12 +6,15 @@ import type {ActorPathObservation,PathPoint} from './PathObservationRouter.ts';
 import {ActorContinuityCoordinator} from './ActorContinuityCoordinator.ts';
 import type {BridgeContext} from './ContinuityBridgeValidator.ts';
 import {fuseSpatialMovementV24} from './ActorSpatialFusionV24.ts';
+import {stageUVToSourceUV,type SourceFrameGeometryV24} from '../../spatial/SourceFrameGeometryV24.ts';
 
-type Spatial={calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string};
+type Spatial={calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string;
+ sourceGeometry?:SourceFrameGeometryV24};
 type Basis='dual-foot-and-hip'|'one-foot-hip-assisted'|'hip-short-gap'|
  'foot-only-low-confidence'|'unavailable';
 type State={
  sourceKey:string;footEpoch:number;timeMs:number;footAtMs:number;
+ geometryVersion?:string;
  point:PathPoint;confirmed:PathPoint;hipPx?:PathPoint;
  imageAnchorPx?:PathPoint;lastFootPx?:PathPoint;
  lastFootObservation:ActorPathObservation;
@@ -39,7 +42,9 @@ export function hipGroundDisplacement(
  if(!spatial)return movement;
  const project=(p:PathPoint):PathPoint|null=>{
   if(!valid(p))return null;
-  const raw=stageUVToRawCamera({x:p.x/1600,y:p.y/900},spatial.videoAspect);
+  const raw=spatial.sourceGeometry?
+   stageUVToSourceUV({x:p.x/1600,y:p.y/900},spatial.sourceGeometry):
+   stageUVToRawCamera({x:p.x/1600,y:p.y/900},spatial.videoAspect);
   if(!raw)return null;
   const ground=cameraGroundToFloor(spatial.calibration,{
    cameraUV:raw,phase:'stance',confidence:1});
@@ -100,6 +105,8 @@ export class ActorGroundTrajectoryEstimator{
    let state=this.states.get(actor);
    if(frame&&state&&
     (state.sourceKey!==frame.sourceKey||
+     !!state.geometryVersion&&!!frame.geometryVersion&&
+      state.geometryVersion!==frame.geometryVersion||
      frame.timeMs<=state.timeMs||frame.timeMs-state.timeMs>900)){
     if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'bridge-source-change');
     cuts.push({actorId:actor,reason:'trajectory-source-or-gap'});
@@ -133,6 +140,7 @@ export class ActorGroundTrajectoryEstimator{
     if(enableV23)this.continuity.observe(actor);
     this.states.set(actor,{
      sourceKey:frame.sourceKey,footEpoch:foot.epoch,timeMs:frame.timeMs,
+     ...(frame.geometryVersion?{geometryVersion:frame.geometryVersion}:{}),
      footAtMs:frame.timeMs,point:{...foot.point},confirmed:{...foot.point},
      hipPx:{...frame.hipPx},imageAnchorPx:frame.footImageAnchorPx,
      lastFootPx:{...foot.point},lastFootObservation:foot,pending:[],
@@ -222,9 +230,9 @@ export class ActorGroundTrajectoryEstimator{
    // V2.4 prefers the raw support measurement for reconciliation; the old
    // router point can be temporally compressed or reflect one swinging foot.
    const footReference=enableV24&&frame.footImageAnchorPx&&frame.feetCount===2?
-    (spatial?(()=>{const raw=stageUVToRawCamera({
-       x:frame.footImageAnchorPx!.x/1600,y:frame.footImageAnchorPx!.y/900},
-       spatial.videoAspect);
+    (spatial?(()=>{const xy={x:frame.footImageAnchorPx!.x/1600,y:frame.footImageAnchorPx!.y/900};
+     const raw=spatial.sourceGeometry?stageUVToSourceUV(xy,spatial.sourceGeometry):
+      stageUVToRawCamera(xy,spatial.videoAspect);
       if(!raw)return null;
       const ground=cameraGroundToFloor(spatial.calibration,{
        cameraUV:raw,phase:'stance',confidence:foot.confidence});
