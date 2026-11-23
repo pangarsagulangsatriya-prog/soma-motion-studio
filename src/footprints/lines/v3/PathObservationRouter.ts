@@ -1,3 +1,4 @@
+import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type CameraFloorCalibration} from '../../spatial/coordinates.ts';
 import {actorChannel,type ActorChannel} from './ActorPaletteResolver.ts';
 import {stableInkSourceIdentity} from './ObservedMotionInkEngine.ts';
 import type {FootBrushPose} from './FootBrushPoseAdapter.ts';
@@ -39,8 +40,14 @@ const norm=(p:FootBrushPose):PathPoint=>({
  */
 export class PathObservationRouter{
  private last=new Map<ActorChannel,Last>();
+ private spatialSignature='';
  reset(){this.last.clear();}
- ingest(poses:readonly FootBrushPose[],hints:readonly PathStanceHint[]=[]):ActorPathObservation[]{
+ ingest(poses:readonly FootBrushPose[],hints:readonly PathStanceHint[]=[],spatial?:{
+  calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string;
+ }):ActorPathObservation[]{
+  // A changed physical camera plane starts new strokes, never joins two spaces.
+  const signature=spatial?spatial.calibrationId:'image-2d';
+  if(signature!==this.spatialSignature){this.reset();this.spatialSignature=signature;}
   const grouped=new Map<ActorChannel,Partial<Record<Foot,FootBrushPose>>>();
   const invalid=new Set<ActorChannel>();
   for(const p of poses){
@@ -148,13 +155,38 @@ export class PathObservationRouter{
      if(length(limited,{x:0,y:0})<1.2)point={...old.point};
     }
    }
+   // A confirmed floor profile maps the estimated support position to metres,
+   // then to the canonical 1600 × 900 stage. This is still a 2D estimated
+   // ground position; it does not prove physical pressure or 3D head depth.
+   // Never clamp an out-of-bounds actor to the picture edge.
+   if(spatial){
+    const support=hinted?.foot==='left'?left?.center:
+     hinted?.foot==='right'?right?.center:
+     supportFoot==='left'?left?.center:
+     supportFoot==='right'?right?.center:undefined;
+    const imagePoint=support??{x:midpoint.x/1600,y:midpoint.y/900};
+    const cameraUV=stageUVToRawCamera(imagePoint,spatial.videoAspect);
+    const ground=cameraUV?cameraGroundToFloor(spatial.calibration,{
+     cameraUV,phase:'stance',confidence:one.confidence
+    }):null;
+    if(ground){
+     const floorUV=floorToUV(spatial.calibration.floor,ground);
+     point={x:floorUV.x*1600,y:floorUV.y*900};
+     basis='estimated-support';
+    }else{
+     // Outside calibrated floor or impossible video fit: do not stamp an
+     // arbitrary image coordinate into the metric-floor drawing.
+     this.last.delete(actor);
+     continue;
+    }
+   }
    // Preserve source/epoch even for a discontinuous frame so the tracker
    // can issue a measurable CUT with its own reason.
    const velocity=continuous&&previous?multiply(delta(point,previous.point),
     1000/Math.max(1,dt)):{x:0,y:0};
-   this.last.set(actor,{sourceKey:one.sourceKey,epoch:one.epoch,timeMs:one.atMs,
+   this.last.set(actor,{sourceKey:one.sourceKey+(spatial?'|floor:'+spatial.calibrationId:''),epoch:one.epoch,timeMs:one.atMs,
     point,midpoint,feet,supportFoot,velocity});
-   result.push({actorId:actor,sourceKey:one.sourceKey,
+   result.push({actorId:actor,sourceKey:one.sourceKey+(spatial?'|floor:'+spatial.calibrationId:''),
     clipStableId:stableInkSourceIdentity(one.sourceKey),epoch:one.epoch,
     timeMs:one.atMs,point,
     confidence:Math.min(...[left,right].filter(Boolean).map(p=>p!.confidence)),
