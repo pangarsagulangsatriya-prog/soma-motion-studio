@@ -61,6 +61,7 @@ export class DualTraceV2Renderer{
  private tinted=new Map<string,{revision:number;color:string;canvas:HTMLCanvasElement}>();
  private lastSpatialSignature='';
  private footprintMask={A:blank(),B:blank()};
+ private tintedFeet={A:blank(),B:blank()};
  private footprintCacheTime=-1;
  get pathCount(){return this.path.A.depositCount+this.path.B.depositCount;}
  get upperCount(){return ACTORS.reduce((v,a)=>v+this.upper[a].head.depositCount+
@@ -105,7 +106,8 @@ export class DualTraceV2Renderer{
   for(const a of ACTORS){this.upper[a].head.clearPainting();this.upper[a].shoulder.clearPainting();}
   this.tinted.clear();
  }
- clearBoth(){this.clearPath();this.clearUpper();}
+ clearBoth(){this.clearPath();this.clearUpper();this.footprintCacheTime=-1;}
+ invalidateFootprints(){this.footprintCacheTime=-1;}
  private tintedCanvas(id:string,store:PersistentPathStore,color:string){
   const source=store.getCanvas();
   if(!source)return null;
@@ -173,8 +175,10 @@ export class DualTraceV2Renderer{
    }
   }
   for(const actor of ACTORS){
-   const mask=this.footprintMask[actor],temp=blank(),g=temp.getContext('2d');
+   const mask=this.footprintMask[actor],temp=this.tintedFeet[actor],g=temp.getContext('2d');
    if(!g)continue;
+   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;
+   g.globalCompositeOperation='source-over';g.clearRect(0,0,W,H);
    g.drawImage(mask,0,0);
    g.globalCompositeOperation='source-in';g.fillStyle=palette[actor].footprint;
    g.fillRect(0,0,W,H);
