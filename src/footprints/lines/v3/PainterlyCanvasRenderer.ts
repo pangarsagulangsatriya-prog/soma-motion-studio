@@ -25,6 +25,8 @@ export type PainterlySettings={
  dualV2UpperModulation?:boolean;
  /** Toggle rollback: false restores original V2.1 foot-only routing. */
  trajectoryV22Enabled?:boolean;
+ /** Beta: validated short gaps share one persistent actor stroke. False keeps V2.2. */
+ trajectoryV23Enabled?:boolean;
  dualV2PathOpacity?:number;
  dualV2FootOpacity?:number;
  dualV2UpperOpacity?:number;
