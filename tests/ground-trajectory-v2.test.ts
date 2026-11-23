@@ -54,7 +54,7 @@ test('V2.1 stationary pose has at most one STOP per actor and no repeated ADD',(
   const {events}=engine.ingest(source,ms,pair(ms,x));
   all.push(...events.map(e=>e.kind));
  }
- assert.equal(all.filter(x=>x==='STOP').length<=2);
+ assert.ok(all.filter(x=>x==='STOP').length<=2);
  assert.equal(all.filter(x=>x==='CUT').length,0);
  assert.ok(all.filter(x=>x==='ADD'||x==='TURN').length<=4);
 });
