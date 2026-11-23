@@ -28,3 +28,17 @@
  .soma-map-assist-status{flex:1 1 100%;margin-left:0}
 }
 @media(prefers-reduced-motion:reduce){.soma-map-assist-controls button{transition:none}}
+
+
+/* Map actions: keep the most common action in view; progressive disclosure for playback. */
+.soma-map-assist-more{position:relative;align-self:center;font:600 11px system-ui}
+.soma-map-assist-more>summary{list-style:none;min-height:29px;padding:7px 9px;cursor:pointer;
+ border:1px solid #405847;border-radius:6px;color:#c3d9bf;background:#14251b}
+.soma-map-assist-more>summary::-webkit-details-marker{display:none}
+.soma-map-assist-more>summary::after{content:" ▾"}
+.soma-map-assist-more[open]>summary{border-color:#8cad89}
+.soma-map-assist-more-panel{position:absolute;top:calc(100% + 5px);left:0;z-index:18;
+ display:flex;gap:6px;min-width:180px;flex-wrap:wrap;padding:9px;
+ background:#122318;border:1px solid #4a6b51;border-radius:8px;box-shadow:0 13px 24px #0009}
+.soma-map-assist-more-panel>button{flex:1 1 100%;white-space:nowrap}
+@media(max-width:620px){.soma-map-assist-more-panel{left:auto;right:0}}
