@@ -29,6 +29,7 @@ test('MCA V1: Auto/replay/freeze/clear controls are responsive while physical ou
  const map=page.locator('.soma-map-wysiwyg');
  const controls=map.getByRole('group',{name:'Bantuan kalibrasi tapak'});
  await controls.getByRole('button',{name:'Tes tapak'}).click();
+ await controls.locator('.soma-map-assist-more summary').click();
  await controls.getByRole('button',{name:'Replay 5 detik'}).click();
  await expect(controls.getByRole('button',{name:'Stop replay'})).toBeVisible();
  await controls.getByRole('button',{name:'Bekukan jejak'}).click();
