@@ -21,6 +21,8 @@ export type PainterlySettings={
  dualV2Palette?:DualTraceV2Palette;
  dualV2Material?:'path-sumi'|'dry-ink'|'pigment-mass';
  dualV2Expressive?:boolean;
+ /** Head/shoulder movement changes PATH brush weight, not its position. */
+ dualV2UpperModulation?:boolean;
  /** Toggle rollback: false restores original V2.1 foot-only routing. */
  trajectoryV22Enabled?:boolean;
  dualV2PathOpacity?:number;
