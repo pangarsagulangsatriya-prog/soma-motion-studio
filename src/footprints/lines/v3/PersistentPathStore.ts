@@ -31,6 +31,8 @@ export class PersistentPathStore{
  private bounds:Bound|null=null;
  private index=0;
  private commits=0;
+ private paintRevision=0;
+ get revision(){return this.paintRevision;}
  get paintingSessionId(){return this.index;}
  get activeCount(){return this.strokes.size;}
  get depositCount(){return this.commits;}
@@ -172,13 +174,15 @@ export class PersistentPathStore{
   const ctx=this.composite.getContext('2d');if(!ctx)return;
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
   ctx.drawImage(this.committed,0,0);ctx.drawImage(this.active,0,0);
+  this.paintRevision++;
  }
  cutAll(_reason:string){
   for(const rec of [...this.strokes.values()])this.finalize(rec);
   this.refreshTail();
  }
  clearPainting(){
-  this.index++;this.commits=0;this.strokes.clear();this.ranges.clear();this.bounds=null;
+  this.index++;this.commits=0;this.paintRevision++;
+  this.strokes.clear();this.ranges.clear();this.bounds=null;
   for(const canvas of [this.committed,this.active,this.composite])
    canvas?.getContext('2d')?.clearRect(0,0,W,H);
  }
