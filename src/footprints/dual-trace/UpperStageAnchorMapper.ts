@@ -3,7 +3,8 @@ import type {DualPoseFrame} from './DualTracePoseFrameBus.ts';
 import type {ActorPathObservation} from '../lines/v3/PathObservationRouter.ts';
 
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
-const visible=(p:{x:number;y:number;visibility?:number}|undefined)=>
+const visible=(p:{x:number;y:number;visibility?:number}|undefined):
+ p is {x:number;y:number;visibility?:number}=>
  !!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&(p.visibility??1)>=.55;
 /** Camera-relative head/shoulder movement is deliberately expressive 2D;
  * monocular head depth and physical foot pressure are not inferred.
