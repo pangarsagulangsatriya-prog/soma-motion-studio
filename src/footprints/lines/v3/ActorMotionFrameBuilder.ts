@@ -7,6 +7,7 @@ export type ActorMotionFrame={
  actorId:ActorChannel;sourceKey:string;timeMs:number;sourceEpoch:number;
  identityConfidence:number;hipPx:PathPoint;hipConfidence:number;
  torsoScalePx:number;feetCount:0|1|2;footImageAnchorPx?:PathPoint;
+ shoulderVector?:PathPoint;headImagePx?:PathPoint;
 };
 const finite=(x:number)=>Number.isFinite(x);
 const valid=(p:{x:number;y:number;visibility?:number}|undefined,threshold=.55)=>
@@ -30,6 +31,12 @@ export function buildActorMotionFrames(
   const torso=valid(ls)&&valid(rs)?
    Math.hypot(((lh.x+rh.x-ls.x-rs.x)/2)*1600,
     ((lh.y+rh.y-ls.y-rs.y)/2)*900):80;
+  const headA=frame.landmarks[7],headB=frame.landmarks[8],nose=frame.landmarks[0];
+  const headImagePx=valid(headA)&&valid(headB)?
+   stage({x:(headA.x+headB.x)/2,y:(headA.y+headB.y)/2}):
+   valid(nose)?stage(nose):undefined;
+  const shoulderVector=valid(ls)&&valid(rs)?
+   {x:(rs.x-ls.x)*1600,y:(rs.y-ls.y)*900}:undefined;
   const same=poses.filter(p=>
    (p.actorId===frame.actorId||
     frame.actorId==='A'&&p.actorId==='performer-1'||
@@ -45,7 +52,9 @@ export function buildActorMotionFrames(
    timeMs:frame.timeMs,sourceEpoch:frame.epoch,
    identityConfidence:frame.identityConfidence,hipPx,hipConfidence,
    torsoScalePx:Math.max(30,Math.min(300,torso)),
-   feetCount:count,...(anchor?{footImageAnchorPx:anchor}:{})});
+   feetCount:count,...(anchor?{footImageAnchorPx:anchor}:{}),
+   ...(shoulderVector?{shoulderVector}:{}),
+   ...(headImagePx?{headImagePx}:{})});
  }
  return result;
 }
