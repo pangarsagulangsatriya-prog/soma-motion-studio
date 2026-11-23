@@ -3,11 +3,13 @@ import type {MultiPoseStatus} from '../../live/MultiPoseGaitRouter.ts';
 import type {ExperimentalFrame} from '../../../studio/v3/experimentSourceModel.ts';
 import {demoFootSamples} from '../FootLineSampleAdapter.ts';
 import {floorToUV} from '../../spatial/coordinates.ts';
+import type {PathStanceHint} from './PathObservationRouter.ts';
 import {resolvePoseFeet,fromLegacySample,type FootV3Sample} from './FootPositionResolver.ts';
 
 export type V3Input={
  sourceKey:string;frameMs:number;presentationMs:number;
  samples:FootV3Sample[];ready:boolean;paused:boolean;seeking:boolean;
+ supportHints?:PathStanceHint[];
  status:string;source:'camera'|'phone'|'video'|'simulator'|'demo';
 };
 export type V3InputOptions={
@@ -63,7 +65,16 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
   if(lag>320)return empty('video',sourceKey,frameMs,mediaMs,'MP4 · analisis tertunda');
   const samples=snap.ambiguous?[]:snap.people.flatMap(p=>
    resolvePoseFeet(p.landmarks,meta(identity,'video',snap.atMs,p.id)));
+  // Timestamp-aligned 2D contact/swing/pivot hints from MP4 gait analysis.
+  // Neither physical foot pressure nor a calibrated floor is inferred.
+  const supportHints:PathStanceHint[]=(snap.events??[]).slice(-64)
+   .filter(e=>e.confidence>=.65&&
+    (e.kind==='contact'||e.kind==='swing'||e.kind==='pivot')&&
+    e.atMs<=frameMs+50&&frameMs-e.atMs<=220)
+   .map(e=>({actorId:e.performer,foot:e.foot,kind:e.kind as PathStanceHint['kind'],
+    atMs:e.atMs,confidence:e.confidence,basis:'video-2d-estimate' as const}));
   return {source:'video',sourceKey,frameMs,presentationMs:mediaMs,samples,
+   supportHints,
    ready:true,paused:f.video.paused,seeking:false,
    status:snap.ambiguous?'MP4 · identitas belum stabil':
     samples.length?'MP4 · '+samples.length+' kaki terbaca':'MP4 · kaki belum terdeteksi'};

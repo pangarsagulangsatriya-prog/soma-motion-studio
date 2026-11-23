@@ -156,3 +156,106 @@ test('30-minute accelerated two-actor stream retains bounded active-tail knots',
   assert.ok(store.exportPNG());
  }finally{fake.restore();}
 });
+
+test('v3.5.1: planted foot resists a 320px swinging-foot excursion',()=>{
+ const r=new PathObservationRouter();
+ const first=r.ingest([pose('A','left',.20,1000),pose('A','right',.22,1000)])[0];
+ const swing=r.ingest([pose('A','left',.20,1100),pose('A','right',.42,1100)])[0];
+ assert.equal(swing.supportFoot,'left');
+ assert.equal(swing.evidence,'estimated-ground-projection');
+ assert.ok(Math.abs(swing.point.x-first.point.x)<12,
+  'a swinging foot must not drag the path center or cause a false teleport');
+ const returned=r.ingest([pose('A','left',.20,1200),pose('A','right',.42,1200)])[0];
+ assert.ok(Math.abs(returned.point.x-swing.point.x)<6);
+});
+test('v3.5.1: irregular video frames bridge only coherent short gaps',()=>{
+ const r=new PathObservationRouter(),t=new ActorPathTracker();
+ t.ingest(r.ingest(four(1000,.20)),1000);
+ const forward=t.ingest(r.ingest(four(1100,.22)),1100);
+ assert.equal(forward.filter(e=>e.kind==='ADD').length,2);
+ const gap=t.ingest(r.ingest(four(1700,.27)),1700);
+ assert.equal(gap.filter(e=>e.kind==='CUT').length,0,
+  '600ms MP4 inference gap with same direction must not automatically cut');
+ assert.ok(gap.some(e=>e.kind==='ADD'));
+ const long=t.ingest(r.ingest(four(2900,.31)),2900);
+ assert.equal(long.filter(e=>e.kind==='CUT').length,2,
+  'more than 900ms without evidence must cut each actor');
+});
+test('v3.5.1: lost identity or source swap cannot connect two actors',()=>{
+ const r=new PathObservationRouter(),t=new ActorPathTracker();
+ t.ingest(r.ingest(four(1000,.2)),1000);
+ const swapped=t.ingest(r.ingest(four(1100,.8)),1100);
+ assert.ok(swapped.some(e=>e.kind==='CUT'));
+ assert.ok(swapped.every(e=>e.kind!=='ADD'&&e.kind!=='TURN'));
+});
+test('v3.5.1: full mesh painter fills joined polygon, without per-knot stroke',async()=>{
+ const {paintDirectionalRibbon}=await import('../src/footprints/lines/v3/DirectionalInkPainter.ts');
+ const knots:PathKnot=[
+  {point:{x:20,y:20},timeMs:0,confidence:1},
+  {point:{x:50,y:20},timeMs:80,confidence:1},
+  {point:{x:70,y:35},timeMs:160,confidence:1}
+ ];
+ const pts=samplePathSegment(knots,1,30,3);
+ const mesh=buildPathRibbon(pts,{weightPx:26,material:'pigment-mass'},60,false)!;
+ let strokes=0,fills=0,vertices=0;
+ const ctx={
+  save(){},restore(){},beginPath(){},moveTo(){},lineTo(){vertices++;},
+  closePath(){},arc(){},clip(){},fill(){fills++;},stroke(){strokes++;},
+  set fillStyle(_x:string){},set strokeStyle(_x:string){},
+  set lineWidth(_n:number){},set lineJoin(_n:string){},set lineCap(_n:string){},
+  set globalAlpha(_n:number){}
+ };
+ paintDirectionalRibbon(ctx as unknown as CanvasRenderingContext2D,mesh,
+  {color:'#242424',weightPx:26,material:'pigment-mass',accents:'off',seed:42});
+ assert.ok(vertices>5);
+ assert.ok(fills>=1);
+ assert.equal(strokes,0,'pigment mesh must be a joined fill rather than strokes');
+});
+
+test('v3.5.1: replay contact hint anchors the actor to an estimated supporting sole',()=>{
+ const r=new PathObservationRouter();
+ r.ingest([pose('A','left',.20,1000),pose('A','right',.22,1000)]);
+ const estimated=r.ingest(
+  [pose('A','left',.202,1100),pose('A','right',.28,1100)],
+  [{actorId:'A',foot:'left',kind:'contact',atMs:1090,
+   confidence:.95,basis:'video-2d-estimate'}]
+ )[0];
+ assert.equal(estimated.supportFoot,'left');
+ assert.equal(estimated.motionBasis,'estimated-support');
+ assert.equal(estimated.evidence,'estimated-ground-projection');
+ assert.ok(estimated.point.x<360,'swinging right foot must not dominate support');
+});
+test('v3.5.1: stale pivot event is rejected; fresh estimated pivot stays labeled',()=>{
+ const r=new PathObservationRouter();
+ r.ingest([pose('A','left',.20,1000),pose('A','right',.22,1000)]);
+ const stale=r.ingest(
+  [pose('A','left',.20,1100),pose('A','right',.25,1100)],
+  [{actorId:'A',foot:'left',kind:'pivot',atMs:700,
+   confidence:.97,basis:'video-2d-estimate'}]
+ )[0];
+ assert.equal(stale.footEvent,'none');
+ const fresh=r.ingest(
+  [pose('A','left',.20,1200),pose('A','right',.29,1200)],
+  [{actorId:'A',foot:'left',kind:'pivot',atMs:1180,
+   confidence:.93,basis:'video-2d-estimate'}]
+ )[0];
+ assert.equal(fresh.supportFoot,'left');
+ assert.equal(fresh.footEvent,'pivot');
+ assert.equal(fresh.evidence,'estimated-ground-projection');
+});
+test('v3.5.1: actual video frame normalizer preserves timestamped gait contact hints',async()=>{
+ const {normalizeTrajectoryInput}=await import('../src/footprints/lines/v3/SourceFrameNormalizer.ts');
+ const fakeVideo={currentTime:1.2,readyState:4,paused:false,seeking:false};
+ const snapshot={segment:0,atMs:1200,ambiguous:false,people:[],
+  events:[{performer:'A',foot:'left',kind:'contact',atMs:1170,
+   confidence:.91,basis:'video-2d-estimate'}]};
+ const input=normalizeTrajectoryInput({nowMs:1230,demo:false,demoStart:0,
+  experimentSource:'video',experiment:{kind:'video',ready:true,
+   name:'test.mp4',snapshot,video:fakeVideo,timeMs:1200} as any,
+  live:null,cameraOn:false,bodySelected:false,
+  performers:2,status:{} as any,sourceKind:'camera',motionSession:'test'});
+ assert.equal(input.supportHints?.length,1);
+ assert.equal(input.supportHints?.[0].foot,'left');
+ assert.equal(input.supportHints?.[0].basis,'video-2d-estimate');
+ assert.equal(input.supportHints?.[0].atMs,1170);
+});
