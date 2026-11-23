@@ -394,11 +394,16 @@ export function MapWysiwygWorkspace({
    <button type="button" onClick={assist.test}>Tes tapak</button>
    <button type="button" aria-pressed={assist.auto} onClick={()=>assist.setAuto(v=>!v)}>
     Auto {assist.auto?'aktif':'mati'}</button>
-   <button type="button" aria-pressed={assist.replay} onClick={assist.toggleReplay}>
-    {assist.replay?'Stop replay':'Replay 5 detik'}</button>
-   <button type="button" aria-pressed={assist.frozen} onClick={assist.toggleFreeze}>
-    {assist.frozen?'Lanjut jejak':'Bekukan jejak'}</button>
-   <button type="button" onClick={assist.clear}>Bersihkan</button>
+   <details className="soma-map-assist-more">
+    <summary>Opsi jejak</summary>
+    <div className="soma-map-assist-more-panel">
+     <button type="button" aria-pressed={assist.replay} onClick={assist.toggleReplay}>
+      {assist.replay?'Stop replay':'Replay 5 detik'}</button>
+     <button type="button" aria-pressed={assist.frozen} onClick={assist.toggleFreeze}>
+      {assist.frozen?'Lanjut jejak':'Bekukan jejak'}</button>
+     <button type="button" onClick={assist.clear}>Bersihkan</button>
+    </div>
+   </details>
    <span className="soma-map-assist-status" role="status" aria-live="polite">{assist.status}</span>
   </div>}
   <div className="soma-map-wysiwyg-grid">
