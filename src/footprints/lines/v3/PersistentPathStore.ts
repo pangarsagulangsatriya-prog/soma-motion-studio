@@ -7,7 +7,7 @@ import {paintDirectionalRibbon,type InkAccentMode,type InkRenderStyle} from './D
 
 const W=1600,H=900;
 export type PathStyle={color:string;weightPx:number;material:RibbonStyle['material'];
- accents:InkAccentMode};
+ accents:InkAccentMode;roughness?:number};
 type Stroke={
  id:string;actorId:ActorChannel;clipStableId:string;sourceKey:string;
  knots:PathKnot[];baseArc:number;committedSeg:number;lastAt:number;
