@@ -17,6 +17,7 @@ export class GroundTrajectoryEngineV2{
  readonly telemetry=new TrajectoryTelemetry();
  readonly hipFusion=new ActorGroundTrajectoryEstimator();
  get hipSummary(){return this.hipFusion.summary();}
+ get continuityDiagnostics(){return this.hipFusion.continuity.diagnostics;}
  cutAll(reason:string):PathEvent[]{
   const events=this.tracker.cutAll(reason);
   this.router.reset();this.hipFusion.reset();this.telemetry.events(events);
@@ -25,11 +26,12 @@ export class GroundTrajectoryEngineV2{
  ingest(sourceKey:string,frameMs:number,poses:readonly FootBrushPose[],
   hints:readonly PathStanceHint[]=[],spatial?:Spatial,
   isCovered?:(o:ActorPathObservation)=>boolean,
-  actorFrames:readonly ActorMotionFrame[]=[],enableHipFusion=false){
+  actorFrames:readonly ActorMotionFrame[]=[],enableHipFusion=false,
+  enableContinuityV23=false){
   this.telemetry.frame(sourceKey,frameMs,poses.length>0||actorFrames.length>0);
   const footObservations=this.router.ingest(poses,hints,spatial);
   const fused=enableHipFusion&&actorFrames.length?
-   this.hipFusion.ingest(footObservations,actorFrames,spatial):null;
+   this.hipFusion.ingest(footObservations,actorFrames,spatial,enableContinuityV23):null;
   if(!enableHipFusion)this.hipFusion.reset();
   const all=fused?.observations??footObservations;
   const observations=all.filter(o=>!isCovered?.(o));
