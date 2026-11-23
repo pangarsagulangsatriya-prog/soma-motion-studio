@@ -1141,7 +1141,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    }}
    demo={lineDemo}
    onDemo={()=>{lineV3Engine.current.reset();painterlyEngine.current.reset();
-    if(painterlyOptions.painterlyEngine!=='sumi-v34')setBrushResetRevision(n=>n+1);
+    if(painterlyOptions.painterlyEngine!=='sumi-v34'&&
+     painterlyOptions.painterlyEngine!=='path-first-v35')setBrushResetRevision(n=>n+1);
     setLineDemo(v=>!v);}}
    status={lineStatus} diagnostics={v3Diagnostics} performerCount={performerCount}
    fullscreenDiagnostics={lineFullscreenDiagnostics}

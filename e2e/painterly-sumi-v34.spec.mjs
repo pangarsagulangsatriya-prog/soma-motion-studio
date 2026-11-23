@@ -6,6 +6,7 @@ async function openSumi(page){
  await monitor.locator('button.lt-beta-trigger').click();
  const panel=page.getByRole('region',{name:'Kontrol Garis V3'});
  await expect(panel).toBeVisible();
+ await panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'Sumi V3.4'}).click();
  await expect(panel.getByRole('group',{name:'Engine lukisan'}).getByRole('button',{name:'Sumi V3.4'}))
   .toHaveAttribute('aria-pressed','true');
  return {panel,monitor};

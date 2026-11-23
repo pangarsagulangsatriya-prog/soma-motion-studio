@@ -23,7 +23,8 @@ export type PainterlySettings={
  sizePx:number;
 };
 export const DEFAULT_PAINTERLY_SETTINGS:PainterlySettings={
- enabled:true,painterlyEngine:'sumi-v34',sumiMaterial:'sumi',
+ enabled:true,painterlyEngine:'path-first-v35',
+ pathWeightPx:26,pathMaterial:'path-sumi',pathAccents:'subtle',sumiMaterial:'sumi',
  sumiWeightPx:56,sumiExpression:'bold',previewFit:false,
  material:'ink',showSoles:true,showTrails:true,
  footprintLifeMs:6000,trailLifeMs:4000,

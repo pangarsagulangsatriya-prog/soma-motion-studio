@@ -21,7 +21,10 @@ const event=(id:string,foot:'left'|'right',atMs:number):FootMotionEventV2=>({
 });
 test('Sumi V3.4 is the visible default; legacy lifetime remains configurable',()=>{
  const p=DEFAULT_PAINTERLY_SETTINGS;
- assert.equal(p.painterlyEngine,'sumi-v34');
+ assert.equal(p.painterlyEngine,'path-first-v35');
+ assert.equal(p.pathWeightPx,26);
+ assert.equal(p.pathMaterial,'path-sumi');
+ assert.equal(p.pathAccents,'subtle');
  assert.equal(p.sumiWeightPx,56);
  assert.equal(p.sumiMaterial,'sumi');
  assert.equal(p.sumiExpression,'bold');

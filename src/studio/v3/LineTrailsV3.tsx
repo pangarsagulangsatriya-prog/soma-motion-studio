@@ -239,11 +239,19 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
  const activeActors=performerCount===2?(['A','B'] as const):(['A'] as const);
  const material=(value:PainterlySettings['material'])=>onPainterlyChange({...painterly,material:value});
  const sumi=painterly.painterlyEngine==='sumi-v34';
+ const pathMode=painterly.painterlyEngine==='path-first-v35';
+ const inkMode=sumi||pathMode;
  const change=(patch:Partial<PainterlySettings>)=>onPainterlyChange({...painterly,...patch});
  return <section className="lt-beta-controls lt-v3-controls lt-painterly-controls" aria-label="Kontrol Garis V3">
-  <header><strong>Garis · Painterly</strong><span>{sumi?'V3.4 SUMI':painterly.painterlyEngine==='foot-brush-v33'?'V3.3 BETA':'V3.2 BETA'}</span></header>
+  <header><strong>Garis · Painterly</strong><span>{pathMode?'V3.5 PATH':sumi?'V3.4 SUMI':painterly.painterlyEngine==='foot-brush-v33'?'V3.3 BETA':'V3.2 BETA'}</span></header>
   <div className="lt-painterly-material" role="group" aria-label="Engine lukisan">
-   <button type="button" aria-pressed={sumi} onClick={()=>change({
+   <button type="button" aria-pressed={pathMode} onClick={()=>change({
+     painterlyEngine:'path-first-v35',pathWeightPx:painterly.pathWeightPx??26,
+     pathMaterial:painterly.pathMaterial??'path-sumi',pathAccents:painterly.pathAccents??'subtle',
+     footprintLifeMs:6000,footprintKeep:false,trailKeep:true,
+     showTrails:true,showSoles:true
+    })}>Path Sumi V3.5</button>
+    <button type="button" aria-pressed={sumi} onClick={()=>change({
     painterlyEngine:'sumi-v34',sumiMaterial:'sumi',sumiWeightPx:painterly.sumiWeightPx??56,
     sumiExpression:'bold',footprintLifeMs:6000,footprintKeep:false,trailKeep:true,
     showTrails:true,showSoles:true
@@ -251,13 +259,17 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
    <button type="button" aria-pressed={painterly.painterlyEngine==='foot-brush-v33'}
     onClick={()=>change({painterlyEngine:'foot-brush-v33',footprintLifeMs:8000,trailLifeMs:4000,
      footprintKeep:false,trailKeep:false})}>Kuas V3.3</button>
-   <button type="button" aria-pressed={!sumi&&painterly.painterlyEngine!=='foot-brush-v33'}
+   <button type="button" aria-pressed={!inkMode&&painterly.painterlyEngine!=='foot-brush-v33'}
     onClick={()=>change({painterlyEngine:'legacy-v32',material:'ink',footprintLifeMs:8000,
      trailLifeMs:4000,footprintKeep:false,trailKeep:false})}>V3.2</button>
   </div>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
   <div className="lt-painterly-material" role="group" aria-label="Material lukisan">
-   {sumi?([{id:'sumi',label:'Sumi'},{id:'dry-brush',label:'Kuas Kering'},
+   {pathMode?([{id:'path-sumi',label:'Sumi'},{id:'dry-ink',label:'Kering'},
+       {id:'pigment-mass',label:'Pekat'}] as const).map(m=>
+       <button key={m.id} type="button" aria-pressed={(painterly.pathMaterial??'path-sumi')===m.id}
+        onClick={()=>change({pathMaterial:m.id})}>{m.label}</button>):
+     sumi?([{id:'sumi',label:'Sumi'},{id:'dry-brush',label:'Kuas Kering'},
       {id:'dense-pigment',label:'Pigmen Pekat'}] as const).map(m=>
       <button key={m.id} type="button" aria-pressed={(painterly.sumiMaterial??'sumi')===m.id}
        onClick={()=>change({sumiMaterial:m.id})}>{m.label}</button>):
@@ -284,14 +296,14 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
    <div className="lt-painterly-layer">
     <label><input aria-label="Tampilkan garis lintasan" type="checkbox"
      checked={painterly.showTrails} onChange={e=>change({showTrails:e.target.checked})}/>
-     <strong>{sumi?'Sapuan tinta':'Garis lintasan'}</strong></label>
+     <strong>{pathMode?'Jalur tinta':sumi?'Sapuan tinta':'Garis lintasan'}</strong></label>
     <label className="lt-painterly-stay"><input type="checkbox"
-     aria-label="Garis tetap" checked={sumi?true:painterly.trailKeep}
-     disabled={sumi}
+     aria-label="Garis tetap" checked={inkMode?true:painterly.trailKeep}
+     disabled={inkMode}
      onChange={e=>change({trailKeep:e.target.checked})}/>Tetap</label>
-    <label className="lt-painterly-duration">{sumi?'Tinta menetap':'Hilang'} <output>{sumi||painterly.trailKeep?'Tetap':Math.round(painterly.trailLifeMs/1000)+' dtk'}</output>
+    <label className="lt-painterly-duration">{inkMode?'Tinta menetap':'Hilang'} <output>{inkMode||painterly.trailKeep?'Tetap':Math.round(painterly.trailLifeMs/1000)+' dtk'}</output>
      <input type="range" min="1" max="30" step="1"
-      aria-label="Durasi garis lintasan" disabled={sumi||painterly.trailKeep||!painterly.showTrails}
+      aria-label="Durasi garis lintasan" disabled={inkMode||painterly.trailKeep||!painterly.showTrails}
       value={Math.round(painterly.trailLifeMs/1000)}
       onChange={e=>change({trailLifeMs:Number(e.target.value)*1000})}/>
     </label>
@@ -317,7 +329,22 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
      onClick={()=>onChange({...settings,styleMode:mode.value})}>{mode.label}</button>)}
   </div>
   </details>
-  {sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??56} px</output>
+  {pathMode?<><label className="lt-beta-width">Bobot jalur <output>{painterly.pathWeightPx??26} px</output>
+      <input type="range" min={8} max={64} step={2}
+       aria-label="Bobot jalur Sumi" value={painterly.pathWeightPx??26}
+       onChange={e=>change({pathWeightPx:Number(e.target.value)})}/>
+     </label>
+     <div className="lt-v31-character" role="group" aria-label="Aksen tinta">
+      {([{id:'off',label:'Mati'},{id:'subtle',label:'Halus'},
+         {id:'expressive',label:'Ekspresif'}] as const).map(x=>
+       <button key={x.id} type="button"
+        aria-pressed={(painterly.pathAccents??'subtle')===x.id}
+        onClick={()=>change({pathAccents:x.id})}>{x.label}</button>)}
+     </div>
+     <label className="lt-painterly-stay"><input type="checkbox" aria-label="Komposisi preview"
+       checked={!!painterly.previewFit}
+       onChange={e=>change({previewFit:e.target.checked})}/>Komposisi preview</label>
+    </>:sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??56} px</output>
    <input type="range" min={8} max={96} step={2}
     aria-label="Bobot kuas Sumi" value={painterly.sumiWeightPx??56}
     onChange={e=>change({sumiWeightPx:Number(e.target.value)})}/>
@@ -335,9 +362,9 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
     onChange={e=>onChange({...settings,width:Number(e.target.value)})}/>
   </label>}
   <div className="lt-beta-actions">
-   <button type="button" onClick={onClear}>{sumi?'Bersihkan Lukisan':'Bersihkan'}</button>
-   {sumi&&<button type="button" onClick={onExportPNG} aria-label="Simpan lukisan PNG">Simpan PNG</button>}
-   {sumi&&<details className="lt-painterly-characters"><summary>Arsip lukisan</summary>
+   <button type="button" onClick={onClear}>{inkMode?'Bersihkan Lukisan':'Bersihkan'}</button>
+   {inkMode&&<button type="button" onClick={onExportPNG} aria-label="Simpan lukisan PNG">Simpan PNG</button>}
+   {inkMode&&<details className="lt-painterly-characters"><summary>Arsip lukisan</summary>
     <button type="button" onClick={onSaveSession}>Simpan sesi JSON</button>
     <button type="button" onClick={onLoadSession}>Pulihkan sesi JSON</button>
    </details>}
