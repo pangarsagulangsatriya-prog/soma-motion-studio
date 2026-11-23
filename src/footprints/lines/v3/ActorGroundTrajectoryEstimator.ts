@@ -3,6 +3,8 @@ import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type CameraFloorCalibra
 import type {ActorChannel} from './ActorPaletteResolver.ts';
 import type {ActorMotionFrame} from './ActorMotionFrameBuilder.ts';
 import type {ActorPathObservation,PathPoint} from './PathObservationRouter.ts';
+import {ActorContinuityCoordinator} from './ActorContinuityCoordinator.ts';
+import type {BridgeContext} from './ContinuityBridgeValidator.ts';
 
 type Spatial={calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string};
 type Basis='dual-foot-and-hip'|'one-foot-hip-assisted'|'hip-short-gap'|
@@ -12,7 +14,7 @@ type State={
  point:PathPoint;confirmed:PathPoint;hipPx?:PathPoint;
  imageAnchorPx?:PathPoint;lastFootPx?:PathPoint;
  lastFootObservation:ActorPathObservation;
- pending:ActorPathObservation[];
+ pending:ActorPathObservation[];lastMotion?:PathPoint;
 };
 const actors=['A','B'] as const;
 const add=(a:PathPoint,b:PathPoint):PathPoint=>({x:a.x+b.x,y:a.y+b.y});
@@ -57,12 +59,13 @@ export type TrajectoryEstimate={
  */
 export class ActorGroundTrajectoryEstimator{
  private states=new Map<ActorChannel,State>();
+ readonly continuity=new ActorContinuityCoordinator();
  private statuses:TrajectoryEstimate['status']={
   A:{basis:'unavailable',feet:0,confidence:0},
   B:{basis:'unavailable',feet:0,confidence:0}
  };
  private lastSignature='';
- reset(){this.states.clear();this.lastSignature='';this.statuses={
+ reset(){this.states.clear();this.continuity.reset();this.lastSignature='';this.statuses={
   A:{basis:'unavailable',feet:0,confidence:0},
   B:{basis:'unavailable',feet:0,confidence:0}
  };}
@@ -72,7 +75,8 @@ export class ActorGroundTrajectoryEstimator{
   return actor+': '+s.feet+'/2 kaki · '+s.basis+' ('+s.confidence.toFixed(2)+')';
  }).join(' | ');}
  ingest(footObservations:readonly ActorPathObservation[],
-  frames:readonly ActorMotionFrame[],spatial?:Spatial):TrajectoryEstimate{
+  frames:readonly ActorMotionFrame[],spatial?:Spatial,enableV23=false):TrajectoryEstimate{
+  if(!enableV23)this.continuity.reset();
   const signature=spatial?.calibrationId??'image-2d';
   if(this.lastSignature!==signature){this.reset();this.lastSignature=signature;}
   const observations:ActorPathObservation[]=[];
@@ -84,20 +88,29 @@ export class ActorGroundTrajectoryEstimator{
     (!foot||f.timeMs===foot.timeMs));
    const feet=(frame?.feetCount??(foot?1:0)) as 0|1|2;
    const quality=frame?.hipConfidence??0;
+   const context=(footRef?:ActorPathObservation):BridgeContext=>({
+    actorId:actor,sourceKey:footRef?.sourceKey??(spatial?frame?.sourceKey+'|floor:'+spatial.calibrationId:frame?.sourceKey??''),
+    clipStableId:footRef?.clipStableId??'',epoch:footRef?.epoch??0,
+    transformKey:signature,identityConfidence:frame?.identityConfidence??0,
+    torsoScalePx:frame?.torsoScalePx??80
+   });
    let state=this.states.get(actor);
    if(frame&&state&&
     (state.sourceKey!==frame.sourceKey||
      frame.timeMs<=state.timeMs||frame.timeMs-state.timeMs>900)){
+    if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'bridge-source-change');
     cuts.push({actorId:actor,reason:'trajectory-source-or-gap'});
     this.states.delete(actor);state=undefined;
    }
    if(!frame){
     if(foot){
+     if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'bridge-missing-hip');
      // Pure foot-only V2.1 fallback (simulator, demo or missing hip).
      observations.push(foot);
      this.states.delete(actor);
      this.statuses[actor]={basis:'foot-only-low-confidence',feet,confidence:foot.confidence};
     }else{
+     if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'bridge-missing-hip');
      this.statuses[actor]={basis:'unavailable',feet:0,confidence:0};
     }
     continue;
@@ -108,6 +121,7 @@ export class ActorGroundTrajectoryEstimator{
    }
    if(foot&&!state){
     observations.push(foot);
+    if(enableV23)this.continuity.observe(actor);
     this.states.set(actor,{
      sourceKey:frame.sourceKey,footEpoch:foot.epoch,timeMs:frame.timeMs,
      footAtMs:frame.timeMs,point:{...foot.point},confirmed:{...foot.point},
@@ -125,6 +139,7 @@ export class ActorGroundTrajectoryEstimator{
    const maxMotion=Math.min(150,18+dt*.32+frame.torsoScalePx*.40);
    const implausible=hipDelta!==null&&norm(hipDelta)>maxMotion;
    if(implausible){
+    if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'teleport');
     cuts.push({actorId:actor,reason:'hip-teleport'});
     this.states.delete(actor);
     // Do not draw a bridge or a replacement anchor in this frame.
@@ -137,7 +152,8 @@ export class ActorGroundTrajectoryEstimator{
     add(state.imageAnchorPx,sub(frame.hipPx,state.hipPx)):state.imageAnchorPx;
    if(!foot){
     if(hipDelta===null||frame.timeMs-state.footAtMs>250||
-       state.pending.length>=6){
+       (enableV23?this.continuity.pendingCount>=12:state.pending.length>=6)){
+     if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'gap-expired');
      cuts.push({actorId:actor,reason:'hip-only-gap-expired'});
      this.states.delete(actor);
      this.statuses[actor]={basis:'unavailable',feet:0,confidence:quality};
@@ -145,12 +161,25 @@ export class ActorGroundTrajectoryEstimator{
     }
     const nextPoint=add(state.point,cap(hipDelta,maxMotion));
     if(!valid(nextPoint)){
+     if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'invalid-coordinate');
      cuts.push({actorId:actor,reason:'hip-outside-floor'});
      this.states.delete(actor);continue;
     }
-    state.pending.push({...state.lastFootObservation,
+    const provisional={...state.lastFootObservation,
      timeMs:frame.timeMs,point:nextPoint,confidence:clamp(quality*.72,.55,.9),
-     footEvent:'none',motionBasis:'hip-short-gap'});
+     footEvent:'none' as const,motionBasis:'hip-short-gap' as const};
+    if(enableV23){
+     if(!this.continuity.has(actor)){
+      const start={...state.lastFootObservation,point:state.confirmed};
+      this.continuity.begin(start,context(start),state.lastMotion);
+     }
+     if(!this.continuity.append(actor,provisional)){
+      this.continuity.reject(actor,'bridge-budget');
+      cuts.push({actorId:actor,reason:'bridge-budget'});
+      this.states.delete(actor);
+      continue;
+     }
+    }else state.pending.push(provisional);
     state.point=nextPoint;state.hipPx={...frame.hipPx};
     state.imageAnchorPx=estimatedImageAnchor;
     state.timeMs=frame.timeMs;
@@ -160,6 +189,7 @@ export class ActorGroundTrajectoryEstimator{
    // The foot adapter epoch is independent from the approved pose epoch.
    // If the adapter restarted, do not connect its new feet to old ink.
    if(foot.epoch!==state.footEpoch){
+    if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'bridge-source-change');
     cuts.push({actorId:actor,reason:'foot-epoch-change'});
     this.states.delete(actor);
     observations.push(foot);
@@ -177,7 +207,8 @@ export class ActorGroundTrajectoryEstimator{
    const difference=sub(foot.point,nextPoint);
    const drift=norm(difference);
    const limit=clamp(frame.torsoScalePx*.9,28,95);
-   if(state.pending.length&&drift>limit){
+   if((enableV23?this.continuity.has(actor):state.pending.length>0)&&drift>limit){
+    if(enableV23)this.continuity.reject(actor,'bridge-recovery-too-far');
     cuts.push({actorId:actor,reason:'hip-recovery-mismatch'});
     this.states.delete(actor);
     observations.push(foot); // tracker starts a NEW segment after CUT
@@ -186,16 +217,29 @@ export class ActorGroundTrajectoryEstimator{
    }
    nextPoint=add(nextPoint,cap(difference,feet===2?7:3));
    if(!valid(nextPoint)){
+    if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'invalid-coordinate');
     cuts.push({actorId:actor,reason:'trajectory-outside-floor'});
     this.states.delete(actor);continue;
    }
-   if(state.pending.length){
-    observations.push(...state.pending);
-    state.pending=[]; // exactly once; no deposits during hip-only gap
-   }
-   observations.push({...foot,point:nextPoint,
+   const accepted={...foot,point:nextPoint,
     confidence:clamp(Math.min(foot.confidence,quality),.55,1),
-    motionBasis:feet===2?'dual-foot-and-hip':'one-foot-hip-assisted'});
+    motionBasis:feet===2?'dual-foot-and-hip' as const:'one-foot-hip-assisted' as const};
+   if(enableV23){
+    const result=this.continuity.recover(actor,accepted,context(foot));
+    if(result.cutReason){
+     cuts.push({actorId:actor,reason:result.cutReason});
+     this.states.delete(actor);
+     observations.push(foot); // start at observed foot, not at a bad bridge
+     continue;
+    }
+    observations.push(...result.observations);
+   }else{
+    if(state.pending.length)observations.push(...state.pending);
+    state.pending=[]; // legacy V2.2 pending owner
+    observations.push(accepted);
+   }
+   const step=sub(nextPoint,state.confirmed);
+   if(norm(step)>=2)state.lastMotion=mul(step,1/norm(step));
    state.point=nextPoint;state.confirmed=nextPoint;
    state.timeMs=frame.timeMs;state.footAtMs=frame.timeMs;
    state.hipPx={...frame.hipPx};
