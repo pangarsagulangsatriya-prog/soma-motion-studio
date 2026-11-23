@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
-import type {Quad} from '../../projection/geometry.ts';
+import {identityQuad,type Quad} from '../../projection/geometry.ts';
+import type {CameraFloorCalibration} from '../../footprints/spatial/coordinates.ts';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/MultiPoseGaitRouter.ts';
@@ -23,6 +24,7 @@ export type MapAssistOptions={
  motionSession?:()=>string;
  liveSourceKind:'camera'|'phone';performerCount:1|2;cameraOn:boolean;
  simState:MapSimState;simCameraQuad:Quad;
+ videoFloorCalibration?:CameraFloorCalibration|null;
 };
 const W=640,H=360;
 const emptyStatus:MultiPoseStatus={mode:1,visible:[],ambiguous:false,reason:'',
@@ -117,6 +119,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
     });
     key=input.sourceKey+'|'+(binding??'')+'|'+(p.floorTracker?.sessionEpoch??0);
     if(input.seeking)key+='|seeking';
+    if(p.sourceKind==='video')key+='|profile:'+JSON.stringify(p.videoFloorCalibration??'uncalibrated');
     if(input.ready&&p.sourceAvailable){
      batch=assistFromTrajectory(input,now,aspect).map(e=>({...e,sourceKey:key,id:key+':'+e.id}));
     }
@@ -141,7 +144,10 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
    }
    const bindingMatches=p.sourceKind==='camera'&&!!binding&&
     p.floorTracker?.boundCamera===binding&&p.floorTracker.isConfirmed&&!p.cameraDirty;
-   const cameraQuad=p.sourceKind==='demo-sim'?p.simCameraQuad:p.cameraDraft;
+   // An MP4 has its own camera geometry; never inherit the live phone/webcam quad.
+   const cameraQuad=p.sourceKind==='demo-sim'?p.simCameraQuad:
+    p.sourceKind==='video'?p.videoFloorCalibration?.cameraQuad??identityQuad():
+    p.sourceKind==='simulator'?identityQuad():p.cameraDraft;
    const geometry:AssistTransform={cameraQuad,sourceQuad:p.sourceQuad,outputQuad:p.outputDraft};
    let drawn=0,synthetic=false;
    for(const e of display){
@@ -173,7 +179,9 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
      !p.sourceAvailable?'Menunggu gambar sumber':
      drawn?bindingMatches?'Lantai terkalibrasi · posisi kaki perkiraan':
       p.cameraDirty?'Draf kalibrasi · posisi kaki perkiraan':
-      'Estimasi 2D · posisi kaki perkiraan':
+      p.sourceKind==='video'&&p.videoFloorCalibration?
+       'MP4 terkalibrasi · posisi kaki perkiraan':
+       'Estimasi 2D · posisi kaki perkiraan':
      'Tidak ada kaki terdeteksi';
     setMessage(msg);
    }else if(synthetic)setMessage('SIMULASI · lima titik contoh, bukan deteksi kamera');
