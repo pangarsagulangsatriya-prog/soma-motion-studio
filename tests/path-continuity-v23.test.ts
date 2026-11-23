@@ -75,11 +75,11 @@ test('PC23: expired, reverse and distant recovery never bridge',()=>{
  c.begin(foot('A',180,1000),ctx('A'));
  c.append('A',foot('A',195,1050));
  assert.equal(c.recover('A',foot('A',210,1300),ctx('A')).cutReason,'bridge-gap-expired');
- for(const x of [210,900]){
+ for(const invalid of [{x:650,t:1100},{x:210,t:1000}]){
   const k=new ActorContinuityCoordinator();
   k.begin(foot('A',180,1000),ctx('A'));
   k.append('A',foot('A',195,1050));
-  const verdict=k.recover('A',foot('A',x===210?650:210,1100),ctx('A'));
+  const verdict=k.recover('A',foot('A',invalid.x,invalid.t),ctx('A'));
   assert.ok(verdict.cutReason);
  }
 });
