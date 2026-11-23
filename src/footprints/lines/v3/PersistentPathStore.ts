@@ -140,7 +140,7 @@ export class PersistentPathStore{
   target.drawImage(scratch,0,0,width,height,x,y,width,height);
   this.rasterDraws++;
   // Active-tail repaint is not a new stable commit or travel.
-  if(target===this.committed)this.commits++;
+  if(target.canvas===this.committed)this.commits++;
  }
  private commitStable(rec:Stroke){
   const distances=knotDistances(rec.knots,rec.baseArc);
