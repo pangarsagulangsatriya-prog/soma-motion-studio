@@ -56,16 +56,16 @@ type Props={
  experimentSource?:'video'|'simulator'|null;
  onOpenTrack?:()=>void;
  onOpenCompose?:()=>void;
- onMapOutputSaved?:()=>void;
- onMapOutputInvalidated?:()=>void;
- mapOutputSaved?:boolean;
+ onMapOutputSaved?:(surface:StageSurface)=>void;
+ onMapOutputInvalidated?:(surface?:StageSurface)=>void;
+ mapOutputSaved?:Record<StageSurface,boolean>;
 };
 
 export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
  liquidCanvas,experimentInputCanvas,experimentFrameRef,motionSession,liveSourceKind='camera',videoFloorCalibration=null,videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
- onOpenTrack,onOpenCompose,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved=false
+ onOpenTrack,onOpenCompose,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}
 }:Props){
  // Keep shouldLatchProjectionBlackout referenced here and enforced in DualSurfaceSessionStore.
  void shouldLatchProjectionBlackout;
@@ -149,7 +149,7 @@ export function DualSurfaceRoutingPanel({
  const commitMonitorQuad=(quad:Quad)=>{
   try{
    validateStageSurfacePlan({...getDualSurfaceState().plans[selected],projectorQuad:quad});
-   if(editPlan(selected,p=>({...p,projectorQuad:quad})))onMapOutputSaved?.();
+   if(editPlan(selected,p=>({...p,projectorQuad:quad})))onMapOutputSaved?.(selected);
   }catch(e){setMessage(e instanceof Error?e.message:'Quad tidak valid.');}
  };
 
@@ -164,8 +164,9 @@ export function DualSurfaceRoutingPanel({
  },[]);
 
  const activePlan=plans[selected];
+ const selectedOutputSaved=mapOutputSaved[selected];
  const mapStatus=sourceKind==='none'?'Belum ada sumber':
-  mapOutputSaved?'Bidang output tersimpan · periksa QA':'Bidang output belum disimpan';
+  selectedOutputSaved?'Bidang output tersimpan · periksa QA':'Bidang output belum disimpan';
 
  return <section className="stage-dual map-r2-shell" aria-label="Map — kalibrasi ruang">
   {/* Track-matching single top header bar */}
@@ -173,7 +174,7 @@ export function DualSurfaceRoutingPanel({
    <div className="map-r2-brand">
     <h2>Map</h2>
     <div className="map-r2-status-inline map-r7-status"
-     data-status={mapOutputSaved?'output-quad-saved':'output-quad-draft'}
+     data-status={selectedOutputSaved?'output-quad-saved':'output-quad-draft'}
      role="status" aria-label={mapStatus} title={mapStatus}>
      <span className="map-r7-status-dot" aria-hidden="true"/>
      <strong>{mapStatus}</strong>
@@ -209,7 +210,7 @@ export function DualSurfaceRoutingPanel({
   videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
   router={router} experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={liveSourceKind}
   videoFloorCalibration={videoFloorCalibration}
-  mapOutputSaved={mapOutputSaved}
+  mapOutputSaved={selectedOutputSaved}
   performerCount={performerCount} cameraOn={cameraOn}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
@@ -223,7 +224,7 @@ export function DualSurfaceRoutingPanel({
    router?.reset();
   }}
   onBeginProjectorEdit={()=>{
-   onMapOutputInvalidated?.();
+   onMapOutputInvalidated?.(selected);
    allBlackout();setProofs({body:null,floor:null});
    setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
   }}
