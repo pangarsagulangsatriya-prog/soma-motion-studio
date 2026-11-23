@@ -55,13 +55,19 @@ export function paintDirectionalRibbon(ctx:CanvasRenderingContext2D,
    if(bin===lastBin||width<6)continue;
    lastBin=bin;
    const seed=(style.seed^(bin*103471))>>>0;
-   for(let k=0;k<(style.material==='dry-ink'?4:2);k++){
-    const offset=(noise(seed,k*5)-.5)*.70*width;
+   const rough=style.material==='rough-sumi'?
+    Math.max(.30,Math.min(1,style.roughness??.74)):0;
+   for(let k=0;k<(style.material==='dry-ink'?4:rough>0?3+Math.ceil(rough*4):2);k++){
+    // Rough bristles favour the outer 30–45% of each half-nib. Keep the
+    // centre at least 60% solid, even at full dry-fibre intensity.
+    const side=k%2===0?1:-1;
+    const offset=rough>0?side*(.31+noise(seed,k*5)*.13)*width:
+     (noise(seed,k*5)-.5)*.70*width;
     const start=(noise(seed,k*5+1)-.5)*3;
-    const run=2+noise(seed,k*5+2)*(style.material==='dry-ink'?12:7);
+    const run=2+noise(seed,k*5+2)*(style.material==='dry-ink'?12:rough>0?16:7);
     const x=p.x-p.ty*offset+p.tx*start,y=p.y+p.tx*offset+p.ty*start;
-    ctx.globalAlpha=style.material==='dry-ink'?.50:.28;
-    ctx.lineWidth=.55+noise(seed,k*5+3)*(style.material==='dry-ink'?1.35:.8);
+    ctx.globalAlpha=style.material==='dry-ink'?.50:rough>0?.30+.28*rough:.28;
+    ctx.lineWidth=.55+noise(seed,k*5+3)*(style.material==='dry-ink'?1.35:rough>0?2.0:.8);
     ctx.beginPath();ctx.moveTo(x,y);
     ctx.lineTo(x+p.tx*run,y+p.ty*run);ctx.stroke();
    }
