@@ -142,11 +142,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
  const [lineStatus,setLineStatus]=useState('Menunggu kaki');
  const [videoFloorProfile,setVideoFloorProfile]=useState<VideoFloorProfile|null>(null);
- const videoFloorReady=experimentSource==='video'&&experimentFrameRef?.current?.kind==='video'&&
-  videoFloorProfile?.clip===experimentFrameRef.current.clip&&
-  videoFloorProfile?.width===experimentFrameRef.current.video?.videoWidth&&
-  videoFloorProfile?.height===experimentFrameRef.current.video?.videoHeight;
- const activeVideoFloor=videoFloorReady?videoFloorProfile.calibration:null;
+ const videoFrame=experimentFrameRef?.current;
+ const videoFloorReady=experimentSource==='video'&&videoFrame?.kind==='video'&&
+  videoFloorProfile!==null&&videoFloorProfile.clip===videoFrame.clip&&
+  videoFloorProfile.width===videoFrame.video?.videoWidth&&
+  videoFloorProfile.height===videoFrame.video?.videoHeight;
+ const activeVideoFloor=videoFloorReady&&videoFloorProfile?videoFloorProfile.calibration:null;
  const [,setLineBrushCount]=useState(0);
  const floorPosePreview=useRef(new ComposeFloorPosePreview());
  const [floorPosePreviewActive,setFloorPosePreviewActive]=useState(false);
