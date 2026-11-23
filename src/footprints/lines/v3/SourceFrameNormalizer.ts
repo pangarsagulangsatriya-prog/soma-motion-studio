@@ -4,12 +4,13 @@ import type {ExperimentalFrame} from '../../../studio/v3/experimentSourceModel.t
 import {demoFootSamples} from '../FootLineSampleAdapter.ts';
 import {floorToUV} from '../../spatial/coordinates.ts';
 import type {PathStanceHint} from './PathObservationRouter.ts';
+import {makeSourceFrameGeometryV24,type SourceFrameGeometryV24} from '../../spatial/SourceFrameGeometryV24.ts';
 import {resolvePoseFeet,fromLegacySample,type FootV3Sample} from './FootPositionResolver.ts';
 
 export type V3Input={
  sourceKey:string;frameMs:number;presentationMs:number;
  samples:FootV3Sample[];ready:boolean;paused:boolean;seeking:boolean;
- supportHints?:PathStanceHint[];
+ supportHints?:PathStanceHint[];sourceGeometry?:SourceFrameGeometryV24;
  status:string;source:'camera'|'phone'|'video'|'simulator'|'demo';
 };
 export type V3InputOptions={
@@ -73,8 +74,10 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
     e.atMs<=frameMs+50&&frameMs-e.atMs<=220)
    .map(e=>({actorId:e.performer,foot:e.foot,kind:e.kind as PathStanceHint['kind'],
     atMs:e.atMs,confidence:e.confidence,basis:'video-2d-estimate' as const}));
+  const sourceGeometry=f.video.videoWidth>0&&f.video.videoHeight>0?
+   makeSourceFrameGeometryV24(f.video.videoWidth,f.video.videoHeight):undefined;
   return {source:'video',sourceKey,frameMs,presentationMs:mediaMs,samples,
-   supportHints,
+   supportHints,...(sourceGeometry?{sourceGeometry}:{}),
    ready:true,paused:f.video.paused,seeking:false,
    status:snap.ambiguous?'MP4 · identitas belum stabil':
     'MP4 · '+samples.length+' kaki terbaca · '+snap.people.filter(p=>p.confidence>=.55).length+
