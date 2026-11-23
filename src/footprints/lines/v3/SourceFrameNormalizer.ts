@@ -77,7 +77,9 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
    supportHints,
    ready:true,paused:f.video.paused,seeking:false,
    status:snap.ambiguous?'MP4 · identitas belum stabil':
-    samples.length?'MP4 · '+samples.length+' kaki terbaca':'MP4 · kaki belum terdeteksi'};
+    'MP4 · '+samples.length+' kaki terbaca · '+snap.people.filter(p=>p.confidence>=.55).length+
+    ' aktor (A '+samples.filter(p=>p.actorId==='A').length+
+    '/2 · B '+samples.filter(p=>p.actorId==='B').length+'/2)'};
  }
  if(experimentSource==='simulator'){
   const f=experiment?.kind==='simulator'?experiment:null;
