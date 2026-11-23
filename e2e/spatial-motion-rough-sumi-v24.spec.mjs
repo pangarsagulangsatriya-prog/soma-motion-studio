@@ -64,6 +64,7 @@ test('V2.4 browser: raw A/B travel reaches both stage sides and rough ink still 
     painter.ingestPath(event,32,'rough-sumi',false,1,.88);events++;
    }
   }
+  const ranges=route.coverage.summary;
   for(const e of route.cutAll('end'))painter.ingestPath(e,32,'rough-sumi',false,1,.88);
   const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=900;
   canvas.id='v24-golden-ribbon';document.body.prepend(canvas);
@@ -74,7 +75,6 @@ test('V2.4 browser: raw A/B travel reaches both stage sides and rough ink still 
    footVisible:{A:{left:true,right:true},B:{left:true,right:true}},
    headEnabled:false,shoulderEnabled:false,headOpacity:0,shoulderOpacity:0
   });
-  const ranges=route.coverage.summary;
   let aCount=0,bCount=0;
   const pixels=c.getImageData(0,0,1600,900).data;
   for(let y=0;y<900;y+=3)for(let x=0;x<1600;x+=3){
