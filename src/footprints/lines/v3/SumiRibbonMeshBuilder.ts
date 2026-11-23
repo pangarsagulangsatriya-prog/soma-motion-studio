@@ -22,8 +22,8 @@ export function buildPathRibbon(samples:readonly PathSample[],style:RibbonStyle,
   const confidence=clamp(.9+.1*p.confidence,.9,1);
   const width=clamp(base*(1+.12*curvature)*confidence*
    clamp(p.widthFactor??1,.65,1.3),6,42);
-  const head=smoothstep(p.s/(base*1.55));
-  const tail=finalTail?smoothstep((lengthPx-p.s)/(base*3)):1;
+  const head=smoothstep(p.s/(base*.95));
+  const tail=finalTail?smoothstep((lengthPx-p.s)/(base*1.9)):1;
   const w=width*Math.min(head,tail);
   widths.push(w);
   left.push({x:p.x-p.ty*w/2,y:p.y+p.tx*w/2});
