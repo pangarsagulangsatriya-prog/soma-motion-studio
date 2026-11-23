@@ -71,7 +71,7 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
    .filter(e=>e.confidence>=.65&&
     (e.kind==='contact'||e.kind==='swing'||e.kind==='pivot')&&
     e.atMs<=frameMs+50&&frameMs-e.atMs<=220)
-   .map(e=>({actorId:e.performer,foot:e.foot,kind:e.kind,
+   .map(e=>({actorId:e.performer,foot:e.foot,kind:e.kind as PathStanceHint['kind'],
     atMs:e.atMs,confidence:e.confidence,basis:'video-2d-estimate' as const}));
   return {source:'video',sourceKey,frameMs,presentationMs:mediaMs,samples,
    supportHints,
