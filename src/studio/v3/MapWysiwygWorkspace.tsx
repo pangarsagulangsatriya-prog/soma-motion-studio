@@ -3,6 +3,9 @@ import {useEffect,useRef,useState,type PointerEvent,type RefObject,type Keyboard
 import {Check,Maximize2,Minimize2,Pause,Play,RotateCcw,ScanLine} from 'lucide-react';
 import type {Quad,Point} from '../../projection/geometry.ts';
 import type {MotionFrame} from '../../engine/types.ts';
+import type {ExperimentalFrame} from './experimentSourceModel.ts';
+import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
+import {useMapCalibrationAssist} from './useMapCalibrationAssist.ts';
 import {identityQuad,transform,homography,inverse3} from '../../projection/geometry.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
@@ -10,6 +13,7 @@ import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
 import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
 import {containedImageRect,initialCameraQuad,pointerInSource,replaceValidCorner,paintMapWarp} from './mapWysiwygModel.ts';
 import './map-wysiwyg.css';
+import './map-calibration-assist.css';
 
 type Props={
  selected:StageSurface;
@@ -20,6 +24,12 @@ type Props={
  videoRef?:RefObject<HTMLVideoElement|null>;
  motionFrameRef?:RefObject<MotionFrame>;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
+ experimentFrameRef?:RefObject<ExperimentalFrame|null>;
+ router?:MultiPoseGaitRouter;
+ motionSession?:()=>string;
+ liveSourceKind?:'camera'|'phone';
+ performerCount?:1|2;
+ cameraOn?:boolean;
  floorTracker?:LiveFloorTrackingEngine;
  floorCanvas:RefObject<HTMLCanvasElement|null>;
  bodyCanvas:RefObject<HTMLCanvasElement|null>;
@@ -85,6 +95,7 @@ const validSource=(mode:Props['sourceKind'],video:HTMLVideoElement|null|undefine
 };
 export function MapWysiwygWorkspace({
  selected,stageDimensions,plan,sourceKind,hasLiveSource,videoRef,motionFrameRef,experimentInputCanvas,
+ experimentFrameRef,router,motionSession,liveSourceKind='camera',performerCount=2,cameraOn=false,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
  onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice=''
@@ -118,6 +129,10 @@ export function MapWysiwygWorkspace({
  const cameraDraftRef=useRef(cameraDraft);
  const outputDraftRef=useRef(outputDraft);
  cameraDraftRef.current=cameraDraft;outputDraftRef.current=outputDraft;
+ const assist=useMapCalibrationAssist({selected,sourceKind,sourceAvailable,
+  cameraDraft,outputDraft,sourceQuad:plan.sourceQuad,cameraDirty,sourceBox,
+  videoRef,experimentFrameRef,motionFrameRef,router,floorTracker,
+  motionSession,liveSourceKind,performerCount,cameraOn,simState,simCameraQuad:SIM_CAMERA_QUAD});
  useEffect(()=>{
   const q=floorTracker?.calibrationData?.cameraQuad;
   if(q&&!cameraDirty)setCameraDraft(q.map(p=>({...p})) as Quad);
@@ -382,12 +397,25 @@ export function MapWysiwygWorkspace({
     {fullScreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
    </button>
   </div>
+  {selected==='floor'&&<div className="soma-map-assist-controls" role="group" aria-label="Bantuan kalibrasi tapak">
+   <span className="soma-map-assist-heading">Tes ruang</span>
+   <button type="button" onClick={assist.test}>Tes tapak</button>
+   <button type="button" aria-pressed={assist.auto} onClick={()=>assist.setAuto(v=>!v)}>
+    Auto {assist.auto?'aktif':'mati'}</button>
+   <button type="button" aria-pressed={assist.replay} onClick={assist.toggleReplay}>
+    {assist.replay?'Stop replay':'Replay 5 detik'}</button>
+   <button type="button" aria-pressed={assist.frozen} onClick={assist.toggleFreeze}>
+    {assist.frozen?'Lanjut jejak':'Bekukan jejak'}</button>
+   <button type="button" onClick={assist.clear}>Bersihkan</button>
+   <span className="soma-map-assist-status" role="status" aria-live="polite">{assist.status}</span>
+  </div>}
   <div className="soma-map-wysiwyg-grid">
    <div className="soma-map-wysiwyg-pane">
     <div className="soma-map-wysiwyg-pane-head"><b>{sourceLabel}</b>
      <small data-live={visibleSource}>{simulating?'SIMULASI':sourceInterrupted?'TERPUTUS':sourceAvailable?(frozen?'DIBEKUKAN':'LIVE'):'Pratinjau sumber'}</small></div>
     <div className="soma-map-wysiwyg-image">
      <canvas ref={sourceCanvas} width={W} height={H} aria-label="Gambar input kamera atau video"/>
+     <canvas className="soma-map-assist-overlay" ref={assist.sourceCanvas} width={W} height={H} aria-hidden="true"/>
      {visibleSource&&mapOverlay('source')}
      {!visibleSource&&<div className="soma-map-v3-empty" role="status">
       <div className="soma-map-v3-empty-mark" aria-hidden="true">⌗</div>
@@ -422,6 +450,7 @@ export function MapWysiwygWorkspace({
     <small data-live={visibleSource}>{simulating?'SIMULASI':visibleSource?'Pratinjau Compose':'Belum ada hasil'}</small></div>
     <div className="soma-map-wysiwyg-image">
      <canvas ref={outputCanvas} width={W} height={H} aria-label="Hasil visual Compose dengan perspektif proyeksi"/>
+     <canvas className="soma-map-assist-overlay" ref={assist.outputCanvas} width={W} height={H} aria-hidden="true"/>
      {visibleSource&&mapOverlay('output')}
      {!visibleSource&&<div className="soma-map-v3-result-empty" role="status">
       <span className="soma-map-v3-result-mark" aria-hidden="true">▱</span>
