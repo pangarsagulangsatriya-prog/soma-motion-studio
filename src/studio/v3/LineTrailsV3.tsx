@@ -556,6 +556,13 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
       dualHeadOpacity:.75,dualShoulderOpacity:.9,dualSmoothing:.42,
       previewFit:false});
     }}>Dual Trace V2 · Gabung</button>
+   <button type="button" aria-pressed={dualMode}
+    onClick={()=>change({painterlyEngine:'dual-trace-v1',pathWeightPx:22,
+     footprintLifeMs:6000,footprintKeep:false,showSoles:true,showTrails:true,
+     trailKeep:true,dualGain:1.35,dualHeadEnabled:true,
+     dualShoulderEnabled:true,dualHeadWidth:8,dualShoulderWidth:16,
+     dualHeadOpacity:.75,dualShoulderOpacity:.9,dualSmoothing:.42,
+     previewFit:false})}>Dual Trace · BETA</button>
    <button type="button" aria-pressed={pathMode} onClick={()=>change({
      painterlyEngine:'path-first-v35',pathWeightPx:painterly.pathWeightPx??26,
      pathMaterial:painterly.pathMaterial??'path-sumi',pathAccents:painterly.pathAccents??'subtle',
