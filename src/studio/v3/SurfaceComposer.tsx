@@ -54,7 +54,7 @@ import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
 import {LineTrailsBetaStage,LineTrailsBetaPanel} from './LineTrailsBeta.tsx';
 import {LineTrailsV3Stage,LineTrailsV3Panel} from './LineTrailsV3.tsx';
-import {VideoSpatialCalibration,type VideoFloorProfile} from './VideoSpatialCalibration.tsx';
+import type {VideoFloorProfile} from './VideoSpatialCalibration.tsx';
 import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajectoryEngine.ts';
 import {PainterlyImpressionEngine} from '../../footprints/lines/v3/PainterlyImpressionEngine.ts';
 import {DEFAULT_PAINTERLY_SETTINGS,type PainterlySettings} from '../../footprints/lines/v3/PainterlyCanvasRenderer.ts';
@@ -105,6 +105,7 @@ type Props={
  experimentSource?:ComposeExperimentSource;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
+ videoFloorProfile?:VideoFloorProfile|null;
  experimentFloorCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentReady?:boolean;
  /** Software-only composited FLOOR overlay in the shared three-monitor shell. */
@@ -121,8 +122,12 @@ type Props={
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
  onOpenMapTrack?:()=>void;
  onOpenMapCompose?:()=>void;
+ onComposeRasterChange?:(ready:boolean)=>void;
+ onMapOutputSaved?:()=>void;
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved}:Props){
+ const rasterReadyCallback=useRef(onComposeRasterChange);rasterReadyCallback.current=onComposeRasterChange;
+ const lastRasterReady=useRef<boolean|null>(null);
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
  const experimentReadyRef=useRef(experimentReady);experimentReadyRef.current=experimentReady;
  const workspaceHiddenRef=useRef(workspaceHidden);workspaceHiddenRef.current=workspaceHidden;
@@ -141,7 +146,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const [lineFullscreenDiagnostics,setLineFullscreenDiagnostics]=useState<FullscreenDiagnostics>(DEFAULT_FULLSCREEN_DIAGNOSTICS);
  const [lineActor,setLineActor]=useState<'A'|'B'>('A');
  const [lineStatus,setLineStatus]=useState('Menunggu kaki');
- const [videoFloorProfile,setVideoFloorProfile]=useState<VideoFloorProfile|null>(null);
  const videoFrame=experimentFrameRef?.current;
  const videoFloorReady=experimentSource==='video'&&videoFrame?.kind==='video'&&
   videoFloorProfile!==null&&videoFloorProfile.clip===videoFrame.clip&&
@@ -858,6 +862,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      floorReadyRef.current&&(readyMedia('FLOOR')||!!(defaultFloor&&defaultFloor.width>=16&&defaultFloor.height>=16));
     const cameraSafe=experiment?experimentSafe:live&&masks.safe&&!!cameraKey;
     outputReadyRef.current={body:cameraSafe&&bodyMedia,floor:cameraSafe&&floorMedia};
+    const stageVisualReady=outputReadyRef.current.body||outputReadyRef.current.floor;
+    if(lastRasterReady.current!==stageVisualReady){
+     lastRasterReady.current=stageVisualReady;
+     rasterReadyCallback.current?.(stageVisualReady);
+    }
     stageRoute.current={
      mode:experiment?'simulation':'live',
      frameAtMs:cameraSafe?(experiment?now:masks.at):0,computedAtMs:now,
@@ -956,7 +965,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    motionEvents={motionEvents} cameraOn={cameraOn} floorReady={floorReady}
    performerCount={performerCount} identitySafe={identitySafe}
    experimentSource={experimentSource}
-   onOpenTrack={onOpenMapTrack} onOpenCompose={onOpenMapCompose}/>
+   onOpenTrack={onOpenMapTrack} onOpenCompose={onOpenMapCompose}
+   onMapOutputSaved={onMapOutputSaved}/>
  </section>;
  return <div id="soma-compose-focus" className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
@@ -1149,9 +1159,6 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
-  {lineTrails&&lineVersion==='v3'&&experimentSource==='video'&&experimentFrameRef&&
-   <VideoSpatialCalibration frameRef={experimentFrameRef} profile={videoFloorProfile}
-    onSave={setVideoFloorProfile}/>}
   {lineTrails&&lineVersion==='v3'?<LineTrailsV3Panel
    settings={v3Options} onChange={setV3Options} engine={lineV3Engine.current}
    painterly={painterlyOptions} onPainterlyChange={setPainterlyOptions}
