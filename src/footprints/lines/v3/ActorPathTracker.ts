@@ -11,10 +11,15 @@ type State={strokeId:string;last:ActorPathObservation;lastMoveAt:number;
  lastPoint:PathPoint;lastDirection?:number;stopped:boolean};
 const dist=(a:PathPoint,b:PathPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
+const gapLimit=(sourceKey:string)=>sourceKey.startsWith('video:')?900:500;
+const stepLimit=(dt:number)=>Math.min(175,24+dt*.24);
 export class ActorPathTracker{
  private tracks=new Map<ActorChannel,State>();
  private nextId=0;
+ private cuts=new Map<string,number>();
  get activeCount(){return this.tracks.size;}
+ get cutDiagnostics(){return Object.fromEntries(this.cuts);}
+ private countCut(reason:string){this.cuts.set(reason,(this.cuts.get(reason)??0)+1);}
  cutAll(reason:string):PathEvent[]{
   const events=[...this.tracks.entries()].map(([actor,state]):PathEvent=>({
    kind:'CUT',actorId:actor,strokeId:state.strokeId,timeMs:state.last.timeMs,
@@ -22,7 +27,7 @@ export class ActorPathTracker{
    clipStableId:state.last.clipStableId,epoch:state.last.epoch,
    confidence:state.last.confidence,provenance:state.last.provenance,reason
   }));
-  this.tracks.clear();return events;
+  this.tracks.clear();if(events.length)this.countCut(reason);return events;
  }
  ingest(observations:readonly ActorPathObservation[],timeMs:number):PathEvent[]{
   const events:PathEvent[]=[];
@@ -38,10 +43,20 @@ export class ActorPathTracker{
     let reason='';
     if(obs.sourceKey!==old.last.sourceKey||obs.epoch!==old.last.epoch)reason='source-switch';
     else if(dt<=0)reason='clock-reversal';
-    else if(dt>390)reason='gap';
-    else if(jump>Math.min(180,25+1.2*dt))reason='teleport';
+    else if(dt>gapLimit(obs.sourceKey))reason='gap';
+    else if(jump>stepLimit(dt))reason='teleport';
+    else if(dt>390&&jump>5){
+     // MP4 inference can skip frames. Bridge only a directionally consistent
+     // short span; never invent a sharp bend during the unknown interval.
+     const dx=obs.point.x-old.lastPoint.x,dy=obs.point.y-old.lastPoint.y;
+     const direction=Math.atan2(dy,dx);
+     if(old.lastDirection===undefined||
+        Math.abs(angle(old.lastDirection,direction))>Math.PI/4||
+        jump>dt*.21)reason='uncertain-gap';
+    }
     if(reason){
      events.push({...this.event('CUT',actor,old,old.last.timeMs),reason});
+     this.countCut(reason);
      this.tracks.delete(actor);old=undefined;
      // Never produce a synthetic line from the old position to the new point.
      if(reason==='teleport')continue;
@@ -70,9 +85,9 @@ export class ActorPathTracker{
     ...(Math.abs(turn)>Math.PI/15?{turnRad:turn}:{})});
   }
   for(const [actor,state] of [...this.tracks.entries()]){
-   if(!seen.has(actor)&&timeMs-state.last.timeMs>390){
+   if(!seen.has(actor)&&timeMs-state.last.timeMs>gapLimit(state.last.sourceKey)){
     events.push({...this.event('CUT',actor,state,timeMs),reason:'missing-feet'});
-    this.tracks.delete(actor);
+    this.countCut('missing-feet');this.tracks.delete(actor);
    }
   }
   return events;

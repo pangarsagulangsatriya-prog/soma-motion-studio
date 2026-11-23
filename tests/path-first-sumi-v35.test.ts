@@ -156,3 +156,58 @@ test('30-minute accelerated two-actor stream retains bounded active-tail knots',
   assert.ok(store.exportPNG());
  }finally{fake.restore();}
 });
+
+test('v3.5.1: planted foot resists a 320px swinging-foot excursion',()=>{
+ const r=new PathObservationRouter();
+ const first=r.ingest([pose('A','left',.20,1000),pose('A','right',.22,1000)])[0];
+ const swing=r.ingest([pose('A','left',.20,1100),pose('A','right',.42,1100)])[0];
+ assert.equal(swing.supportFoot,'left');
+ assert.equal(swing.evidence,'estimated-ground-projection');
+ assert.ok(Math.abs(swing.point.x-first.point.x)<12,
+  'a swinging foot must not drag the path center or cause a false teleport');
+ const returned=r.ingest([pose('A','left',.20,1200),pose('A','right',.42,1200)])[0];
+ assert.ok(Math.abs(returned.point.x-swing.point.x)<6);
+});
+test('v3.5.1: irregular video frames bridge only coherent short gaps',()=>{
+ const r=new PathObservationRouter(),t=new ActorPathTracker();
+ t.ingest(r.ingest(four(1000,.20)),1000);
+ const forward=t.ingest(r.ingest(four(1100,.22)),1100);
+ assert.equal(forward.filter(e=>e.kind==='ADD').length,2);
+ const gap=t.ingest(r.ingest(four(1700,.27)),1700);
+ assert.equal(gap.filter(e=>e.kind==='CUT').length,0,
+  '600ms MP4 inference gap with same direction must not automatically cut');
+ assert.ok(gap.some(e=>e.kind==='ADD'));
+ const long=t.ingest(r.ingest(four(2900,.31)),2900);
+ assert.equal(long.filter(e=>e.kind==='CUT').length,2,
+  'more than 900ms without evidence must cut each actor');
+});
+test('v3.5.1: lost identity or source swap cannot connect two actors',()=>{
+ const r=new PathObservationRouter(),t=new ActorPathTracker();
+ t.ingest(r.ingest(four(1000,.2)),1000);
+ const swapped=t.ingest(r.ingest(four(1100,.8)),1100);
+ assert.ok(swapped.some(e=>e.kind==='CUT'));
+ assert.ok(swapped.every(e=>e.kind!=='ADD'&&e.kind!=='TURN'));
+});
+test('v3.5.1: full mesh painter fills joined polygon, without per-knot stroke',async()=>{
+ const {paintDirectionalRibbon}=await import('../src/footprints/lines/v3/DirectionalInkPainter.ts');
+ const knots:PathKnot=[
+  {point:{x:20,y:20},timeMs:0,confidence:1},
+  {point:{x:50,y:20},timeMs:80,confidence:1},
+  {point:{x:70,y:35},timeMs:160,confidence:1}
+ ];
+ const pts=samplePathSegment(knots,1,30,3);
+ const mesh=buildPathRibbon(pts,{weightPx:26,material:'pigment-mass'},60,false)!;
+ let strokes=0,fills=0,vertices=0;
+ const ctx={
+  save(){},restore(){},beginPath(){},moveTo(){},lineTo(){vertices++;},
+  closePath(){},arc(){},clip(){},fill(){fills++;},stroke(){strokes++;},
+  set fillStyle(_x:string){},set strokeStyle(_x:string){},
+  set lineWidth(_n:number){},set lineJoin(_n:string){},set lineCap(_n:string){},
+  set globalAlpha(_n:number){}
+ };
+ paintDirectionalRibbon(ctx as unknown as CanvasRenderingContext2D,mesh,
+  {color:'#242424',weightPx:26,material:'pigment-mass',accents:'off',seed:42});
+ assert.ok(vertices>5);
+ assert.ok(fills>=1);
+ assert.equal(strokes,0,'pigment mesh must be a joined fill rather than strokes');
+});

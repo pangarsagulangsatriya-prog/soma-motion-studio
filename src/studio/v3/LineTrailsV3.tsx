@@ -19,11 +19,40 @@ import {buildSumiStrokeGeometry} from '../../footprints/lines/v3/SumiStrokeGeome
 import {PersistentInkStore} from '../../footprints/lines/v3/PersistentInkStore.ts';
 import {resolveActorColor} from '../../footprints/lines/v3/ActorPaletteResolver.ts';
 import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPreviewTransform.ts';
-import {PathObservationRouter} from '../../footprints/lines/v3/PathObservationRouter.ts';
+import {PathObservationRouter,type ActorPathObservation} from '../../footprints/lines/v3/PathObservationRouter.ts';
 import {ActorPathTracker} from '../../footprints/lines/v3/ActorPathTracker.ts';
 import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
+
+/** Technical markers are drawn only on the Compose Stage Monitor.
+ * Fullscreen projector feed stays clean and the Map homography is untouched. */
+function paintPathPrecisionOverlay(ctx:CanvasRenderingContext2D,
+ samples:readonly {actorId:string;foot:'left'|'right';x:number;y:number;confidence:number}[],
+ observations:readonly ActorPathObservation[],view:{scale:number;tx:number;ty:number}|undefined){
+ ctx.save();
+ if(view)ctx.setTransform(view.scale,0,0,view.scale,view.tx,view.ty);
+ ctx.font='13px monospace';ctx.lineWidth=2;
+ for(const s of samples){
+  if(s.confidence<.55)continue;
+  const actor=s.actorId==='B'||s.actorId==='performer-2'?'B':'A';
+  ctx.strokeStyle=actor==='A'?'#E44F32':'#242424';
+  ctx.beginPath();ctx.arc(s.x*1600,s.y*900,6,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=ctx.strokeStyle;ctx.fillText(s.foot==='left'?'L':'R',s.x*1600+9,s.y*900-8);
+ }
+ for(const o of observations){
+  ctx.strokeStyle=o.actorId==='A'?'#E44F32':'#242424';
+  ctx.lineWidth=2.5;ctx.beginPath();
+  ctx.moveTo(o.point.x-8,o.point.y);ctx.lineTo(o.point.x+8,o.point.y);
+  ctx.moveTo(o.point.x,o.point.y-8);ctx.lineTo(o.point.x,o.point.y+8);ctx.stroke();
+  const label=o.actorId+' · '+(o.motionBasis??'estimasi')+
+   (o.supportFoot?' '+o.supportFoot:'')+' · 2D';
+  ctx.fillStyle='#F5F5F2';ctx.fillRect(o.point.x+11,o.point.y-25,
+   Math.min(360,label.length*8+10),22);
+  ctx.fillStyle=ctx.strokeStyle;ctx.fillText(label,o.point.x+15,o.point.y-10);
+ }
+ ctx.restore();
+}
 
 type StageProps={
  fullscreenRef:RefObject<HTMLDivElement|null>;
@@ -60,6 +89,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const pathRouter=new PathObservationRouter();
   const pathTracker=new ActorPathTracker();
   const pathStore=new PersistentPathStore();
+  let lastPathObservations:ActorPathObservation[]=[];
   const pathStyle=(actor:'A'|'B')=>{
    const options=args.current.painterly;
    return {color:args.current.settings.actorColors[actor],
@@ -70,7 +100,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const cutPath=(reason:string)=>{
    for(const event of pathTracker.cutAll(reason))
     pathStore.ingest(event,pathStyle(event.actorId));
-   pathRouter.reset();
+   pathRouter.reset();lastPathObservations=[];
   };
   const viewFit=new PainterlyPreviewTransform();
   args.current.onRegisterExportInk?.(()=>
@@ -166,6 +196,7 @@ export function LineTrailsV3Stage(props:StageProps){
        if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');}
        if(nextPathMode&&!input.paused){
         const observations=pathRouter.ingest(batch.poses).filter(o=>!pathStore.isReplayCovered(o));
+         lastPathObservations=observations;
         const pathEvents=pathTracker.ingest(observations,input.frameMs);
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
@@ -212,6 +243,8 @@ export function LineTrailsV3Stage(props:StageProps){
     nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
    paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,
     input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
+   if(nextPathMode&&p.painterly.pathDiagnostics&&!off&&!fullscreen)
+    paintPathPrecisionOverlay(ctx,input.samples,lastPathObservations,view);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
     // Diagnostics live only on explicit V/K; V3 fullscreen default is clean.
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
@@ -238,7 +271,9 @@ export function LineTrailsV3Stage(props:StageProps){
      'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
      ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
-      ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit']:[]),
+      ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit',
+       '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
+       'Cut: '+JSON.stringify(pathTracker.cutDiagnostics)]:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
@@ -393,6 +428,10 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
      <label className="lt-painterly-stay"><input type="checkbox" aria-label="Komposisi preview"
        checked={!!painterly.previewFit}
        onChange={e=>change({previewFit:e.target.checked})}/>Komposisi preview</label>
+     <label className="lt-painterly-stay"><input type="checkbox"
+      aria-label="Periksa presisi jalur" checked={!!painterly.pathDiagnostics}
+      onChange={e=>change({pathDiagnostics:e.target.checked})}/>
+      Periksa presisi · hanya Stage Monitor</label>
     </>:sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??56} px</output>
    <input type="range" min={8} max={96} step={2}
     aria-label="Bobot kuas Sumi" value={painterly.sumiWeightPx??56}

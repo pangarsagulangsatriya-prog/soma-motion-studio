@@ -6,79 +6,79 @@ const noise=(seed:number,index:number)=>{
  n=Math.imul(n^(n>>>13),3266489917)>>>0;
  return ((n^(n>>>16))>>>0)/4294967296;
 };
-/** Directional wet/dry nib, painted only into local scratch pixels.
- * An opaque actor atlas absorbs adjacent segments as one path. */
+/** Fill the real joined left/right ribbon mesh, rather than painting one wide
+ * ctx.stroke per segment. Each call renders into the isolated scratch canvas.
+ * Small directional fibers stay clipped to the same ribbon shape.
+ */
 export function paintDirectionalRibbon(ctx:CanvasRenderingContext2D,
  mesh:PathRibbonMesh,style:InkRenderStyle,accent=false){
  const points=mesh.centerline;
+ if(points.length<2||mesh.left.length!==points.length||
+  mesh.right.length!==points.length)return;
  ctx.save();
- ctx.strokeStyle=style.color;
- ctx.fillStyle=style.color;
+ ctx.fillStyle=style.color;ctx.strokeStyle=style.color;
  ctx.lineJoin='round';ctx.lineCap='round';
- for(let i=1;i<points.length;i++){
-  const a=points[i-1],b=points[i];
-  const width=(mesh.widths[i-1]+mesh.widths[i])/2;
-  if(width<.12)continue;
-  // Wet-ink edge extends only a fraction of local nib width.
-  if(style.material!=='pigment-mass'){
-   ctx.globalAlpha=style.material==='dry-ink'?.09:.15;
-   ctx.lineWidth=width+Math.max(1,style.weightPx*.065);
-   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-  }
-  ctx.globalAlpha=1;
-  ctx.lineWidth=width;
-  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
- }
- // Scratch-scoped cutout follows the path tangent. Never alter committed
- // pigment with destination-out, and never scratch across the entire ribbon.
+ ctx.beginPath();
+ ctx.moveTo(mesh.left[0].x,mesh.left[0].y);
+ for(let i=1;i<mesh.left.length;i++)
+  ctx.lineTo(mesh.left[i].x,mesh.left[i].y);
+ for(let i=mesh.right.length-1;i>=0;i--)
+  ctx.lineTo(mesh.right[i].x,mesh.right[i].y);
+ ctx.closePath();
+ // A tiny edge bleed is inside the temporary stroke-local canvas; main ink is
+ // fully opaque, so neighbouring committed segments never alpha-darken.
  if(style.material!=='pigment-mass'){
-  ctx.save();ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='#000';
+  ctx.save();ctx.globalAlpha=style.material==='dry-ink'?.12:.10;
+  ctx.lineWidth=Math.max(.6,style.weightPx*.045);ctx.stroke();ctx.restore();
+ }
+ ctx.fill();
+ // Seam-safe round join between two separate arc-length spans. This never
+ // widens the path beyond the local nib radius.
+ for(const i of [0,points.length-1]){
+  if(mesh.widths[i]<1)continue;
+  ctx.beginPath();ctx.arc(points[i].x,points[i].y,mesh.widths[i]/2,0,Math.PI*2);
+  ctx.fill();
+ }
+ if(style.material!=='pigment-mass'){
+  ctx.save();ctx.beginPath();
+  ctx.moveTo(mesh.left[0].x,mesh.left[0].y);
+  for(let i=1;i<mesh.left.length;i++)
+   ctx.lineTo(mesh.left[i].x,mesh.left[i].y);
+  for(let i=mesh.right.length-1;i>=0;i--)
+   ctx.lineTo(mesh.right[i].x,mesh.right[i].y);
+  ctx.closePath();ctx.clip();
+  ctx.globalCompositeOperation='destination-out';
+  ctx.strokeStyle='#000';
   let lastBin=-1;
   for(let i=1;i<points.length-1;i++){
-   const p=points[i],width=mesh.widths[i];
-   const bin=Math.floor(p.s/8);
+   const p=points[i],width=mesh.widths[i],bin=Math.floor(p.s/8);
    if(bin===lastBin||width<6)continue;
    lastBin=bin;
    const seed=(style.seed^(bin*103471))>>>0;
-   // Two to four small longitudinal dry fibers, seeded in global arc-length
-   // coordinates, stay coherent when tail geometry is rebuilt.
-   const count=style.material==='dry-ink'?4:2;
-   for(let k=0;k<count;k++){
-    const lateral=(noise(seed,k*5)-.5)*.70*width;
+   for(let k=0;k<(style.material==='dry-ink'?4:2);k++){
+    const offset=(noise(seed,k*5)-.5)*.70*width;
     const start=(noise(seed,k*5+1)-.5)*3;
     const run=2+noise(seed,k*5+2)*(style.material==='dry-ink'?12:7);
-    const x=p.x-p.ty*lateral+p.tx*start;
-    const y=p.y+p.tx*lateral+p.ty*start;
-    ctx.globalAlpha=style.material==='dry-ink'?.5:.29;
-    ctx.lineWidth=.55+noise(seed,k*5+3)*(style.material==='dry-ink'?1.35:.80);
+    const x=p.x-p.ty*offset+p.tx*start,y=p.y+p.tx*offset+p.ty*start;
+    ctx.globalAlpha=style.material==='dry-ink'?.50:.28;
+    ctx.lineWidth=.55+noise(seed,k*5+3)*(style.material==='dry-ink'?1.35:.8);
     ctx.beginPath();ctx.moveTo(x,y);
     ctx.lineTo(x+p.tx*run,y+p.ty*run);ctx.stroke();
-   }
-   // Ragged dry edge: nib shears a small local notch rather than stamping
-   // detached dots. No random marks appear away from the actual path.
-   if(bin%3===0){
-    const side=noise(seed,91)>.5?1:-1;
-    const n=width*(.47-.04*noise(seed,92));
-    const x=p.x-p.ty*n*side,y=p.y+p.tx*n*side;
-    ctx.globalAlpha=style.material==='dry-ink'?.72:.42;
-    ctx.lineWidth=.9+noise(seed,93)*1.7;
-    ctx.beginPath();ctx.moveTo(x,y);
-    ctx.lineTo(x-p.ty*side*2.8+p.tx*2.5,
-     y+p.tx*side*2.8+p.ty*2.5);ctx.stroke();
    }
   }
   ctx.restore();
  }
- // Only TURN/pivot gated upstream may request a small, directional accent.
- if(accent&&style.accents!=='off'&&points.length){
+ // Do not invent impacts or splatter from 2D estimated turns. The actual
+ // contact event is still 'none' until a verified stance/pivot source is wired.
+ if(accent&&style.accents!=='off'){
   const p=points[points.length-1];
-  const count=style.accents==='subtle'?1:3;
-  ctx.globalAlpha=style.material==='dry-ink'?.65:.85;
-  for(let i=0;i<count;i++){
-   const q=noise(style.seed,i*3),v=noise(style.seed,i*3+1);
-   const radius=.7+noise(style.seed,i*3+2)*1.5;
-   ctx.beginPath();ctx.arc(p.x+p.tx*(4+q*8)-p.ty*(v-.5)*8,
-    p.y+p.ty*(4+q*8)+p.tx*(v-.5)*8,radius,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=.7;ctx.fillStyle=style.color;
+  for(let i=0;i<(style.accents==='subtle'?1:3);i++){
+   const s=(style.seed^Math.floor(p.s))>>>0;
+   const q=noise(s,i*3),v=noise(s,i*3+1);
+   const radius=.6+noise(s,i*3+2)*1.2;
+   ctx.beginPath();ctx.arc(p.x+p.tx*(3+q*7)-p.ty*(v-.5)*7,
+    p.y+p.ty*(3+q*7)+p.tx*(v-.5)*7,radius,0,Math.PI*2);ctx.fill();
   }
  }
  ctx.restore();

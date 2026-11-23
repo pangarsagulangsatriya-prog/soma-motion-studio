@@ -18,6 +18,7 @@ export type PainterlySettings={
  pathWeightPx?:number;
  pathMaterial?:RibbonStyle['material'];
  pathAccents?:InkAccentMode;
+ pathDiagnostics?:boolean;
  sumiMaterial?:SumiMaterial;
  sumiWeightPx?:number;
  sumiExpression?:'natural'|'bold';
@@ -30,7 +31,8 @@ export type PainterlySettings={
 };
 export const DEFAULT_PAINTERLY_SETTINGS:PainterlySettings={
  enabled:true,painterlyEngine:'path-first-v35',
- pathWeightPx:26,pathMaterial:'path-sumi',pathAccents:'subtle',sumiMaterial:'sumi',
+ pathWeightPx:26,pathMaterial:'path-sumi',pathAccents:'subtle',
+ pathDiagnostics:false,sumiMaterial:'sumi',
  sumiWeightPx:56,sumiExpression:'bold',previewFit:false,
  material:'ink',showSoles:true,showTrails:true,
  footprintLifeMs:6000,trailLifeMs:4000,

@@ -20,6 +20,8 @@ test('V3.5 Path Sumi is a real default, not a V3.4 label',async({page})=>{
  await expect(panel.getByLabel('Garis tetap')).toBeChecked();
  await expect(panel.getByRole('group',{name:'Aksen tinta'}).getByRole('button',{name:'Halus'}))
   .toHaveAttribute('aria-pressed','true');
+ await panel.getByLabel('Periksa presisi jalur').check();
+ await expect(panel.getByLabel('Periksa presisi jalur')).toBeChecked();
  await panel.getByRole('button',{name:'Coba Demo'}).click();
  await expect(panel.getByText(/DEMO/)).toBeVisible();
  await expect.poll(()=>monitor.locator('.lt-v3-stage canvas').evaluate(c=>{
