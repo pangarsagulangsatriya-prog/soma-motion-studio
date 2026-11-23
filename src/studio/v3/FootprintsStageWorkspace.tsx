@@ -852,7 +852,14 @@ export function FootprintsStageWorkspace({
   videoClip:experimentClip,active:!composerOpen&&!operatorMode
  });
  const navigationReadiness=stageNavigationReadiness({
-  sourceReady:feedback.state==='ready'||feedback.state==='synthetic',
+  // Track feedback pulse pauses in Compose; derive readiness from the active
+  // source/pose instead of relying on that hidden widget's animation state.
+  sourceReady:experimentalKind==='video'?
+   selectedExperimentFrame?.kind==='video'&&canPaintVideoFrame(selectedExperimentFrame):
+   experimentalKind==='simulator'?selectedExperimentFrame?.kind==='simulator':
+   cameraOn&&bodySelected&&frameFresh&&!identityStatus.ambiguous&&
+    (performerCount===1?!!frameRef.current.tracked:
+     identityStatus.visible.length===2&&identityStatus.observedFrameTime===frameRef.current.time),
   composeRasterReady,outputQuadSaved:mapOutputSaved,
   outputQaValid:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
   physicalLiveCommanded:dual.floor.mode==='live'||dual.body.mode==='live'
