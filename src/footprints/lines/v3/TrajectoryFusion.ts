@@ -15,7 +15,7 @@ export function estimateAmbiguousCenterMovement(midpointDelta:PathPoint,
  const l=length(leftDelta),r=length(rightDelta);
  const dot=l>0&&r>0?(leftDelta.x*rightDelta.x+leftDelta.y*rightDelta.y)/(l*r):0;
  // Diverging feet and near-zero center indicate a turn in place, not a walk.
- if(dot<-.45&&center<5)return {x:0,y:0};
+ if(dot<-.45&&center<1.4)return {x:0,y:0};
  const maxStep=Math.min(44,8+Math.max(0,dtMs)*.095);
  // Low-trust center motion is bounded; evidence of consistent translation
  // still contributes at each frame, including slow forward/lateral walks.
