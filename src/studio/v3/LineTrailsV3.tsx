@@ -19,6 +19,9 @@ import {buildSumiStrokeGeometry} from '../../footprints/lines/v3/SumiStrokeGeome
 import {PersistentInkStore} from '../../footprints/lines/v3/PersistentInkStore.ts';
 import {resolveActorColor} from '../../footprints/lines/v3/ActorPaletteResolver.ts';
 import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPreviewTransform.ts';
+import {PathObservationRouter} from '../../footprints/lines/v3/PathObservationRouter.ts';
+import {ActorPathTracker} from '../../footprints/lines/v3/ActorPathTracker.ts';
+import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
 
@@ -54,15 +57,41 @@ export function LineTrailsV3Stage(props:StageProps){
   const brushStore=new FootBrushDepositStore();
   const sumiMotion=new ObservedMotionInkEngine();
   const sumiStore=new PersistentInkStore();
+  const pathRouter=new PathObservationRouter();
+  const pathTracker=new ActorPathTracker();
+  const pathStore=new PersistentPathStore();
+  const pathStyle=(actor:'A'|'B')=>{
+   const options=args.current.painterly;
+   return {color:args.current.settings.actorColors[actor],
+    weightPx:options.pathWeightPx??26,
+    material:options.pathMaterial??'path-sumi',
+    accents:options.pathAccents??'subtle'} as const;
+  };
+  const cutPath=(reason:string)=>{
+   for(const event of pathTracker.cutAll(reason))
+    pathStore.ingest(event,pathStyle(event.actorId));
+   pathRouter.reset();
+  };
   const viewFit=new PainterlyPreviewTransform();
-  args.current.onRegisterExportInk?.(()=>sumiStore.exportPNG());
-  args.current.onRegisterInkArchive?.({save:()=>sumiStore.exportSessionJSON(),
-   load:async data=>{sumiMotion.cutMotionSegment('import');
-    await sumiStore.importSessionJSON(data);viewFit.reset();}});
+  args.current.onRegisterExportInk?.(()=>
+   args.current.painterly.painterlyEngine==='path-first-v35'?
+    pathStore.exportPNG():sumiStore.exportPNG());
+  args.current.onRegisterInkArchive?.({save:()=>
+   args.current.painterly.painterlyEngine==='path-first-v35'?
+    pathStore.exportSessionJSON():sumiStore.exportSessionJSON(),
+   load:async data=>{
+    sumiMotion.cutMotionSegment('import');cutPath('import');
+    if(args.current.painterly.painterlyEngine==='path-first-v35')
+     await pathStore.importSessionJSON(data);
+    else await sumiStore.importSessionJSON(data);
+    viewFit.reset();
+   }});
   let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
   let brushSource='';
   let brushMode=false;
   let sumiMode=false;
+  let pathMode=false;
+  let lastPathOff=false;
   let lastBrushResetRevision=args.current.brushResetRevision??0;
   const clearBrush=()=>{brushStore.reset();gestures.reset();
    brushAdapter={lastFrameMs:-1,epoch:brushAdapter.epoch+1,sourceKey:''};};
@@ -84,19 +113,25 @@ export function LineTrailsV3Stage(props:StageProps){
    const resetRevision=p.brushResetRevision??0;
    if(resetRevision!==lastBrushResetRevision){
     clearBrush();sumiMotion.cutMotionSegment('user-clear');
-    sumiStore.clearPainting();viewFit.reset();lastBrushResetRevision=resetRevision;
+    sumiStore.clearPainting();cutPath('user-clear');pathStore.clearPainting();
+    viewFit.reset();lastBrushResetRevision=resetRevision;
    }
    const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
    const nextSumiMode=p.painterly.enabled&&p.painterly.painterlyEngine==='sumi-v34';
+   const nextPathMode=p.painterly.enabled&&p.painterly.painterlyEngine==='path-first-v35';
+   if(nextPathMode!==pathMode){cutPath('renderer-switch');pathMode=nextPathMode;}
    if(nextSumiMode!==sumiMode){sumiMotion.cutMotionSegment('renderer-switch');sumiMode=nextSumiMode;}
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
-   if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');brushSource=input.sourceKey;}
+   if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');
+    cutPath('source-switch');brushSource=input.sourceKey;}
    if(input.sourceKey!==lastSource){
     lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
     p.impressions.ensureSource(input.sourceKey);
    }
    const off=p.blackout||!p.previewLive;
+   if(off&&!lastPathOff)cutPath('preview-off');
+   lastPathOff=off;
    if(off){
     p.engine.cutAll('manual-reset');
     // Any later frame must start a fresh stroke; retained pigment stays until cleared.
@@ -104,7 +139,8 @@ export function LineTrailsV3Stage(props:StageProps){
     message='Preview padam';
    }else{
     if(input.seeking){
-     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();clearBrush();sumiMotion.cutMotionSegment('seek');}
+     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();clearBrush();
+       sumiMotion.cutMotionSegment('seek');cutPath('seek');}
      lastSeeking=true;
      message='MP4 · memindahkan posisi video';
     }else{
@@ -117,16 +153,25 @@ export function LineTrailsV3Stage(props:StageProps){
       // A later valid frame will still cut a >390ms gap in the tracking engine.
       const graceMs=input.source==='video'?1000:500;
       if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
-       p.engine.cutAll('stale-frame');gestures.reset();sumiMotion.cutMotionSegment('stale');lastStale=true;
+       p.engine.cutAll('stale-frame');gestures.reset();sumiMotion.cutMotionSegment('stale');
+        cutPath('stale');lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
       p.impressions.ingestFrame(input.samples,input.frameMs,input.source);
-      if(nextBrushMode||nextSumiMode){
+      if(nextBrushMode||nextSumiMode||nextPathMode){
        const batch=adaptFootBrushFrame(input.samples,input.sourceKey,
         input.frameMs,brushAdapter);
        brushAdapter=batch.state;
-       if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');}
+       if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');}
+       if(nextPathMode&&!input.paused){
+        const observations=pathRouter.ingest(batch.poses).filter(o=>!pathStore.isReplayCovered(o));
+        const pathEvents=pathTracker.ingest(observations,input.frameMs);
+        for(const event of pathEvents){
+         if(!p.settings.actors[event.actorId])continue;
+         pathStore.ingest(event,pathStyle(event.actorId));
+        }
+       }
        if(nextSumiMode&&!input.paused){
         const events=sumiMotion.ingest(batch.poses);
         for(const event of events){
@@ -163,8 +208,10 @@ export function LineTrailsV3Stage(props:StageProps){
     }
    }
    const fullscreen=document.fullscreenElement===p.fullscreenRef.current;
-   const view=nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
-   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen,brushStore,sumiStore,view);
+   const view=nextPathMode?viewFit.update(pathStore.getBounds(),!!p.painterly.previewFit):
+    nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
+   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,
+    input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
     // Diagnostics live only on explicit V/K; V3 fullscreen default is clean.
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
@@ -191,6 +238,7 @@ export function LineTrailsV3Stage(props:StageProps){
      'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
      ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
+      ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit']:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
@@ -198,7 +246,8 @@ export function LineTrailsV3Stage(props:StageProps){
    }
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
+  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');
+    args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
  return <div ref={props.fullscreenRef} className="lt-beta-frame lt-v3-stage"
   aria-label="Kanvas Garis V3, lintasan dua kaki">
