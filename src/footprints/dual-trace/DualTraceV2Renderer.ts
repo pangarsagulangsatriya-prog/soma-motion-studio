@@ -2,6 +2,7 @@ import type {ActorChannel} from '../lines/v3/ActorPaletteResolver.ts';
 import type {PathEvent} from '../lines/v3/ActorPathTracker.ts';
 import type {UpperGestureEvent} from './UpperGestureStrokeTracker.ts';
 import type {UpperGestureAnchor,UpperChannel} from './UpperGestureAnchorAdapter.ts';
+import {MotionBrushDynamics} from './MotionBrushDynamics.ts';
 import {PersistentPathStore} from '../lines/v3/PersistentPathStore.ts';
 import {paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
 import {lifetimeOpacity,type PainterlyImpressionEngine} from '../lines/v3/PainterlyImpressionEngine.ts';
@@ -59,6 +60,7 @@ export class DualTraceV2Renderer{
   B:{head:new PersistentPathStore(),shoulder:new PersistentPathStore()}
  };
  private tinted=new Map<string,{revision:number;color:string;canvas:HTMLCanvasElement}>();
+ private brushDynamics=new MotionBrushDynamics();
  private lastSpatialSignature='';
  private footprintMask={A:blank(),B:blank()};
  private tintedFeet={A:blank(),B:blank()};
@@ -82,7 +84,8 @@ export class DualTraceV2Renderer{
  }
  ingestPath(event:PathEvent,weight=22,material:'path-sumi'|'dry-ink'|'pigment-mass'='path-sumi',
   expressive=false){
-  this.path[event.actorId].ingest(event,{
+  const widthFactor=this.brushDynamics.weight(event,expressive);
+  this.path[event.actorId].ingest({...event,widthFactor},{
    color:'#ffffff',weightPx:clamp(weight,8,42),material,
    accents:expressive?'expressive':'subtle'
   });
@@ -95,13 +98,15 @@ export class DualTraceV2Renderer{
   });
  }
  cutAll(){
+  this.brushDynamics.reset();
   for(const actor of ACTORS){
    this.path[actor].cutAll('mode-or-source-change');
    this.upper[actor].head.cutAll('mode-or-source-change');
    this.upper[actor].shoulder.cutAll('mode-or-source-change');
   }
  }
- clearPath(){for(const a of ACTORS)this.path[a].clearPainting();this.tinted.clear();}
+ clearPath(){for(const a of ACTORS)this.path[a].clearPainting();
+  this.brushDynamics.reset();this.tinted.clear();}
  clearUpper(){
   for(const a of ACTORS){this.upper[a].head.clearPainting();this.upper[a].shoulder.clearPainting();}
   this.tinted.clear();
