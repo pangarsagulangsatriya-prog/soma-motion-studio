@@ -111,7 +111,7 @@ test('GT22: source switch and A/B roles cannot join across epochs',()=>{
  const engine=new ActorGroundTrajectoryEstimator();
  engine.ingest([obs('A',180,1000),obs('B',980,1000)],[
   frame('A',180,1000,2),frame('B',980,1000,2)]);
- const switched=engine.ingest([obs('A',200,1100)],[
+ const switched=engine.ingest([{...obs('A',200,1100),sourceKey:'video:new-clip:1:2'}],[
   {...frame('A',200,1100,2),sourceKey:'video:new-clip:1:2'}]);
  assert.ok(switched.cuts.some(c=>c.actorId==='A'));
  assert.ok(!switched.cuts.some(c=>c.actorId==='B'));
