@@ -320,6 +320,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const ownFloorOutput=useRef<HTMLCanvasElement>(null);
  const bodyOutput=outputBodyRaster??ownBodyOutput;
  const floorOutput=outputFloorRaster??ownFloorOutput;
+ const lineOutputRaster=useRef<HTMLCanvasElement|null>(null);
+ useEffect(()=>{lineOutputRaster.current=document.createElement('canvas');return()=>{lineOutputRaster.current=null;};},[]);
  const stageRoute=useRef<StageRouteInput|null>(null);
  const maskCache=useRef<{at:number;A:HTMLCanvasElement|null;B:HTMLCanvasElement|null;safe:boolean;reason:string;union:ReturnType<typeof buildLowerBodyMask>['mask']|null}>({at:-1,A:null,B:null,safe:false,reason:'Tracking belum siap.',union:null});
  const maskScratch=useRef<{A:HTMLCanvasElement;B:HTMLCanvasElement}|null>(null);
@@ -620,7 +622,15 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     render(ctx,'BODY A',body.width,body.height,true,true);
     if(performerRef.current===2)render(ctx,'BODY B',body.width,body.height,false,true);
    }}
-   if(floor){const ctx=floor.getContext('2d');if(ctx)render(ctx,'FLOOR',floor.width,floor.height,true,true);}
+   if(floor){const ctx=floor.getContext('2d');if(ctx){
+    render(ctx,'FLOOR',floor.width,floor.height,true,true);
+    const line=lineOutputRaster.current;
+    if(lineTrailsRef.current&&line&&line.width>0&&line.height>0&&
+      previewLiveRef.current&&!blackoutRef.current){
+     ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+     ctx.drawImage(line,0,0,floor.width,floor.height);ctx.restore();
+    }
+   }}
    // Render Liquid Imprint for FLOOR preview and composite verified Track imprints
    // onto floorOutput when live camera floor routing is active.
    let liquidFrame=false;
@@ -907,7 +917,24 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  };
  const openPreview=()=>{const win=window.open('','soma-s64-preview','width=960,height=540');if(!win){setHint('Izinkan popup untuk membuka preview.');return;}popup.current=win;win.document.body.style.cssText='margin:0;background:black';const c=win.document.createElement('canvas');c.width=1280;c.height=720;c.style.cssText='width:100vw;height:100vh;object-fit:contain';win.document.body.replaceChildren(c);setOutputOpen(true);};
  useEffect(()=>{if(!outputOpen)return;let raf=0;const tick=()=>{const win=popup.current;if(!win||win.closed){setOutputOpen(false);return;}const c=win.document.querySelector('canvas');const ctx=c?.getContext('2d');if(ctx&&c)render(ctx,selectedRef.current,c.width,c.height);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[outputOpen,blackout,previewLive,floorReady,cameraOn,performerCount,identitySafe]);
+ // Continue processing during Map, with UI safely hidden.
+ const mapLineStage=lineTrails&&lineVersion==='v3'?<div style={{position:'absolute',width:1,height:1,opacity:0,pointerEvents:'none',overflow:'hidden'}} aria-hidden="true">
+  <LineTrailsV3Stage outputRaster={lineOutputRaster}
+   fullscreenRef={lineFullscreenRef} frameRef={frameRef} videoRef={videoRef}
+   experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
+   fullscreenDiagnostics={lineFullscreenDiagnostics}
+   router={router} engine={lineV3Engine.current} settings={v3Options}
+   cameraFloorCalibration={!experimentSource&&floorReady&&floorTracker.isConfirmed?floorTracker.calibrationData:null}
+   impressions={painterlyEngine.current} painterly={painterlyOptions}
+   brushResetRevision={brushResetRevision}
+   motionEvents={motionEvents}
+   blackout={blackout||previewBlackout} previewLive={previewLive}
+   cameraOn={cameraOn} bodySelected={bodySelected} performerCount={performerCount}
+   experimentSource={experimentSource} sourceKind={lineSource} demo={lineDemo}
+   onStatus={setLineStatus} onDiagnostics={setV3Diagnostics} motionSession={motionSession}/>
+ </div>:null;
  if(mapMode)return <section className="map-r1-workspace" role="region" aria-label="Map — kalibrasi dan QA output">
+  {mapLineStage}
   <canvas ref={bodyOutput} width={1280} height={720} hidden aria-label="Map BODY output raster"/>
   <canvas ref={floorOutput} width={1280} height={720} hidden aria-label="Map FLOOR output raster"/>
   <canvas ref={liquidCanvas} id="mat03-pixi-preview" width={960} height={540} hidden aria-label="MAT-03 Liquid Imprint PixiJS raster"/>
@@ -1019,11 +1046,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      {fullscreenNotice&&<small className="cp-compose-fullscreen-notice" role="status">{fullscreenNotice}</small>}
     </div>
     {lineTrails&&lineVersion==='v3'&&<LineTrailsV3Stage
+     outputRaster={lineOutputRaster}
      fullscreenRef={lineFullscreenRef} frameRef={frameRef} videoRef={videoRef}
      experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
      fullscreenDiagnostics={lineFullscreenDiagnostics}
      router={router} engine={lineV3Engine.current} settings={v3Options}
-     cameraFloorCalibration={!experimentSource&&floorTracker.isConfirmed?floorTracker.calibrationData:null}
+     cameraFloorCalibration={!experimentSource&&floorReady&&floorTracker.isConfirmed?floorTracker.calibrationData:null}
       impressions={painterlyEngine.current} painterly={painterlyOptions}
       brushResetRevision={brushResetRevision}
       onRegisterExportInk={fn=>{inkExportRef.current=fn;}}
