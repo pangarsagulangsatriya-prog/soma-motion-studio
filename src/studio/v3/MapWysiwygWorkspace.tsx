@@ -6,7 +6,7 @@ import type {MotionFrame} from '../../engine/types.ts';
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
 import {useMapCalibrationAssist} from './useMapCalibrationAssist.ts';
-import {identityQuad,transform,homography,inverse3} from '../../projection/geometry.ts';
+import {identityQuad,transform,homography} from '../../projection/geometry.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {CameraFloorCalibration} from '../../footprints/spatial/coordinates.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
@@ -215,24 +215,8 @@ export function MapWysiwygWorkspace({
    const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
    if(ready)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
-   // Preview each detected foot against the draft camera quad.
-   // This does not touch the actual tracking stream until Apply.
-   if(sourceKind==='camera'&&cameraDirty&&motionFrameRef?.current?.pose?.length){
-    try{
-     const inverseCamera=inverse3(homography(cameraDraftRef.current));
-     const outputMatrix=homography(outputDraftRef.current);
-     for(const index of [27,28,29,30,31,32]){
-      const landmark=motionFrameRef.current.pose[index];
-      if(!landmark||(landmark.visibility??1)<.35)continue;
-      const floor=transform(inverseCamera,{x:landmark.x,y:landmark.y});
-      if(floor.x<0||floor.x>1||floor.y<0||floor.y>1)continue;
-      const target=transform(outputMatrix,floor);
-      ctx.save();ctx.beginPath();ctx.arc(target.x*W,target.y*H,9,0,Math.PI*2);
-      ctx.fillStyle=index%2===0?'#8ad8e27a':'#cbe9a77a';ctx.fill();
-      ctx.strokeStyle='#f4ffe9';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
-     }
-    }catch{/* Draft geometry never authorizes tracking or projection. */}
-   }
+   // Map Calibration Assist owns observed foot overlays on separate local canvases.
+   // Projector and Compose raster paths remain untouched.
    if(!hasLiveSource&&simState.active){
     const matrix=homography(outputDraftRef.current);
     const recent=simState.footprints.slice(-28);
