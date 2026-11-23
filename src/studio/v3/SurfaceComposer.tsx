@@ -976,7 +976,14 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   <div className="s64-heading">
    <div className="cpux-heading-label">
     <h2>Compose</h2>
-    <span>{lineTrails?'Floor · Line Trails Beta':monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='SKELETON'?'Skeleton · 33 titik':'Kaki · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Siap':'Preview software')}</span>
+    <span>{lineTrails?'Floor · Line Trails Beta':monitorView==='FLOOR'?'Floor · Liquid Imprint':monitorView==='SKELETON'?'Skeleton · 33 titik':'Kaki · '+monitorView} · {experimentSource?composeExperimentStatus(experimentSource,experimentReady,selected):(floorReady?'Preview sumber terkalibrasi':'Preview software')}</span>
+    <span className="soma-ia-source-status" role="status">
+     {experimentSource==='simulator'?'Lantai virtual':
+      experimentSource==='video'?(activeVideoFloor?'MP4 · lantai terkalibrasi (estimasi)':'MP4 · estimasi 2D'):
+      floorReady?'Kamera · lantai terkalibrasi (estimasi)':'Kamera · estimasi 2D'}
+     {onOpenMapTrack&&experimentSource!=='simulator'&&
+      <button type="button" onClick={onOpenMapTrack}>Sesuaikan bidang di Track</button>}
+    </span>
    </div>
    <div className="s64-safety">
     <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
