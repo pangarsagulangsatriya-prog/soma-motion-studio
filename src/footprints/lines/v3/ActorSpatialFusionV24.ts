@@ -68,7 +68,7 @@ export function fuseSpatialMovementV24(
  // One foot is probably planted while the other swings. When pelvis does not
  // travel, keep the centre still: turns should change heading, not XY.
  const stance=na<=nb?a:b;
- if(hipTravel<1.7&&Math.min(na,nb)<2.8)
+ if(hipTravel<1.7&&(Math.min(na,nb)<2.8||cosine<-.55))
   return {delta:{x:0,y:0},basis:'pivot',
    confidence:current.hipConfidence,measuredFeet:2,rawFootTravel:footTravel,hipTravel};
  const stanceWeight=hipTravel>2&&size(stance.delta)<hipTravel*1.5?.14:.06;
