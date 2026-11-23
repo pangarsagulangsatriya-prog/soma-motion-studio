@@ -536,6 +536,7 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
  if(dualV2Mode)return <DualTraceControlsV2 settings={painterly}
   onChange={onPainterlyChange} onClearAll={onClear}
   onExportPNG={()=>onExportPNG?.()} demo={demo} onDemo={onDemo} status={status}
+  diagnostics={diagnostics}
   onExit={()=>change({painterlyEngine:'path-first-v35'})}
   onLegacy={()=>change({painterlyEngine:'dual-trace-v1'})}/>;
  if(dualMode)return <DualTraceControls painterly={painterly}
