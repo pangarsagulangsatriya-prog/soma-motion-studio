@@ -72,6 +72,11 @@ test('pixel fixture: A/B upper head/shoulder strokes actually paint, then clear 
   canvas.width=1600;canvas.height=900;canvas.id='dual-trace-e2e-canvas';
   canvas.style.width='800px';canvas.style.height='450px';
   renderer.paint(canvas.getContext('2d'),settings);
+  const painting=document.createElement('canvas');
+  painting.id='dual-trace-e2e-painting';painting.width=1600;painting.height=900;
+  painting.style.width='800px';painting.style.height='450px';
+  painting.getContext('2d').drawImage(canvas,0,0);
+  document.body.prepend(painting);
   document.body.prepend(canvas);
   const pixels=canvas.getContext('2d').getImageData(0,0,1600,900).data;
   let red=0,dark=0;
@@ -91,7 +96,7 @@ test('pixel fixture: A/B upper head/shoulder strokes actually paint, then clear 
  expect(result.before).toBeGreaterThan(0);
  expect(result.after).toBe(0);
  expect(result.cleared).toEqual([247,246,242]);
- await page.locator('#dual-trace-e2e-canvas').screenshot({
+ await page.locator('#dual-trace-e2e-painting').screenshot({
   path:'e2e/test-results/dual-trace-clear.png'
  });
 });

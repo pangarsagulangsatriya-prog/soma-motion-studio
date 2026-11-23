@@ -48,7 +48,7 @@ export function dualTracePoseFrames(input:V3Input,o:Pick<V3InputOptions,
    identityConfidence:confidence,coordinateBasis:'image-2d'} as DualPoseFrame;
  };
  if(o.performers===1){
-  const a=pick('A',0,Math.max(.55,f.quality));
+  const a=pick('A',0,Math.max(0,Math.min(1,f.quality)));
   return a?[a]:[];
  }
  if(o.status.ambiguous||o.status.observedFrameTime!==input.frameMs)return [];
@@ -56,7 +56,7 @@ export function dualTracePoseFrames(input:V3Input,o:Pick<V3InputOptions,
  for(const actor of ['A','B'] as const){
   const index=o.status.poseIndices[actor];
   if(index===null)continue;
-  const p=pick(actor,index,Math.max(.55,f.quality));
+  const p=pick(actor,index,Math.max(0,Math.min(1,f.quality)));
   if(p)result.push(p);
  }
  return result;

@@ -174,7 +174,8 @@ export function LineTrailsV3Stage(props:StageProps){
    if(clearTriggers.current.foot!==lastFootClear){
     lastFootClear=clearTriggers.current.foot;
     p.engine.reset('manual-reset');p.impressions.reset();
-    clearBrush();cutPath('clear-foot');pathStore.clearPainting();viewFit.reset();
+    if(p.painterly.painterlyEngine!=='dual-trace-v1')clearBrush();
+    cutPath('clear-foot');pathStore.clearPainting();viewFit.reset();
    }
    if(clearTriggers.current.upper!==lastUpperClear){
     lastUpperClear=clearTriggers.current.upper;
