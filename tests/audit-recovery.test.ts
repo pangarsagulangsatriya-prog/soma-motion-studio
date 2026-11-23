@@ -56,13 +56,15 @@ test('AUDIT-RECOVERY F-04/F-07/F-09/F-10: Perform 2-column layout, humanized sou
 
 test('UX-BENCHMARK: Sequential pipeline CTA, Track Motion HUD, and Compose direct Jejak Lantai sculpting',()=>{
  const nav=read('../src/studio/v3/StageModuleNav.tsx');
+ const ia=read('../src/studio/v3/stageInformationArchitecture.ts');
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  const composeCss=read('../src/studio/v3/cpux-compose-focus.css');
  assert.match(nav,/soma-stage-next-cta/);
- assert.match(nav,/track:\{target:'map',label:'Lanjut Map'\}/);
- assert.match(nav,/Lanjut Map/);
- assert.match(nav,/Lanjut Perform/);
+ assert.match(nav,/STAGE_NEXT\[active\]/);
+ assert.match(ia,/track:\{target:'compose',label:'Lanjut Compose'\}/);
+ assert.match(ia,/compose:\{target:'map',label:'Lanjut Map'\}/);
+ assert.match(ia,/map:\{target:'perform',label:'Lanjut Perform'\}/);
  assert.match(stage,/soma-track-motion-hud/);
  assert.match(stage,/onPerformerCount\(n\)/);
  assert.doesNotMatch(stage,/Kalibrasi Lantai 4 Sudut/);
