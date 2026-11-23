@@ -22,6 +22,7 @@ import {resolveActorColor} from '../../footprints/lines/v3/ActorPaletteResolver.
 import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPreviewTransform.ts';
 import type {ActorPathObservation} from '../../footprints/lines/v3/PathObservationRouter.ts';
 import {GroundTrajectoryEngineV2} from '../../footprints/lines/v3/GroundTrajectoryEngineV2.ts';
+import {buildActorMotionFrames} from '../../footprints/lines/v3/ActorMotionFrameBuilder.ts';
 import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
 import {dualTracePoseFrames} from '../../footprints/dual-trace/DualTracePoseFrameBus.ts';
 import {upperGestureAnchors} from '../../footprints/dual-trace/UpperGestureAnchorAdapter.ts';
@@ -264,10 +265,11 @@ export function LineTrailsV3Stage(props:StageProps){
         input.frameMs,brushAdapter);
        brushAdapter=batch.state;
        if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');cutUpper('frame-cut');}
-       const poseFrames=nextDualMode&&!input.paused?dualTracePoseFrames(input,{
+       const poseFrames=nextPathMode&&!input.paused?dualTracePoseFrames(input,{
         experiment:p.experimentFrameRef?.current??null,
         live:p.frameRef.current,performers:p.performerCount,status:p.router.status
        }).filter(frame=>p.settings.actors[frame.actorId]):[];
+       const actorMotionFrames=buildActorMotionFrames(poseFrames,batch.poses);
        if(nextPathMode&&!input.paused){
         const mp4Video=p.experimentFrameRef?.current?.kind==='video'?
          p.experimentFrameRef.current.video:null;
@@ -286,7 +288,8 @@ export function LineTrailsV3Stage(props:StageProps){
          const {observations,events:pathEvents}=trajectory.ingest(
           input.sourceKey,input.frameMs,batch.poses,input.supportHints,spatial,
           o=>nextDualV2?v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
-           pathStore.isReplayCovered(o));
+           pathStore.isReplayCovered(o),
+          actorMotionFrames,p.painterly.trajectoryV22Enabled!==false);
          lastPathObservations=observations;
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
@@ -436,7 +439,8 @@ export function LineTrailsV3Stage(props:StageProps){
        ' aktif · '+(nextDualV2?v2.pathCount:pathStore.depositCount)+' commit',
        'Ruang: '+((input.source==='video'?p.videoFloorCalibration:p.cameraFloorCalibration)?'lantai terkalibrasi (estimasi)':'image-2d / ruang perkiraan'),
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
-       'Trajectory V2.1: '+trajectory.telemetry.summary(),
+       'Trajectory V2.2: '+trajectory.telemetry.summary(),
+       'Fusi pinggul: '+(p.painterly.trajectoryV22Enabled===false?'V2.1 fallback':trajectory.hipSummary),
        'Path tinta: '+(nextDualV2?v2.pathCount:pathStore.depositCount)+' segmen deposit']:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
