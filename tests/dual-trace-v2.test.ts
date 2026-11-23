@@ -48,8 +48,16 @@ test('DTV2-06: calibrated upper anchors follow the actor floor anchor',()=>{
  assert.equal(anchored.length,1);
  assert.ok(Math.abs(anchored[0].pointPx.x-440)<2);
  assert.ok(anchored[0].pointPx.y<670);
- assert.deepEqual(mapUpperAnchorsToStage([upper],[frame],[observation],false),[upper]);
+ const imageAnchored=mapUpperAnchorsToStage([upper],[frame],[observation],false);
+ assert.equal(imageAnchored.length,1);
+ assert.ok(Math.abs(imageAnchored[0].pointPx.x-anchored[0].pointPx.x)<.001);
+ assert.ok(Math.abs(imageAnchored[0].pointPx.y-anchored[0].pointPx.y)<.001,
+  'image 2D and calibrated sources must share actor-based painting coordinates');
  assert.equal(mapUpperAnchorsToStage([upper],[frame],[],true).length,0);
+ const other={...observation,actorId:'B' as const};
+ assert.equal(mapUpperAnchorsToStage([upper],[frame],[other],false).length,0,
+  'never attach a head/shoulder mark to another actor');
+
 });
 test('DTV2-01: production compositor has no independent white upper background',async()=>{
  const {readFileSync}=await import('node:fs');
