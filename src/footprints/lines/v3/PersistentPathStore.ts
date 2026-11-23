@@ -12,6 +12,7 @@ type Stroke={
  id:string;actorId:ActorChannel;clipStableId:string;sourceKey:string;
  knots:PathKnot[];baseArc:number;committedSeg:number;lastAt:number;
  style:InkRenderStyle;accentKnot:Set<number>;lastAccentAt:number;
+ lengthPx:number;
 };
 type Bound={x:number;y:number;width:number;height:number};
 const segment=(a:PathPoint,b:PathPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -31,12 +32,18 @@ export class PersistentPathStore{
  private bounds:Bound|null=null;
  private index=0;
  private commits=0;
+ private rasterDraws=0;
+ private acceptedLengthPx=0;
+ private longestStrokePx=0;
  private paintRevision=0;
  get revision(){return this.paintRevision;}
  get paintingSessionId(){return this.index;}
  get activeCount(){return this.strokes.size;}
  get depositCount(){return this.commits;}
  get diagnostics(){return {active:this.strokes.size,commits:this.commits,
+  rasterDraws:this.rasterDraws,pathLengthPx:this.acceptedLengthPx,
+  longestContinuousPx:Math.max(this.longestStrokePx,
+   ...[...this.strokes.values()].map(s=>s.lengthPx),0),
   coverage:[...this.ranges.values()].reduce((v,a)=>v+a.length,0),
   atlasBytes:this.committed?W*H*4*3:0};}
  getBounds(){return this.bounds?{...this.bounds}:null;}
@@ -77,7 +84,7 @@ export class PersistentPathStore{
      widthFactor:event.widthFactor}],
     baseArc:0,committedSeg:0,lastAt:event.timeMs,
     style:{...style,weightPx:clamp(style.weightPx,8,64),seed:h32(event.strokeId+this.index)},
-    accentKnot:new Set<number>(),lastAccentAt:-Infinity};
+    accentKnot:new Set<number>(),lastAccentAt:-Infinity,lengthPx:0};
    this.strokes.set(event.actorId,rec);this.refreshTail();return;
   }
   const rec=this.strokes.get(event.actorId);
@@ -91,7 +98,7 @@ export class PersistentPathStore{
   this.cover(rec,prev.timeMs,event.timeMs);
   rec.knots.push({point:{...event.point},timeMs:event.timeMs,confidence:event.confidence,
    widthFactor:event.widthFactor});
-  rec.lastAt=event.timeMs;
+  rec.lastAt=event.timeMs;rec.lengthPx+=d;this.acceptedLengthPx+=d;
   if(event.kind==='TURN'&&event.footEvent==='pivot'&&
      event.motionBasis==='estimated-support'&&event.confidence>=.8&&
      Math.abs(event.turnRad??0)>.55&&
@@ -131,7 +138,9 @@ export class PersistentPathStore{
   paintDirectionalRibbon(ctx,mesh,rec.style,rec.accentKnot.has(segIndex+1));
   ctx.restore();
   target.drawImage(scratch,0,0,width,height,x,y,width,height);
-  this.commits++;
+  this.rasterDraws++;
+  // Active-tail repaint is not a new stable commit or travel.
+  if(target===this.committed)this.commits++;
  }
  private commitStable(rec:Stroke){
   const distances=knotDistances(rec.knots,rec.baseArc);
@@ -158,6 +167,7 @@ export class PersistentPathStore{
   const ctx=this.committed?.getContext('2d');
   if(ctx)for(let i=rec.committedSeg;i<rec.knots.length-1;i++)
    this.paintSegment(ctx,rec,i,distances,true);
+  this.longestStrokePx=Math.max(this.longestStrokePx,rec.lengthPx);
   this.strokes.delete(rec.actorId);
  }
  private refreshTail(){
@@ -183,7 +193,8 @@ export class PersistentPathStore{
   this.refreshTail();
  }
  clearPainting(){
-  this.index++;this.commits=0;this.paintRevision++;
+  this.index++;this.commits=0;this.rasterDraws=0;
+  this.acceptedLengthPx=0;this.longestStrokePx=0;this.paintRevision++;
   this.strokes.clear();this.ranges.clear();this.bounds=null;
   for(const canvas of [this.committed,this.active,this.composite])
    canvas?.getContext('2d')?.clearRect(0,0,W,H);
