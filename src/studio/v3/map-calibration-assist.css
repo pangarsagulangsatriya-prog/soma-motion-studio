@@ -1,0 +1,30 @@
+/* Map-only Footprint Assist. Never participates in the FLOOR output raster. */
+.soma-map-assist-controls{
+ display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+ padding:7px 8px;background:#0c1710;border:1px solid #304938;border-radius:8px;
+}
+.soma-map-assist-heading{
+ font:700 11px system-ui;letter-spacing:.02em;color:#d5e8cf;margin-right:4px;
+}
+.soma-map-assist-controls button{
+ border:1px solid #3b5e46;border-radius:6px;min-height:30px;
+ padding:6px 10px;color:#e1edda;background:#1b3424;
+ font:600 11px system-ui;cursor:pointer;
+}
+.soma-map-assist-controls button:hover{background:#30533a;border-color:#7ca880}
+.soma-map-assist-controls button[aria-pressed=true]{background:#30523b;border-color:#a5c998}
+.soma-map-assist-controls button:focus-visible{outline:2px solid #d8eeba;outline-offset:2px}
+.soma-map-assist-status{margin-left:auto;min-width:110px;
+ font:500 11px system-ui;color:#b8cfb5;line-height:1.35}
+.soma-map-wysiwyg-image canvas.soma-map-assist-overlay{
+ position:absolute;inset:0;width:100%;height:100%;z-index:2;
+ pointer-events:none;touch-action:none;user-select:none;
+}
+.soma-map-wysiwyg-overlay{z-index:3}
+.soma-map-v3-empty,.soma-map-v3-result-empty{z-index:4}
+@media(max-width:750px){
+ .soma-map-assist-controls{gap:5px}
+ .soma-map-assist-controls button{padding:5px 8px}
+ .soma-map-assist-status{flex:1 1 100%;margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){.soma-map-assist-controls button{transition:none}}
