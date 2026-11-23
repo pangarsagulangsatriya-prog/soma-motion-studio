@@ -1,0 +1,62 @@
+name: SOMA Spatial Motion Rough Sumi V2.4 QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/footprints/lines/v3/ActorSpatialFusionV24.ts'
+      - 'src/footprints/lines/v3/AdaptiveMotionSmootherV24.ts'
+      - 'src/footprints/lines/v3/CoverageTraceRecorderV24.ts'
+      - 'src/footprints/lines/v3/ActorMotionFrameBuilder.ts'
+      - 'src/footprints/lines/v3/ActorGroundTrajectoryEstimator.ts'
+      - 'src/footprints/lines/v3/GroundTrajectoryEngineV2.ts'
+      - 'src/footprints/lines/v3/SumiRibbonMeshBuilder.ts'
+      - 'src/footprints/lines/v3/DirectionalInkPainter.ts'
+      - 'src/footprints/lines/v3/PersistentPathStore.ts'
+      - 'src/footprints/dual-trace/DualTraceV2Renderer.ts'
+      - 'src/footprints/lines/v3/PainterlyCanvasRenderer.ts'
+      - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/studio/v3/DualTraceControlsV2.tsx'
+      - 'tests/spatial-coverage-motion-ink-v24.test.ts'
+      - 'e2e/spatial-motion-rough-sumi-v24.spec.mjs'
+      - '.github/workflows/spatial-motion-rough-sumi-v24-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: soma-spatial-motion-rough-sumi-v24-qa
+  cancel-in-progress: true
+jobs:
+  v24-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Compile and bundle
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: V2.4 browser pixel and rollback QA
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 spatial-motion-rough-sumi-v24.spec.mjs
+      - name: Preserve screenshots and error traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soma-v24-spatial-motion-rough-sumi-qa
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+            e2e/qa-result.json
+          if-no-files-found: ignore
+          retention-days: 14
