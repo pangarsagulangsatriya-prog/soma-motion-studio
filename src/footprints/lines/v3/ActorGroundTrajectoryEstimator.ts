@@ -5,6 +5,7 @@ import type {ActorMotionFrame} from './ActorMotionFrameBuilder.ts';
 import type {ActorPathObservation,PathPoint} from './PathObservationRouter.ts';
 import {ActorContinuityCoordinator} from './ActorContinuityCoordinator.ts';
 import type {BridgeContext} from './ContinuityBridgeValidator.ts';
+import {fuseSpatialMovementV24} from './ActorSpatialFusionV24.ts';
 
 type Spatial={calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string};
 type Basis='dual-foot-and-hip'|'one-foot-hip-assisted'|'hip-short-gap'|
@@ -15,6 +16,7 @@ type State={
  imageAnchorPx?:PathPoint;lastFootPx?:PathPoint;
  lastFootObservation:ActorPathObservation;
  pending:ActorPathObservation[];lastMotion?:PathPoint;
+ lastFrameV24?:ActorMotionFrame;
 };
 const actors=['A','B'] as const;
 const add=(a:PathPoint,b:PathPoint):PathPoint=>({x:a.x+b.x,y:a.y+b.y});
@@ -75,7 +77,8 @@ export class ActorGroundTrajectoryEstimator{
   return actor+': '+s.feet+'/2 kaki · '+s.basis+' ('+s.confidence.toFixed(2)+')';
  }).join(' | ');}
  ingest(footObservations:readonly ActorPathObservation[],
-  frames:readonly ActorMotionFrame[],spatial?:Spatial,enableV23=false):TrajectoryEstimate{
+  frames:readonly ActorMotionFrame[],spatial?:Spatial,enableV23=false,
+  enableV24=false):TrajectoryEstimate{
   if(!enableV23)this.continuity.reset();
   const signature=spatial?.calibrationId??'image-2d';
   if(this.lastSignature!==signature){this.reset();this.lastSignature=signature;}
@@ -132,7 +135,8 @@ export class ActorGroundTrajectoryEstimator{
      sourceKey:frame.sourceKey,footEpoch:foot.epoch,timeMs:frame.timeMs,
      footAtMs:frame.timeMs,point:{...foot.point},confirmed:{...foot.point},
      hipPx:{...frame.hipPx},imageAnchorPx:frame.footImageAnchorPx,
-     lastFootPx:{...foot.point},lastFootObservation:foot,pending:[]
+     lastFootPx:{...foot.point},lastFootObservation:foot,pending:[],
+     ...(enableV24?{lastFrameV24:frame}:{})
     });
     this.statuses[actor]={basis:feet===2?'dual-foot-and-hip':'one-foot-hip-assisted',
      feet,confidence:Math.min(quality,foot.confidence)};
@@ -189,6 +193,7 @@ export class ActorGroundTrajectoryEstimator{
     state.point=nextPoint;state.hipPx={...frame.hipPx};
     state.imageAnchorPx=estimatedImageAnchor;
     state.timeMs=frame.timeMs;
+    if(enableV24)state.lastFrameV24=frame;
     this.statuses[actor]={basis:'hip-short-gap',feet:0,confidence:quality*.72};
     continue;
    }
@@ -204,15 +209,33 @@ export class ActorGroundTrajectoryEstimator{
    }
    const footDelta=state.lastFootPx?sub(foot.point,state.lastFootPx):{x:0,y:0};
    const hip=hipDelta??{x:0,y:0};
+   const fusion=enableV24&&state.lastFrameV24&&hipDelta?
+    fuseSpatialMovementV24(state.lastFrameV24,frame,hipDelta,(from,to,anchor)=>
+     hipGroundDisplacement(from,to,anchor,spatial)):null;
+   // V2.4 consumes raw per-side foot evidence ONCE: never feed the already
+   // damped router's 0.12 displacement through another 0.15 blend.
    const footWeight=feet===2?.55:.15;
-   const blended=hipDelta?add(mul(cap(footDelta,maxMotion),footWeight),
-    mul(cap(hip,maxMotion),1-footWeight)):cap(footDelta,maxMotion);
+   const blended=fusion?.delta??(hipDelta?add(
+    mul(cap(footDelta,maxMotion),footWeight),
+    mul(cap(hip,maxMotion),1-footWeight)):cap(footDelta,maxMotion));
    let nextPoint=add(state.point,blended);
-   // Stable stance can pull the predicted centre toward the foot corridor,
-   // without making the center snap to a single swinging sole.
-   const difference=sub(foot.point,nextPoint);
+   // V2.4 prefers the raw support measurement for reconciliation; the old
+   // router point can be temporally compressed or reflect one swinging foot.
+   const footReference=enableV24&&frame.footImageAnchorPx&&frame.feetCount===2?
+    (spatial?(()=>{const raw=stageUVToRawCamera({
+       x:frame.footImageAnchorPx!.x/1600,y:frame.footImageAnchorPx!.y/900},
+       spatial.videoAspect);
+      if(!raw)return null;
+      const ground=cameraGroundToFloor(spatial.calibration,{
+       cameraUV:raw,phase:'stance',confidence:foot.confidence});
+      if(!ground)return null;
+      const uv=floorToUV(spatial.calibration.floor,ground);
+      return {x:uv.x*1600,y:uv.y*900};
+     })():frame.footImageAnchorPx):null;
+   const difference=sub(footReference??foot.point,nextPoint);
    const drift=norm(difference);
-   const limit=clamp(frame.torsoScalePx*.9,28,95);
+   const limit=enableV24?clamp(frame.torsoScalePx*1.10,40,120):
+    clamp(frame.torsoScalePx*.9,28,95);
    if((enableV23?this.continuity.has(actor):state.pending.length>0)&&drift>limit){
     if(enableV23)this.continuity.reject(actor,'bridge-recovery-too-far');
     cuts.push({actorId:actor,reason:'hip-recovery-mismatch'});
@@ -221,7 +244,14 @@ export class ActorGroundTrajectoryEstimator{
     this.statuses[actor]={basis:'foot-only-low-confidence',feet,confidence:foot.confidence};
     continue;
    }
-   nextPoint=add(nextPoint,cap(difference,feet===2?7:3));
+   // Re-anchor only to credible dual-foot evidence; a single visible
+   // swinging foot cannot drag the actor's trajectory to a false centre.
+   if(enableV24){
+    if(fusion?.basis==='dual-support'&&drift<limit*.65){
+     const gain=clamp(.07*Math.min(1,foot.confidence),0,.07);
+     nextPoint=add(nextPoint,mul(difference,gain));
+    }
+   }else nextPoint=add(nextPoint,cap(difference,feet===2?7:3));
    if(!valid(nextPoint)){
     if(enableV23&&this.continuity.has(actor))this.continuity.reject(actor,'invalid-coordinate');
     cuts.push({actorId:actor,reason:'trajectory-outside-floor'});
@@ -251,6 +281,7 @@ export class ActorGroundTrajectoryEstimator{
    state.hipPx={...frame.hipPx};
    state.imageAnchorPx=frame.footImageAnchorPx??estimatedImageAnchor;
    state.lastFootPx=foot.point;state.lastFootObservation=foot;
+   if(enableV24)state.lastFrameV24=frame;
    this.statuses[actor]={basis:feet===2?'dual-foot-and-hip':'one-foot-hip-assisted',
     feet,confidence:Math.min(quality,foot.confidence)};
   }
