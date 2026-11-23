@@ -47,6 +47,8 @@ type Props={
  onMessage:(message:string)=>void;
  onOpenTrack:()=>void;
  onOpenCompose:()=>void;
+ mapOutputSaved?:boolean;
+ allowLegacyCameraEditing?:boolean;
  onSourceLost:()=>void;
  externalNotice?:string;
 };
@@ -100,7 +102,8 @@ export function MapWysiwygWorkspace({
  experimentFrameRef,videoFloorCalibration=null,router,motionSession,liveSourceKind='camera',performerCount=2,cameraOn=false,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
- onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice=''
+ onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice='',
+ mapOutputSaved=false,allowLegacyCameraEditing=false
 }:Props){
  const [cameraDraft,setCameraDraft]=useState<Quad>(()=>floorTracker?.calibrationData?.cameraQuad??initialCameraQuad());
  const [outputDraft,setOutputDraft]=useState<Quad>(()=>plan.projectorQuad);
@@ -137,9 +140,9 @@ export function MapWysiwygWorkspace({
   motionSession,liveSourceKind,performerCount,cameraOn,simState,simCameraQuad:SIM_CAMERA_QUAD,
   videoFloorCalibration});
  useEffect(()=>{
-  const q=floorTracker?.calibrationData?.cameraQuad;
+  const q=sourceKind==='video'?videoFloorCalibration?.cameraQuad:floorTracker?.calibrationData?.cameraQuad;
   if(q&&!cameraDirty)setCameraDraft(q.map(p=>({...p})) as Quad);
- },[floorTracker?.calibrationData,cameraDirty]);
+ },[sourceKind,videoFloorCalibration,floorTracker?.calibrationData,cameraDirty]);
  useEffect(()=>{if(!outputDirty)setOutputDraft(plan.projectorQuad.map(p=>({...p})) as Quad);},[plan.projectorQuad,outputDirty]);
  useEffect(()=>{
   if(sourceKind==='camera')return;
@@ -253,7 +256,7 @@ export function MapWysiwygWorkspace({
   return pointerInSource(x,y,where==='source'?currentBox:projectorBox);
  };
  const startMove=(e:PointerEvent<SVGGElement>,where:'source'|'output',index:number)=>{
-  if(where==='source'&&!sourceAvailable)return;
+  if(where==='source'&&(!allowLegacyCameraEditing||!sourceAvailable))return;
   e.preventDefault();e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId);
   setPointer({target:where,index,id:e.pointerId});activePoint.current=index;
   if(where==='source'){
@@ -338,7 +341,7 @@ export function MapWysiwygWorkspace({
  };
  const mapOverlay=(where:'source'|'output')=>{
   const box=where==='source'?currentBox:projectorBox,q=where==='source'&&sourceKind==='demo-sim'?SIM_CAMERA_QUAD:overlayQuad(where);
-  const canEdit=where==='source'?sourceAvailable&&sourceKind==='camera':projectorEdit;
+  const canEdit=where==='source'?allowLegacyCameraEditing&&sourceAvailable&&sourceKind==='camera':projectorEdit;
   return <svg className="soma-map-wysiwyg-overlay" viewBox="0 0 640 360"
    role="group" aria-label={where==='source'?'Empat sudut lantai pada gambar sumber':'Empat sudut proyeksi'}
    data-invalid={invalidWhere===where} data-dragging={pointer?.target===where}
@@ -364,15 +367,17 @@ export function MapWysiwygWorkspace({
  };
  const isSourceMode=sourceKind==='camera'||sourceKind==='video'||sourceKind==='simulator';
  const sourceLabel=sourceKind==='demo-sim'?'Panggung simulasi':isSourceMode?(sourceKind==='camera'?'Kamera langsung':sourceKind==='video'?'Video MP4':'Simulasi 3D'):'Sumber';
- const calibrated=!!floorTracker?.isConfirmed&&!cameraDirty;
+ const calibrated=(sourceKind==='video'?!!videoFloorCalibration:
+  sourceKind==='camera'&&!!floorTracker?.isConfirmed)&&!cameraDirty;
  const simulating=sourceKind==='demo-sim'&&simState.active;
  const visibleSource=sourceAvailable||simulating;
  const waitingForSource=sourceKind!=='none'&&!simulating&&!sourceAvailable;
  const idleMessage=sourceInterrupted?'Sumber terputus. Periksa sambungan di Track.':
   simulating?'SIMULASI · Dua performer dan jejak kaki aktif.':
   !visibleSource?'Coba simulasi atau sambungkan kamera.':
-  cameraDirty||outputDirty?'Pratinjau perubahan · belum tersimpan.':
-  calibrated?'Bidang kamera tersimpan.':'Tarik titik 1–4 di atas gambar.';
+  outputDirty?'Bidang output belum disimpan.':
+  mapOutputSaved?'Bidang output tersimpan · QA proyektor perlu diperiksa.':
+  'Sesuaikan bidang proyektor di panel kanan.';
  const externalStatus=(sourceInterrupted||/tidak valid|gagal|diblokir/i.test(externalNotice))?externalNotice:'';
  const resultText=sourceInterrupted?'Sumber terputus. Periksa Track.':
   waitingForSource?'Menunggu gambar sumber':
@@ -424,12 +429,17 @@ export function MapWysiwygWorkspace({
     </div>}
     {sourceAvailable&&<div className="soma-map-wysiwyg-controls">
      <button type="button" onClick={()=>setFrozen(v=>!v)}>{frozen?'Lanjutkan gambar':'Bekukan gambar'}</button>
-     {cameraDirty&&sourceKind==='camera'&&<button type="button" onClick={applyCamera}><Check size={14}/> Terapkan bidang</button>}
+     {allowLegacyCameraEditing&&cameraDirty&&sourceKind==='camera'&&
+      <button type="button" onClick={applyCamera}><Check size={14}/> Terapkan bidang</button>}
     </div>}
     <p className="soma-map-wysiwyg-caption">
-     {simulating?'Simulasi dua performer · output fisik tetap Blackout.':
-     sourceKind==='camera'?(calibrated?'Bidang kamera tersimpan.':cameraDirty?'Tarik titik 1–4, lalu terapkan.':'Tarik titik 1–4 mengikuti lantai.'):
-     sourceInterrupted?'Periksa Track untuk menyambungkan sumber.':''}
+     {sourceInterrupted?'Sumber terputus. Periksa Track.':
+      simulating?'Simulasi virtual · output fisik tetap Blackout.':
+      calibrated?'Bidang sumber terkalibrasi (estimasi).':'Bidang sumber · estimasi 2D.'}
+     {(sourceKind==='camera'||sourceKind==='video')&&
+      <button type="button" className="soma-map-v3-link" onClick={onOpenTrack}>
+       Ubah bidang kamera di Track
+      </button>}
     </p>
    </div>
    <div className="soma-map-wysiwyg-pane">
@@ -458,9 +468,10 @@ export function MapWysiwygWorkspace({
      }}>
       <ScanLine size={14}/> {projectorEdit?'Simpan bidang':'Sesuaikan proyektor'}
      </button>
-     {(cameraDirty||outputDirty)&&<button type="button" onClick={cancel}>Batalkan</button>}
+     {(outputDirty||(allowLegacyCameraEditing&&cameraDirty))&&
+      <button type="button" onClick={cancel}>Batalkan</button>}
     </div>}
-    <p className="soma-map-wysiwyg-caption">{!visibleSource?'':projectorEdit?'Tarik sudut, lihat perubahan, lalu Simpan bidang. Output fisik tetap Blackout.':cameraDirty?'Posisi kaki mengikuti sudut kamera yang sedang digeser. Terapkan untuk menyimpan.':'Visual Compose mengikuti bentuk proyeksi.'}</p>
+    <p className="soma-map-wysiwyg-caption">{!visibleSource?'':projectorEdit?'Tarik empat sudut output, lalu simpan. QA fisik perlu diulang.':mapOutputSaved?'Bidang output tersimpan · periksa kembali QA proyektor.':'Visual Compose dapat disesuaikan dengan empat sudut output.'}</p>
    </div>
   </div>
   <div className="soma-map-wysiwyg-bottom" aria-label="Kontrol akhir Map">
@@ -469,7 +480,7 @@ export function MapWysiwygWorkspace({
     <span role="status" aria-live="polite" title={status||externalStatus||idleMessage}>{status||externalStatus||idleMessage}</span>
    </div>
    <div className="soma-map-v4-actions">
-    {(projectorEdit||(sourceKind==='camera'&&sourceAvailable))&&
+    {(projectorEdit||(allowLegacyCameraEditing&&sourceKind==='camera'&&sourceAvailable))&&
      <button type="button" className="soma-map-v4-reset" onClick={reset} title="Atur ulang empat sudut">
       <RotateCcw size={14}/> {resetArmed?'Konfirmasi reset':'Ulangi sudut'}
      </button>}
