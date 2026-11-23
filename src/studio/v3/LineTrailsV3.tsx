@@ -69,6 +69,8 @@ type StageProps={
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  router:MultiPoseGaitRouter;engine:DualFootTrajectoryEngine;settings:V3Settings;
+ cameraFloorCalibration?:CameraFloorCalibration|null;
+ outputRaster?:RefObject<HTMLCanvasElement|null>;
  impressions:PainterlyImpressionEngine;painterly:PainterlySettings;brushResetRevision?:number;
  motionEvents?:()=>readonly FootMotionEventV2[];
  fullscreenDiagnostics:FullscreenDiagnostics;blackout:boolean;previewLive:boolean;
@@ -318,6 +320,15 @@ export function LineTrailsV3Stage(props:StageProps){
     {...p.painterly,painterlyEngine:'path-first-v35' as const}:p.painterly;
    paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,footSettings,
     input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
+   // Clean Compose raster feeds Map and Perform without debug markers.
+   const shared=p.outputRaster?.current;
+   if(shared){
+    if(shared.width!==c.width)shared.width=c.width;
+    if(shared.height!==c.height)shared.height=c.height;
+    const out=shared.getContext('2d');
+    if(out){out.setTransform(1,0,0,1,0,0);out.clearRect(0,0,shared.width,shared.height);
+     if(!off)out.drawImage(c,0,0);}
+   }
    if(nextDualMode){
     const uc=upperCanvas.current?.getContext('2d');
     if(uc)upperInk.paint(uc,brushUpper(),off);
