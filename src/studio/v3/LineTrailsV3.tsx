@@ -19,6 +19,9 @@ import {buildSumiStrokeGeometry} from '../../footprints/lines/v3/SumiStrokeGeome
 import {PersistentInkStore} from '../../footprints/lines/v3/PersistentInkStore.ts';
 import {resolveActorColor} from '../../footprints/lines/v3/ActorPaletteResolver.ts';
 import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPreviewTransform.ts';
+import {PathObservationRouter} from '../../footprints/lines/v3/PathObservationRouter.ts';
+import {ActorPathTracker} from '../../footprints/lines/v3/ActorPathTracker.ts';
+import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
 
@@ -54,15 +57,41 @@ export function LineTrailsV3Stage(props:StageProps){
   const brushStore=new FootBrushDepositStore();
   const sumiMotion=new ObservedMotionInkEngine();
   const sumiStore=new PersistentInkStore();
+  const pathRouter=new PathObservationRouter();
+  const pathTracker=new ActorPathTracker();
+  const pathStore=new PersistentPathStore();
+  const pathStyle=(actor:'A'|'B')=>{
+   const options=args.current.painterly;
+   return {color:args.current.settings.actorColors[actor],
+    weightPx:options.pathWeightPx??26,
+    material:options.pathMaterial??'path-sumi',
+    accents:options.pathAccents??'subtle'} as const;
+  };
+  const cutPath=(reason:string)=>{
+   for(const event of pathTracker.cutAll(reason))
+    pathStore.ingest(event,pathStyle(event.actorId));
+   pathRouter.reset();
+  };
   const viewFit=new PainterlyPreviewTransform();
-  args.current.onRegisterExportInk?.(()=>sumiStore.exportPNG());
-  args.current.onRegisterInkArchive?.({save:()=>sumiStore.exportSessionJSON(),
-   load:async data=>{sumiMotion.cutMotionSegment('import');
-    await sumiStore.importSessionJSON(data);viewFit.reset();}});
+  args.current.onRegisterExportInk?.(()=>
+   args.current.painterly.painterlyEngine==='path-first-v35'?
+    pathStore.exportPNG():sumiStore.exportPNG());
+  args.current.onRegisterInkArchive?.({save:()=>
+   args.current.painterly.painterlyEngine==='path-first-v35'?
+    pathStore.exportSessionJSON():sumiStore.exportSessionJSON(),
+   load:async data=>{
+    sumiMotion.cutMotionSegment('import');cutPath('import');
+    if(args.current.painterly.painterlyEngine==='path-first-v35')
+     await pathStore.importSessionJSON(data);
+    else await sumiStore.importSessionJSON(data);
+    viewFit.reset();
+   }});
   let brushAdapter:PoseAdapterState={lastFrameMs:-1,epoch:0,sourceKey:''};
   let brushSource='';
   let brushMode=false;
   let sumiMode=false;
+  let pathMode=false;
+  let lastPathOff=false;
   let lastBrushResetRevision=args.current.brushResetRevision??0;
   const clearBrush=()=>{brushStore.reset();gestures.reset();
    brushAdapter={lastFrameMs:-1,epoch:brushAdapter.epoch+1,sourceKey:''};};
@@ -84,19 +113,25 @@ export function LineTrailsV3Stage(props:StageProps){
    const resetRevision=p.brushResetRevision??0;
    if(resetRevision!==lastBrushResetRevision){
     clearBrush();sumiMotion.cutMotionSegment('user-clear');
-    sumiStore.clearPainting();viewFit.reset();lastBrushResetRevision=resetRevision;
+    sumiStore.clearPainting();cutPath('user-clear');pathStore.clearPainting();
+    viewFit.reset();lastBrushResetRevision=resetRevision;
    }
    const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
    const nextSumiMode=p.painterly.enabled&&p.painterly.painterlyEngine==='sumi-v34';
+   const nextPathMode=p.painterly.enabled&&p.painterly.painterlyEngine==='path-first-v35';
+   if(nextPathMode!==pathMode){cutPath('renderer-switch');pathMode=nextPathMode;}
    if(nextSumiMode!==sumiMode){sumiMotion.cutMotionSegment('renderer-switch');sumiMode=nextSumiMode;}
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
-   if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');brushSource=input.sourceKey;}
+   if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');
+    cutPath('source-switch');brushSource=input.sourceKey;}
    if(input.sourceKey!==lastSource){
     lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
     p.impressions.ensureSource(input.sourceKey);
    }
    const off=p.blackout||!p.previewLive;
+   if(off&&!lastPathOff)cutPath('preview-off');
+   lastPathOff=off;
    if(off){
     p.engine.cutAll('manual-reset');
     // Any later frame must start a fresh stroke; retained pigment stays until cleared.
@@ -104,7 +139,8 @@ export function LineTrailsV3Stage(props:StageProps){
     message='Preview padam';
    }else{
     if(input.seeking){
-     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();clearBrush();sumiMotion.cutMotionSegment('seek');}
+     if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();clearBrush();
+       sumiMotion.cutMotionSegment('seek');cutPath('seek');}
      lastSeeking=true;
      message='MP4 · memindahkan posisi video';
     }else{
@@ -117,16 +153,25 @@ export function LineTrailsV3Stage(props:StageProps){
       // A later valid frame will still cut a >390ms gap in the tracking engine.
       const graceMs=input.source==='video'?1000:500;
       if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
-       p.engine.cutAll('stale-frame');gestures.reset();sumiMotion.cutMotionSegment('stale');lastStale=true;
+       p.engine.cutAll('stale-frame');gestures.reset();sumiMotion.cutMotionSegment('stale');
+        cutPath('stale');lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
       p.impressions.ingestFrame(input.samples,input.frameMs,input.source);
-      if(nextBrushMode||nextSumiMode){
+      if(nextBrushMode||nextSumiMode||nextPathMode){
        const batch=adaptFootBrushFrame(input.samples,input.sourceKey,
         input.frameMs,brushAdapter);
        brushAdapter=batch.state;
-       if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');}
+       if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');}
+       if(nextPathMode&&!input.paused){
+        const observations=pathRouter.ingest(batch.poses).filter(o=>!pathStore.isReplayCovered(o));
+        const pathEvents=pathTracker.ingest(observations,input.frameMs);
+        for(const event of pathEvents){
+         if(!p.settings.actors[event.actorId])continue;
+         pathStore.ingest(event,pathStyle(event.actorId));
+        }
+       }
        if(nextSumiMode&&!input.paused){
         const events=sumiMotion.ingest(batch.poses);
         for(const event of events){
@@ -163,8 +208,10 @@ export function LineTrailsV3Stage(props:StageProps){
     }
    }
    const fullscreen=document.fullscreenElement===p.fullscreenRef.current;
-   const view=nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
-   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,input.presentationMs,off,fullscreen,brushStore,sumiStore,view);
+   const view=nextPathMode?viewFit.update(pathStore.getBounds(),!!p.painterly.previewFit):
+    nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
+   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,
+    input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
     // Diagnostics live only on explicit V/K; V3 fullscreen default is clean.
     paintFullscreenInputDiagnostics(ctx,p.fullscreenDiagnostics,resolveFullscreenInput({
@@ -191,6 +238,7 @@ export function LineTrailsV3Stage(props:StageProps){
      'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
      ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
+      ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit']:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
      ...(reasons.length?reasons:['Basis: '+(input.source==='video'?'image-2d':input.source)])
@@ -198,7 +246,8 @@ export function LineTrailsV3Stage(props:StageProps){
    }
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
+  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');
+    args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
  return <div ref={props.fullscreenRef} className="lt-beta-frame lt-v3-stage"
   aria-label="Kanvas Garis V3, lintasan dua kaki">
@@ -239,11 +288,19 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
  const activeActors=performerCount===2?(['A','B'] as const):(['A'] as const);
  const material=(value:PainterlySettings['material'])=>onPainterlyChange({...painterly,material:value});
  const sumi=painterly.painterlyEngine==='sumi-v34';
+ const pathMode=painterly.painterlyEngine==='path-first-v35';
+ const inkMode=sumi||pathMode;
  const change=(patch:Partial<PainterlySettings>)=>onPainterlyChange({...painterly,...patch});
  return <section className="lt-beta-controls lt-v3-controls lt-painterly-controls" aria-label="Kontrol Garis V3">
-  <header><strong>Garis · Painterly</strong><span>{sumi?'V3.4 SUMI':painterly.painterlyEngine==='foot-brush-v33'?'V3.3 BETA':'V3.2 BETA'}</span></header>
+  <header><strong>Garis · Painterly</strong><span>{pathMode?'V3.5 PATH':sumi?'V3.4 SUMI':painterly.painterlyEngine==='foot-brush-v33'?'V3.3 BETA':'V3.2 BETA'}</span></header>
   <div className="lt-painterly-material" role="group" aria-label="Engine lukisan">
-   <button type="button" aria-pressed={sumi} onClick={()=>change({
+   <button type="button" aria-pressed={pathMode} onClick={()=>change({
+     painterlyEngine:'path-first-v35',pathWeightPx:painterly.pathWeightPx??26,
+     pathMaterial:painterly.pathMaterial??'path-sumi',pathAccents:painterly.pathAccents??'subtle',
+     footprintLifeMs:6000,footprintKeep:false,trailKeep:true,
+     showTrails:true,showSoles:true
+    })}>Path Sumi V3.5</button>
+    <button type="button" aria-pressed={sumi} onClick={()=>change({
     painterlyEngine:'sumi-v34',sumiMaterial:'sumi',sumiWeightPx:painterly.sumiWeightPx??56,
     sumiExpression:'bold',footprintLifeMs:6000,footprintKeep:false,trailKeep:true,
     showTrails:true,showSoles:true
@@ -251,13 +308,17 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
    <button type="button" aria-pressed={painterly.painterlyEngine==='foot-brush-v33'}
     onClick={()=>change({painterlyEngine:'foot-brush-v33',footprintLifeMs:8000,trailLifeMs:4000,
      footprintKeep:false,trailKeep:false})}>Kuas V3.3</button>
-   <button type="button" aria-pressed={!sumi&&painterly.painterlyEngine!=='foot-brush-v33'}
+   <button type="button" aria-pressed={!inkMode&&painterly.painterlyEngine!=='foot-brush-v33'}
     onClick={()=>change({painterlyEngine:'legacy-v32',material:'ink',footprintLifeMs:8000,
      trailLifeMs:4000,footprintKeep:false,trailKeep:false})}>V3.2</button>
   </div>
   <p className="lt-beta-status" role="status"><i data-live={status.includes('terbaca')||demo}/>{status}</p>
   <div className="lt-painterly-material" role="group" aria-label="Material lukisan">
-   {sumi?([{id:'sumi',label:'Sumi'},{id:'dry-brush',label:'Kuas Kering'},
+   {pathMode?([{id:'path-sumi',label:'Sumi'},{id:'dry-ink',label:'Kering'},
+       {id:'pigment-mass',label:'Pekat'}] as const).map(m=>
+       <button key={m.id} type="button" aria-pressed={(painterly.pathMaterial??'path-sumi')===m.id}
+        onClick={()=>change({pathMaterial:m.id})}>{m.label}</button>):
+     sumi?([{id:'sumi',label:'Sumi'},{id:'dry-brush',label:'Kuas Kering'},
       {id:'dense-pigment',label:'Pigmen Pekat'}] as const).map(m=>
       <button key={m.id} type="button" aria-pressed={(painterly.sumiMaterial??'sumi')===m.id}
        onClick={()=>change({sumiMaterial:m.id})}>{m.label}</button>):
@@ -284,14 +345,14 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
    <div className="lt-painterly-layer">
     <label><input aria-label="Tampilkan garis lintasan" type="checkbox"
      checked={painterly.showTrails} onChange={e=>change({showTrails:e.target.checked})}/>
-     <strong>{sumi?'Sapuan tinta':'Garis lintasan'}</strong></label>
+     <strong>{pathMode?'Jalur tinta':sumi?'Sapuan tinta':'Garis lintasan'}</strong></label>
     <label className="lt-painterly-stay"><input type="checkbox"
-     aria-label="Garis tetap" checked={sumi?true:painterly.trailKeep}
-     disabled={sumi}
+     aria-label="Garis tetap" checked={inkMode?true:painterly.trailKeep}
+     disabled={inkMode}
      onChange={e=>change({trailKeep:e.target.checked})}/>Tetap</label>
-    <label className="lt-painterly-duration">{sumi?'Tinta menetap':'Hilang'} <output>{sumi||painterly.trailKeep?'Tetap':Math.round(painterly.trailLifeMs/1000)+' dtk'}</output>
+    <label className="lt-painterly-duration">{inkMode?'Tinta menetap':'Hilang'} <output>{inkMode||painterly.trailKeep?'Tetap':Math.round(painterly.trailLifeMs/1000)+' dtk'}</output>
      <input type="range" min="1" max="30" step="1"
-      aria-label="Durasi garis lintasan" disabled={sumi||painterly.trailKeep||!painterly.showTrails}
+      aria-label="Durasi garis lintasan" disabled={inkMode||painterly.trailKeep||!painterly.showTrails}
       value={Math.round(painterly.trailLifeMs/1000)}
       onChange={e=>change({trailLifeMs:Number(e.target.value)*1000})}/>
     </label>
@@ -317,7 +378,22 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
      onClick={()=>onChange({...settings,styleMode:mode.value})}>{mode.label}</button>)}
   </div>
   </details>
-  {sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??56} px</output>
+  {pathMode?<><label className="lt-beta-width">Bobot jalur <output>{painterly.pathWeightPx??26} px</output>
+      <input type="range" min={8} max={64} step={2}
+       aria-label="Bobot jalur Sumi" value={painterly.pathWeightPx??26}
+       onChange={e=>change({pathWeightPx:Number(e.target.value)})}/>
+     </label>
+     <div className="lt-v31-character" role="group" aria-label="Aksen tinta">
+      {([{id:'off',label:'Mati'},{id:'subtle',label:'Halus'},
+         {id:'expressive',label:'Ekspresif'}] as const).map(x=>
+       <button key={x.id} type="button"
+        aria-pressed={(painterly.pathAccents??'subtle')===x.id}
+        onClick={()=>change({pathAccents:x.id})}>{x.label}</button>)}
+     </div>
+     <label className="lt-painterly-stay"><input type="checkbox" aria-label="Komposisi preview"
+       checked={!!painterly.previewFit}
+       onChange={e=>change({previewFit:e.target.checked})}/>Komposisi preview</label>
+    </>:sumi?<><label className="lt-beta-width">Bobot kuas <output>{painterly.sumiWeightPx??56} px</output>
    <input type="range" min={8} max={96} step={2}
     aria-label="Bobot kuas Sumi" value={painterly.sumiWeightPx??56}
     onChange={e=>change({sumiWeightPx:Number(e.target.value)})}/>
@@ -335,9 +411,9 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
     onChange={e=>onChange({...settings,width:Number(e.target.value)})}/>
   </label>}
   <div className="lt-beta-actions">
-   <button type="button" onClick={onClear}>{sumi?'Bersihkan Lukisan':'Bersihkan'}</button>
-   {sumi&&<button type="button" onClick={onExportPNG} aria-label="Simpan lukisan PNG">Simpan PNG</button>}
-   {sumi&&<details className="lt-painterly-characters"><summary>Arsip lukisan</summary>
+   <button type="button" onClick={onClear}>{inkMode?'Bersihkan Lukisan':'Bersihkan'}</button>
+   {inkMode&&<button type="button" onClick={onExportPNG} aria-label="Simpan lukisan PNG">Simpan PNG</button>}
+   {inkMode&&<details className="lt-painterly-characters"><summary>Arsip lukisan</summary>
     <button type="button" onClick={onSaveSession}>Simpan sesi JSON</button>
     <button type="button" onClick={onLoadSession}>Pulihkan sesi JSON</button>
    </details>}

@@ -5,13 +5,19 @@ import {paintTrajectory,type V3Settings} from './TrajectoryRenderer.ts';
 import {PainterlyImpressionEngine,lifetimeOpacity} from './PainterlyImpressionEngine.ts';
 import {paintFootBrushDeposits,type FootBrushDepositStore} from './FootBrushStrokeRenderer.ts';
 import type {PersistentInkStore} from './PersistentInkStore.ts';
+import type {PersistentPathStore} from './PersistentPathStore.ts';
+import type {InkAccentMode} from './DirectionalInkPainter.ts';
+import type {RibbonStyle} from './SumiRibbonMeshBuilder.ts';
 import type {SumiMaterial} from './SumiMaterialRenderer.ts';
 import type {PainterlyViewTransform} from './PainterlyPreviewTransform.ts';
 
 export type PainterlyMaterial='ink'|'charcoal'|'pigment';
 export type PainterlySettings={
  enabled:boolean;
- painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34';
+ painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34'|'path-first-v35';
+ pathWeightPx?:number;
+ pathMaterial?:RibbonStyle['material'];
+ pathAccents?:InkAccentMode;
  sumiMaterial?:SumiMaterial;
  sumiWeightPx?:number;
  sumiExpression?:'natural'|'bold';
@@ -23,7 +29,8 @@ export type PainterlySettings={
  sizePx:number;
 };
 export const DEFAULT_PAINTERLY_SETTINGS:PainterlySettings={
- enabled:true,painterlyEngine:'sumi-v34',sumiMaterial:'sumi',
+ enabled:true,painterlyEngine:'path-first-v35',
+ pathWeightPx:26,pathMaterial:'path-sumi',pathAccents:'subtle',sumiMaterial:'sumi',
  sumiWeightPx:56,sumiExpression:'bold',previewFit:false,
  material:'ink',showSoles:true,showTrails:true,
  footprintLifeMs:6000,trailLifeMs:4000,
@@ -65,7 +72,7 @@ export function paintPainterlyCanvas(
  impressions:PainterlyImpressionEngine,settings:V3Settings,
  painterly:PainterlySettings,presentationMs:number,blackout=false,fullscreen=false,
  brushStore?:FootBrushDepositStore,sumiStore?:PersistentInkStore,
- preview?:PainterlyViewTransform
+ preview?:PainterlyViewTransform,pathStore?:PersistentPathStore
 ){
  if(!painterly.enabled){
   paintTrajectory(ctx,trajectory,settings,presentationMs,blackout,fullscreen);
@@ -88,8 +95,19 @@ export function paintPainterlyCanvas(
  }
  // V3.4 is composited from cached ink; stamping a new image is prohibited in paint().
  // Footprints remain a separate transient layer below.
+ const pathCanvasMode=painterly.painterlyEngine==='path-first-v35'&&!!pathStore;
  const sumiCanvasMode=painterly.painterlyEngine==='sumi-v34'&&!!sumiStore;
- if(sumiCanvasMode&&sumiStore){
+ if(pathCanvasMode&&pathStore){
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);
+  ctx.restore();ctx.save();
+  if(preview)ctx.setTransform(preview.scale,0,0,preview.scale,
+   preview.tx*w/1600,preview.ty*h/900);
+  const ink=pathStore.getCanvas();
+  if(ink&&painterly.showTrails){
+   ctx.save();ctx.globalAlpha=.85;ctx.drawImage(ink,0,0,w,h);ctx.restore();
+  }
+ }else if(sumiCanvasMode&&sumiStore){
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);
   ctx.restore();
@@ -108,7 +126,7 @@ export function paintPainterlyCanvas(
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,w,h);ctx.fillStyle=white;ctx.fillRect(0,0,w,h);ctx.restore();
  }
- if(!painterly.showSoles){if(sumiCanvasMode)ctx.restore();return;}
+ if(!painterly.showSoles){if(sumiCanvasMode||pathCanvasMode)ctx.restore();return;}
  const scale=w/1600;
  const len=limit(painterly.sizePx,30,110)*scale;
  const width=len*.365;
@@ -141,5 +159,5 @@ export function paintPainterlyCanvas(
  for(const head of impressions.liveHeads(presentationMs)){
   draw(head,head.alpha,0,true);
  }
- if(sumiCanvasMode)ctx.restore();
+ if(sumiCanvasMode||pathCanvasMode)ctx.restore();
 }
