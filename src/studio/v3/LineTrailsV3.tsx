@@ -88,6 +88,7 @@ type StageProps={
  onStatus:(text:string)=>void;
  onDiagnostics?:(text:string)=>void;
  onRegisterExportInk?:(fn:()=>string|null)=>void;
+ onRegisterMotionTrace?:(fn:()=>string|null)=>void;
  onRegisterInkArchive?:(api:{save:()=>string|null;load:(data:string)=>Promise<void>})=>void;
 };
 
@@ -114,6 +115,14 @@ export function LineTrailsV3Stage(props:StageProps){
   const sumiMotion=new ObservedMotionInkEngine();
   const sumiStore=new PersistentInkStore();
   const trajectory=new GroundTrajectoryEngineV2();
+  args.current.onRegisterMotionTrace?.(()=>{
+   const samples=trajectory.coverage.samples;
+   return samples.length?JSON.stringify({
+    schema:'soma.spatial-v24-motion-trace',version:1,
+    createdAt:new Date().toISOString(),coordinateUnits:'1600x900 stage pixels',
+    actors:trajectory.coverage.summary,samples
+   },null,2):null;
+  });
   const pathStore=new PersistentPathStore();
   const upperTracker=new UpperGestureStrokeTracker();
   const upperInk=new UpperGestureInkRenderer();
@@ -491,7 +500,9 @@ export function LineTrailsV3Stage(props:StageProps){
   };
   raf=requestAnimationFrame(paint);
   return()=>{cancelAnimationFrame(raf);v2EngineRef.current=null;args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');cutUpper('unmount');
-    args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
+    args.current.onRegisterExportInk?.(()=>null);
+     args.current.onRegisterMotionTrace?.(()=>null);
+     args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
  const dualEnabled=props.painterly.enabled&&
   props.painterly.painterlyEngine==='dual-trace-v1';
@@ -545,13 +556,14 @@ type PanelProps={
  painterly:PainterlySettings;onPainterlyChange:(next:PainterlySettings)=>void;
  impressions:PainterlyImpressionEngine;
  engine:DualFootTrajectoryEngine;onClear:()=>void;onExportPNG?:()=>void;
+ onExportTrace?:()=>void;
  onSaveSession?:()=>void;onLoadSession?:()=>void;demo:boolean;onDemo:()=>void;
  status:string;diagnostics:string;performerCount:1|2;
  onUseV2:()=>void;fullscreenDiagnostics:FullscreenDiagnostics;
  onFullscreenDiagnostics:(next:FullscreenDiagnostics)=>void;
 };
 export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange,
- impressions,engine,onClear,onExportPNG,onSaveSession,onLoadSession,demo,onDemo,status,diagnostics,
+ impressions,engine,onClear,onExportPNG,onExportTrace,onSaveSession,onLoadSession,demo,onDemo,status,diagnostics,
  performerCount,onUseV2,fullscreenDiagnostics,onFullscreenDiagnostics}:PanelProps){
  const actorColor=(actor:'A'|'B',value:string)=>onChange({
   ...settings,actorColors:{...settings.actorColors,[actor]:value}
@@ -580,7 +592,8 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
  const change=(patch:Partial<PainterlySettings>)=>onPainterlyChange({...painterly,...patch});
  if(dualV2Mode)return <DualTraceControlsV2 settings={painterly}
   onChange={onPainterlyChange} onClearAll={onClear}
-  onExportPNG={()=>onExportPNG?.()} demo={demo} onDemo={onDemo} status={status}
+  onExportPNG={()=>onExportPNG?.()} onExportTrace={onExportTrace}
+  demo={demo} onDemo={onDemo} status={status}
   diagnostics={diagnostics}
   onExit={()=>change({painterlyEngine:'path-first-v35'})}
   onLegacy={()=>change({painterlyEngine:'dual-trace-v1'})}/>;
