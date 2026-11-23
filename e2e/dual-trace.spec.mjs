@@ -100,3 +100,21 @@ test('pixel fixture: A/B upper head/shoulder strokes actually paint, then clear 
   path:'e2e/test-results/dual-trace-clear.png'
  });
 });
+
+test('both canvases have independent fullscreen actions with clean projection surfaces',async({page})=>{
+ const {monitor}=await openDual(page);
+ const foot=monitor.getByRole('region',{name:'Kanvas Foot Path'});
+ const upper=monitor.getByRole('region',{name:'Kanvas Head & Shoulder'});
+ await monitor.getByRole('button',{name:'Fullscreen Foot Path'}).click();
+ await expect.poll(()=>page.evaluate(()=>
+  document.fullscreenElement?.getAttribute('aria-label'))).toBe('Kanvas Foot Path');
+ await expect(foot.locator('.dual-trace-view-controls')).toBeHidden();
+ await page.keyboard.press('Escape');
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement)).toBe(null);
+ await monitor.getByRole('button',{name:'Fullscreen Head & Shoulder'}).click();
+ await expect.poll(()=>page.evaluate(()=>
+  document.fullscreenElement?.getAttribute('aria-label'))).toBe('Kanvas Head & Shoulder');
+ await expect(upper.locator('.dual-trace-view-controls')).toBeHidden();
+ await page.keyboard.press('Escape');
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement)).toBe(null);
+});

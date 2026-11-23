@@ -103,3 +103,22 @@ test('two actors crossing retain four independent channel identity keys',()=>{
  assert.equal(tr.activeCount,4);
  assert.equal(new Set(tr.cutAll('end').map(x=>x.strokeId)).size,4);
 });
+
+test('live two-person poseIndices identify A/B without assuming raw index 0 is A',()=>{
+ const a=pose(.28,.39),b=pose(.73,.49);
+ const inputLive:V3Input={...input(2000),source:'phone',
+  sourceKey:'track:phone:session:2'};
+ const opts:Pick<V3InputOptions,'experiment'|'live'|'status'|'performers'>={
+  experiment:null,performers:2,
+  live:{time:2000,tracked:true,source:'camera',quality:.41,
+   pose:a,poses:[b,a]} as unknown as V3InputOptions['live'],
+  status:{ambiguous:false,observedFrameTime:2000,
+   poseIndices:{A:1,B:0}} as V3InputOptions['status']
+ };
+ const frames=dualTracePoseFrames(inputLive,opts);
+ assert.deepEqual(frames.map(x=>x.actorId),['A','B']);
+ assert.equal(frames[0].landmarks[11].x,a[11].x);
+ assert.equal(frames[1].landmarks[11].x,b[11].x);
+ const low=pose();low[11].visibility=0;low[12].visibility=0;
+ assert.equal(upperGestureAnchors({...frames[0],landmarks:low}).length,0);
+});

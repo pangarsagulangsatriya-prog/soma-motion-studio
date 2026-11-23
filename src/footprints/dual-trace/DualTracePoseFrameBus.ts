@@ -42,10 +42,14 @@ export function dualTracePoseFrames(input:V3Input,o:Pick<V3InputOptions,
   return [];
  const pick=(actor:DualActor,index:number,confidence:number)=>{
   const points=o.performers===1?f.pose:f.poses?.[index];
-  if(!valid(points)||confidence<.55)return null;
+  if(!valid(points))return null;
+  const shoulderVisibility=Math.min(points[11]?.visibility??0,
+   points[12]?.visibility??0);
+  const evidencedConfidence=Math.max(confidence,shoulderVisibility);
+  if(evidencedConfidence<.55)return null;
   return {actorId:actor,source:input.source,sourceKey:input.sourceKey,
    epoch:0,timeMs:input.frameMs,landmarks:points,
-   identityConfidence:confidence,coordinateBasis:'image-2d'} as DualPoseFrame;
+   identityConfidence:evidencedConfidence,coordinateBasis:'image-2d'} as DualPoseFrame;
  };
  if(o.performers===1){
   const a=pick('A',0,Math.max(0,Math.min(1,f.quality)));
