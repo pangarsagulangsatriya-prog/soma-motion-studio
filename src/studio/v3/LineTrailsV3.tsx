@@ -1,3 +1,4 @@
+import type {CameraFloorCalibration} from '../../footprints/spatial/coordinates.ts';
 import {useEffect,useRef,useState,type RefObject} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
@@ -258,7 +259,13 @@ export function LineTrailsV3Stage(props:StageProps){
          p.painterly.dualSmoothing??.42))upperInk.ingest(event,upperSettings);
        }
        if(nextPathMode&&!input.paused){
-        const observations=pathRouter.ingest(batch.poses,input.supportHints).filter(o=>!pathStore.isReplayCovered(o));
+        const spatial=p.cameraFloorCalibration&&input.source!=='video'&&
+          input.source!=='simulator'&&input.source!=='demo'&&
+          p.videoRef.current?.videoWidth&&p.videoRef.current?.videoHeight?
+          {calibration:p.cameraFloorCalibration,
+           videoAspect:p.videoRef.current.videoWidth/p.videoRef.current.videoHeight,
+           calibrationId:JSON.stringify(p.cameraFloorCalibration)}:undefined;
+         const observations=pathRouter.ingest(batch.poses,input.supportHints,spatial).filter(o=>!pathStore.isReplayCovered(o));
          lastPathObservations=observations;
         const pathEvents=pathTracker.ingest(observations,input.frameMs);
         for(const event of pathEvents){
@@ -345,6 +352,7 @@ export function LineTrailsV3Stage(props:StageProps){
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
       ...(nextDualMode?['Upper: '+upperInk.activeCount+' kanal · '+upperInk.committedCount+' sapuan']:[]),
       ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit',
+       'Ruang: '+(p.cameraFloorCalibration&&input.source!=='video'?'lantai terkalibrasi (estimasi)':'image-2d / ruang perkiraan'),
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
        'Cut: '+JSON.stringify(pathTracker.cutDiagnostics)]:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
