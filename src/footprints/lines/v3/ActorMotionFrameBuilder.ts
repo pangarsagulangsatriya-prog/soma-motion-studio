@@ -5,6 +5,7 @@ import type {PathPoint} from './PathObservationRouter.ts';
 
 export type ActorMotionFrame={
  actorId:ActorChannel;sourceKey:string;timeMs:number;sourceEpoch:number;
+ geometryVersion?:string;
  identityConfidence:number;hipPx:PathPoint;hipConfidence:number;
  torsoScalePx:number;feetCount:0|1|2;footImageAnchorPx?:PathPoint;
  /** Raw stage-image side points for V2.4. These are foot estimates, NOT confirmed contacts. */
