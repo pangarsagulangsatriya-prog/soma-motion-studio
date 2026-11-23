@@ -2,6 +2,7 @@ import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type CameraFloorCalibra
 import {actorChannel,type ActorChannel} from './ActorPaletteResolver.ts';
 import {stableInkSourceIdentity} from './ObservedMotionInkEngine.ts';
 import type {FootBrushPose} from './FootBrushPoseAdapter.ts';
+import {estimateAmbiguousCenterMovement,accumulateSmallMovement} from './TrajectoryFusion.ts';
 
 export type PathPoint={x:number;y:number};
 export type PathEvidence='supported-step'|'estimated-ground-projection';
@@ -18,7 +19,7 @@ export type ActorPathObservation={
 type Foot='left'|'right';
 type Last={sourceKey:string;epoch:number;timeMs:number;point:PathPoint;
  midpoint:PathPoint;feet:Partial<Record<Foot,PathPoint>>;
- supportFoot?:Foot;velocity:PathPoint};
+ supportFoot?:Foot;velocity:PathPoint;residual:PathPoint};
 const length=(a:PathPoint,b:PathPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const delta=(a:PathPoint,b:PathPoint):PathPoint=>({x:a.x-b.x,y:a.y-b.y});
 const add=(a:PathPoint,b:PathPoint):PathPoint=>({x:a.x+b.x,y:a.y+b.y});
@@ -92,6 +93,7 @@ export class PathObservationRouter{
    let point={...midpoint};
    let supportFoot:Foot|undefined;
    let basis:PathMotionBasis='held';
+   let residual:PathPoint={x:0,y:0};
    if(continuous&&previous){
     const old=previous;
     const previousL=old.feet.left,previousR=old.feet.right;
@@ -136,9 +138,10 @@ export class PathObservationRouter{
       }else if(mL<5&&mR<5){
        movement=multiply(dMid,.25);basis='held';
       }else{
-       // Opposing/crossing feet are likely pivot, swing or detector jitter.
-       // A path must not trace their average motion in arbitrary directions.
-       movement=multiply(dMid,.08);basis='held';
+       // Weak, ambiguous dual-foot evidence: use bounded CENTER displacement,
+       // rather than discarding 92% of every moving frame indefinitely.
+       movement=estimateAmbiguousCenterMovement(dMid,dl,dr,dt);
+       basis='held';
       }
      }else if(dl||dr){
       const visibleDelta=dl??dr!;
@@ -151,8 +154,11 @@ export class PathObservationRouter{
      }
      const maxStep=Math.min(52,10+dt*.10);
      const limited=limit(movement,maxStep);
-     point=add(old.point,limited);
-     if(length(limited,{x:0,y:0})<1.2)point={...old.point};
+     // Retain coherent subpixel motion: a series of <1.2px increments must
+     // eventually move the path, while opposing jitter cancels naturally.
+     const combined=accumulateSmallMovement(limited,old.residual,1.2);
+     residual=combined.residual;
+     point=add(old.point,combined.delta);
     }
    }
    // A confirmed floor profile maps the estimated support position to metres,
@@ -185,7 +191,7 @@ export class PathObservationRouter{
    const velocity=continuous&&previous?multiply(delta(point,previous.point),
     1000/Math.max(1,dt)):{x:0,y:0};
    this.last.set(actor,{sourceKey:one.sourceKey,epoch:one.epoch,timeMs:one.atMs,
-    point,midpoint,feet,supportFoot,velocity});
+    point,midpoint,feet,supportFoot,velocity,residual});
    result.push({actorId:actor,sourceKey:one.sourceKey+(spatial?'|floor:'+spatial.calibrationId:''),
     clipStableId:stableInkSourceIdentity(one.sourceKey),epoch:one.epoch,
     timeMs:one.atMs,point,
