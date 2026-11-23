@@ -1,0 +1,52 @@
+name: Dual Trace V1 E2E QA
+on:
+  pull_request:
+    paths:
+      - 'src/footprints/dual-trace/**'
+      - 'src/studio/v3/DualTrace*'
+      - 'src/studio/v3/dual-trace.css'
+      - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/footprints/lines/v3/PainterlyCanvasRenderer.ts'
+      - 'src/footprints/lines/v3/PersistentPathStore.ts'
+      - 'tests/dual-trace*.test.ts'
+      - 'e2e/dual-trace.spec.mjs'
+      - '.github/workflows/dual-trace-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: soma-dual-trace-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  dual-trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Unit regression and source parity
+        run: npm test
+      - name: TypeScript and Vite production build
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Dual canvas + legacy Path Sumi browser QA
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 dual-trace.spec.mjs path-first-sumi-v35.spec.mjs
+      - name: Upload dual trace visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-trace-v1-e2e
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 30

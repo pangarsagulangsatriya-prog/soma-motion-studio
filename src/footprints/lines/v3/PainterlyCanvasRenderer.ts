@@ -14,7 +14,11 @@ import type {PainterlyViewTransform} from './PainterlyPreviewTransform.ts';
 export type PainterlyMaterial='ink'|'charcoal'|'pigment';
 export type PainterlySettings={
  enabled:boolean;
- painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34'|'path-first-v35';
+ painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34'|'path-first-v35'|'dual-trace-v1';
+ dualHeadEnabled?:boolean;dualShoulderEnabled?:boolean;
+ dualHeadWidth?:number;dualShoulderWidth?:number;
+ dualHeadOpacity?:number;dualShoulderOpacity?:number;
+ dualGain?:number;dualSmoothing?:number;
  pathWeightPx?:number;
  pathMaterial?:RibbonStyle['material'];
  pathAccents?:InkAccentMode;
