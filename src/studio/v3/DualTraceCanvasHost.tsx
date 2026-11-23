@@ -1,4 +1,4 @@
-import type {RefObject} from 'react';
+import {useEffect,type RefObject} from 'react';
 
 type Props={
  enabled:boolean;footRef:RefObject<HTMLCanvasElement|null>;
@@ -14,6 +14,19 @@ type Props={
  * Controls are outside the actual raster and hidden on physical fullscreen.
  */
 export function DualTraceCanvasHost(p:Props){
+ useEffect(()=>{
+  if(!p.enabled)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key!=='Escape')return;
+   const active=document.fullscreenElement;
+   if(active&&(active===p.footPaneRef.current||
+      active===p.upperPaneRef.current)){
+    void document.exitFullscreen();
+   }
+  };
+  document.addEventListener('keydown',onEscape,true);
+  return()=>document.removeEventListener('keydown',onEscape,true);
+ },[p.enabled,p.footPaneRef,p.upperPaneRef]);
  if(!p.enabled)return <div className="lt-beta-frame lt-v3-stage"
     ref={p.fullscreenRef} aria-label="Kanvas Garis V3, lintasan dua kaki">
   <canvas ref={p.footRef} width={1600} height={900}
