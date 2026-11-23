@@ -10,11 +10,20 @@ import type {InkAccentMode} from './DirectionalInkPainter.ts';
 import type {RibbonStyle} from './SumiRibbonMeshBuilder.ts';
 import type {SumiMaterial} from './SumiMaterialRenderer.ts';
 import type {PainterlyViewTransform} from './PainterlyPreviewTransform.ts';
+import type {DualTraceV2Palette,DualTraceV2Mode,DualTraceV2Order} from '../../dual-trace/DualTraceV2Renderer.ts';
 
 export type PainterlyMaterial='ink'|'charcoal'|'pigment';
 export type PainterlySettings={
  enabled:boolean;
- painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34'|'path-first-v35'|'dual-trace-v1';
+ painterlyEngine?:'legacy-v32'|'foot-brush-v33'|'sumi-v34'|'path-first-v35'|'dual-trace-v1'|'dual-trace-v2';
+ dualV2Display?:DualTraceV2Mode;
+ dualV2Order?:DualTraceV2Order;
+ dualV2Palette?:DualTraceV2Palette;
+ dualV2Material?:'path-sumi'|'dry-ink'|'pigment-mass';
+ dualV2Expressive?:boolean;
+ dualV2PathOpacity?:number;
+ dualV2FootOpacity?:number;
+ dualV2UpperOpacity?:number;
  dualHeadEnabled?:boolean;dualShoulderEnabled?:boolean;
  dualHeadWidth?:number;dualShoulderWidth?:number;
  dualHeadOpacity?:number;dualShoulderOpacity?:number;
