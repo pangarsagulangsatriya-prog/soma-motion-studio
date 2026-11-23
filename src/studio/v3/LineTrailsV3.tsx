@@ -70,6 +70,7 @@ type StageProps={
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  router:MultiPoseGaitRouter;engine:DualFootTrajectoryEngine;settings:V3Settings;
  cameraFloorCalibration?:CameraFloorCalibration|null;
+ videoFloorCalibration?:CameraFloorCalibration|null;
  outputRaster?:RefObject<HTMLCanvasElement|null>;
  impressions:PainterlyImpressionEngine;painterly:PainterlySettings;brushResetRevision?:number;
  motionEvents?:()=>readonly FootMotionEventV2[];
@@ -261,12 +262,15 @@ export function LineTrailsV3Stage(props:StageProps){
          p.painterly.dualSmoothing??.42))upperInk.ingest(event,upperSettings);
        }
        if(nextPathMode&&!input.paused){
-        const spatial=p.cameraFloorCalibration&&input.source!=='video'&&
-          input.source!=='simulator'&&input.source!=='demo'&&
-          p.videoRef.current?.videoWidth&&p.videoRef.current?.videoHeight?
-          {calibration:p.cameraFloorCalibration,
-           videoAspect:p.videoRef.current.videoWidth/p.videoRef.current.videoHeight,
-           calibrationId:JSON.stringify(p.cameraFloorCalibration)}:undefined;
+        const mp4Video=p.experimentFrameRef?.current?.kind==='video'?
+         p.experimentFrameRef.current.video:null;
+        const activeVideo=input.source==='video'?mp4Video:p.videoRef.current;
+        const activeCalibration=input.source==='video'?p.videoFloorCalibration:
+         input.source==='camera'||input.source==='phone'?p.cameraFloorCalibration:null;
+        const spatial=activeCalibration&&activeVideo?.videoWidth&&activeVideo?.videoHeight?
+         {calibration:activeCalibration,
+          videoAspect:activeVideo.videoWidth/activeVideo.videoHeight,
+          calibrationId:input.source+':'+JSON.stringify(activeCalibration)}:undefined;
          const observations=pathRouter.ingest(batch.poses,input.supportHints,spatial).filter(o=>!pathStore.isReplayCovered(o));
          lastPathObservations=observations;
         const pathEvents=pathTracker.ingest(observations,input.frameMs);
@@ -363,7 +367,7 @@ export function LineTrailsV3Stage(props:StageProps){
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
       ...(nextDualMode?['Upper: '+upperInk.activeCount+' kanal · '+upperInk.committedCount+' sapuan']:[]),
       ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit',
-       'Ruang: '+(p.cameraFloorCalibration&&input.source!=='video'?'lantai terkalibrasi (estimasi)':'image-2d / ruang perkiraan'),
+       'Ruang: '+((input.source==='video'?p.videoFloorCalibration:p.cameraFloorCalibration)?'lantai terkalibrasi (estimasi)':'image-2d / ruang perkiraan'),
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
        'Cut: '+JSON.stringify(pathTracker.cutDiagnostics)]:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
