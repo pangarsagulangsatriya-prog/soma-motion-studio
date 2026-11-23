@@ -119,7 +119,7 @@ export function LineTrailsV3Stage(props:StageProps){
   const v2=new DualTraceV2Renderer();v2EngineRef.current=v2;
   const upperInkModulation=new UpperBodyInkModulator();
   let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number}|undefined;
-  let lastFusionMode=true;
+  let lastFusionMode=true,lastContinuityV23=false;
   let lastFootClear=0,lastUpperClear=0,upperMode=false;
   const upperReady=(ready:boolean)=>{
    if(available.current!==ready){available.current=ready;setHasUpper(ready);}
@@ -220,11 +220,13 @@ export function LineTrailsV3Stage(props:StageProps){
    const nextPathMode=p.painterly.enabled&&
     (p.painterly.painterlyEngine==='path-first-v35'||nextDualMode);
    const useHipFusion=p.painterly.trajectoryV22Enabled!==false;
-   if(nextPathMode&&useHipFusion!==lastFusionMode){
+   const useContinuityV23=useHipFusion&&p.painterly.trajectoryV23Enabled===true;
+   if(nextPathMode&&(useHipFusion!==lastFusionMode||
+      useContinuityV23!==lastContinuityV23)){
     cutPath('trajectory-version-switch');
     cutUpper('trajectory-version-switch');
    }
-   lastFusionMode=useHipFusion;
+   lastFusionMode=useHipFusion;lastContinuityV23=useContinuityV23;
    if(nextDualMode!==upperMode){
     cutUpper('renderer-switch');upperMode=nextDualMode;
     if(!upperMode)upperReady(false);
@@ -305,7 +307,7 @@ export function LineTrailsV3Stage(props:StageProps){
           input.sourceKey,input.frameMs,batch.poses,input.supportHints,spatial,
           o=>nextDualV2?v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
            pathStore.isReplayCovered(o),
-          actorMotionFrames,useHipFusion);
+          actorMotionFrames,useHipFusion,useContinuityV23);
          lastPathObservations=observations;
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
@@ -458,6 +460,9 @@ export function LineTrailsV3Stage(props:StageProps){
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
        'Trajectory V2.2: '+trajectory.telemetry.summary(),
        'Fusi pinggul: '+(p.painterly.trajectoryV22Enabled===false?'V2.1 fallback':trajectory.hipSummary),
+       'Continuity: '+(useContinuityV23?JSON.stringify(trajectory.continuityDiagnostics):'V2.2 fallback'),
+       'Jalur nyata: A '+Math.round(nextDualV2?v2.path.A.diagnostics.pathLengthPx:pathStore.diagnostics.pathLengthPx)+
+       'px B '+Math.round(nextDualV2?v2.path.B.diagnostics.pathLengthPx:0)+'px',
        'Path tinta: '+(nextDualV2?v2.pathCount:pathStore.depositCount)+' segmen deposit']:[]),
      'Cap: '+p.impressions.count+' ('+p.impressions.estimatedCount+' estimasi)',
      'Cut: '+JSON.stringify(cutSummary),
