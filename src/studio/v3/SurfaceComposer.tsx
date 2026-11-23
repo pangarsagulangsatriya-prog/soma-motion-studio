@@ -1023,6 +1023,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      experimentInputCanvas={experimentInputCanvas} experimentFrameRef={experimentFrameRef}
      fullscreenDiagnostics={lineFullscreenDiagnostics}
      router={router} engine={lineV3Engine.current} settings={v3Options}
+     cameraFloorCalibration={!experimentSource&&floorTracker.isConfirmed?floorTracker.calibrationData:null}
       impressions={painterlyEngine.current} painterly={painterlyOptions}
       brushResetRevision={brushResetRevision}
       onRegisterExportInk={fn=>{inkExportRef.current=fn;}}
