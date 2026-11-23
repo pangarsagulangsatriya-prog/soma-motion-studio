@@ -119,7 +119,8 @@ export function LineTrailsV3Stage(props:StageProps){
   const v2=new DualTraceV2Renderer();v2EngineRef.current=v2;
   const upperInkModulation=new UpperBodyInkModulator();
   let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number}|undefined;
-  let lastFusionMode=true,lastContinuityV23=false;
+  let lastFusionMode=true,lastContinuityV23=false,lastV24=false;
+  let lastV24Preset='balanced';
   let lastFootClear=0,lastUpperClear=0,upperMode=false;
   const upperReady=(ready:boolean)=>{
    if(available.current!==ready){available.current=ready;setHasUpper(ready);}
@@ -220,13 +221,18 @@ export function LineTrailsV3Stage(props:StageProps){
    const nextPathMode=p.painterly.enabled&&
     (p.painterly.painterlyEngine==='path-first-v35'||nextDualMode);
    const useHipFusion=p.painterly.trajectoryV22Enabled!==false;
-   const useContinuityV23=useHipFusion&&p.painterly.trajectoryV23Enabled===true;
+   const useV24=useHipFusion&&p.painterly.trajectoryV24Enabled===true;
+   const useContinuityV23=useHipFusion&&
+    (p.painterly.trajectoryV23Enabled===true||useV24);
+   const v24Preset=p.painterly.v24MotionPreset??'balanced';
    if(nextPathMode&&(useHipFusion!==lastFusionMode||
-      useContinuityV23!==lastContinuityV23)){
+      useContinuityV23!==lastContinuityV23||
+      useV24!==lastV24||useV24&&v24Preset!==lastV24Preset)){
     cutPath('trajectory-version-switch');
     cutUpper('trajectory-version-switch');
    }
    lastFusionMode=useHipFusion;lastContinuityV23=useContinuityV23;
+   lastV24=useV24;lastV24Preset=v24Preset;
    if(nextDualMode!==upperMode){
     cutUpper('renderer-switch');upperMode=nextDualMode;
     if(!upperMode)upperReady(false);
@@ -307,14 +313,15 @@ export function LineTrailsV3Stage(props:StageProps){
           input.sourceKey,input.frameMs,batch.poses,input.supportHints,spatial,
           o=>nextDualV2?v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
            pathStore.isReplayCovered(o),
-          actorMotionFrames,useHipFusion,useContinuityV23);
+          actorMotionFrames,useHipFusion,useContinuityV23,useV24,v24Preset);
          lastPathObservations=observations;
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
          if(nextDualV2)
           v2.ingestPath(event,p.painterly.pathWeightPx??36,
            p.painterly.dualV2Material??'path-sumi',p.painterly.dualV2Expressive??true,
-           p.painterly.dualV2UpperModulation===false?1:upperBrushFactors[event.actorId]);
+           p.painterly.dualV2UpperModulation===false?1:upperBrushFactors[event.actorId],
+           p.painterly.dualV2Roughness??.74);
          else pathStore.ingest(event,pathStyle(event.actorId));
         }
        }
@@ -461,6 +468,10 @@ export function LineTrailsV3Stage(props:StageProps){
        'Trajectory V2.2: '+trajectory.telemetry.summary(),
        'Fusi pinggul: '+(p.painterly.trajectoryV22Enabled===false?'V2.1 fallback':trajectory.hipSummary),
        'Continuity: '+(useContinuityV23?JSON.stringify(trajectory.continuityDiagnostics):'V2.2 fallback'),
+        'Spatial V2.4: '+(useV24?'aktif · smoothing '+v24Preset:'nonaktif'),
+        ...(useV24?['Cakupan A/B: '+trajectory.coverage.summary.map(x=>
+         x.actor+' '+x.coordinateBasis+' '+x.frames+' frame · X '+
+         (x.smoothed?Math.round(x.smoothed.maxX-x.smoothed.minX):0)+'px').join(', ')]:[]),
        'Jalur nyata: A '+Math.round(nextDualV2?v2.path.A.diagnostics.pathLengthPx:pathStore.diagnostics.pathLengthPx)+
        'px B '+Math.round(nextDualV2?v2.path.B.diagnostics.pathLengthPx:0)+'px',
        'Path tinta: '+(nextDualV2?v2.pathCount:pathStore.depositCount)+' segmen deposit']:[]),
