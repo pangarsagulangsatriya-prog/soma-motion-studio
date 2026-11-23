@@ -1,4 +1,5 @@
 import {ArrowRight,Check} from 'lucide-react';
+import {STAGE_NEXT} from './stageInformationArchitecture.ts';
 
 /** Stage 1 owns these workspaces. Other SOMA modules can own different local navigation. */
 export type StageModuleWorkspace='track'|'compose'|'map'|'perform';
@@ -14,12 +15,7 @@ const workspaces:readonly {id:StageModuleWorkspace;label:string;step:string}[]=[
  {id:'map',label:'Map',step:'03'},
  {id:'perform',label:'Perform',step:'04'}
 ];
-const NEXT_STEP:Record<StageModuleWorkspace,{target:StageModuleWorkspace;label:string}>={
- track:{target:'map',label:'Lanjut Map'},
- compose:{target:'map',label:'Lanjut Map'},
- map:{target:'perform',label:'Lanjut Perform'},
- perform:{target:'map',label:'Kalibrasi Map'}
-};
+
 export function StageModuleNav({active,onNavigate,status}:{
  active:StageModuleWorkspace;
  onNavigate:(workspace:StageModuleWorkspace)=>void;
@@ -30,7 +26,7 @@ export function StageModuleNav({active,onNavigate,status}:{
   id==='compose'?!!status?.composeReady:
   id==='map'?!!status?.mapReady:
   !!status?.outputLive;
- const next=NEXT_STEP[active];
+ const next=STAGE_NEXT[active];
  const nextPrimary=active==='track'?!!status?.trackReady:active!=='perform';
  return <nav className="soma-stage-module-nav" aria-label="Stage 1 — workspace" data-module="stage-studio">
   <div className="soma-stage-module-tabs" role="group" aria-label="Pilih workspace">
