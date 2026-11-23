@@ -4,7 +4,7 @@ import {DEFAULT_DUAL_TRACE_PALETTE,type DualTraceChannel} from '../../footprints
 type Props={
  settings:PainterlySettings;
  onChange:(next:PainterlySettings)=>void;
- onClearAll:()=>void;onExportPNG:()=>void;
+ onClearAll:()=>void;onExportPNG:()=>void;onExportTrace?:()=>void;
  demo:boolean;onDemo:()=>void;onExit:()=>void;onLegacy:()=>void;
  status:string;diagnostics?:string;
 };
@@ -142,6 +142,10 @@ export function DualTraceControlsV2(p:Props){
      </select>
     </label>}
    <p>{p.diagnostics||'Menunggu pengukuran pose dan jalur.'}</p>
+   {p.settings.trajectoryV24Enabled===true&&
+    <button type="button" onClick={p.onExportTrace}
+     disabled={!p.onExportTrace}>Ekspor posisi A/B · JSON</button>}
+   <small>Ekspor hanya koordinat dan waktu gerak, tidak menyertakan frame video atau wajah.</small>
   </details>
   <details className="dual-v21-diagnostics">
    <summary>Diagnostik teknis</summary>
