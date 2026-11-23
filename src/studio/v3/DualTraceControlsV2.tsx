@@ -74,8 +74,8 @@ export function DualTraceControlsV2(p:Props){
      <option value="pigment-mass">Dense Ink</option>
     </select>
    </label>
-   {slider('Bobot garis',p.settings.pathWeightPx??22,8,42,2,v=>patch({pathWeightPx:v}))}
-   <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualV2Expressive??false}
+   {slider('Bobot garis',p.settings.pathWeightPx??36,8,42,2,v=>patch({pathWeightPx:v}))}
+   <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualV2Expressive??true}
     onChange={e=>patch({dualV2Expressive:e.target.checked})}/> Respons gerak ekspresif</label>
    <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualHeadEnabled??true}
     onChange={e=>patch({dualHeadEnabled:e.target.checked})}/> Kepala</label>
