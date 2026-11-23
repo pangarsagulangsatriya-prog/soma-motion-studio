@@ -17,6 +17,7 @@ test('V2.4 UI: beta spatial tracking, motion preset and rough Sumi keep V2.3 fal
  await expect(v24).not.toBeChecked();
  await v24.check();
  await expect(v24).toBeChecked();
+ await expect(panel.getByRole('button',{name:'Ekspor posisi A/B · JSON'})).toBeEnabled();
  await panel.getByLabel('Stabilitas gerak V2.4').selectOption('responsive');
  await expect(panel.getByLabel('Stabilitas gerak V2.4')).toHaveValue('responsive');
  await v24.uncheck();
