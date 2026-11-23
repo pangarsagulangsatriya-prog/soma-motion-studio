@@ -77,6 +77,9 @@ export function DualTraceControlsV2(p:Props){
    {slider('Bobot garis',p.settings.pathWeightPx??36,8,42,2,v=>patch({pathWeightPx:v}))}
    <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualV2Expressive??true}
     onChange={e=>patch({dualV2Expressive:e.target.checked})}/> Respons gerak ekspresif</label>
+   <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualV2UpperModulation!==false}
+    onChange={e=>patch({dualV2UpperModulation:e.target.checked})}/>
+    Kepala & bahu mengubah bobot garis kaki</label>
    <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualHeadEnabled??true}
     onChange={e=>patch({dualHeadEnabled:e.target.checked})}/> Kepala</label>
    <label className="dual-v2-setting"><input type="checkbox" checked={p.settings.dualShoulderEnabled??true}
