@@ -15,7 +15,7 @@ export function VideoSpatialCalibration({frameRef,profile,onSave}:{
  const [clip,setClip]=useState<File|null>(null);
  const [width,setWidth]=useState(5);
  const [depth,setDepth]=useState(5);
- const [message,setMessage]=useState('Ambil frame MP4, lalu klik empat sudut lantai secara berurutan.');
+ const [message,setMessage]=useState('Ambil frame MP4, lalu tandai empat sudut lantai pada video.');
  useEffect(()=>{if(profile){setWidth(profile.calibration.floor.widthM);
   setDepth(profile.calibration.floor.depthM);}},[profile]);
  const take=()=>{
@@ -57,7 +57,7 @@ export function VideoSpatialCalibration({frameRef,profile,onSave}:{
  const valid=!!profile&&current?.kind==='video'&&current.clip===profile.clip&&
   current.video?.videoWidth===profile.width&&current.video?.videoHeight===profile.height;
  return <details style={{border:'1px solid #395244',borderRadius:8,padding:10,marginBottom:10}}>
-  <summary style={{cursor:'pointer',fontWeight:650}}>Sesuaikan lantai MP4 · {valid?'Tersimpan':'Ruang perkiraan'}</summary>
+  <summary style={{cursor:'pointer',fontWeight:650}}>Sesuaikan bidang video · {valid?'Tersimpan':'Ruang perkiraan'}</summary>
   <p style={{fontSize:12}}>Gunakan empat sudut bidang lantai pada video. Koordinat ini berlaku untuk file MP4 yang sama.</p>
   <button type="button" onClick={take}>Ambil frame MP4</button>
   <div style={{position:'relative',width:'100%',aspectRatio:'16 / 9',background:'#101511',marginTop:8}}>
