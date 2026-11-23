@@ -1,0 +1,58 @@
+name: SOMA Path Continuity V2.3 QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/footprints/lines/v3/ActorContinuityCoordinator.ts'
+      - 'src/footprints/lines/v3/ContinuityBridgeValidator.ts'
+      - 'src/footprints/lines/v3/ActorGroundTrajectoryEstimator.ts'
+      - 'src/footprints/lines/v3/GroundTrajectoryEngineV2.ts'
+      - 'src/footprints/lines/v3/ActorPathTracker.ts'
+      - 'src/footprints/lines/v3/PersistentPathStore.ts'
+      - 'src/footprints/dual-trace/DualTraceV2Renderer.ts'
+      - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/studio/v3/DualTraceControlsV2.tsx'
+      - 'tests/path-continuity-v23.test.ts'
+      - 'e2e/path-continuity-v23.spec.mjs'
+      - '.github/workflows/path-continuity-v23-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: soma-path-continuity-v23-qa
+  cancel-in-progress: true
+jobs:
+  continuity-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Unit and regression suite
+        run: npm test
+      - name: TypeScript and production bundle
+        run: npm run build
+      - name: Install browser QA tooling
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Visual continuity and rollback browser QA
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 path-continuity-v23.spec.mjs
+      - name: Preserve pixel screenshots and browser trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soma-path-continuity-v23-qa
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+            e2e/qa-result.json
+          if-no-files-found: ignore
+          retention-days: 14
