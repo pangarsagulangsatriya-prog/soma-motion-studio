@@ -56,13 +56,16 @@ type Props={
  experimentSource?:'video'|'simulator'|null;
  onOpenTrack?:()=>void;
  onOpenCompose?:()=>void;
+ onMapOutputSaved?:()=>void;
+ onMapOutputInvalidated?:()=>void;
+ mapOutputSaved?:boolean;
 };
 
 export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
  liquidCanvas,experimentInputCanvas,experimentFrameRef,motionSession,liveSourceKind='camera',videoFloorCalibration=null,videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
- onOpenTrack,onOpenCompose
+ onOpenTrack,onOpenCompose,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved=false
 }:Props){
  // Keep shouldLatchProjectionBlackout referenced here and enforced in DualSurfaceSessionStore.
  void shouldLatchProjectionBlackout;
@@ -127,7 +130,8 @@ export function DualSurfaceRoutingPanel({
    setRequested(prev=>({...prev,[id]:'blackout'}));
    setArmed(prev=>({...prev,[id]:false}));
    setMessage('Bidang '+id.toUpperCase()+' tersimpan. Output fisik tetap Blackout.');
-  }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi tidak valid.');}
+   return true;
+  }catch(e){setMessage(e instanceof Error?e.message:'Kalibrasi tidak valid.');return false;}
  };
 
  const changeRoomSize=(size:MapStageDimensions)=>{
@@ -138,13 +142,14 @@ export function DualSurfaceRoutingPanel({
   setRequested({body:'blackout',floor:'blackout'});
   setArmed({body:false,floor:false});
   if(floorTracker?.isCalibrated)floorTracker.revoke('Ukuran lantai berubah di Map. Tandai ulang lantai pada gambar kamera.');
+  onMapOutputInvalidated?.();
   setStageDimensions(next);
   setMessage('Ukuran lantai diubah. Tandai ulang bidang kamera.');
  };
  const commitMonitorQuad=(quad:Quad)=>{
   try{
    validateStageSurfacePlan({...getDualSurfaceState().plans[selected],projectorQuad:quad});
-   editPlan(selected,p=>({...p,projectorQuad:quad}));
+   if(editPlan(selected,p=>({...p,projectorQuad:quad})))onMapOutputSaved?.();
   }catch(e){setMessage(e instanceof Error?e.message:'Quad tidak valid.');}
  };
 
@@ -160,9 +165,7 @@ export function DualSurfaceRoutingPanel({
 
  const activePlan=plans[selected];
  const mapStatus=sourceKind==='none'?'Belum ada sumber':
-  sourceKind==='demo-sim'?'Simulasi aktif':
-  sourceKind==='camera'?(floorTracker?.isConfirmed?'Lantai tersimpan':'Cocokkan lantai'):
-  'Pratinjau input';
+  mapOutputSaved?'Bidang output tersimpan · periksa QA':'Bidang output belum disimpan';
 
  return <section className="stage-dual map-r2-shell" aria-label="Map — kalibrasi ruang">
   {/* Track-matching single top header bar */}
@@ -170,7 +173,7 @@ export function DualSurfaceRoutingPanel({
    <div className="map-r2-brand">
     <h2>Map</h2>
     <div className="map-r2-status-inline map-r7-status"
-     data-status={floorTracker?.isConfirmed?'ready-perform':'uncalibrated'}
+     data-status={mapOutputSaved?'output-quad-saved':'output-quad-draft'}
      role="status" aria-label={mapStatus} title={mapStatus}>
      <span className="map-r7-status-dot" aria-hidden="true"/>
      <strong>{mapStatus}</strong>
@@ -206,6 +209,7 @@ export function DualSurfaceRoutingPanel({
   videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
   router={router} experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={liveSourceKind}
   videoFloorCalibration={videoFloorCalibration}
+  mapOutputSaved={mapOutputSaved}
   performerCount={performerCount} cameraOn={cameraOn}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
@@ -219,6 +223,7 @@ export function DualSurfaceRoutingPanel({
    router?.reset();
   }}
   onBeginProjectorEdit={()=>{
+   onMapOutputInvalidated?.();
    allBlackout();setProofs({body:null,floor:null});
    setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
   }}
