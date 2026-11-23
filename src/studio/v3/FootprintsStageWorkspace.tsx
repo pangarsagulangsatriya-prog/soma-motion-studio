@@ -267,7 +267,7 @@ export function FootprintsStageWorkspace({
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
  const [composeRasterReady,setComposeRasterReady]=useState(false);
- const [mapOutputSaved,setMapOutputSaved]=useState(false);
+ const [savedOutputQuads,setSavedOutputQuads]=useState<{floor:boolean;body:boolean}>({floor:false,body:false});
  const [videoFloorProfile,setVideoFloorProfile]=useState<VideoFloorProfile|null>(null);
  const [previewResumeRevision,setPreviewResumeRevision]=useState(0);
  const [mappingOpen,setMappingOpen]=useState(false);
@@ -834,7 +834,7 @@ export function FootprintsStageWorkspace({
   }
  };
  // Source/clip and floor-session changes invalidate previous stage preview/checkmarks.
- useEffect(()=>{setComposeRasterReady(false);setMapOutputSaved(false);},
+ useEffect(()=>{setComposeRasterReady(false);setSavedOutputQuads({floor:false,body:false});},
   [sourceStatus.selection,experimentClip,tracker.sessionEpoch]);
  const trackSummary=trackStatus({
   selection:sourceStatus.selection,phase:sourceStatus.phase,message:sourceStatus.message,
@@ -860,7 +860,7 @@ export function FootprintsStageWorkspace({
    cameraOn&&bodySelected&&frameFresh&&!identityStatus.ambiguous&&
     (performerCount===1?!!frameRef.current.tracked:
      identityStatus.visible.length===2&&identityStatus.observedFrameTime===frameRef.current.time),
-  composeRasterReady,outputQuadSaved:mapOutputSaved,
+  composeRasterReady,outputQuadSaved:savedOutputQuads.floor||savedOutputQuads.body,
   outputQaValid:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
   physicalLiveCommanded:dual.floor.mode==='live'||dual.body.mode==='live'
  });
@@ -895,7 +895,7 @@ export function FootprintsStageWorkspace({
    <div className="soma-track-video-calibration" aria-label="Bidang video pada Track">
     <VideoSpatialCalibration frameRef={experimentFrameRef}
      profile={videoFloorProfile} onSave={profile=>{
-      onBlackout();setVideoFloorProfile(profile);setMapOutputSaved(false);
+      onBlackout();setVideoFloorProfile(profile);setSavedOutputQuads({floor:false,body:false});
      }}/>
    </div>}
   {operatorMode?
@@ -1015,8 +1015,11 @@ export function FootprintsStageWorkspace({
      onRemoveAsset={sharedAssetRegistry.removeAsset} assetNotice={sharedAssetRegistry.notice}
      experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFloorCanvas={floorCanvas} experimentFrameRef={experimentFrameRef}
      videoFloorProfile={videoFloorProfile}
-     onComposeRasterChange={setComposeRasterReady} onMapOutputSaved={()=>setMapOutputSaved(true)}
-     onMapOutputInvalidated={()=>setMapOutputSaved(false)} mapOutputSaved={mapOutputSaved}
+     onComposeRasterChange={setComposeRasterReady}
+     onMapOutputSaved={surface=>setSavedOutputQuads(p=>({...p,[surface]:true}))}
+     onMapOutputInvalidated={surface=>setSavedOutputQuads(p=>
+      surface?{...p,[surface]:false}:{floor:false,body:false})}
+     mapOutputSaved={savedOutputQuads}
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput}
