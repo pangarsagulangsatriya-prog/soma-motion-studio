@@ -28,6 +28,10 @@ import {upperGestureAnchors} from '../../footprints/dual-trace/UpperGestureAncho
 import {UpperGestureStrokeTracker} from '../../footprints/dual-trace/UpperGestureStrokeTracker.ts';
 import {UpperGestureInkRenderer} from '../../footprints/dual-trace/UpperGestureInkRenderer.ts';
 import {DualTraceCanvasHost} from './DualTraceCanvasHost.tsx';
+import {DualTraceCanvasHostV2} from './DualTraceCanvasHostV2.tsx';
+import {DualTraceControlsV2} from './DualTraceControlsV2.tsx';
+import {DualTraceV2Renderer} from '../../footprints/dual-trace/DualTraceV2Renderer.ts';
+import {mapUpperAnchorsToStage} from '../../footprints/dual-trace/UpperStageAnchorMapper.ts';
 import {DualTraceControls} from './DualTraceControls.tsx';
 import './dual-trace.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
@@ -87,6 +91,9 @@ type StageProps={
 export function LineTrailsV3Stage(props:StageProps){
  const canvas=useRef<HTMLCanvasElement|null>(null);
  const upperCanvas=useRef<HTMLCanvasElement|null>(null);
+ const footDebugCanvas=useRef<HTMLCanvasElement|null>(null);
+ const v2EngineRef=useRef<DualTraceV2Renderer|null>(null);
+ const lastV2Frame=useRef(0);
  const footPane=useRef<HTMLDivElement|null>(null);
  const upperPane=useRef<HTMLDivElement|null>(null);
  const clearTriggers=useRef({foot:0,upper:0});
@@ -108,6 +115,8 @@ export function LineTrailsV3Stage(props:StageProps){
   const pathStore=new PersistentPathStore();
   const upperTracker=new UpperGestureStrokeTracker();
   const upperInk=new UpperGestureInkRenderer();
+  const v2=new DualTraceV2Renderer();v2EngineRef.current=v2;
+  let activeSpatial: {calibration:CameraFloorCalibration;videoAspect:number}|undefined;
   let lastFootClear=0,lastUpperClear=0,upperMode=false;
   const upperReady=(ready:boolean)=>{
    if(available.current!==ready){available.current=ready;setHasUpper(ready);}
@@ -122,7 +131,9 @@ export function LineTrailsV3Stage(props:StageProps){
   };
   const cutUpper=(reason:string)=>{
    for(const event of upperTracker.cutAll(reason))
-    upperInk.ingest(event,brushUpper());
+    if(args.current.painterly.painterlyEngine==='dual-trace-v2')
+     v2.ingestUpper(event,args.current.painterly.dualHeadWidth??8,args.current.painterly.dualShoulderWidth??16);
+    else upperInk.ingest(event,brushUpper());
   };
   let lastPathObservations:ActorPathObservation[]=[];
   const pathStyle=(actor:'A'|'B')=>{
@@ -134,12 +145,17 @@ export function LineTrailsV3Stage(props:StageProps){
   };
   const cutPath=(reason:string)=>{
    for(const event of pathTracker.cutAll(reason))
-    pathStore.ingest(event,pathStyle(event.actorId));
+    if(args.current.painterly.painterlyEngine==='dual-trace-v2')
+     v2.ingestPath(event,args.current.painterly.pathWeightPx??22,
+      args.current.painterly.dualV2Material??'path-sumi',args.current.painterly.dualV2Expressive??false);
+    else pathStore.ingest(event,pathStyle(event.actorId));
    pathRouter.reset();lastPathObservations=[];
   };
   const viewFit=new PainterlyPreviewTransform();
   args.current.onRegisterExportInk?.(()=>
-   ['path-first-v35','dual-trace-v1'].includes(args.current.painterly.painterlyEngine??'')?
+   args.current.painterly.painterlyEngine==='dual-trace-v2'?
+    (args.current.outputRaster?.current??canvas.current)?.toDataURL('image/png')??null:
+    ['path-first-v35','dual-trace-v1'].includes(args.current.painterly.painterlyEngine??'')?
     pathStore.exportPNG():sumiStore.exportPNG());
   args.current.onRegisterInkArchive?.({save:()=>
    ['path-first-v35','dual-trace-v1'].includes(args.current.painterly.painterlyEngine??'')?
@@ -179,22 +195,24 @@ export function LineTrailsV3Stage(props:StageProps){
     lastFootClear=clearTriggers.current.foot;
     p.engine.reset('manual-reset');p.impressions.reset();
     if(p.painterly.painterlyEngine!=='dual-trace-v1')clearBrush();
-    cutPath('clear-foot');pathStore.clearPainting();viewFit.reset();
+    cutPath('clear-foot');pathStore.clearPainting();v2.clearPath();v2.invalidateFootprints();viewFit.reset();
    }
    if(clearTriggers.current.upper!==lastUpperClear){
     lastUpperClear=clearTriggers.current.upper;
-    cutUpper('clear-gesture');upperInk.clear();
+    cutUpper('clear-gesture');upperInk.clear();v2.clearUpper();
    }
    const resetRevision=p.brushResetRevision??0;
    if(resetRevision!==lastBrushResetRevision){
     clearBrush();sumiMotion.cutMotionSegment('user-clear');
     sumiStore.clearPainting();cutPath('user-clear');pathStore.clearPainting();
-    cutUpper('clear-both');upperInk.clear();
+    cutUpper('clear-both');upperInk.clear();v2.clearBoth();v2.invalidateFootprints();
     viewFit.reset();lastBrushResetRevision=resetRevision;
    }
    const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
    const nextSumiMode=p.painterly.enabled&&p.painterly.painterlyEngine==='sumi-v34';
-   const nextDualMode=p.painterly.enabled&&p.painterly.painterlyEngine==='dual-trace-v1';
+   const nextDualV2=p.painterly.enabled&&p.painterly.painterlyEngine==='dual-trace-v2';
+   const nextDualLegacy=p.painterly.enabled&&p.painterly.painterlyEngine==='dual-trace-v1';
+   const nextDualMode=nextDualV2||nextDualLegacy;
    const nextPathMode=p.painterly.enabled&&
     (p.painterly.painterlyEngine==='path-first-v35'||nextDualMode);
    if(nextDualMode!==upperMode){
@@ -206,7 +224,7 @@ export function LineTrailsV3Stage(props:StageProps){
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
    if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');
     cutPath('source-switch');cutUpper('source-switch');upperReady(false);
-    brushSource=input.sourceKey;}
+    brushSource=input.sourceKey;activeSpatial=undefined;v2.invalidateFootprints();}
    if(input.sourceKey!==lastSource){
     lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
@@ -247,20 +265,10 @@ export function LineTrailsV3Stage(props:StageProps){
         input.frameMs,brushAdapter);
        brushAdapter=batch.state;
        if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');cutUpper('frame-cut');}
-       if(nextDualMode&&!input.paused){
-        const poseFrames=dualTracePoseFrames(input,{
-         experiment:p.experimentFrameRef?.current??null,
-         live:p.frameRef.current,performers:p.performerCount,status:p.router.status
-        }).filter(frame=>p.settings.actors[frame.actorId]);
-        const upperSettings=brushUpper();
-        const anchors=poseFrames.flatMap(frame=>upperGestureAnchors(frame,
-         p.painterly.dualGain??1.35,
-         {head:upperSettings.headEnabled,shoulder:upperSettings.shoulderEnabled}
-        )).filter(a=>!upperInk.isReplayCovered(a));
-        upperReady(anchors.length>0);
-        for(const event of upperTracker.ingest(anchors,input.frameMs,
-         p.painterly.dualSmoothing??.42))upperInk.ingest(event,upperSettings);
-       }
+       const poseFrames=nextDualMode&&!input.paused?dualTracePoseFrames(input,{
+        experiment:p.experimentFrameRef?.current??null,
+        live:p.frameRef.current,performers:p.performerCount,status:p.router.status
+       }).filter(frame=>p.settings.actors[frame.actorId]):[];
        if(nextPathMode&&!input.paused){
         const mp4Video=p.experimentFrameRef?.current?.kind==='video'?
          p.experimentFrameRef.current.video:null;
@@ -271,12 +279,38 @@ export function LineTrailsV3Stage(props:StageProps){
          {calibration:activeCalibration,
           videoAspect:activeVideo.videoWidth/activeVideo.videoHeight,
           calibrationId:input.source+':'+JSON.stringify(activeCalibration)}:undefined;
-         const observations=pathRouter.ingest(batch.poses,input.supportHints,spatial).filter(o=>!pathStore.isReplayCovered(o));
+         activeSpatial=spatial;
+         if(nextDualV2&&v2.setSpatialSignature(spatial?.calibrationId??'image-2d:'+input.sourceKey)){
+          cutPath('camera-floor-profile-change');cutUpper('camera-floor-profile-change');
+          v2.invalidateFootprints();
+         }
+         const observations=pathRouter.ingest(batch.poses,input.supportHints,spatial)
+          .filter(o=>nextDualV2?!v2.pathCovered(o.actorId,o.clipStableId,o.timeMs):
+           !pathStore.isReplayCovered(o));
          lastPathObservations=observations;
         const pathEvents=pathTracker.ingest(observations,input.frameMs);
         for(const event of pathEvents){
          if(!p.settings.actors[event.actorId])continue;
-         pathStore.ingest(event,pathStyle(event.actorId));
+         if(nextDualV2)
+          v2.ingestPath(event,p.painterly.pathWeightPx??22,
+           p.painterly.dualV2Material??'path-sumi',p.painterly.dualV2Expressive??false);
+         else pathStore.ingest(event,pathStyle(event.actorId));
+        }
+       }
+       if(nextDualMode&&!input.paused){
+        const upperSettings=brushUpper();
+        const raw=poseFrames.flatMap(frame=>upperGestureAnchors(frame,
+         p.painterly.dualGain??1.35,
+         {head:upperSettings.headEnabled,shoulder:upperSettings.shoulderEnabled}));
+        const mapped=nextDualV2?mapUpperAnchorsToStage(
+         raw,poseFrames,lastPathObservations,!!activeSpatial):raw;
+        const anchors=mapped.filter(a=>nextDualV2?!v2.upperCovered(a):
+         !upperInk.isReplayCovered(a));
+        upperReady(anchors.length>0);
+        for(const event of upperTracker.ingest(anchors,input.frameMs,
+         p.painterly.dualSmoothing??.42)){
+         if(nextDualV2)v2.ingestUpper(event,upperSettings.headWidth,upperSettings.shoulderWidth);
+         else upperInk.ingest(event,upperSettings);
         }
        }
        if(nextSumiMode&&!input.paused){
@@ -322,7 +356,39 @@ export function LineTrailsV3Stage(props:StageProps){
     nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
    const footSettings=nextDualMode?
     {...p.painterly,painterlyEngine:'path-first-v35' as const}:p.painterly;
-   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,footSettings,
+   if(nextDualV2){
+    lastV2Frame.current=input.presentationMs;
+    v2.paint(ctx,{
+     palette:p.painterly.dualV2Palette,order:p.painterly.dualV2Order,
+     impressions:p.impressions,timeMs:input.presentationMs,
+     footprintLifeMs:p.painterly.footprintLifeMs,
+     footprintKeep:p.painterly.footprintKeep,footVisible:p.settings.footVisible,
+     headEnabled:p.painterly.dualHeadEnabled??true,
+     shoulderEnabled:p.painterly.dualShoulderEnabled??true,
+     headOpacity:p.painterly.dualHeadOpacity??.75,
+     shoulderOpacity:p.painterly.dualShoulderOpacity??.9,
+     pathOpacity:p.painterly.dualV2PathOpacity,
+     footprintOpacity:p.painterly.dualV2FootOpacity,
+     upperOpacity:p.painterly.dualV2UpperOpacity,
+     spatial:activeSpatial,blackout:off
+    });
+    if(p.painterly.dualV2Display==='split-debug'){
+     const common={
+      palette:p.painterly.dualV2Palette,order:p.painterly.dualV2Order,
+      impressions:p.impressions,timeMs:input.presentationMs,
+      footprintLifeMs:p.painterly.footprintLifeMs,
+      footprintKeep:p.painterly.footprintKeep,footVisible:p.settings.footVisible,
+      headEnabled:p.painterly.dualHeadEnabled??true,
+      shoulderEnabled:p.painterly.dualShoulderEnabled??true,
+      headOpacity:p.painterly.dualHeadOpacity??.75,
+      shoulderOpacity:p.painterly.dualShoulderOpacity??.9,
+      spatial:activeSpatial,blackout:off
+     };
+     const fc=footDebugCanvas.current?.getContext('2d'),uc=upperCanvas.current?.getContext('2d');
+     if(fc)v2.paint(fc,{...common,only:'foot'});
+     if(uc)v2.paint(uc,{...common,only:'upper'});
+    }
+   }else paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,footSettings,
     input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
    // Clean Compose raster feeds Map and Perform without debug markers.
    const shared=p.outputRaster?.current;
@@ -333,7 +399,7 @@ export function LineTrailsV3Stage(props:StageProps){
     if(out){out.setTransform(1,0,0,1,0,0);out.clearRect(0,0,shared.width,shared.height);
      if(!off)out.drawImage(c,0,0);}
    }
-   if(nextDualMode){
+   if(nextDualLegacy){
     const uc=upperCanvas.current?.getContext('2d');
     if(uc)upperInk.paint(uc,brushUpper(),off);
    }
@@ -365,7 +431,8 @@ export function LineTrailsV3Stage(props:StageProps){
      'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
      ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
-      ...(nextDualMode?['Upper: '+upperInk.activeCount+' kanal · '+upperInk.committedCount+' sapuan']:[]),
+      ...(nextDualMode?['Upper: '+(nextDualV2?v2.upperActiveCount:upperInk.activeCount)+
+       ' kanal · '+(nextDualV2?v2.upperCount:upperInk.committedCount)+' sapuan']:[]),
       ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit',
        'Ruang: '+((input.source==='video'?p.videoFloorCalibration:p.cameraFloorCalibration)?'lantai terkalibrasi (estimasi)':'image-2d / ruang perkiraan'),
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
@@ -377,17 +444,45 @@ export function LineTrailsV3Stage(props:StageProps){
    }
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');cutUpper('unmount');
+  return()=>{cancelAnimationFrame(raf);v2EngineRef.current=null;args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');cutUpper('unmount');
     args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
  const dualEnabled=props.painterly.enabled&&
   props.painterly.painterlyEngine==='dual-trace-v1';
+ const dualV2Enabled=props.painterly.enabled&&
+  props.painterly.painterlyEngine==='dual-trace-v2';
  const exportUpper=()=>{
+  if(dualV2Enabled){
+   const renderer=v2EngineRef.current;
+   if(!renderer)return;
+   const c=document.createElement('canvas');c.width=1600;c.height=900;
+   const g=c.getContext('2d');if(!g)return;
+   renderer.paint(g,{
+    palette:props.painterly.dualV2Palette,impressions:props.impressions,
+    timeMs:lastV2Frame.current,only:'upper',footVisible:props.settings.footVisible,
+    footprintLifeMs:props.painterly.footprintLifeMs,
+    footprintKeep:props.painterly.footprintKeep,
+    headEnabled:props.painterly.dualHeadEnabled??true,
+    shoulderEnabled:props.painterly.dualShoulderEnabled??true,
+    headOpacity:props.painterly.dualHeadOpacity??.75,
+    shoulderOpacity:props.painterly.dualShoulderOpacity??.9
+   });
+   const link=document.createElement('a');link.href=c.toDataURL('image/png');
+   link.download='soma-dual-trace-v2-gesture.png';link.click();return;
+  }
   const png=upperCanvas.current?.toDataURL('image/png');
   if(!png)return;
   const link=document.createElement('a');link.href=png;
   link.download='soma-dual-trace-upper.png';link.click();
  };
+ if(dualV2Enabled)return <DualTraceCanvasHostV2 mainRef={canvas}
+  footDebugRef={footDebugCanvas} upperDebugRef={upperCanvas}
+  fullscreenRef={props.fullscreenRef} display={props.painterly.dualV2Display??'composite'}
+  hasUpper={hasUpper} sourceIsFootOnly={props.demo||props.experimentSource==='simulator'}
+  onClearFoot={()=>{clearTriggers.current.foot++;}}
+  onClearUpper={()=>{clearTriggers.current.upper++;}}
+  onClearBoth={()=>{clearTriggers.current.foot++;clearTriggers.current.upper++;}}
+  onExportUpper={exportUpper}/>;
  return <DualTraceCanvasHost enabled={dualEnabled}
   footRef={canvas} upperRef={upperCanvas} fullscreenRef={props.fullscreenRef}
   footPaneRef={footPane} upperPaneRef={upperPane}
@@ -434,8 +529,14 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
  const sumi=painterly.painterlyEngine==='sumi-v34';
  const pathMode=painterly.painterlyEngine==='path-first-v35';
  const dualMode=painterly.painterlyEngine==='dual-trace-v1';
+ const dualV2Mode=painterly.painterlyEngine==='dual-trace-v2';
  const inkMode=sumi||pathMode;
  const change=(patch:Partial<PainterlySettings>)=>onPainterlyChange({...painterly,...patch});
+ if(dualV2Mode)return <DualTraceControlsV2 settings={painterly}
+  onChange={onPainterlyChange} onClearAll={onClear}
+  onExportPNG={()=>onExportPNG?.()} demo={demo} onDemo={onDemo} status={status}
+  onExit={()=>change({painterlyEngine:'path-first-v35'})}
+  onLegacy={()=>change({painterlyEngine:'dual-trace-v1'})}/>;
  if(dualMode)return <DualTraceControls painterly={painterly}
   onPainterlyChange={onPainterlyChange} settings={settings}
   onSettingsChange={onChange} onClear={onClear} onDemo={onDemo}
@@ -447,13 +548,14 @@ export function LineTrailsV3Panel({settings,onChange,painterly,onPainterlyChange
    <button type="button" aria-pressed={false}
     onClick={()=>{
      onChange({...settings,actorColors:{A:'#E84B32',B:'#202226'}});
-     change({painterlyEngine:'dual-trace-v1',pathWeightPx:22,
+     change({painterlyEngine:'dual-trace-v2',dualV2Display:'composite',
+      dualV2Order:'foot-on-top',pathWeightPx:22,
       footprintLifeMs:6000,footprintKeep:false,showSoles:true,showTrails:true,
       trailKeep:true,dualGain:1.35,dualHeadEnabled:true,
       dualShoulderEnabled:true,dualHeadWidth:8,dualShoulderWidth:16,
       dualHeadOpacity:.75,dualShoulderOpacity:.9,dualSmoothing:.42,
       previewFit:false});
-    }}>Dual Trace · BETA</button>
+    }}>Dual Trace V2 · Gabung</button>
    <button type="button" aria-pressed={pathMode} onClick={()=>change({
      painterlyEngine:'path-first-v35',pathWeightPx:painterly.pathWeightPx??26,
      pathMaterial:painterly.pathMaterial??'path-sumi',pathAccents:painterly.pathAccents??'subtle',
