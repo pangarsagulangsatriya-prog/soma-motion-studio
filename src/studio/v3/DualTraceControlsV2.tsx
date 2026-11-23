@@ -103,7 +103,17 @@ export function DualTraceControlsV2(p:Props){
    <button type="button" onClick={p.onExit}>Kembali ke Path Sumi</button>
   </div>
   <details className="dual-v21-diagnostics">
-   <summary>Diagnostik jalur</summary>
+   <summary>Tracking jalur · V2.2</summary>
+   <label className="dual-v2-setting">
+    <input type="checkbox" checked={p.settings.trajectoryV22Enabled!==false}
+     onChange={e=>patch({trajectoryV22Enabled:e.target.checked})}/>
+    Gunakan fusi kaki + pinggul (V2.2)
+   </label>
+   <small>Matikan untuk kembali ke V2.1. Tidak membuat cap kaki dari estimasi pinggul.</small>
+   <p>{p.diagnostics||'Menunggu pengukuran pose dan jalur.'}</p>
+  </details>
+  <details className="dual-v21-diagnostics">
+   <summary>Diagnostik teknis</summary>
    <p>{p.diagnostics||'Menunggu pengukuran pose dan jalur.'}</p>
   </details>
   <details className="dual-v2-legacy"><summary>Mode lama</summary>
