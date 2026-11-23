@@ -19,7 +19,8 @@ export type PainterlySettings={
  dualV2Display?:DualTraceV2Mode;
  dualV2Order?:DualTraceV2Order;
  dualV2Palette?:DualTraceV2Palette;
- dualV2Material?:'path-sumi'|'dry-ink'|'pigment-mass';
+ dualV2Material?:'path-sumi'|'rough-sumi'|'dry-ink'|'pigment-mass';
+ dualV2Roughness?:number;
  dualV2Expressive?:boolean;
  /** Head/shoulder movement changes PATH brush weight, not its position. */
  dualV2UpperModulation?:boolean;
@@ -27,6 +28,9 @@ export type PainterlySettings={
  trajectoryV22Enabled?:boolean;
  /** Beta: validated short gaps share one persistent actor stroke. False keeps V2.2. */
  trajectoryV23Enabled?:boolean;
+ /** Opt-in V2.4 spatial tracking, stable temporal filtering and rough Sumi. */
+ trajectoryV24Enabled?:boolean;
+ v24MotionPreset?:'responsive'|'balanced'|'stable';
  dualV2PathOpacity?:number;
  dualV2FootOpacity?:number;
  dualV2UpperOpacity?:number;
