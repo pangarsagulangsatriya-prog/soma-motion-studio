@@ -80,7 +80,7 @@ export class PathObservationRouter{
     const mR=dr?length(dr,{x:0,y:0}):Infinity;
     // Severe displacement is reported to ActorPathTracker so it can CUT,
     // never silently interpolate across an identity swap or teleport.
-    const jumpGate=Math.min(190,30+dt*.22);
+    const jumpGate=Math.min(260,75+dt*.26);
     if(dl&&dr&&length(dMid,{x:0,y:0})>jumpGate&&
        mL>jumpGate*.7&&mR>jumpGate*.7&&
        (dl.x*dr.x+dl.y*dr.y)/(mL*mR)>.6){
@@ -88,7 +88,7 @@ export class PathObservationRouter{
     }else{
      let movement:PathPoint={x:0,y:0};
      if(dl&&dr){
-      const similar=mL>3&&mR>3&&
+      const similar=mL>.8&&mR>.8&&
        (dl.x*dr.x+dl.y*dr.y)/(mL*mR)>.70&&
        Math.max(mL,mR)/Math.max(1,Math.min(mL,mR))<3.2;
       const leftGround=mL<=Math.max(8,mR*.37)&&mR>=10;

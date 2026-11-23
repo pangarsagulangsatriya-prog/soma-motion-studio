@@ -12,7 +12,7 @@ type State={strokeId:string;last:ActorPathObservation;lastMoveAt:number;
 const dist=(a:PathPoint,b:PathPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const gapLimit=(sourceKey:string)=>sourceKey.startsWith('video:')?900:500;
-const stepLimit=(dt:number)=>Math.min(175,24+dt*.24);
+const stepLimit=(dt:number)=>Math.min(220,42+dt*.30);
 export class ActorPathTracker{
  private tracks=new Map<ActorChannel,State>();
  private nextId=0;
