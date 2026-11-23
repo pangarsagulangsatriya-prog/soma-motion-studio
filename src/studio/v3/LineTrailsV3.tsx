@@ -143,7 +143,7 @@ export function LineTrailsV3Stage(props:StageProps){
     accents:options.pathAccents??'subtle'} as const;
   };
   const cutPath=(reason:string)=>{
-   for(const event of trajectory.cutAll(reason)
+   for(const event of trajectory.cutAll(reason))
     if(args.current.painterly.painterlyEngine==='dual-trace-v2')
      v2.ingestPath(event,args.current.painterly.pathWeightPx??22,
       args.current.painterly.dualV2Material??'path-sumi',args.current.painterly.dualV2Expressive??false);
