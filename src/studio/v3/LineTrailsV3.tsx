@@ -1,4 +1,4 @@
-import {useEffect,useRef,type RefObject} from 'react';
+import {useEffect,useRef,useState,type RefObject} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
@@ -22,6 +22,13 @@ import {PainterlyPreviewTransform} from '../../footprints/lines/v3/PainterlyPrev
 import {PathObservationRouter,type ActorPathObservation} from '../../footprints/lines/v3/PathObservationRouter.ts';
 import {ActorPathTracker} from '../../footprints/lines/v3/ActorPathTracker.ts';
 import {PersistentPathStore} from '../../footprints/lines/v3/PersistentPathStore.ts';
+import {dualTracePoseFrames} from '../../footprints/dual-trace/DualTracePoseFrameBus.ts';
+import {upperGestureAnchors} from '../../footprints/dual-trace/UpperGestureAnchorAdapter.ts';
+import {UpperGestureStrokeTracker} from '../../footprints/dual-trace/UpperGestureStrokeTracker.ts';
+import {UpperGestureInkRenderer} from '../../footprints/dual-trace/UpperGestureInkRenderer.ts';
+import {DualTraceCanvasHost} from './DualTraceCanvasHost.tsx';
+import {DualTraceControls} from './DualTraceControls.tsx';
+import './dual-trace.css';
 import type {FootMotionEventV2} from '../../footprints/scenes/FootMotionEventV2.ts';
 import './line-trails-v3.css';
 
@@ -75,6 +82,12 @@ type StageProps={
 
 export function LineTrailsV3Stage(props:StageProps){
  const canvas=useRef<HTMLCanvasElement|null>(null);
+ const upperCanvas=useRef<HTMLCanvasElement|null>(null);
+ const footPane=useRef<HTMLDivElement|null>(null);
+ const upperPane=useRef<HTMLDivElement|null>(null);
+ const clearTriggers=useRef({foot:0,upper:0});
+ const available=useRef(false);
+ const [hasUpper,setHasUpper]=useState(false);
  const args=useRef(props);args.current=props;
  const demoStart=useRef(0);
  useEffect(()=>{demoStart.current=performance.now();},[props.demo]);
@@ -89,6 +102,24 @@ export function LineTrailsV3Stage(props:StageProps){
   const pathRouter=new PathObservationRouter();
   const pathTracker=new ActorPathTracker();
   const pathStore=new PersistentPathStore();
+  const upperTracker=new UpperGestureStrokeTracker();
+  const upperInk=new UpperGestureInkRenderer();
+  let lastFootClear=0,lastUpperClear=0,upperMode=false;
+  const upperReady=(ready:boolean)=>{
+   if(available.current!==ready){available.current=ready;setHasUpper(ready);}
+  };
+  const brushUpper=()=>{
+   const q=args.current.painterly;
+   return {headEnabled:q.dualHeadEnabled??true,
+    shoulderEnabled:q.dualShoulderEnabled??true,
+    headWidth:q.dualHeadWidth??8,shoulderWidth:q.dualShoulderWidth??16,
+    headOpacity:q.dualHeadOpacity??.75,shoulderOpacity:q.dualShoulderOpacity??.9,
+    colors:{A:args.current.settings.actorColors.A,B:args.current.settings.actorColors.B}};
+  };
+  const cutUpper=(reason:string)=>{
+   for(const event of upperTracker.cutAll(reason))
+    upperInk.ingest(event,brushUpper());
+  };
   let lastPathObservations:ActorPathObservation[]=[];
   const pathStyle=(actor:'A'|'B')=>{
    const options=args.current.painterly;
@@ -104,14 +135,14 @@ export function LineTrailsV3Stage(props:StageProps){
   };
   const viewFit=new PainterlyPreviewTransform();
   args.current.onRegisterExportInk?.(()=>
-   args.current.painterly.painterlyEngine==='path-first-v35'?
+   ['path-first-v35','dual-trace-v1'].includes(args.current.painterly.painterlyEngine??'')?
     pathStore.exportPNG():sumiStore.exportPNG());
   args.current.onRegisterInkArchive?.({save:()=>
-   args.current.painterly.painterlyEngine==='path-first-v35'?
+   ['path-first-v35','dual-trace-v1'].includes(args.current.painterly.painterlyEngine??'')?
     pathStore.exportSessionJSON():sumiStore.exportSessionJSON(),
    load:async data=>{
     sumiMotion.cutMotionSegment('import');cutPath('import');
-    if(args.current.painterly.painterlyEngine==='path-first-v35')
+    if(['path-first-v35','dual-trace-v1'].includes(args.current.painterly.painterlyEngine??''))
      await pathStore.importSessionJSON(data);
     else await sumiStore.importSessionJSON(data);
     viewFit.reset();
@@ -140,27 +171,44 @@ export function LineTrailsV3Stage(props:StageProps){
     motionSession:p.motionSession?.()??'track'
    });
    let message=input.status;
+   if(clearTriggers.current.foot!==lastFootClear){
+    lastFootClear=clearTriggers.current.foot;
+    p.engine.reset('manual-reset');p.impressions.reset();
+    clearBrush();cutPath('clear-foot');pathStore.clearPainting();viewFit.reset();
+   }
+   if(clearTriggers.current.upper!==lastUpperClear){
+    lastUpperClear=clearTriggers.current.upper;
+    cutUpper('clear-gesture');upperInk.clear();
+   }
    const resetRevision=p.brushResetRevision??0;
    if(resetRevision!==lastBrushResetRevision){
     clearBrush();sumiMotion.cutMotionSegment('user-clear');
     sumiStore.clearPainting();cutPath('user-clear');pathStore.clearPainting();
+    cutUpper('clear-both');upperInk.clear();
     viewFit.reset();lastBrushResetRevision=resetRevision;
    }
    const nextBrushMode=p.painterly.enabled&&p.painterly.painterlyEngine==='foot-brush-v33';
    const nextSumiMode=p.painterly.enabled&&p.painterly.painterlyEngine==='sumi-v34';
-   const nextPathMode=p.painterly.enabled&&p.painterly.painterlyEngine==='path-first-v35';
+   const nextDualMode=p.painterly.enabled&&p.painterly.painterlyEngine==='dual-trace-v1';
+   const nextPathMode=p.painterly.enabled&&
+    (p.painterly.painterlyEngine==='path-first-v35'||nextDualMode);
+   if(nextDualMode!==upperMode){
+    cutUpper('renderer-switch');upperMode=nextDualMode;
+    if(!upperMode)upperReady(false);
+   }
    if(nextPathMode!==pathMode){cutPath('renderer-switch');pathMode=nextPathMode;}
    if(nextSumiMode!==sumiMode){sumiMotion.cutMotionSegment('renderer-switch');sumiMode=nextSumiMode;}
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
    if(input.sourceKey!==brushSource){clearBrush();sumiMotion.cutMotionSegment('source-switch');
-    cutPath('source-switch');brushSource=input.sourceKey;}
+    cutPath('source-switch');cutUpper('source-switch');upperReady(false);
+    brushSource=input.sourceKey;}
    if(input.sourceKey!==lastSource){
     lastSource=input.sourceKey;lastFrameMs=-1;lastPaused=false;lastSeeking=false;lastStale=false;lastGoodAt=now;
     p.engine.ensureSource(input.sourceKey);
     p.impressions.ensureSource(input.sourceKey);
    }
    const off=p.blackout||!p.previewLive;
-   if(off&&!lastPathOff)cutPath('preview-off');
+   if(off&&!lastPathOff){cutPath('preview-off');cutUpper('preview-off');}
    lastPathOff=off;
    if(off){
     p.engine.cutAll('manual-reset');
@@ -170,7 +218,7 @@ export function LineTrailsV3Stage(props:StageProps){
    }else{
     if(input.seeking){
      if(!lastSeeking){p.engine.reset('seek');p.impressions.reset();clearBrush();
-       sumiMotion.cutMotionSegment('seek');cutPath('seek');}
+       sumiMotion.cutMotionSegment('seek');cutPath('seek');cutUpper('seek');}
      lastSeeking=true;
      message='MP4 · memindahkan posisi video';
     }else{
@@ -184,7 +232,7 @@ export function LineTrailsV3Stage(props:StageProps){
       const graceMs=input.source==='video'?1000:500;
       if(waiting&&!lastStale&&now-lastGoodAt>graceMs){
        p.engine.cutAll('stale-frame');gestures.reset();sumiMotion.cutMotionSegment('stale');
-        cutPath('stale');lastStale=true;
+        cutPath('stale');cutUpper('stale');upperReady(false);lastStale=true;
       }
      }else if(input.frameMs!==lastFrameMs){
       p.engine.ingestFrame(input.samples,input.frameMs,now);
@@ -193,7 +241,21 @@ export function LineTrailsV3Stage(props:StageProps){
        const batch=adaptFootBrushFrame(input.samples,input.sourceKey,
         input.frameMs,brushAdapter);
        brushAdapter=batch.state;
-       if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');}
+       if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');cutUpper('frame-cut');}
+       if(nextDualMode&&!input.paused){
+        const poseFrames=dualTracePoseFrames(input,{
+         experiment:p.experimentFrameRef?.current??null,
+         live:p.frameRef.current,performers:p.performerCount,status:p.router.status
+        }).filter(frame=>p.settings.actors[frame.actorId]);
+        const upperSettings=brushUpper();
+        const anchors=poseFrames.flatMap(frame=>upperGestureAnchors(frame,
+         p.painterly.dualGain??1.35,
+         {head:upperSettings.headEnabled,shoulder:upperSettings.shoulderEnabled}
+        )).filter(a=>!upperInk.isReplayCovered(a));
+        upperReady(poseFrames.length>0);
+        for(const event of upperTracker.ingest(anchors,input.frameMs,
+         p.painterly.dualSmoothing??.42))upperInk.ingest(event,upperSettings);
+       }
        if(nextPathMode&&!input.paused){
         const observations=pathRouter.ingest(batch.poses,input.supportHints).filter(o=>!pathStore.isReplayCovered(o));
          lastPathObservations=observations;
@@ -233,16 +295,25 @@ export function LineTrailsV3Stage(props:StageProps){
       lastFrameMs=input.frameMs;lastGoodAt=now;
       lastStale=false;
      }
-     if(input.paused)message='MP4 dijeda · jejak dipertahankan';
+     if(input.paused){
+      if(!lastPaused)cutUpper('pause');
+      message='MP4 dijeda · jejak dipertahankan';
+     }
      if(lastPaused&&!input.paused)lastStale=false;
      lastPaused=input.paused;
     }
    }
    const fullscreen=document.fullscreenElement===p.fullscreenRef.current;
-   const view=nextPathMode?viewFit.update(pathStore.getBounds(),!!p.painterly.previewFit):
+   const view=nextPathMode?viewFit.update(pathStore.getBounds(),!nextDualMode&&!!p.painterly.previewFit):
     nextSumiMode?viewFit.update(sumiStore.getBounds(),!!p.painterly.previewFit):undefined;
-   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,p.painterly,
+   const footSettings=nextDualMode?
+    {...p.painterly,painterlyEngine:'path-first-v35' as const}:p.painterly;
+   paintPainterlyCanvas(ctx,p.engine,p.impressions,p.settings,footSettings,
     input.presentationMs,off,fullscreen,brushStore,sumiStore,view,pathStore);
+   if(nextDualMode){
+    const uc=upperCanvas.current?.getContext('2d');
+    if(uc)upperInk.paint(uc,brushUpper(),off);
+   }
    if(nextPathMode&&p.painterly.pathDiagnostics&&!off&&!fullscreen)
     paintPathPrecisionOverlay(ctx,input.samples,lastPathObservations,view);
    if(!off&&fullscreen&&(p.fullscreenDiagnostics.camera||p.fullscreenDiagnostics.skeleton)){
@@ -271,6 +342,7 @@ export function LineTrailsV3Stage(props:StageProps){
      'Frame: '+Math.max(0,input.frameMs).toFixed(0)+' ms',
      ...(lag===null?[]:['Selisih media/pose: '+lag+' ms']),
      'Jalur: '+p.engine.activeCount+' kaki · '+p.engine.sampleCount+' titik',
+      ...(nextDualMode?['Upper: '+upperInk.activeCount+' kanal · '+upperInk.committedCount+' sapuan']:[]),
       ...(nextPathMode?['Path A/B: '+pathStore.activeCount+' aktif · '+pathStore.depositCount+' commit',
        '2D: '+lastPathObservations.map(o=>o.actorId+':'+o.motionBasis).join(','),
        'Cut: '+JSON.stringify(pathTracker.cutDiagnostics)]:[]),
@@ -281,7 +353,7 @@ export function LineTrailsV3Stage(props:StageProps){
    }
   };
   raf=requestAnimationFrame(paint);
-  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');
+  return()=>{cancelAnimationFrame(raf);args.current.engine.cutAll('manual-reset');sumiMotion.cutMotionSegment('unmount');cutPath('unmount');cutUpper('unmount');
     args.current.onRegisterExportInk?.(()=>null);args.current.onRegisterInkArchive?.({save:()=>null,load:async()=>{}});};
  },[]);
  return <div ref={props.fullscreenRef} className="lt-beta-frame lt-v3-stage"
