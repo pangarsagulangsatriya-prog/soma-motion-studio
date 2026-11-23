@@ -18,6 +18,7 @@ on:
       - 'src/footprints/dual-trace/DualTraceV2Renderer.ts'
       - 'src/footprints/lines/v3/PainterlyCanvasRenderer.ts'
       - 'src/studio/v3/LineTrailsV3.tsx'
+      - 'src/studio/v3/SurfaceComposer.tsx'
       - 'src/studio/v3/DualTraceControlsV2.tsx'
       - 'tests/spatial-coverage-motion-ink-v24.test.ts'
       - 'tests/source-frame-geometry-v24.test.ts'
