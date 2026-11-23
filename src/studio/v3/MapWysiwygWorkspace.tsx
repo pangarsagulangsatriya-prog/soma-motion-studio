@@ -8,6 +8,7 @@ import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRoute
 import {useMapCalibrationAssist} from './useMapCalibrationAssist.ts';
 import {identityQuad,transform,homography,inverse3} from '../../projection/geometry.ts';
 import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
+import type {CameraFloorCalibration} from '../../footprints/spatial/coordinates.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
 import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
@@ -25,6 +26,7 @@ type Props={
  motionFrameRef?:RefObject<MotionFrame>;
  experimentInputCanvas?:RefObject<HTMLCanvasElement|null>;
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
+ videoFloorCalibration?:CameraFloorCalibration|null;
  router?:MultiPoseGaitRouter;
  motionSession?:()=>string;
  liveSourceKind?:'camera'|'phone';
@@ -95,7 +97,7 @@ const validSource=(mode:Props['sourceKind'],video:HTMLVideoElement|null|undefine
 };
 export function MapWysiwygWorkspace({
  selected,stageDimensions,plan,sourceKind,hasLiveSource,videoRef,motionFrameRef,experimentInputCanvas,
- experimentFrameRef,router,motionSession,liveSourceKind='camera',performerCount=2,cameraOn=false,
+ experimentFrameRef,videoFloorCalibration=null,router,motionSession,liveSourceKind='camera',performerCount=2,cameraOn=false,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
  onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice=''
@@ -132,7 +134,8 @@ export function MapWysiwygWorkspace({
  const assist=useMapCalibrationAssist({selected,sourceKind,sourceAvailable,
   cameraDraft,outputDraft,sourceQuad:plan.sourceQuad,cameraDirty,sourceBox,
   videoRef,experimentFrameRef,motionFrameRef,router,floorTracker,
-  motionSession,liveSourceKind,performerCount,cameraOn,simState,simCameraQuad:SIM_CAMERA_QUAD});
+  motionSession,liveSourceKind,performerCount,cameraOn,simState,simCameraQuad:SIM_CAMERA_QUAD,
+  videoFloorCalibration});
  useEffect(()=>{
   const q=floorTracker?.calibrationData?.cameraQuad;
   if(q&&!cameraDirty)setCameraDraft(q.map(p=>({...p})) as Quad);
