@@ -31,7 +31,7 @@ export function DualTraceControlsV2(p:Props){
   <header><strong>Dual Trace</strong><span>V2 · SATU KANVAS</span></header>
   <div className="dual-v21-status" role="group" aria-label="Status sumber dan lukisan">
    <p className="lt-beta-status" role="status">Sumber sekarang · {p.status}</p>
-   <p className="dual-v21-ink-status">Lukisan · {p.diagnostics?.match(/Path tinta: ([^|]+)/)?.[1]?.trim()??'Jalur disimpan sampai dibersihkan'}</p>
+   <p className="dual-v21-ink-status">Lukisan · {p.diagnostics?.match(/Jalur nyata: ([^|]+)/)?.[1]?.trim()??p.diagnostics?.match(/Path tinta: ([^|]+)/)?.[1]?.trim()??'Jalur disimpan sampai dibersihkan'}</p>
   </div>
   <div className="dual-v2-group" aria-label="Mode tampilan">
    <strong>Tampilan</strong>
@@ -113,6 +113,13 @@ export function DualTraceControlsV2(p:Props){
     Gunakan fusi kaki + pinggul (V2.2)
    </label>
    <small>Matikan untuk kembali ke V2.1. Tidak membuat cap kaki dari estimasi pinggul.</small>
+   <label className="dual-v2-setting">
+    <input type="checkbox" checked={p.settings.trajectoryV23Enabled===true}
+     disabled={p.settings.trajectoryV22Enabled===false}
+     onChange={e=>patch({trajectoryV23Enabled:e.target.checked})}/>
+    Path Continuity V2.3 (beta) · sambung gap tervalidasi
+   </label>
+   <small>V2.3 memeriksa identitas, waktu, jarak dan arah sebelum menyambung. Matikan untuk fallback V2.2.</small>
    <p>{p.diagnostics||'Menunggu pengukuran pose dan jalur.'}</p>
   </details>
   <details className="dual-v21-diagnostics">
