@@ -1,4 +1,5 @@
 import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type CameraFloorCalibration} from '../../spatial/coordinates.ts';
+import {stageUVToSourceUV,type SourceFrameGeometryV24} from '../../spatial/SourceFrameGeometryV24.ts';
 import {actorChannel,type ActorChannel} from './ActorPaletteResolver.ts';
 import {stableInkSourceIdentity} from './ObservedMotionInkEngine.ts';
 import type {FootBrushPose} from './FootBrushPoseAdapter.ts';
@@ -46,6 +47,7 @@ export class PathObservationRouter{
  reset(){this.last.clear();}
  ingest(poses:readonly FootBrushPose[],hints:readonly PathStanceHint[]=[],spatial?:{
   calibration:CameraFloorCalibration;videoAspect:number;calibrationId:string;
+  sourceGeometry?:SourceFrameGeometryV24;
  }):ActorPathObservation[]{
   // A changed physical camera plane starts new strokes, never joins two spaces.
   const signature=spatial?spatial.calibrationId:'image-2d';
@@ -172,7 +174,9 @@ export class PathObservationRouter{
      supportFoot==='left'?left?.center:
      supportFoot==='right'?right?.center:undefined;
     const imagePoint=support??{x:midpoint.x/1600,y:midpoint.y/900};
-    const cameraUV=stageUVToRawCamera(imagePoint,spatial.videoAspect);
+    const cameraUV=spatial.sourceGeometry?
+     stageUVToSourceUV(imagePoint,spatial.sourceGeometry):
+     stageUVToRawCamera(imagePoint,spatial.videoAspect);
     const ground=cameraUV?cameraGroundToFloor(spatial.calibration,{
      cameraUV,phase:'stance',confidence:one.confidence
     }):null;
