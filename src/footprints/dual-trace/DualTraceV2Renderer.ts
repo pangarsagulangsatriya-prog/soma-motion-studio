@@ -82,7 +82,7 @@ export class DualTraceV2Renderer{
   return this.upper[anchor.actorId][anchor.channel]
    .isReplayCoveredAt(anchor.clipStableId,anchor.actorId,anchor.timeMs);
  }
- ingestPath(event:PathEvent,weight=22,material:'path-sumi'|'dry-ink'|'pigment-mass'='path-sumi',
+ ingestPath(event:PathEvent,weight=36,material:'path-sumi'|'dry-ink'|'pigment-mass'='path-sumi',
   expressive=false){
   const widthFactor=this.brushDynamics.weight(event,expressive);
   this.path[event.actorId].ingest({...event,widthFactor},{
@@ -191,7 +191,8 @@ export class DualTraceV2Renderer{
    g.drawImage(mask,0,0);
    g.globalCompositeOperation='source-in';g.fillStyle=palette[actor].footprint;
    g.fillRect(0,0,W,H);
-   ctx.globalAlpha=opacity;ctx.drawImage(temp,0,0);
+   ctx.globalAlpha=opacity;ctx.globalCompositeOperation='multiply';
+   ctx.drawImage(temp,0,0);ctx.globalCompositeOperation='source-over';
   }
  }
  paint(ctx:CanvasRenderingContext2D,opts:{
