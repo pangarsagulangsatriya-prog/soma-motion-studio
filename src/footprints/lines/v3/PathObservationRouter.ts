@@ -78,11 +78,12 @@ export class PathObservationRouter{
     const dr=feet.right&&previousR?delta(feet.right,previousR):null;
     const mL=dl?length(dl,{x:0,y:0}):Infinity;
     const mR=dr?length(dr,{x:0,y:0}):Infinity;
-    const gap=one.sourceKey.startsWith('video:')?900:500;
     // Severe displacement is reported to ActorPathTracker so it can CUT,
     // never silently interpolate across an identity swap or teleport.
     const jumpGate=Math.min(190,30+dt*.22);
-    if(dl&&dr&&length(dMid,{x:0,y:0})>jumpGate){
+    if(dl&&dr&&length(dMid,{x:0,y:0})>jumpGate&&
+       mL>jumpGate*.7&&mR>jumpGate*.7&&
+       (dl.x*dr.x+dl.y*dr.y)/(mL*mR)>.6){
      point=midpoint;
     }else{
      let movement:PathPoint={x:0,y:0};
@@ -101,7 +102,7 @@ export class PathObservationRouter{
        // Keep the same center when the supporting foot switches: use
        // relative displacement, not the absolute new sole coordinate.
        movement=add(multiply(planted,.70),
-        multiply(dMid,switched?.24:.12));
+        multiply(limit(dMid,40),switched?.24:.08));
        basis='estimated-support';
       }else if(mL<5&&mR<5){
        movement=multiply(dMid,.25);basis='held';
@@ -114,7 +115,7 @@ export class PathObservationRouter{
       const visibleDelta=dl??dr!;
       // One foot alone is insufficient to establish actor movement.
       // Use tiny, bounded changes, rather than following a swinging foot.
-      movement=multiply(limit(visibleDelta,12),.28);basis='single-foot';
+      movement=multiply(limit(visibleDelta,8),.12);basis='single-foot';
       supportFoot=dl?'left':'right';
      }else{
       basis='held';
