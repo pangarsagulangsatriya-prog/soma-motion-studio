@@ -15,6 +15,8 @@ import {SurfaceComposer} from './SurfaceComposer.tsx';
 import {useSharedAssetRegistry} from './useSharedAssetRegistry.ts';
 import {useComposeMonitorLayout,type ComposeLayoutPreset} from './useComposeMonitorLayout.ts';
 import {StageModuleNav,type StageModuleWorkspace} from './StageModuleNav.tsx';
+import {stageNavigationReadiness} from './stageInformationArchitecture.ts';
+import {VideoSpatialCalibration,type VideoFloorProfile} from './VideoSpatialCalibration.tsx';
 import {useStageSession} from '../../stage/useStageSession.ts';
 import {Camera,Film,Layers3,MonitorPlay,Maximize2,Minimize2,ChevronDown} from 'lucide-react';
 import {PerformFinalPreview} from './PerformFinalPreview.tsx';
@@ -264,6 +266,9 @@ export function FootprintsStageWorkspace({
  useEffect(()=>{if(!calibrationOpen)setCalibrationOverlay(null);},[calibrationOpen]);
  const lastNavRequest=useRef(0);
  const [composerOpen,setComposerOpen]=useState(false);
+ const [composeRasterReady,setComposeRasterReady]=useState(false);
+ const [mapOutputSaved,setMapOutputSaved]=useState(false);
+ const [videoFloorProfile,setVideoFloorProfile]=useState<VideoFloorProfile|null>(null);
  const [previewResumeRevision,setPreviewResumeRevision]=useState(0);
  const [mappingOpen,setMappingOpen]=useState(false);
  const [composerStartQA,setComposerStartQA]=useState(false);
@@ -828,6 +833,9 @@ export function FootprintsStageWorkspace({
    case 'projector':onOpenProjection();break;
   }
  };
+ // Source/clip and floor-session changes invalidate previous stage preview/checkmarks.
+ useEffect(()=>{setComposeRasterReady(false);setMapOutputSaved(false);},
+  [sourceStatus.selection,experimentClip,tracker.sessionEpoch]);
  const trackSummary=trackStatus({
   selection:sourceStatus.selection,phase:sourceStatus.phase,message:sourceStatus.message,
   videoLoaded:!!experimentClip,
@@ -842,6 +850,12 @@ export function FootprintsStageWorkspace({
    selectedExperimentFrame.snapshot:null,
   videoReady:canPaintVideoFrame(selectedExperimentFrame),
   videoClip:experimentClip,active:!composerOpen&&!operatorMode
+ });
+ const navigationReadiness=stageNavigationReadiness({
+  sourceReady:feedback.state==='ready'||feedback.state==='synthetic',
+  composeRasterReady,outputQuadSaved:mapOutputSaved,
+  outputQaValid:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
+  physicalLiveCommanded:dual.floor.mode==='live'||dual.body.mode==='live'
  });
  const trackingFeedbackRef=useRef(feedback);
  trackingFeedbackRef.current=feedback;
@@ -863,17 +877,20 @@ export function FootprintsStageWorkspace({
   aria-label="Stage 1 — Motion Projection">
   <StageModuleNav active={operatorMode?'perform':composerOpen?(mappingOpen?'map':'compose'):'track'}
    onNavigate={onNavigateStageWorkspace}
-   status={{
-    trackReady:feedback.state==='ready'||feedback.state==='synthetic',
-    mapReady:tracker.isConfirmed,
-    outputLive:dual.floor.mode==='live'||dual.body.mode==='live'
-   }}/>
+   status={navigationReadiness}/>
   {!operatorMode&&!composerOpen&&view==='stage'&&<header className="soma-ia-track-head">
    <div className="soma-ia-track-title">
     <h1>Track</h1>
     <span>Pilih sumber · periksa gambar dan kaki</span>
    </div>
   </header>}
+  {!operatorMode&&!composerOpen&&view==='stage'&&experimentalKind==='video'&&
+   <div className="soma-track-video-calibration" aria-label="Bidang video pada Track">
+    <VideoSpatialCalibration frameRef={experimentFrameRef}
+     profile={videoFloorProfile} onSave={profile=>{
+      onBlackout();setVideoFloorProfile(profile);setMapOutputSaved(false);
+     }}/>
+   </div>}
   {operatorMode?
    <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onExit={onExitOperator} onBlackout={operatorBlackout}
@@ -990,6 +1007,8 @@ export function FootprintsStageWorkspace({
      sharedAssets={sharedAssetRegistry.assets} onImportAssets={sharedAssetRegistry.addFiles}
      onRemoveAsset={sharedAssetRegistry.removeAsset} assetNotice={sharedAssetRegistry.notice}
      experimentSource={experimentalKind} experimentInputCanvas={cameraCanvas} experimentFloorCanvas={floorCanvas} experimentFrameRef={experimentFrameRef}
+     videoFloorProfile={videoFloorProfile}
+     onComposeRasterChange={setComposeRasterReady} onMapOutputSaved={()=>setMapOutputSaved(true)}
      experimentReady={selectedExperimentFrame?.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame)}
      initialOutputQA={composerStartQA} experimentLocked={!!experimentalKind}
      bodyCanvas={bodyCanvas} floorCanvas={cleanFloorOutput}
