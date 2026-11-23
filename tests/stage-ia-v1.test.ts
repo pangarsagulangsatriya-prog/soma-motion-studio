@@ -47,7 +47,7 @@ test('IA-P0-04: source camera quad stays read-only in normal Map',()=>{
 test('IA-P0-05: Map saved status never claims ready-perform from floor confirmation',()=>{
  const output=readFileSync('src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx','utf8');
  assert.doesNotMatch(output,/data-status=\{floorTracker\?\.isConfirmed\?'ready-perform'/);
- assert.match(output,/data-status=\{mapOutputSaved\?'output-quad-saved':'output-quad-draft'\}/);
- assert.match(output,/onMapOutputSaved\?\.\(\)/);
+ assert.match(output,/data-status=\{selectedOutputSaved\?'output-quad-saved':'output-quad-draft'\}/);
+ assert.match(output,/onMapOutputSaved\?\.\(selected\)/);
  assert.match(output,/urgentBlackout/);
 });
