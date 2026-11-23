@@ -104,3 +104,34 @@
  .dual-v2-debug-layout{grid-template-columns:1fr}
  .dual-v2-footer{flex-direction:column;align-items:flex-start}
 }
+
+
+/* V2.1: controls remain outside the white drawing surface. Fullscreen always
+ * shows the final composite, even when Studio is inspecting split channels. */
+.s64-root .dual-v2-host:not(:fullscreen){
+ background:#0e2017!important;color:#dbe9db!important;border:1px solid #2e4a39;
+ box-sizing:border-box;
+}
+.s64-root .dual-v2-host:not(:fullscreen) .dual-v2-topbar,
+.s64-root .dual-v2-host:not(:fullscreen) .dual-v2-footer{
+ position:relative!important;inset:auto!important;transform:none!important;
+ background:#0e2017!important;color:#cfdfd0!important;
+ padding:7px 8px!important;opacity:1!important;z-index:1;
+}
+.s64-root .dual-v2-host .dual-v2-canvas-wrap{
+ border:1px solid #9faf9f;box-sizing:border-box;
+}
+.s64-root .dual-v2-host:fullscreen .dual-v2-canvas-wrap[data-hidden=true]{
+ position:relative!important;left:auto!important;top:auto!important;
+ width:100vw!important;height:100vh!important;
+ visibility:visible!important;pointer-events:none!important;
+}
+.s64-root .dual-v2-host:fullscreen .dual-v2-debug-layout{display:none!important}
+.dual-v21-status{display:flex;flex-direction:column;gap:4px;margin:0}
+.dual-v21-status p{margin:0}
+.dual-v21-ink-status{color:#c2d2c3;font:500 11px/1.45 system-ui;
+ padding:4px 6px;background:#1a3426;border:1px solid #3a5742;border-radius:5px}
+.dual-v21-diagnostics{border:1px solid #38523f;border-radius:7px;
+ padding:9px;color:#bbd1bf;font:500 11px/1.5 system-ui}
+.dual-v21-diagnostics summary{cursor:pointer;font-weight:650}
+.dual-v21-diagnostics p{margin:8px 0 0;overflow-wrap:anywhere;font:500 10px/1.65 monospace}
