@@ -15,7 +15,7 @@ export function DualTraceControls(p:Props){
   <label className="dual-trace-slider">{name}
    <output>{value.toFixed(step<1?2:0)}{unit}</output>
    <input type="range" min={min} max={max} step={step} value={value}
-    aria-label={name} onChange={e=>patch({[property]:Number(e.target.value)})}/>
+    aria-label={name} onChange={e=>patch({[property]:Number(e.target.value)*(property==='footprintLifeMs'?1000:1)})}/>
   </label>);
  return <section className="lt-beta-controls lt-v3-controls lt-painterly-controls dual-trace-controls"
    aria-label="Kontrol Dual Trace">

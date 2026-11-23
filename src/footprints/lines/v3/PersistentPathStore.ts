@@ -45,9 +45,12 @@ export class PersistentPathStore{
  }
  private rangeKey(clip:string,actor:ActorChannel){return clip+'|'+actor;}
  isReplayCovered(obs:ActorPathObservation){
-  if(!obs.clipStableId.startsWith('video:'))return false;
-  const spans=this.ranges.get(this.rangeKey(obs.clipStableId,obs.actorId))??[];
-  return spans.some(([a,b])=>obs.timeMs>=a+.5&&obs.timeMs<=b-.5);
+  return this.isReplayCoveredAt(obs.clipStableId,obs.actorId,obs.timeMs);
+ }
+ isReplayCoveredAt(clipStableId:string,actorId:ActorChannel,timeMs:number){
+  if(!clipStableId.startsWith('video:'))return false;
+  const spans=this.ranges.get(this.rangeKey(clipStableId,actorId))??[];
+  return spans.some(([a,b])=>timeMs>=a+.5&&timeMs<=b-.5);
  }
  private cover(rec:Stroke,from:number,to:number){
   if(!rec.clipStableId.startsWith('video:')||to<=from)return;

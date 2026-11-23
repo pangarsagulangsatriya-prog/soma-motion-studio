@@ -252,7 +252,7 @@ export function LineTrailsV3Stage(props:StageProps){
          p.painterly.dualGain??1.35,
          {head:upperSettings.headEnabled,shoulder:upperSettings.shoulderEnabled}
         )).filter(a=>!upperInk.isReplayCovered(a));
-        upperReady(poseFrames.length>0);
+        upperReady(anchors.length>0);
         for(const event of upperTracker.ingest(anchors,input.frameMs,
          p.painterly.dualSmoothing??.42))upperInk.ingest(event,upperSettings);
        }

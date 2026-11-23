@@ -1,6 +1,6 @@
 import {PersistentPathStore} from '../lines/v3/PersistentPathStore.ts';
 import type {UpperGestureEvent} from './UpperGestureStrokeTracker.ts';
-import type {UpperChannel} from './UpperGestureAnchorAdapter.ts';
+import type {UpperChannel,UpperGestureAnchor} from './UpperGestureAnchorAdapter.ts';
 import type {DualActor} from './DualTracePoseFrameBus.ts';
 
 export type UpperBrushSettings={
@@ -22,6 +22,10 @@ export class UpperGestureInkRenderer{
  private output:HTMLCanvasElement|null=null;
  private observed=false;
  get hasPose(){return this.observed;}
+ isReplayCovered(anchor:UpperGestureAnchor){
+  const store=anchor.channel==='head'?this.head:this.shoulder;
+  return store.isReplayCoveredAt(anchor.clipStableId,anchor.actorId,anchor.timeMs);
+ }
  get activeCount(){return this.head.activeCount+this.shoulder.activeCount;}
  get committedCount(){return this.head.depositCount+this.shoulder.depositCount;}
  markPose(){this.observed=true;}

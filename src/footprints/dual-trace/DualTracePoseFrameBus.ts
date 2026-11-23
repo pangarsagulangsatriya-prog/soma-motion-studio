@@ -9,8 +9,9 @@ export type DualPoseFrame={
  coordinateBasis:'image-2d'|'simulated';
 };
 const valid=(points:readonly Landmark[]|undefined):points is readonly Landmark[]=>
- !!points&&points.length>=33&&points.every(p=>Number.isFinite(p.x)&&
- Number.isFinite(p.y)&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1);
+ !!points&&points.length>=33;
+ // Individual critical landmarks are validated by UpperGestureAnchorAdapter,
+ // so an offscreen wrist or ankle cannot suppress a valid head/shoulder.
 const count=(poses:readonly DualPoseFrame[],actor:DualActor)=>
  poses.some(p=>p.actorId===actor);
 /** Fan out existing *approved* pose landmarks, never run a detector.
