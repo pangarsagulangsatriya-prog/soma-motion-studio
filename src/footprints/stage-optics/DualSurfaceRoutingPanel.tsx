@@ -5,7 +5,7 @@ import type {Quad} from '../../projection/geometry.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import {cameraBinding,type LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
 import type {MultiPoseGaitRouter} from '../live/MultiPoseGaitRouter.ts';
-import {defaultFloorSpace,validateCameraFloorCalibration} from '../spatial/coordinates.ts';
+import {defaultFloorSpace,validateCameraFloorCalibration,type CameraFloorCalibration} from '../spatial/coordinates.ts';
 import type {FootMotionEventV2} from '../scenes/FootMotionEventV2.ts';
 import {STAGE_BLACKOUT_EVENT} from './StageBlackout.ts';
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
@@ -43,6 +43,7 @@ type Props={
  experimentFrameRef?:RefObject<ExperimentalFrame|null>;
  motionSession?:()=>string;
  liveSourceKind?:'camera'|'phone';
+ videoFloorCalibration?:CameraFloorCalibration|null;
  videoRef?:RefObject<HTMLVideoElement|null>;
  motionFrameRef?:RefObject<MotionFrame>;
  floorTracker?:LiveFloorTrackingEngine;
@@ -59,7 +60,7 @@ type Props={
 
 export function DualSurfaceRoutingPanel({
  frameRef,bodyCanvas,floorCanvas,legacyProjection,experimentLocked=false,
- liquidCanvas,experimentInputCanvas,experimentFrameRef,motionSession,liveSourceKind='camera',videoRef,motionFrameRef,floorTracker,router,motionEvents,
+ liquidCanvas,experimentInputCanvas,experimentFrameRef,motionSession,liveSourceKind='camera',videoFloorCalibration=null,videoRef,motionFrameRef,floorTracker,router,motionEvents,
  cameraOn=false,floorReady=false,performerCount=2,identitySafe=true,experimentSource=null,
  onOpenTrack,onOpenCompose
 }:Props){
@@ -204,6 +205,7 @@ export function DualSurfaceRoutingPanel({
   sourceKind={sourceKind} hasLiveSource={hasLiveSource}
   videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
   router={router} experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={liveSourceKind}
+  videoFloorCalibration={videoFloorCalibration}
   performerCount={performerCount} cameraOn={cameraOn}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
