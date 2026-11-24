@@ -1,4 +1,5 @@
 import {CameraLiveness} from './cameraLiveness.ts';
+import {waitForDecodedVideo} from './decodedVideo.ts';
 import {PoseWorkerClient} from './poseWorker';
 import {unionMasks} from '../studio/bodyField.ts';
 import type {HandLandmarker,PoseLandmarker,FaceLandmarker} from '@mediapipe/tasks-vision';
@@ -28,14 +29,15 @@ export class CameraTracker {
     if(!stream.getVideoTracks().length)throw new Error('Sumber HP tidak mengirim track video.');
     this.stream=stream;this.device=deviceKey;
    }
-   const stream=this.stream!;video.srcObject=stream;await video.play();if(token!==this.token)return;
+   const stream=this.stream!;video.srcObject=stream;await waitForDecodedVideo(video,()=>token===this.token&&stream.active);if(token!==this.token)return;
    stream.getVideoTracks()[0].onended=()=>{if(this.running){this.stop(video);onError('Kamera terputus. Sambungkan lalu mulai kembali.');}};
    const kind:InputKind=settings().input;onStatus('Memuat pelacak gerak…');const vision=await import('@mediapipe/tasks-vision');const files=await vision.FilesetResolver.forVisionTasks(`${import.meta.env.BASE_URL}wasm`);if(token!==this.token)return;
    if(kind==='body'&&typeof Worker!=='undefined'&&typeof OffscreenCanvas!=='undefined'&&typeof createImageBitmap==='function'){
     this.pose?.close();this.pose=null;let worker:PoseWorkerClient|null=null;try{worker=new PoseWorkerClient();await worker.init();if(token!==this.token){worker.dispose();return;}this.poseWorker=worker;}catch{worker?.dispose();if(token!==this.token)return;onStatus('Worker belum tersedia · memakai pelacak utama…');}
    }
    const base={runningMode:'VIDEO' as const,minTrackingConfidence:.6};
-   if(kind==='body'&&!this.poseWorker&&!this.pose){const model=await vision.PoseLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`,delegate:'CPU'},numPoses:2,minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,outputSegmentationMasks:true});if(token!==this.token){model.close();return;}this.pose=model;}
+   const loadMainPose=()=>vision.PoseLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`,delegate:'CPU'},numPoses:2,minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,outputSegmentationMasks:true});
+   if(kind==='body'&&!this.poseWorker&&!this.pose){const model=await loadMainPose();if(token!==this.token){model.close();return;}this.pose=model;}
    else if(kind==='face'&&!this.face){const model=await vision.FaceLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/face_landmarker.task`,delegate:'CPU'},numFaces:1,minFaceDetectionConfidence:.6,minFacePresenceConfidence:.6,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:false});if(token!==this.token){model.close();return;}this.face=model;}
    else if(kind==='hands'&&!this.hand){const model=await vision.HandLandmarker.createFromOptions(files,{...base,baseOptions:{modelAssetPath:`${import.meta.env.BASE_URL}models/hand_landmarker.task`,delegate:'CPU'},numHands:2,minHandDetectionConfidence:.6,minHandPresenceConfidence:.6});if(token!==this.token){model.close();return;}this.hand=model;}
    if(token!==this.token)return;this.processor.reset();this.previousVideoTime=-1;this.previousTime=0;this.lastTick=0;this.interval=33;this.inFlight=false;this.skippedFrames=0;this.observedVideoTime=-1;onStatus(`Pelacak ${kind==='body'?'tubuh':kind==='face'?'wajah':'tangan'} siap`);
@@ -49,7 +51,9 @@ export class CameraTracker {
     this.staleSent=false;this.lastTick=time;this.previousVideoTime=video.currentTime;this.observedVideoTime=video.currentTime;const begin=performance.now();
     try{
      const h=kind==='hands'?this.hand!.detectForVideo(video,time):null;
-     this.inFlight=true;const workerResult=kind==='body'&&this.poseWorker?await this.poseWorker.detect(video,time,this.projectionEnabled):null;if(token!==this.token)return;
+     this.inFlight=true;let workerResult:Awaited<ReturnType<PoseWorkerClient['detect']>>|null=null;
+     if(kind==='body'&&this.poseWorker){try{workerResult=await this.poseWorker.detect(video,time,this.projectionEnabled);}catch(error){if(token!==this.token)return;this.poseWorker.dispose();this.poseWorker=null;onStatus('Worker terputus · memulihkan pelacak utama…');const model=await loadMainPose();if(token!==this.token){model.close();return;}this.pose?.close();this.pose=model;this.processor.reset();this.inFlight=false;this.previousVideoTime=-1;onStatus('Pelacak tubuh siap');return;}}
+     if(token!==this.token)return;
      const p=kind==='body'&&!workerResult?this.pose!.detectForVideo(video,time):null;
      const face=kind==='face'?this.face!.detectForVideo(video,time):null;
      if(this.previousTime)this.average=.85*this.average+.15*(1000/(time-this.previousTime));this.previousTime=time;

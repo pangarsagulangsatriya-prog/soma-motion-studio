@@ -122,6 +122,7 @@ export function MapWysiwygWorkspace({
  const invalidTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const savedTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const everHadCamera=useRef(false);
+ const sourceLoss=useRef(onSourceLost);sourceLoss.current=onSourceLost;
  const lossHandled=useRef(false);
  const simRef=useRef(simState);
  simRef.current=simState;
@@ -178,16 +179,16 @@ export function MapWysiwygWorkspace({
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);if(now-last<46)return;last=now;
    const c=sourceCanvas.current,ctx=c?.getContext('2d');if(!c||!ctx)return;
+   const src=validSource(sourceKind,videoRef?.current,experimentInputCanvas?.current);
+   if(frozen&&src)return; // keep the previously drawn raster; never clear a frozen image
    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0a100d';ctx.fillRect(0,0,W,H);
    if(sourceKind==='demo-sim'){
     drawSimulatedSource(ctx,simRef.current);return;
    }
-   const src=validSource(sourceKind,videoRef?.current,experimentInputCanvas?.current);
-   if(frozen&&src)return;
    if(src){
     const box=containedImageRect(src.width,src.height,W,H);
     if(box){
-     try{ctx.drawImage(src.media,box.x,box.y,box.width,box.height);}catch{/* changing input frame */}
+     try{ctx.drawImage(src.media,box.x,box.y,box.width,box.height);}catch{return; /* changing input frame is not a valid source */}
      const signature=[box.x,box.y,box.width,box.height].join(':');
      if(signature!==oldBox){oldBox=signature;setSourceBox(box);}
      if(!seen){seen=true;setSourceAvailable(true);}
@@ -199,7 +200,7 @@ export function MapWysiwygWorkspace({
      if(sourceKind==='camera'&&everHadCamera.current&&!lossHandled.current){
       lossHandled.current=true;setSourceInterrupted(true);
       setStatus('Sumber terputus. Periksa sambungan di Track.');
-      onSourceLost();
+      sourceLoss.current();
      }
     }
     ctx.fillStyle='#738a79';ctx.font='14px system-ui';ctx.textAlign='center';
@@ -207,7 +208,7 @@ export function MapWysiwygWorkspace({
    }
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[sourceKind,videoRef,experimentInputCanvas,frozen,onSourceLost]);
+ },[sourceKind,videoRef,experimentInputCanvas,frozen]);
  useEffect(()=>{
   let raf=0,last=0;
   const paint=(now:number)=>{
@@ -434,8 +435,8 @@ export function MapWysiwygWorkspace({
     </div>}
     {sourceAvailable&&<div className="soma-map-wysiwyg-controls">
      <button type="button" onClick={()=>setFrozen(v=>!v)}>{frozen?'Lanjutkan gambar':'Bekukan gambar'}</button>
-     {allowLegacyCameraEditing&&cameraDirty&&sourceKind==='camera'&&
-      <button type="button" onClick={applyCamera}><Check size={14}/> Terapkan bidang</button>}
+     {allowLegacyCameraEditing&&sourceKind==='camera'&&
+      <button type="button" onClick={applyCamera}><Check size={14}/> {cameraDirty?'Terapkan bidang':calibrated?'Konfirmasi ulang bidang':'Simpan bidang kamera'}</button>}
     </div>}
     <p className="soma-map-wysiwyg-caption">
      {sourceInterrupted?'Sumber terputus. Periksa Track.':
@@ -443,7 +444,7 @@ export function MapWysiwygWorkspace({
       calibrated?'Bidang sumber terkalibrasi (estimasi).':'Bidang sumber · estimasi 2D.'}
      {(sourceKind==='camera'||sourceKind==='video')&&
       <button type="button" className="soma-map-v3-link" onClick={onOpenTrack}>
-       Ubah bidang kamera di Track
+       {allowLegacyCameraEditing&&sourceKind==='camera'?'Periksa kamera di Track':'Ubah bidang kamera di Track'}
       </button>}
     </p>
    </div>

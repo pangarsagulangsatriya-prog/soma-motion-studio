@@ -412,7 +412,7 @@ export function FootprintsStageWorkspace({
    const fresh=cameraSourceReady&&bodySelected&&f.source==='camera'&&f.tracked&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
-   const videoAvailable=!!(cameraSourceReady&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight);
+   const videoAvailable=!!((cameraSourceReady||(cameraBusy&&sourceStatus.phase==='connecting'&&(sourceStatus.selection==='webcam'||sourceStatus.selection==='phone')))&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight&&v.srcObject instanceof MediaStream&&v.srcObject.active);
    setVideoReady(prev=>prev===videoAvailable?prev:videoAvailable);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
    if(camera&&cam){
@@ -1150,7 +1150,7 @@ export function FootprintsStageWorkspace({
        <header className="soma-track-phone-heading"><strong>Kamera HP</strong>
         <button type="button" aria-label="Tutup pilihan kamera" onClick={closePhonePanel}>×</button>
        </header>
-       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect}/>
+       <PhoneCameraReceiver onStream={onPhoneStream} onDisconnect={onPhoneDisconnect} engineError={sourceStatus.phase==='error'?sourceStatus.message:undefined}/>
       </section>}
       {experimentalKind&&<FootprintsExperimentalSource
        key={experimentalKind} kind={experimentalKind}

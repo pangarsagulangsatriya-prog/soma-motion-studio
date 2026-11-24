@@ -54,7 +54,8 @@ test('live camera only paints the active ready webcam/phone session',()=>{
  assert.match(app,/op===cameraOperation\.current&&requestedFootprintsChoice\.current==='phone'/);
  assert.match(stage,/sourceStatus\.phase==='ready'/);
  assert.match(stage,/if\(!touchDemo&&cameraSourceReady&&bodySelected\)/);
- assert.match(stage,/const videoAvailable=!!\(cameraSourceReady&&v/);
+ assert.match(stage,/const videoAvailable=!!\(\(cameraSourceReady\|\|\(cameraBusy&&sourceStatus\.phase==='connecting'&&\(sourceStatus\.selection==='webcam'\|\|sourceStatus\.selection==='phone'\)\)\)&&v/);
+ assert.match(stage,/v\.srcObject instanceof MediaStream&&v\.srcObject\.active/);
 });
 
 test('unready camera clears old pixels; MP4 still has its full-frame placeholder',()=>{

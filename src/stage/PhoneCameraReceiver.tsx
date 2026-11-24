@@ -6,8 +6,8 @@ import {claimPhoneTransport,releasePhoneTransport,reportPhoneTransport,
  samplePhonePeer} from './PhoneDeviceTelemetry.ts';
 import {collectPhoneIce,encodePhoneSignal,ICE_SERVERS,parsePhoneSignal,phoneCameraUrl} from './PhoneSignal.ts';
 
-function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
- onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+function ManualPhoneCameraReceiver({onStream,onDisconnect,engineError}:{
+ onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;engineError?:string;
 }){
  const [offer,setOffer]=useState(''),[answer,setAnswer]=useState('');
  const [busy,setBusy]=useState(false),[connection,setConnection]=useState('Belum dipasangkan');
@@ -24,6 +24,7 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
   setOffer('');setAnswer('');setBusy(false);
   setConnection('Koneksi HP ditutup.');onDisconnect();
  };
+ useEffect(()=>{if(engineError&&active.current){stop();setConnection(engineError);}},[engineError]);
  const onDisconnectRef=useRef(onDisconnect);onDisconnectRef.current=onDisconnect;
  useEffect(()=>()=>{generation.current++;
   if(statsTimer.current)clearInterval(statsTimer.current);
@@ -47,8 +48,7 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
     if(pc.current!==p||generation.current!==version)return;
     const stream=e.streams[0]??new MediaStream([e.track]);
     active.current=stream;
-    Promise.resolve(onStream(stream)).catch(err=>setConnection(
-     'Video diterima tetapi pelacak gagal: '+String(err)));
+    Promise.resolve(onStream(stream)).then(()=>{if(generation.current===version)setConnection('Video HP diterima oleh engine SOMA.');}).catch(err=>{if(generation.current!==version)return;stop();setConnection('Video diterima tetapi pelacak gagal: '+String(err));});
    });
    p.addEventListener('connectionstatechange',()=>{
     if(pc.current!==p||generation.current!==version)return;
@@ -59,7 +59,7 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
     }
     if(state==='failed'||state==='disconnected')
      reportPhoneTransport(telemetryOwner,{state:'interrupted',reason:'Koneksi manual terputus.'});
-    setConnection(state==='connected'?'Kamera HP tersambung ke engine SOMA.':
+    setConnection(state==='connected'?'Jalur HP tersambung · menunggu video dan pelacak.':
      state==='failed'?'Koneksi gagal. Coba Wi-Fi sama atau periksa firewall.':
      'Jalur HP: '+state);
     if(state==='failed'||state==='disconnected')onDisconnect();
@@ -140,9 +140,9 @@ function ManualPhoneCameraReceiver({onStream,onDisconnect}:{
 }
 
 /** Camera transport modes. Long instructions stay behind contextual help. */
-export function PhoneCameraReceiver({onStream,onDisconnect,initialMode='usb'}:{
+export function PhoneCameraReceiver({onStream,onDisconnect,initialMode='usb',engineError}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
- initialMode?:'usb'|'qr';
+ initialMode?:'usb'|'qr';engineError?:string;
 }){
  const [mode,setMode]=useState<'usb'|'qr'|'manual'>(initialMode);
  const [helpOpen,setHelpOpen]=useState(false);
@@ -207,14 +207,14 @@ export function PhoneCameraReceiver({onStream,onDisconnect,initialMode='usb'}:{
    <ol>{guide.map((step,index)=><li key={index}>{step}</li>)}</ol>
    {mode==='qr'&&staticPages&&<p>GitHub Pages membutuhkan pertukaran kode manual setelah QR dibuka.</p>}
   </section>}
-  {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect} intent="phone"/>:mode==='qr'?
-   <><AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect}
+  {mode==='usb'?<UsbPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect} intent="phone" engineError={engineError}/>:mode==='qr'?
+   <><AutomaticPhoneReceiver onStream={onStream} onDisconnect={onDisconnect} engineError={engineError}
     onUseManual={()=>setMode('manual')}/>
     {!staticPages&&<button type="button" className="soma-phone-manual-fallback" onClick={()=>setMode('manual')}>
      <KeyRound size={14} aria-hidden="true"/> Kode manual
     </button>}</>:
    <><button type="button" className="soma-phone-manual-back" onClick={()=>setMode('qr')}>
      Kembali ke QR
-    </button><ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect}/></>}
+    </button><ManualPhoneCameraReceiver onStream={onStream} onDisconnect={onDisconnect} engineError={engineError}/></>}
  </div>;
 }

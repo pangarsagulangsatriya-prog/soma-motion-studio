@@ -14,7 +14,7 @@ test('one pairing CTA, no duplicate waiting copy inside camera',()=>{
  assert.match(stage,/hidden=\{!composerOpen&&!operatorMode&&!ownership\.showTrackingFeedback\}/);
  assert.match(stage,/!composerOpen&&!calibrationOpen&&!experimentalKind&&!sourceStatus.selection&&/);
  assert.doesNotMatch(stage,/sourceStatus.selection==='phone'\?'Menunggu HP'/);
- assert.match(stage,/<PhoneCameraReceiver onStream=\{onPhoneStream\} onDisconnect=\{onPhoneDisconnect\}\/>/);
+ assert.match(stage,/<PhoneCameraReceiver onStream=\{onPhoneStream\} onDisconnect=\{onPhoneDisconnect\} engineError=\{sourceStatus\.phase==='error'\?sourceStatus\.message:undefined\}\/>/);
  assert.equal((stage.match(/<PhoneCameraReceiver /g)||[]).length,1);
 });
 

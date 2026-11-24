@@ -219,10 +219,8 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   if(navigator.mediaDevices)try{setDevices(normalizeCameraDevices(await navigator.mediaDevices.enumerateDevices()));}catch{}
  }
  async function startPhoneCamera(stream:MediaStream){
-  if(requestedFootprintsChoice.current!=='phone')return;
-  if(!stream.active||!stream.getVideoTracks().length){
-   notify('HP belum mengirim video. Periksa kabel atau sambungan QR.');return;
-  }
+  if(requestedFootprintsChoice.current!=='phone')throw Error('Sumber HP sudah diganti.');
+  if(!stream.active||!stream.getVideoTracks().length)throw Error('HP belum mengirim video. Periksa kabel atau sambungan QR.');
   requestStageBlackout(()=>projection.setTransport('blackout'));
   liveFloorEngine.revoke('Sumber kamera HP berubah; kalibrasi harus diulang.');
   multiPoseRouter.reset();setLiveFloorApproval(null);
@@ -245,23 +243,22 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
     if(op===cameraOperation.current)stopPhoneCamera();
    });
    if(op!==cameraOperation.current||requestedFootprintsChoice.current!=='phone'){
-    landscape.stop();return;
+    landscape.stop();throw Error('Sumber HP sudah diganti.');
    }
    phoneLandscapeRef.current=landscape;
-   setCameraOn(true);
    await tracker.start(video.current!,()=>sr.current,
     frame=>{
      if(op===cameraOperation.current&&requestedFootprintsChoice.current==='phone')
       processFrame(frame);
     },
     message=>{if(op!==cameraOperation.current)return;
-     setStatus(message);if(message.endsWith('siap'))setCameraBusy(false);},
+     setStatus(message);if(message.endsWith('siap')){setCameraBusy(false);setCameraOn(true);}},
     message=>{if(op!==cameraOperation.current)return;
-     setCameraOn(false);setCameraBusy(false);setCameraError(message);notify(message);},
+     stopPhoneCamera();setCameraError(message);setSourceSwitchError(message);notify(message);},
     undefined,landscape.stream);
-   if(!tracker.running)throw Error('Pelacak SOMA gagal memulai kamera HP.');
+   if(op!==cameraOperation.current||!tracker.running)throw Error('Pelacak SOMA gagal memulai kamera HP.');
   }catch(error){
-   if(op!==cameraOperation.current)return;
+   if(op!==cameraOperation.current)throw error;
    const message=error instanceof Error?error.message:'Video HP gagal dibuka.';
    stopPhoneCamera();setCameraError(message);notify(message);
    throw error;
@@ -569,7 +566,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      void switchFootprintsSource(choice);
     }}
     sourceLabel={footprintsChoice==='video'?'Video MP4':footprintsChoice==='simulator'?'Simulasi 3D':footprintsChoice==='phone'?'Kamera HP':footprintsChoice==='webcam'?'Kamera lain':'Pilih sumber'}
-    trackingLabel={sourceSwitchBusy?'Memuat':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
+    trackingLabel={sourceSwitchBusy||cameraBusy?'Memuat kamera':cameraOn?'Kamera aktif':footprintsChoice==='video'?'MP4 siap dimuat':footprintsChoice==='simulator'?'Simulasi':'Belum terhubung'}
     outputLabel={footprintsChoice==='video'||footprintsChoice==='simulator'?'Output terkunci':projection.status.connected?'QA diperlukan':'Output terkunci'}
     onPreset={()=>setModal('presets')}
     onPerform={()=>{clearF3();

@@ -98,7 +98,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
    const aspect=video?.videoWidth&&video.videoHeight?
     video.videoWidth/video.videoHeight:16/9;
    const binding=p.sourceKind==='camera'?cameraBindingKey(cameraBinding(p.videoRef?.current??null)):null;
-   let batch:FootAssistEvent[]=[];
+   let batch:FootAssistEvent[]=[],inputMessage='';
    let key=p.sourceKind+':'+(p.sourceKind==='camera'?binding??'disconnected':'');
    if(p.sourceKind==='demo-sim'){
     key='map-demo-sim';
@@ -114,9 +114,10 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
      nowMs:now,demo:false,demoStart:0,
      experimentSource:experiment,experiment:frame,live:p.motionFrameRef?.current??null,
      cameraOn:p.cameraOn,bodySelected:true,performers:p.performerCount,
-     status:p.router?.status??emptyStatus,sourceKind:p.liveSourceKind,
+     status:p.router?.previewStatus??emptyStatus,sourceKind:p.liveSourceKind,
      motionSession:p.motionSession?.()??'map'
     });
+    inputMessage=input.status;
     key=input.sourceKey+'|'+(binding??'')+'|'+(p.floorTracker?.sessionEpoch??0);
     if(input.seeking)key+='|seeking';
     if(p.sourceKind==='video')key+='|profile:'+JSON.stringify(p.videoFloorCalibration??'uncalibrated');
@@ -188,7 +189,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
       p.sourceKind==='video'&&p.videoFloorCalibration?
        'MP4 terkalibrasi · posisi kaki perkiraan':
        'Estimasi 2D · posisi kaki perkiraan':
-     'Tidak ada kaki terdeteksi';
+     p.sourceKind==='camera'&&inputMessage?inputMessage:'Tidak ada kaki terdeteksi';
     setMessage(msg);
    }else if(synthetic)setMessage('SIMULASI · lima titik contoh, bukan deteksi kamera');
   };

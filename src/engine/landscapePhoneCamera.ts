@@ -4,6 +4,7 @@
  * leave pose landmarks and calibrated floor coordinates in portrait space.
  */
 import {isPortraitStreamDimensions} from './cameraConstraints.ts';
+import {waitForDecodedVideo} from './decodedVideo.ts';
 
 export const PHONE_LANDSCAPE_WIDTH=1280;
 export const PHONE_LANDSCAPE_HEIGHT=720;
@@ -52,10 +53,12 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   throw Error('Browser laptop tidak mendukung output kamera horizontal.');
  const source=document.createElement('video');
  source.muted=true;source.autoplay=true;source.playsInline=true;source.srcObject=input;
+ // Keep the decoder attached and paintable even when the Track panel is hidden.
+ source.setAttribute('aria-hidden','true');source.style.cssText='position:fixed;left:-10px;top:0;width:2px;height:2px;pointer-events:none;opacity:0';document.body.appendChild(source);
  const canvas=document.createElement('canvas');
  canvas.width=PHONE_LANDSCAPE_WIDTH;canvas.height=PHONE_LANDSCAPE_HEIGHT;
  const ctx=canvas.getContext('2d',{alpha:false});
- if(!ctx){source.srcObject=null;throw Error('Kanvas kamera tidak tersedia.');}
+ if(!ctx){source.srcObject=null;source.remove();throw Error('Kanvas kamera tidak tersedia.');}
  let raf=0,stopped=false,output:MediaStream|null=null,mutedTimer:ReturnType<typeof setTimeout>|null=null;
  let overrideRotation:LandscapeRotation|null=null,mirrored=false;
  let frameCallbackId:number|null=null,frameWatchdog:ReturnType<typeof setInterval>|null=null;
@@ -74,14 +77,14 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   track.removeEventListener('mute',onMute);
   track.removeEventListener('unmute',onUnmute);
   output?.getTracks().forEach(t=>t.stop());output=null;
-  source.pause();source.srcObject=null;
+  source.pause();source.srcObject=null;source.remove();
   input.getTracks().forEach(t=>t.stop());
  };
  track.addEventListener('ended',onEnded);
  track.addEventListener('mute',onMute);
  track.addEventListener('unmute',onUnmute);
  try{
-  await source.play();
+  await waitForDecodedVideo(source,()=>!stopped&&track.readyState==='live');
   if(stopped||track.readyState!=='live')throw Error('Kamera HP terputus saat menyiapkan video.');
   if(!source.videoWidth||!source.videoHeight)throw Error('Frame kamera HP belum tersedia.');
   // requestVideoFrameCallback confirms newly decoded frames, not merely a live track.
@@ -94,11 +97,12 @@ export async function createLandscapePhoneCamera(input:MediaStream,
     if(!stopped&&document.visibilityState==='visible'&&performance.now()-lastDecodedFrame>3200)onEnded();
    },550);
   }
-  let lastPaint=0;
+  let lastPaint=0,lastSourceTime=-1;
+  const manualCapture=()=>output?.getVideoTracks()[0] as (MediaStreamTrack&{requestFrame?:()=>void})|undefined;
   const paint=(time:number)=>{
    if(stopped)return;
    raf=requestAnimationFrame(paint);
-   if(time-lastPaint<1000/PHONE_LANDSCAPE_FPS||source.readyState<2)return;
+   if(time-lastPaint<1000/PHONE_LANDSCAPE_FPS||source.readyState<2||source.currentTime===lastSourceTime)return;
    lastPaint=time;
    const sw=source.videoWidth,sh=source.videoHeight;
    if(!sw||!sh)return;
@@ -108,11 +112,11 @@ export async function createLandscapePhoneCamera(input:MediaStream,
    if(p.rotation)ctx.rotate(p.rotation*Math.PI/180);
    if(mirrored)ctx.scale(-1,1);
    ctx.drawImage(source,-sw*p.scale/2,-sh*p.scale/2,sw*p.scale,sh*p.scale);
-   ctx.restore();
+   ctx.restore();lastSourceTime=source.currentTime;manualCapture()?.requestFrame?.();
   };
   // Paint the first frame immediately so downstream video never starts blank.
-  const now=performance.now();paint(now+1000/PHONE_LANDSCAPE_FPS);
   output=canvas.captureStream(PHONE_LANDSCAPE_FPS);
+  const now=performance.now();paint(now+1000/PHONE_LANDSCAPE_FPS);
   if(!output.getVideoTracks().length)throw Error('Kamera horizontal tidak menghasilkan video.');
   return {stream:output,stop,rotate90:()=>{
    const current=overrideRotation??(isPortraitStreamDimensions(source.videoWidth,source.videoHeight)?90:0);

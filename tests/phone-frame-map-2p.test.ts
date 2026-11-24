@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {decodedVideoReady} from '../src/engine/decodedVideo.ts';
+import {MotionProcessor} from '../src/engine/motion.ts';
+import {defaults,type Landmark} from '../src/engine/types.ts';
+import {MultiPoseGaitRouter} from '../src/footprints/live/MultiPoseGaitRouter.ts';
+import {LiveFloorTrackingEngine} from '../src/footprints/live/LiveFloorTrackingEngine.ts';
+import {normalizeTrajectoryInput} from '../src/footprints/lines/v3/SourceFrameNormalizer.ts';
+const pose=(x:number,confidence=1):Landmark[]=>Array.from({length:33},(_,i)=>({x:x+(i%2?.012:-.012),y:i>=27?.83:i>=23?.55:i>=11?.30:.16,z:0,visibility:confidence}));
+test('camera startup requires dimensions and a progressing decoded frame',()=>{const base={readyState:2,videoWidth:1280,videoHeight:720,currentTime:1};assert.equal(decodedVideoReady(base,0),true);assert.equal(decodedVideoReady(base,1),false);assert.equal(decodedVideoReady({...base,videoWidth:0},0),false);assert.equal(decodedVideoReady({...base,readyState:1},0),false);});
+test('valid second pose is not suppressed by low confidence first detector result',()=>{const p=new MotionProcessor(),a=pose(.24,.1),b=pose(.76);const f=p.process(null,{landmarks:[a,b]},1000,{...defaults(),input:'body'},24);assert.equal(f.tracked,true);assert.equal(f.pose,b);assert.deepEqual(f.poses,[a,b]);});
+test('2P identities and Map samples survive calibration-only reset; no physical gate bypass',()=>{const p=new MotionProcessor(),a=pose(.24),b=pose(.76);const f=p.process(null,{landmarks:[a,b]},1000,{...defaults(),input:'body'},24);const floor=new LiveFloorTrackingEngine(),router=new MultiPoseGaitRouter(floor);router.setMode(2);router.observePreview(f);const epoch=router.previewStatus.identityEpoch;router.resetCalibrated();assert.equal(router.previewStatus.identityEpoch,epoch);assert.deepEqual(router.previewStatus.visible,['A','B']);const result=normalizeTrajectoryInput({nowMs:1010,demo:false,demoStart:0,experimentSource:null,experiment:null,live:f,cameraOn:true,bodySelected:true,performers:2,status:router.previewStatus,sourceKind:'phone',motionSession:'map'});assert.equal(result.samples.length,4);assert.equal(floor.isConfirmed,false);assert.equal(router.status.observedFrameTime,null);});
