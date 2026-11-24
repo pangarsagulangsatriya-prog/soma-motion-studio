@@ -128,6 +128,7 @@
 .fp-stage-workspace[data-workspace="compose"] #soma-compose-focus[data-compose-ui-mode="quick"] .lb-view-tabs button{
  min-height:36px!important;padding:7px 14px!important;
 }
+.fp-stage-workspace[data-workspace="compose"] #soma-compose-focus[data-compose-ui-mode="quick"] .lb-view-tabs button[hidden]{display:none!important}
 .fp-stage-workspace[data-workspace="compose"] #soma-compose-focus[data-compose-ui-mode="quick"] .cpux-monitor-title{
  color:var(--cp25-text)!important;
 }
