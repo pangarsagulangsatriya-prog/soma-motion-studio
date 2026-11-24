@@ -121,13 +121,14 @@ type Props={
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
  onOpenMapTrack?:()=>void;
+ onOpenMapWorkspace?:()=>void;
  onOpenMapCompose?:()=>void;
  onComposeRasterChange?:(ready:boolean)=>void;
  onMapOutputSaved?:(surface:'floor'|'body')=>void;
  onMapOutputInvalidated?:(surface?:'floor'|'body')=>void;
  mapOutputSaved?:{floor:boolean;body:boolean};
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapWorkspace,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
  const rasterReadyCallback=useRef(onComposeRasterChange);rasterReadyCallback.current=onComposeRasterChange;
  const lastRasterReady=useRef<boolean|null>(null);
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
@@ -255,6 +256,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const composition=history.value,setComposition=history.set;
  useEffect(()=>{try{resetOldVisualStorage(localStorage);}catch{}},[]);
  const [inspectorTab,setInspectorTab]=useState<'scene'|'layer'|'object'>('scene');
+ // CP-25: compact editing defaults to Quick. Advanced retains the full existing inspector.
+ const [composeUiMode,setComposeUiMode]=useState<'quick'|'advanced'>('quick');
  const [dragLayer,setDragLayer]=useState<number|null>(null);
  const [dropLayer,setDropLayer]=useState<number|null>(null);
  const [resetArmed,setResetArmed]=useState(false);
@@ -973,6 +976,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    mapOutputSaved={mapOutputSaved}/>
  </section>;
  return <div id="soma-compose-focus" className={'s64-root msv4-root'+(embedded?' s64-embedded':'')} data-mask-edit={editMask}
+  data-compose-ui-mode={composeUiMode==='quick'&&monitorView==='FLOOR'&&!lineTrails?'quick':'advanced'}
   role="region" tabIndex={0} aria-label="Compose Workspace — media dan layer" onKeyDown={onComposerKeys}>
   <div className="s64-heading">
    <div className="cpux-heading-label">
@@ -982,15 +986,15 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      {experimentSource==='simulator'?'Lantai virtual':
       experimentSource==='video'?(activeVideoFloor?'MP4 · lantai terkalibrasi (estimasi)':'MP4 · estimasi 2D'):
       floorReady?'Kamera · lantai terkalibrasi (estimasi)':'Kamera · estimasi 2D'}
-     {onOpenMapTrack&&experimentSource!=='simulator'&&
-      <button type="button" onClick={onOpenMapTrack}>Sesuaikan bidang di Track</button>}
+     {onOpenMapWorkspace&&experimentSource!=='simulator'&&
+      <button type="button" onClick={onOpenMapWorkspace}>Kalibrasi bidang di Map</button>}
     </span>
    </div>
    <div className="s64-safety">
     <label className="cpux-preview-toggle"><input type="checkbox" checked={!blackout}
      disabled={previewBlackout} onChange={e=>setBlackout(!e.target.checked)}/> Preview</label>
     <span className="cpux-preview-status" role="status">{blackout||previewBlackout?'Padam':'Aktif'}</span>
-    <details className="soma-ia-display-options"><summary>Tampilan lanjutan</summary>
+    <details className="soma-ia-display-options"><summary>Preview</summary>
      <label><input type="checkbox" checked={previewLive}
       onChange={e=>setPreviewLive(e.target.checked)}/> Gerak real-time</label>
      <button type="button" onClick={openPreview}>Jendela preview</button>
@@ -1040,9 +1044,10 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     <div className="uxr3-compose-preview-bar">
      <div className="lb-view-tabs" role="group" aria-label="Pilih bidang preview">
       {COMPOSE_VIEW_TABS.map(tab=><button key={tab.id} type="button"
+       hidden={composeUiMode==='quick'&&monitorView==='FLOOR'&&tab.id!=='FLOOR'&&tab.id!=='SPLIT'}
        title={tab.title}
        aria-pressed={monitorView===tab.id}
-       onClick={()=>selectMonitorView(tab.id)}>{tab.label}</button>)}
+       onClick={()=>selectMonitorView(tab.id)}>{composeUiMode==='quick'&&tab.id==='FLOOR'?'LANTAI':tab.label}</button>)}
      </div>
      <button type="button" className="lt-beta-trigger" aria-pressed={lineTrails}
       onClick={()=>{if(!lineTrails){selectMonitorView('FLOOR');setLineDemo(false);}setLineTrails(v=>!v);}}
@@ -1171,6 +1176,19 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
+  {!lineTrails&&monitorView==='FLOOR'&&<div className="cp25-inspector-switch">
+   <div className="cp25-inspector-header">
+    <div><strong>Visual</strong><span>{getComposeVisualStyle(steering.styleId).name}</span></div>
+    <label className="cp25-visual-toggle"><input type="checkbox" checked={liquidEnabled}
+     onChange={e=>setLiquidEnabled(e.target.checked)} aria-label="Aktifkan visual lantai"/>Aktif</label>
+   </div>
+   <div className="cp25-mode-tabs" role="group" aria-label="Mode pengaturan visual">
+    <button type="button" aria-pressed={composeUiMode==='quick'}
+     onClick={()=>{setComposeUiMode('quick');setInspectorTab('scene');}}>Sederhana</button>
+    <button type="button" aria-pressed={composeUiMode==='advanced'}
+     onClick={()=>setComposeUiMode('advanced')}>Lanjutan</button>
+   </div>
+  </div>}
   {lineTrails&&lineVersion==='v3'?<LineTrailsV3Panel
    settings={v3Options} onChange={setV3Options} engine={lineV3Engine.current}
    painterly={painterlyOptions} onPainterlyChange={setPainterlyOptions}
@@ -1287,12 +1305,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
 
      <div className="cpux-style-library">
       <div className="cpux-sculpt-head">
-       <strong>Style Library</strong>
+       <strong>Gaya visual</strong>
        <span>{getComposeVisualStyle(steering.styleId).tag}</span>
       </div>
       <div className="cpux-style-grid" role="group" aria-label="Pilih gaya animasi visual lantai">
-       {COMPOSE_VISUAL_STYLES.map(item=><button type="button" key={item.id}
-        className="cpux-style-card"
+       {COMPOSE_VISUAL_STYLES.map((item,index)=><button type="button" key={item.id}
+        className={'cpux-style-card'+(index>=4?' cp25-extra-style':'')}
         aria-pressed={steering.styleId===item.id}
         title={item.description}
         onClick={()=>selectVisualStyle(item.id)}>
@@ -1300,6 +1318,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
         <b>{item.name}</b>
         <small>{item.tag}</small>
        </button>)}
+       <button type="button" className="cp25-more-styles" onClick={()=>setComposeUiMode('advanced')}>Semua gaya</button>
       </div>
      </div>
 
@@ -1374,10 +1393,17 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
        aria-label="Ukuran jejak lantai"
        onChange={e=>updateFootprint({size:Number(e.target.value)})}/>
      </label>
-     <label>Durasi jejak · {footprint.life} dtk
+     <label>{composeUiMode==='quick'?'Ketahanan':'Durasi jejak'} · {footprint.life} dtk
       <input type="range" min="1" max="60" step="1" value={footprint.life}
        aria-label="Durasi jejak lantai"
        onChange={e=>updateFootprint({life:Number(e.target.value)})}/>
+     </label>
+    </div>}
+    {liquidEnabled&&<div className="cp25-quick-intensity">
+     <label>Intensitas · {Math.round(steering.glow*100)}%
+      <input type="range" min="0" max="1" step=".04"
+       aria-label="Intensitas visual lantai" value={steering.glow}
+       onChange={e=>updateSteering({glow:Number(e.target.value)})}/>
      </label>
     </div>}
    </section>}

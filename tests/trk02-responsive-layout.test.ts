@@ -10,12 +10,12 @@ const persistent=read('../src/studio/v3/persistent-stage-workspace.css');
 
 test('Track stays scoped; Compose styles load after Track overrides',()=>{
  const imports=[...stage.matchAll(/import '\.\/([\w-]+\.css)'/g)].map(m=>m[1]);
- assert.deepEqual(imports.slice(-13),[
+ assert.deepEqual(imports.slice(-14),[
  'trk02-layout.css','trk03-source-flow.css','trk04-feedback.css','trk06-control-polish.css',
  'trk06a-status-ownership.css','trk06c-micro-feedback.css','trk07-functional-layout.css',
  'trk08-mp4-compact.css','trk09-ux-polish.css',
  'cp01-compose-shell.css','cp02-cp03-composition.css','cp04-compose-microinteraction.css',
- 'cpux-compose-focus.css'
+ 'cpux-compose-focus.css','compose-quick-v25.css'
  ]);
  assert.match(layout,/\.fp-stage-workspace\.fp-persistent-layout\.soma-ia-four-workspaces\[data-workspace=track\]/);
  assert.ok(!layout.includes('[data-workspace=compose]'));
