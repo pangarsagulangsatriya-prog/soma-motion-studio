@@ -4,8 +4,8 @@ import {TwoPersonIdentityTracker} from '../src/footprints/live/TwoPersonIdentity
 import type {Landmark} from '../src/engine/types.ts';
 function pose(x:number,mode:'full'|'lower'|'legs'='full'):Landmark[]{
  return Array.from({length:33},(_,i)=>({
-  x:x+(i%2?.008:-.008),y:i>=27?.8:i>=25?.65:i>=23?.5:.35,z:0,
-  visibility:mode==='legs'&&i<25||mode==='lower'&&i<23?0:.96
+  x:x+(i%2 ? .008 : -.008),y:i>=27 ? .8 : i>=25 ? .65 : i>=23 ? .5 : .35,z:0,
+  visibility:(mode==='legs'&&i<25||mode==='lower'&&i<23) ? 0 : .96
  }));
 }
 test('detector order reverses without changing A/B',()=>{
