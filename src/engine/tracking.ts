@@ -64,8 +64,7 @@ export class CameraTracker {
      if(this.previousTime&&time>this.previousTime)this.average=.85*this.average+.15*(1000/(time-this.previousTime));this.previousTime=time;
      this.staleSent=false;lastPublishedAt=performance.now();
      const inferenceMs=workerResult?.inferenceMs??(performance.now()-begin);
-     const frame=this.processor.process(h,workerResult||p,time,settings(),this.average,face);
-     try{if(workerResult){frame.segmentation=workerResult.segmentation;frame.projectionMask=workerResult.projectionMask;}if(p?.segmentationMasks){frame.segmentation=unionMasks(p.segmentationMasks);if(this.projectionEnabled)frame.projectionMask=unionMasks(p.segmentationMasks.slice(0,1),256);}frame.telemetry={inferenceMs,pipelineMs:performance.now()-begin,skippedFrames:this.skippedFrames,backend:workerResult?'worker':'main',capturedAt:time,completedAt:performance.now()};onFrame(frame);}finally{p?.close();}
+     try{const frame=this.processor.process(h,workerResult||p,time,settings(),this.average,face);if(workerResult){frame.segmentation=workerResult.segmentation;frame.projectionMask=workerResult.projectionMask;}if(p?.segmentationMasks){frame.segmentation=unionMasks(p.segmentationMasks);if(this.projectionEnabled)frame.projectionMask=unionMasks(p.segmentationMasks.slice(0,1),256);}frame.telemetry={inferenceMs,pipelineMs:performance.now()-begin,skippedFrames:this.skippedFrames,backend:workerResult?'worker':'main',capturedAt:time,completedAt:performance.now()};onFrame(frame);}finally{p?.close();}
      this.inFlight=false;this.interval=nextInferenceInterval(performance.now()-begin,!!this.poseWorker);
     }catch(e){if(token!==this.token)return;this.inFlight=false;this.stop(video);onError(`Pelacakan berhenti: ${e instanceof Error?e.message:'coba muat ulang kamera.'}`);}
    };this.raf=requestAnimationFrame(tick);
