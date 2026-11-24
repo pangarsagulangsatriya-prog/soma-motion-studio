@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="540" viewBox="0 0 1000 540" role="img" aria-label="SOMA V5.1 original vector primitives and signal states">
+<rect width="1000" height="540" rx="12" fill="#111714"/>
+<g font-family="Arial,sans-serif" fill="#EDF4EE">
+<text x="28" y="40" font-size="22" font-weight="700">SOMA / Signal assets</text><text x="28" y="62" font-size="12" fill="#A7BBAE">Design reference · not live signal</text>
+<g font-size="13">
+<text x="28" y="98">01 / Ports</text>
+<circle cx="44" cy="125" r="7" fill="#79B6B0"/><text x="62" y="130">Video / media</text>
+<path d="M224 117 232 125 224 133 216 125Z" fill="#92AEE0"/><text x="242" y="130">Pose / gesture</text>
+<rect x="409" y="118" width="14" height="14" fill="#A7D4A8"/><text x="433" y="130">Visual / frame</text>
+<rect x="600" y="118" width="14" height="14" rx="4" fill="#BAA2D8"/><rect x="603" y="121" width="8" height="8" rx="2" fill="none" stroke="#111714"/><text x="624" y="130">Session</text>
+<text x="28" y="175">02 / Edge states</text>
+<path d="M28 196H152" stroke="#53665A" stroke-width="2"/><text x="28" y="220" fill="#A7BBAE">Idle</text>
+<path d="M218 196H342" stroke="#D4E8BF" stroke-width="2"/><text x="218" y="220">Selected</text>
+<path d="M408 196H532" stroke="#A7D4A8" stroke-width="2"/><circle cx="474" cy="196" r="4" fill="#D4E8BF"/><text x="408" y="220">Processing</text>
+<path d="M598 196H722" stroke="#E3BD79" stroke-width="2" stroke-dasharray="5 4"/><text x="598" y="220" fill="#E3BD79">Stale</text>
+<path d="M788 196H840M854 196H912" stroke="#D96C62" stroke-width="2"/><path d="m841 190 12 12m0-12-12 12" stroke="#D96C62" stroke-width="2"/><text x="788" y="220" fill="#D96C62">Error</text>
+<text x="28" y="267">03 / Status marks</text>
+<circle cx="44" cy="292" r="6" fill="none" stroke="#53665A" stroke-width="2"/><text x="62" y="297">Idle</text>
+<circle cx="190" cy="292" r="6" fill="none" stroke="#E3BD79" stroke-dasharray="6 3" stroke-width="2"/><text x="208" y="297">Connecting</text>
+<circle cx="382" cy="292" r="6" fill="#A7D4A8"/><text x="400" y="297">Ready</text>
+<path d="M546 284 554 298H538Z" fill="none" stroke="#E3BD79" stroke-width="2"/><text x="564" y="297">Waiting</text>
+<path d="m716 286 12 12m0-12-12 12" stroke="#D96C62" stroke-width="2"/><text x="738" y="297">Error</text>
+<text x="28" y="350">04 / Empty preview and blackout</text>
+<rect x="28" y="370" width="200" height="112" rx="6" fill="#19221E" stroke="#34443B"/><g transform="translate(101 408)" fill="none" stroke="#A7BBAE" stroke-width="2" stroke-linejoin="round"><rect width="35" height="22" rx="4"/><path d="M35 7 48 0v22L35 15"/></g><text x="128" y="462" text-anchor="middle" font-size="12" fill="#A7BBAE">Hubungkan kamera</text>
+<rect x="256" y="370" width="200" height="112" rx="6" fill="#000" stroke="#34443B"/><text x="356" y="500" text-anchor="middle" fill="#A7BBAE">Blackout raster · no overlay</text>
+<rect x="484" y="370" width="200" height="112" rx="6" fill="#19221E" stroke="#34443B"/><rect x="500" y="386" width="168" height="7" rx="3.5" fill="#34443B"/><rect x="500" y="407" width="90" height="7" rx="3.5" fill="#34443B"/><rect x="500" y="428" width="135" height="7" rx="3.5" fill="#34443B"/><text x="584" y="500" text-anchor="middle" fill="#A7BBAE">Loading skeleton · static</text>
+<rect x="712" y="370" width="200" height="112" rx="6" fill="#19221E" stroke="#34443B"/><g fill="none" stroke="#A7BBAE" stroke-dasharray="4 3"><rect x="730" y="385" width="76" height="38" rx="3"/><rect x="818" y="385" width="76" height="38" rx="3"/><rect x="730" y="431" width="76" height="38" rx="3"/><rect x="818" y="431" width="76" height="38" rx="3"/></g><text x="812" y="500" text-anchor="middle" fill="#A7BBAE">Photo slots · 0/4</text>
+</g></g></svg>

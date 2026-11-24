@@ -1,0 +1,27 @@
+/* SOMA V5.1 design-only reference tokens. Not imported into production. */
+:root {
+ --soma-bg:#111714; --soma-canvas:#121A15; --soma-panel:#19221E; --soma-raised:#202D25;
+ --soma-border:#34443B; --soma-text:#EDF4EE; --soma-muted:#A7BBAE; --soma-accent:#A7D4A8;
+ --soma-focus:#D4E8BF; --soma-danger:#D96C62; --soma-warning:#E3BD79; --soma-idle:#53665A;
+ --soma-video:#79B6B0; --soma-pose:#92AEE0; --soma-visual:#A7D4A8; --soma-session:#BAA2D8;
+ --soma-blackout:#000; --soma-actor-a:#E84B32; --soma-actor-b:#202226;
+ --soma-space-xs:4px; --soma-space-sm:8px; --soma-space-md:12px; --soma-space-lg:16px;
+ --soma-space-xl:24px; --soma-space-xxl:32px;
+ --soma-radius-sm:4px; --soma-radius-control:6px; --soma-radius-card:8px; --soma-radius-panel:12px;
+ --soma-header:50px; --soma-transport:64px; --soma-rail:320px; --soma-node-min:168px; --soma-node-max:220px;
+ --soma-font:system-ui,sans-serif; --soma-mono:ui-monospace,monospace;
+ --soma-type-brand:20px; --soma-type-node:14px; --soma-type-control:13px; --soma-type-meta:12px; --soma-type-diagnostic:11px;
+ --soma-motion-instant:0ms; --soma-motion-fast:100ms; --soma-motion-selection:150ms;
+ --soma-motion-enter:180ms; --soma-motion-viewport:220ms; --soma-motion-toast:240ms;
+ --soma-motion-flow:1200ms; --soma-motion-event:240ms;
+ --soma-ease-standard:cubic-bezier(.2,0,.38,.9); --soma-ease-enter:cubic-bezier(0,0,.2,1); --soma-ease-exit:cubic-bezier(.4,0,1,1);
+}
+@keyframes soma-enter { from {opacity:0;transform:translateY(4px)} to {opacity:1;transform:translateY(0)} }
+@keyframes soma-flow { from {stroke-dashoffset:28} to {stroke-dashoffset:0} }
+@keyframes soma-event { 0% {opacity:.25} 40% {opacity:1} 100% {opacity:.25} }
+.soma-enter {animation:soma-enter var(--soma-motion-enter) var(--soma-ease-enter) both}
+.soma-flow-active {animation:soma-flow var(--soma-motion-flow) linear infinite;stroke-dasharray:5 23}
+.soma-event-pulse {animation:soma-event var(--soma-motion-event) var(--soma-ease-standard) 1}
+.soma-blackout-raster {background:#000!important;transition:none!important;animation:none!important}
+@media(prefers-reduced-motion:reduce){.soma-enter,.soma-flow-active,.soma-event-pulse{animation:none!important}.soma-enter{opacity:1;transform:none}}
+[data-reduced-motion="true"] .soma-enter,[data-reduced-motion="true"] .soma-flow-active,[data-reduced-motion="true"] .soma-event-pulse{animation:none!important}
