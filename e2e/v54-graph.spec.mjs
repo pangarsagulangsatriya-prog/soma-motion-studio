@@ -37,3 +37,22 @@ test('V5.4 collapses view only, preserves external wire ids and restores nodes',
  await expect(page.locator('[data-node="foot"]')).toHaveClass(/is-selected/);await expect(page.locator('[data-node="trace"]')).toHaveClass(/is-selected/);
  await page.getByRole('button',{name:'Snap to grid',exact:true}).click();await expect(page.getByRole('button',{name:'Snap to grid',exact:true})).toHaveAttribute('aria-pressed','true');
 });
+test('V5.4 custom frame membership, undo, persistence and arrange',async({page})=>{
+ await page.goto('/?workspace=nodes-v54');
+ await page.locator('[data-node="foot"] .sw-node-title').click();
+ await page.locator('[data-node="trace"] .sw-node-title').click({modifiers:['Shift']});
+ await page.getByRole('button',{name:'Frame tool',exact:true}).click();
+ await expect(page.locator('[data-group]')).toHaveCount(5);
+ await page.getByRole('button',{name:'Collapse Frame 1',exact:true}).click();
+ await expect(page.locator('[data-node="foot"]')).toHaveCount(0);
+ await expect(page.locator('[data-edge="edge-06"] path').first()).toBeAttached();
+ await page.getByRole('button',{name:'Expand Frame 1',exact:true}).click();
+ await page.getByRole('button',{name:'Auto arrange',exact:true}).click();
+ await expect(page.locator('[data-node="foot"]')).toBeAttached();
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('soma.graph-view.v1')||'{}').membership?.foot)).toMatch(/^group-/);
+ await page.reload();await page.getByRole('button',{name:'Fit graph'}).click();
+ await expect(page.getByRole('button',{name:'Group Frame 1',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Remove Frame 1',exact:true}).click();
+ await expect(page.locator('[data-group]')).toHaveCount(4);await expect(page.locator('[data-node="foot"]')).toBeAttached();
+ await page.getByRole('button',{name:'Undo layout',exact:true}).click();await expect(page.locator('[data-group]')).toHaveCount(5);
+});
