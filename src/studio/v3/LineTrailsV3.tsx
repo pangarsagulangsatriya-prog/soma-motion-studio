@@ -7,6 +7,7 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import type {FullscreenDiagnostics} from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import {paintFullscreenInputDiagnostics} from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import {resolveFullscreenInput} from '../../footprints/lines/FullscreenInputSource.ts';
+import {composeLiveFootSamples} from './ComposeFloorPosePreview.ts';
 import {normalizeTrajectoryInput} from '../../footprints/lines/v3/SourceFrameNormalizer.ts';
 import {DualFootTrajectoryEngine} from '../../footprints/lines/v3/DualFootTrajectoryEngine.ts';
 import type {V3Settings} from '../../footprints/lines/v3/TrajectoryRenderer.ts';
@@ -443,6 +444,22 @@ export function LineTrailsV3Stage(props:StageProps){
     const out=shared.getContext('2d');
     if(out){out.setTransform(1,0,0,1,0,0);out.clearRect(0,0,shared.width,shared.height);
      if(!off)out.drawImage(c,0,0);}
+   }
+   // Anonymous feet are a diagnostic only. Paint AFTER copying the clean
+   // output raster, never in fullscreen, never into the path/gesture engines.
+   if(!off&&!fullscreen&&!p.demo&&!p.experimentSource&&p.cameraOn&&p.bodySelected&&p.performerCount===2){
+    const raw=p.frameRef.current;
+    if(raw.source==='camera'&&raw.time>0&&now>=raw.time&&now-raw.time<450){
+     const unknown=composeLiveFootSamples(raw,p.router.previewStatus,2,p.sourceKind,p.motionSession?.()??'track')
+      .filter(s=>s.actorId.startsWith('unassigned-')&&s.confidence>=.5);
+     if(unknown.length){
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';
+      ctx.globalAlpha=.9;ctx.strokeStyle='#c4cac6';ctx.lineWidth=2;
+      for(const foot of unknown){ctx.beginPath();ctx.arc(foot.x*c.width,foot.y*c.height,7,0,Math.PI*2);ctx.stroke();}
+      ctx.fillStyle='#c4cac6';ctx.font='13px system-ui,sans-serif';
+      ctx.fillText('POSISI KAKI 2D · A/B BELUM PASTI',16,24);ctx.restore();
+     }
+    }
    }
    if(nextDualLegacy){
     const uc=upperCanvas.current?.getContext('2d');
