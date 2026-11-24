@@ -65,6 +65,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
  let frameCallbackId:number|null=null,frameWatchdog:ReturnType<typeof setInterval>|null=null;
  let decodedSerial=0;
  const decodedWatch=new CameraLiveness(3200);
+ const onVisibility=()=>{decodedWatch.sample(decodedSerial,performance.now(),false);};
  const onEnded=()=>{if(stopped)return;stop();onSourceEnded();};
  const onMute=()=>{if(mutedTimer)clearTimeout(mutedTimer);
   mutedTimer=setTimeout(()=>{if(track.muted&&document.visibilityState==='visible')onEnded();},3200);};
@@ -75,6 +76,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   if(frameCallbackId!==null)source.cancelVideoFrameCallback?.(frameCallbackId);
   if(frameWatchdog)clearInterval(frameWatchdog);frameWatchdog=null;
   if(mutedTimer)clearTimeout(mutedTimer);mutedTimer=null;
+  document.removeEventListener('visibilitychange',onVisibility);
   track.removeEventListener('ended',onEnded);
   track.removeEventListener('mute',onMute);
   track.removeEventListener('unmute',onUnmute);
@@ -82,6 +84,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   source.pause();source.srcObject=null;source.remove();
   input.getTracks().forEach(t=>t.stop());
  };
+ document.addEventListener('visibilitychange',onVisibility);
  track.addEventListener('ended',onEnded);
  track.addEventListener('mute',onMute);
  track.addEventListener('unmute',onUnmute);
