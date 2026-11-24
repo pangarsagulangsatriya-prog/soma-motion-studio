@@ -203,7 +203,7 @@ export function LineTrailsV3Stage(props:StageProps){
     nowMs:now,demo:p.demo,demoStart:demoStart.current,
     experimentSource:p.experimentSource,experiment:p.experimentFrameRef?.current??null,
     live:p.frameRef.current,cameraOn:p.cameraOn,bodySelected:p.bodySelected,
-    performers:p.performerCount,status:p.router.status,sourceKind:p.sourceKind,
+    performers:p.performerCount,status:p.router.previewStatus,sourceKind:p.sourceKind,
     motionSession:p.motionSession?.()??'track'
    });
    let message=input.status;
@@ -251,7 +251,7 @@ export function LineTrailsV3Stage(props:StageProps){
    if(nextPathMode!==pathMode){cutPath('renderer-switch');pathMode=nextPathMode;}
    if(nextSumiMode!==sumiMode){sumiMotion.cutMotionSegment('renderer-switch');sumiMode=nextSumiMode;}
    if(nextBrushMode!==brushMode){clearBrush();brushMode=nextBrushMode;}
-   if(nextPathMode&&input.status.includes('identitas belum stabil')&&
+   if(nextPathMode&&(input.status.includes('identitas belum stabil')||input.status.includes('identitas A/B belum stabil'))&&
       input.frameMs!==lastFrameMs){
     cutPath('identity-ambiguous');cutUpper('identity-ambiguous');
    }
@@ -300,7 +300,7 @@ export function LineTrailsV3Stage(props:StageProps){
        if(batch.cut){gestures.reset();sumiMotion.cutMotionSegment('frame-cut');cutPath('frame-cut');cutUpper('frame-cut');}
        const poseFrames=nextPathMode&&!input.paused?dualTracePoseFrames(input,{
         experiment:p.experimentFrameRef?.current??null,
-        live:p.frameRef.current,performers:p.performerCount,status:p.router.status
+        live:p.frameRef.current,performers:p.performerCount,status:p.router.previewStatus
        }).filter(frame=>p.settings.actors[frame.actorId]):[];
        const actorMotionFrames=buildActorMotionFrames(poseFrames,batch.poses);
        const upperBrushFactors=nextDualV2?

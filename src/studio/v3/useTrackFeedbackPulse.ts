@@ -34,7 +34,7 @@ export function useTrackFeedbackPulse(input:Input):TrackFeedback{
   return deriveTrackFeedback({
    selection,phase,cameraOn,frameFresh:live?validFrame:frameFresh,
    performerCount,liveFrame:validFrame?frame:null,
-   liveIdentity:live?router.status:null,
+   liveIdentity:live?router.previewStatus:null,
    videoSnapshot,videoReady
   });
  };

@@ -82,10 +82,10 @@ export function LineTrailsBetaStage({fullscreenRef,frameRef,videoRef,experimentI
      message=frame?.kind==='video'?'MP4 · preview 2D':frame?.kind==='simulator'?'SIMULASI · posisi kaki':'Menunggu input';
     }else{
      const f=p.frameRef.current,session=p.motionSession?.()??'live';
-     nextSource='track:'+p.sourceKind+':'+session+':'+p.performerCount+':'+p.selectedActor;
+     nextSource='track:'+p.sourceKind+':'+session+':'+p.performerCount+':'+p.selectedActor+':'+(p.router.previewStatus.identityEpoch??0);
      if(p.cameraOn&&p.bodySelected&&f.tracked&&f.source==='camera'&&f.time>0&&
       now>=f.time&&now-f.time<450){
-      samples=footSamplesFromLive(f,p.router.status,p.performerCount,p.sourceKind,session,0,p.selectedActor);
+      samples=footSamplesFromLive(f,p.router.previewStatus,p.performerCount,p.sourceKind,session,0,p.selectedActor);
      }
      message='Track · preview 2D';
     }

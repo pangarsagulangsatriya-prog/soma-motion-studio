@@ -318,6 +318,7 @@ export function FootprintsStageWorkspace({
  };
  const [floorStatus,setFloorStatus]=useState<LiveFloorStatus>(()=>tracker.status);
  const [identityStatus,setIdentityStatus]=useState<MultiPoseStatus>(()=>router.status);
+ const [previewIdentity,setPreviewIdentity]=useState<MultiPoseStatus>(()=>router.previewStatus);
  const [maskStatus,setMaskStatus]=useState('Kamera belum terhubung');
  const [bodyVisible,setBodyVisible]=useState(0);
  const [frameFresh,setFrameFresh]=useState(false);
@@ -374,7 +375,7 @@ export function FootprintsStageWorkspace({
   return()=>window.removeEventListener('keydown',handle);
  },[operatorMode]);
  useEffect(()=>{
-  const sync=()=>{setFloorStatus(tracker.status);setIdentityStatus(router.status);};
+  const sync=()=>{setFloorStatus(tracker.status);setIdentityStatus(router.status);setPreviewIdentity(router.previewStatus);};
   const offFloor=tracker.subscribe(sync),offRouter=router.subscribe(sync);
   const poll=window.setInterval(sync,450);
   sync();
@@ -397,7 +398,7 @@ export function FootprintsStageWorkspace({
     const binding=cameraBinding(v);
     feedLiveFloorInteractions(interactionEngineRef.current,{
      source:sourceStatus.selection==='phone'?'phone':'camera',
-     frame:f,identity:identities,performerCount,tracker,
+     frame:f,identity:identities,previewIdentity:router.previewStatus,performerCount,tracker,
      cameraMatched:!!binding&&tracker.boundCamera===cameraBindingKey(binding),
      videoAspect:v?.videoWidth&&v.videoHeight?v.videoWidth/v.videoHeight:16/9,
      nowMs:now
@@ -431,7 +432,7 @@ export function FootprintsStageWorkspace({
        (actorFeedback.state==='framing'&&
         actorFeedback.actors.length===performerCount&&
         actorFeedback.actors.every(a=>a.state==='visible'||a.state==='partial'));
-      const presentation=liveSkeletonPresentation(f,identities,performerCount,identityConfirmed);
+      const presentation=liveSkeletonPresentation(f,router.previewStatus,performerCount,identityConfirmed);
       drawSkeletonBodies(cam,presentation.poses,
        {x:(camera.width-w)/2,y:(camera.height-h)/2,width:w,height:h},
        {colors:presentation.colors});
@@ -842,7 +843,7 @@ export function FootprintsStageWorkspace({
   videoLoaded:!!experimentClip,
   videoVisible:selectedExperimentFrame?.kind==='video'&&selectedExperimentFrame.snapshot?
    selectedExperimentFrame.snapshot.visibleCount:null,
-  cameraOn,frameFresh,visibleCount:identityStatus.visible.length,performerCount
+  cameraOn,frameFresh,visibleCount:previewIdentity.visible.length,performerCount
  });
  const feedback=useTrackFeedbackPulse({
   selection:sourceStatus.selection,phase:sourceStatus.phase,
@@ -858,9 +859,9 @@ export function FootprintsStageWorkspace({
   sourceReady:experimentalKind==='video'?
    selectedExperimentFrame?.kind==='video'&&canPaintVideoFrame(selectedExperimentFrame):
    experimentalKind==='simulator'?selectedExperimentFrame?.kind==='simulator':
-   cameraOn&&bodySelected&&frameFresh&&!identityStatus.ambiguous&&
+   cameraOn&&bodySelected&&frameFresh&&!previewIdentity.ambiguous&&
     (performerCount===1?!!frameRef.current.tracked:
-     identityStatus.visible.length===2&&identityStatus.observedFrameTime===frameRef.current.time),
+     previewIdentity.visible.length>0&&previewIdentity.observedFrameTime===frameRef.current.time),
   composeRasterReady,outputQuadSaved:savedOutputQuads.floor||savedOutputQuads.body,
   outputQaValid:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
   physicalLiveCommanded:dual.floor.mode==='live'||dual.body.mode==='live'
@@ -1039,6 +1040,9 @@ export function FootprintsStageWorkspace({
      onTakeAudio={onTakeAudio}
      lineSource={sourceStatus.selection==='phone'?'phone':'camera'}
      identitySafe={!identityStatus.ambiguous}
+     previewIdentitySafe={!previewIdentity.ambiguous}
+     previewIdentityReason={previewIdentity.reason}
+     onResetPreviewIdentity={()=>{router.reset();interactionEngineRef.current.reset(interactionSource);}}
       onOpenMapTrack={()=>onNavigateStageWorkspace('track')}
       onOpenMapWorkspace={()=>onNavigateStageWorkspace('map')}
       onOpenMapCompose={()=>onNavigateStageWorkspace('compose')}
@@ -1154,8 +1158,8 @@ export function FootprintsStageWorkspace({
        clip={experimentClip} onClip={onExperimentClip} onFrame={onExperimentFrame}
        onAdvancedVideo={()=>{onBlackout();setVideoLabOpen(true);}}
        onAdvancedSimulator={()=>{onBlackout();onOpenSimulator();}}/>}
-      {identityStatus.ambiguous&&!experimentalKind&&<button type="button" className="soma-track-side-action"
-       onClick={()=>router.reset()} title="Setel ulang kunci identitas Performer A/B setelah persilangan">
+      {previewIdentity.ambiguous&&!experimentalKind&&<button type="button" className="soma-track-side-action"
+       onClick={()=>{router.reset();interactionEngineRef.current.reset(interactionSource);}} title="Setel ulang kunci identitas Performer A/B setelah persilangan">
        Baca ulang kedua orang
       </button>}
       <section className="soma-track-motion-hud" aria-label="Jumlah orang dalam gambar">

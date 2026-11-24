@@ -1,0 +1,34 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {MultiPoseGaitRouter} from '../src/footprints/live/MultiPoseGaitRouter.ts';
+import {LiveFloorTrackingEngine} from '../src/footprints/live/LiveFloorTrackingEngine.ts';
+import {emptyFrame,type Landmark,type MotionFrame} from '../src/engine/types.ts';
+import {normalizeTrajectoryInput,type V3InputOptions} from '../src/footprints/lines/v3/SourceFrameNormalizer.ts';
+import {dualTracePoseFrames} from '../src/footprints/dual-trace/DualTracePoseFrameBus.ts';
+import {FloorInteractionEngine} from '../src/footprints/scenes/FloorInteractionEngine.ts';
+import {feedLiveFloorInteractions} from '../src/footprints/scenes/interactionAdapters.ts';
+const pose=(x:number):Landmark[]=>Array.from({length:33},(_,i)=>({x:x+(i%2?.012:-.012),y:i>=27?.83:i>=23?.55:i>=11?.30:.16,z:0,visibility:.98}));
+const frame=(time:number,poses:Landmark[][]):MotionFrame=>({...emptyFrame(),source:'camera',tracked:true,time,quality:.98,pose:poses[0]??[],poses});
+const opts=(f:MotionFrame,r:MultiPoseGaitRouter):V3InputOptions=>({nowMs:f.time+10,demo:false,demoStart:0,experimentSource:null,experiment:null,live:f,cameraOn:true,bodySelected:true,performers:2,status:r.previewStatus,sourceKind:'phone',motionSession:'phone-test'});
+test('phone software Dual Trace renders 2P before physical calibration and matches exact frames',()=>{
+ const floor=new LiveFloorTrackingEngine(),r=new MultiPoseGaitRouter(floor);r.setMode(2);
+ const a=pose(.24),b=pose(.76),f=frame(1000,[a,b]);r.observePreview(f);r.observe(f,1000,16/9,null);
+ assert.equal(floor.isConfirmed,false);assert.equal(r.status.observedFrameTime,null);assert.equal(r.status.visible.length,0);
+ assert.deepEqual(r.previewStatus.visible,['A','B']);const o=opts(f,r),input=normalizeTrajectoryInput(o);
+ assert.equal(input.source,'phone');assert.equal(input.samples.length,4);assert.equal(dualTracePoseFrames(input,o).length,2);
+ const swapped=frame(1040,[b,a]);r.observePreview(swapped);
+ assert.equal(r.previewStatus.poseIndices.A,1);assert.equal(r.previewStatus.poseIndices.B,0);
+ assert.equal(normalizeTrajectoryInput(opts(f,r)).samples.length,0);
+ const partial=frame(1080,[a]);r.observePreview(partial);assert.deepEqual(r.previewStatus.visible,['A']);
+ const partialOpts=opts(partial,r),p=normalizeTrajectoryInput(partialOpts);assert.equal(p.samples.length,2);assert.equal(dualTracePoseFrames(p,partialOpts).length,1);
+ assert.equal(floor.status.contacts,0);
+});
+test('uncalibrated preview movement is named but cannot emit physical contacts; ambiguous crossing is held',()=>{
+ const floor=new LiveFloorTrackingEngine(),r=new MultiPoseGaitRouter(floor),e=new FloorInteractionEngine();r.setMode(2);e.reset('phone');
+ const f=frame(1000,[pose(.23),pose(.77)]);r.observePreview(f);
+ feedLiveFloorInteractions(e,{source:'phone',frame:f,identity:r.status,previewIdentity:r.previewStatus,performerCount:2,tracker:floor,cameraMatched:false,videoAspect:16/9,nowMs:1010});
+ assert.ok(e.canonicalRecent.some(x=>x.actorId==='A'));assert.ok(e.canonicalRecent.every(x=>x.kind!=='contact'));
+ const crossing=frame(1040,[pose(.49),pose(.51)]);r.observePreview(crossing);assert.equal(r.previewStatus.ambiguous,true);assert.equal(normalizeTrajectoryInput(opts(crossing,r)).samples.length,0);
+ const epoch=r.previewStatus.identityEpoch!;r.reset();const next=frame(1080,[pose(.23),pose(.77)]);r.observePreview(next);
+ assert.equal(r.previewStatus.visible.length,2);assert.ok(r.previewStatus.identityEpoch!>epoch);
+ assert.equal(floor.isConfirmed,false);
+});

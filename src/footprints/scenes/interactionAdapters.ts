@@ -32,10 +32,11 @@ function ingestPose(engine:FloorInteractionEngine,pose:readonly PosePoint[],
 }
 export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  source:'camera'|'phone';frame:MotionFrame;
- identity:MultiPoseStatus;performerCount:1|2;tracker:LiveFloorTrackingEngine;
+ identity:MultiPoseStatus;previewIdentity?:MultiPoseStatus;performerCount:1|2;tracker:LiveFloorTrackingEngine;
  cameraMatched:boolean;videoAspect:number;nowMs:number;
 }){
  const {source,frame,identity,performerCount,tracker,cameraMatched,videoAspect,nowMs}=input;
+ const preview=input.previewIdentity??identity;
  if(engine.activeSource!==source||!frame.tracked||frame.source!=='camera'||
   nowMs-frame.time<0||nowMs-frame.time>450)return;
  const coordinates=(p:{x:number;y:number;confidence:number})=>{
@@ -52,16 +53,19 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
   }
   return {x:p.x,y:p.y,basis:'presence-only' as const};
  };
- const idsValid=performerCount===2&&!identity.ambiguous&&
-  identity.observedFrameTime===frame.time;
- engine.keepActors(source,performerCount===1?['performer-1']:idsValid?
-  (['A','B'] as const).filter(id=>identity.poseIndices[id]!==null):
+ const idsValid=performerCount===2&&!identity.ambiguous&&identity.observedFrameTime===frame.time;
+ const previewIdsValid=performerCount===2&&!preview.ambiguous&&preview.observedFrameTime===frame.time;
+ // Preview may expose one observed actor without granting calibrated contact.
+ const visualIdentity=idsValid?identity:preview;
+ const visualIdsValid=idsValid||previewIdsValid;
+ engine.keepActors(source,performerCount===1?['performer-1']:visualIdsValid?
+  (['A','B'] as const).filter(id=>visualIdentity.poseIndices[id]!==null):
   (frame.poses??[]).slice(0,2).map((_,i)=>'unassigned-'+i));
  if(performerCount===1){
   if(frame.pose.length)ingestPose(engine,frame.pose,source,'performer-1',frame.time,coordinates);
- }else if(idsValid){
+ }else if(visualIdsValid){
   for(const id of ['A','B'] as const){
-   const i=identity.poseIndices[id];
+   const i=visualIdentity.poseIndices[id];
    if(i!==null&&frame.poses?.[i])
     ingestPose(engine,frame.poses[i],source,id,frame.time,coordinates);
   }
