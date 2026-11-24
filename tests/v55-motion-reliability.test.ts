@@ -6,7 +6,7 @@ import type {Landmark,MotionFrame} from '../src/engine/types.ts';
 import type {MultiPoseStatus} from '../src/footprints/live/MultiPoseGaitRouter.ts';
 
 const pose=(x:number):Landmark[]=>Array.from({length:33},(_,i)=>({
- x:x+(i===31||i===32?.012:0),y:i>=27?.8:i>=23?.5:.35,z:0,visibility:.95
+ x:x+((i===31||i===32) ? .012 : 0),y:i>=27 ? .8 : i>=23 ? .5 : .35,z:0,visibility:.95
 }));
 const status=(indices:{A:number|null;B:number|null},ambiguous=false,time:number|null=100):MultiPoseStatus=>({
  mode:2,visible:(['A','B'] as const).filter(id=>indices[id]!==null),
@@ -51,4 +51,13 @@ test('one known performer continues with unknown second pose',()=>{
  status({A:null,B:1}),2,'camera','session');
  assert.equal(samples.filter(s=>s.actorId==='B').length,2);
  assert.equal(samples.filter(s=>s.actorId==='unassigned-0').length,2);
+});
+
+test('unmatched pose can recover at its original location without resetting camera',()=>{
+ const tracker=new TwoPersonIdentityTracker();
+ tracker.observe([pose(.15),pose(.85)],10);
+ assert.equal(tracker.observe([pose(.5)],43).ambiguous,true);
+ const recovered=tracker.observe([pose(.15),pose(.85)],76);
+ assert.equal(recovered.ambiguous,false);
+ assert.deepEqual(recovered.assignments.map(a=>a.id),['A','B']);
 });
