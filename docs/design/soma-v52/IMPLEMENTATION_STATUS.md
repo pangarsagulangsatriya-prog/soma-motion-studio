@@ -1,0 +1,6 @@
+# V5.2 increment 1 — implementation scope
+Baseline 6021cc1. User approved direct incremental implementation while Figma access is rate-limited. Retain one workspace, green tokens, existing V5 and Legacy Studio. No calibrated hardware changes.
+
+Implemented: directed route focus, pending source-wire visual and compatible/invalid role feedback, semantic zoom, minimap, bounded view-only undo/redo, collapsible inspector, desktop monitor rail resize, validated session JSON import, required route validation, stale media-play rejection guard, F3 photo delivery pulse, explicit verification reset on retry. Current engine graph remains fixed, with real camera-role assignment only. Session import preserves previous committed take on invalid file/storage failure. No arbitrary routing or replay timeline redesign in this increment.
+
+Traceability: partial #264, #265, #267, #268, #269, #270, #271, #272. Keep issues open until full acceptance. #262 legacy regressions require independent reproduction; #263 role-aware inference, #266 calibrated output, long-session performance and physical stage QA remain open. No hardware LIVE authorization. Vercel configuration unchanged. Test/build/browser evidence must be recorded from CI before publication.

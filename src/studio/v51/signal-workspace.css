@@ -37,3 +37,11 @@
 .soma-signal .sw-viewport{width:100%;height:100%;pointer-events:auto}
 .soma-signal .sw-scene{pointer-events:auto}
 @media(max-width:850px){.soma-signal .sw-work{height:54vh;min-height:340px;flex:none}}
+
+/* V5.2 interaction increment; same SOMA palette and engine surfaces. */
+@media(min-width:1121px){.soma-signal > .sw-main{grid-template-columns:minmax(0,1fr) var(--sw-rail-width,320px)}}
+.sw-rail-tools{padding:5px 10px;border-bottom:1px solid var(--soma-border);flex:none}.sw-rail-tools label{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--soma-muted)}.sw-rail-tools input{width:100%;accent-color:var(--soma-accent)}
+.soma-signal .sw-inspector-toggle{width:100%;border:0;background:transparent;padding:0;justify-content:flex-start;text-align:left;gap:8px}.sw-inspector-toggle span{font-size:10px;color:var(--soma-muted)}.sw-inspector-toggle b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.sw-inspector.collapsed{flex:none}.sw-inspector-body[hidden]{display:none!important}
+.soma-signal .sw-minimap{position:absolute;bottom:12px;right:12px;width:126px;height:82px;padding:5px;background:#111714ed;border-color:#435449;z-index:3;overflow:hidden;cursor:crosshair}.sw-minimap svg{width:100%;height:100%;pointer-events:none}.sw-pending-wire{fill:none;stroke:var(--soma-video);stroke-width:2;stroke-dasharray:5 4;pointer-events:none}.soma-signal .sw-port.incompatible{outline:2px solid var(--soma-danger);opacity:.55}.sw-scene.semantic-compact .sw-node-meta,.sw-scene.semantic-compact .sw-node-extra,.sw-scene.semantic-compact .sw-thumb{visibility:hidden}.sw-scene.semantic-compact .sw-node-title b{font-size:15px}.sw-inspector-body:not([hidden]){animation:soma-enter var(--soma-motion-enter) var(--soma-ease-enter) both}
+@media(max-width:1120px){.sw-rail-tools{display:none}}@media(max-width:850px){.soma-signal .sw-minimap{width:86px;height:54px;bottom:42px;right:6px}.sw-inspector.collapsed{min-height:0}.sw-graph-tools{gap:3px}.sw-graph-tools button{width:24px}}
+@media(prefers-reduced-motion:reduce){.sw-inspector-body:not([hidden]){animation:none!important}}

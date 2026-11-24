@@ -28,3 +28,8 @@ test('V5.1 surfaces and event timing',()=>{
  assert.equal(signalFresh({at:100,continuous:false,seq:1},600),false);
  assert.equal(portFamily('gesture'),'pose');
 });
+
+import {relatedEdges,viewportFit,viewportCenter,GRAPH} from '../src/studio/v51/SignalModel.ts';
+test('V5.2 required mixer route cannot be missing',()=>{const graph=structuredClone(GRAPH);graph.edges=graph.edges.filter(e=>e.id!=='edge-06');assert.throws(()=>validateCue('F1',graph),/Missing required cue route/);});
+test('V5.2 directed reachability highlights full upstream and downstream without crossing unrelated branches',()=>{const edges=relatedEdges('foot',ready.bindings);for(const id of ['edge-01','edge-02','edge-04','edge-06','edge-17'])assert.ok(edges.has(id));assert.ok(!edges.has('edge-08'));assert.ok(!edges.has('edge-07'));});
+test('V5.2 fit uses both viewport dimensions and minimap centers coordinates',()=>{const fit=viewportFit({w:1000,h:500},{w:1000,h:1000});assert.ok(fit.z<.5);assert.deepEqual(viewportCenter({x:100,y:100},{w:600,h:400},2),{x:100,y:0,z:2});assert.equal(signalFresh({at:200,continuous:true,seq:1},100),false);});

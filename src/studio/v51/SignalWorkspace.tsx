@@ -1,8 +1,8 @@
-import {useEffect,useRef,useState,type RefObject} from 'react';
+import {useEffect,useRef,useState,type RefObject,type CSSProperties} from 'react';
 import {Activity,Camera,Check,Circle,Download,Film,Maximize,Monitor,Network,Play,Plus,RefreshCw,Settings2,Square,Trash2} from 'lucide-react';
 import {CameraHubRegistry,hubFrameIsFresh,type HubCameraRecord} from '../v3/CameraHubRegistry.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
-import {VisualRuntime,emptyLog,appendEvent,saveLog,loadLog,replayUntil,type SessionLog,type VisualEvent} from '../v5/VisualRuntime.ts';
+import {VisualRuntime,emptyLog,appendEvent,saveLog,loadLog,validLog,replayUntil,type SessionLog,type VisualEvent} from '../v5/VisualRuntime.ts';
 import type {CueId} from '../v5/NodeGraphModel.ts';
 import {F3PhotoStore} from '../../f3/F3PhotoStore.ts';
 import {F3SessionMachine} from '../../f3/F3SessionMachine.ts';
@@ -49,6 +49,10 @@ export function SignalWorkspace(){
  const [latches,setLatches]=useState<Latches>(clearLatches),[elapsed,setElapsed]=useState(0),[now,setNow]=useState(0),[signals,setSignals]=useState<Signals>({});
  const [health,setHealth]=useState('Menunggu sumber'),[trackCount,setTrackCount]=useState(0),[markCount,setMarkCount]=useState(0);
  const [reduce,setReduce]=useState(false);
+ const [inspectorOpen,setInspectorOpen]=useState(true),[railWidth,setRailWidth]=useState(320);
+ const selectNode=(id:string)=>{setSelected(id);setInspectorOpen(true);};
+ const transitionGeneration=useRef(0);
+ const photoSignals=useRef(new Set<string>());
  const floor=useRef<HTMLCanvasElement>(null),canvas=useRef<HTMLCanvasElement>(null),archiveVideo=useRef<HTMLVideoElement>(null),archiveImage=useRef<HTMLImageElement>(null);
  const log=useRef<SessionLog>(emptyLog()),saved=useRef<SessionLog>(emptyLog()),unsavedLog=useRef<SessionLog|null>(null);
  const captureGen=useRef(0),alive=useRef(true),recOn=useRef(false),saveBusy=useRef(false),consentRef=useRef(false),verifiedRef=useRef(false),armedRef=useRef(false),addingRef=useRef(false);
@@ -77,7 +81,7 @@ export function SignalWorkspace(){
  };
  const disarm=()=>{armedRef.current=false;setArmed(false);machine.disarm();punch.reset();captureGen.current++;};
  const resetVerification=()=>{verifiedRef.current=false;setVerified(false);machine.setVerified(false);disarm();};
- const purgePhotos=()=>{disarm();photoStore.revokeAll();images.current.clear();setPhotos(0);};
+ const purgePhotos=()=>{disarm();photoStore.revokeAll();images.current.clear();photoSignals.current.clear();setPhotos(0);};
  const changeConsent=(value:boolean)=>{
   consentRef.current=value;setConsent(value);machine.setConsent(value);
   if(!value){resetVerification();purgePhotos();if(state.current.running==='F3A'||state.current.running==='F3B')setBlank('all',true);announce('Persetujuan dicabut. Foto dihapus.');}
@@ -128,20 +132,28 @@ export function SignalWorkspace(){
   if((saved.current.events.length||unsavedLog.current)&&!window.confirm('Mulai rekaman F1 baru? Rekaman lama tetap tersimpan sampai rekaman baru berhasil disimpan.'))return;
   live.resetTracking();log.current=emptyLog();clock.current.recStart=performance.now();clock.current.recordOffset=clock.current.recStart-clock.current.start;recOn.current=true;setRecording(true);setCount(0);announce('Merekam F1.');
  };
+ const importLog=async(file:File|undefined)=>{
+  if(!file||state.current.running||recOn.current||saveBusy.current)return;
+  if(file.size>64*1024*1024){announce('File sesi terlalu besar (maks. 64 MB).');return;}
+  if((saved.current.events.length||unsavedLog.current)&&!window.confirm('Ganti rekaman tersimpan dengan file ini?'))return;
+  saveBusy.current=true;setSaving(true);try{const candidate:unknown=JSON.parse(await file.text());if(!validLog(candidate)||!candidate.events.length)throw Error('Format sesi tidak valid.');if(!alive.current||state.current.running)throw Error('Stop cue sebelum mengimpor.');await saveLog(candidate);saved.current=candidate;unsavedLog.current=null;if(alive.current){setSavedCount(candidate.events.length);setSavedDuration(candidate.duration);setUnsaved(false);announce('Sesi berhasil diimpor.');}}catch(e){announce(e instanceof Error?e.message:'Impor gagal.');}finally{saveBusy.current=false;if(alive.current)setSaving(false);}
+ };
  const exportLog=()=>{const data=recOn.current?log.current:unsavedLog.current??saved.current;if(!data.events.length){announce('Belum ada rekaman.');return;}const url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));const el=document.createElement('a');el.href=url;el.download='soma-f1-session.json';el.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  const go=()=>{
   if(state.current.running===next)return;
-  const blocker=preflight(next,readiness());if(blocker){setSelected(blocker.target);announce(blocker.text);return;}
+  const blocker=preflight(next,readiness());if(blocker){selectNode(blocker.target);announce(blocker.text);return;}
   try{validateCue(next);}catch(e){announce(String(e));return;}
-  if(recOn.current)stopRecord();disarm();archiveVideo.current?.pause();delivered.current={};setSignals({});
+  const generation=++transitionGeneration.current;
+  if(recOn.current)stopRecord();disarm();archiveVideo.current?.pause();delivered.current={};setSignals({});photoSignals.current.clear();
   const t=performance.now();clock.current.replayStart=t;clock.current.index=0;clock.current.lastFrame=-1;clock.current.lastGestureTime=-1;clock.current.lastMediaTime=-1;replay.clear();
   if(next==='F1'){live.clear();clock.current.start=t;}
   state.current.running=next;setRunning(next);setElapsed(0);
-  if(next==='F2'||next==='F3B')void archiveVideo.current?.play().catch(()=>{latchFault('canvas','Video belum bisa diputar.');});
+  if(next==='F2'||next==='F3B')void archiveVideo.current?.play().catch(()=>{if(transitionGeneration.current===generation&&state.current.running===next)latchFault('canvas','Video belum bisa diputar.');});
   // Preserve manually latched surfaces; selecting or starting a cue cannot relight them.
   announce(next+' berjalan · preview lokal.');
  };
  const stop=()=>{
+  transitionGeneration.current++;
   stopRecord();disarm();state.current.running=null;setRunning(null);archiveVideo.current?.pause();delivered.current={};setSignals({});black(floor.current?.getContext('2d'));black(canvas.current?.getContext('2d'));announce('Cue dihentikan.');
  };
  const blackout=()=>{setBlank('all',true);announce('Dua output gelap. Cue dan rekaman tetap berjalan.');};
@@ -150,7 +162,7 @@ export function SignalWorkspace(){
  const toggleSurface=(surface:Surface)=>{
   if(!state.current.latches[surface]){setBlank(surface,true);announce(surface==='floor'?'Floor blackout.':'Canvas blackout.');return;}
   const active=state.current.running;if(!active){announce('Jalankan cue sebelum Resume.');return;}
-  const b=preflight(active,readiness());if(b){announce(b.text);setSelected(b.target);return;}
+  const b=preflight(active,readiness());if(b){announce(b.text);selectNode(b.target);return;}
   if(!cueUsesSurface(active,surface)){announce('Output ini tidak dipakai pada cue aktif.');return;}
   setBlank(surface,false);announce('Preview '+surface+' dilanjutkan.');
  };
@@ -216,7 +228,7 @@ export function SignalWorkspace(){
      if(clock.current.index!==old)deliver(13,t,false);
      if(!state.current.latches.floor){replay.paintFloor(cf,at,s.decay);deliver(17,t,true);}else black(cf);
      if(!state.current.latches.canvas){replay.paintTrace(cc,at);const media=s.archive?.video?archiveVideo.current:archiveImage.current;if(media&&fit(cc,media,.36)){if(s.archive?.video&&archiveVideo.current&&archiveVideo.current.currentTime!==clock.current.lastMediaTime){clock.current.lastMediaTime=archiveVideo.current.currentTime;deliver(12,t,true);}else if(!s.archive?.video&&clock.current.lastMediaTime!==0){clock.current.lastMediaTime=0;deliver(12,t,false);}}
-      photoStore.slots.forEach((p,i)=>{if(!p)return;let im=images.current.get(p.url);if(!im){im=new Image();im.src=p.url;images.current.set(p.url,im);}if(im.complete&&im.naturalWidth)cc.drawImage(im,32+(i%2)*215,32+Math.floor(i/2)*175,205,165);});deliver(18,t,true);
+      photoStore.slots.forEach((p,i)=>{if(!p)return;let im=images.current.get(p.url);if(!im){im=new Image();im.src=p.url;images.current.set(p.url,im);}if(im.complete&&im.naturalWidth){cc.drawImage(im,32+(i%2)*215,32+Math.floor(i/2)*175,205,165);if(!photoSignals.current.has(p.url)){photoSignals.current.add(p.url);deliver(16,t,false);}}});deliver(18,t,true);
      }else black(cc);
     }
    }
@@ -238,22 +250,22 @@ export function SignalWorkspace(){
  const selectMedia=(f:File|undefined)=>{if(!f)return;if(state.current.running==='F2'||state.current.running==='F3B'){announce('Stop cue sebelum mengganti arsip.');return;}setMediaState('loading');setArchive({url:URL.createObjectURL(f),name:f.name,video:f.type.startsWith('video/')});announce('Memuat arsip…');};
  const mediaLoaded=()=>{setMediaState('ready');announce('Arsip siap.');};
  const sourcePicker=<><label>Perangkat<select aria-label="Perangkat kamera" value={device} onChange={e=>setDevice(e.target.value)}><option value="">Pilih kamera / beri izin</option>{devices.map(d=><option value={d.deviceId} key={d.deviceId}>{d.label||'Kamera '+d.deviceId.slice(0,5)}</option>)}</select></label><div className="sw-inspector-actions"><button disabled={adding} onClick={()=>void addDevice()}><Camera size={15}/>{adding?'Menghubungkan…':'Webcam / USB'}</button><button onClick={addPhone}>HP QR</button><button title="Perbarui perangkat" aria-label="Perbarui perangkat" onClick={()=>void refresh()}><RefreshCw size={14}/></button></div></>;
- return <div className="soma-signal" data-reduced-motion={reduce} data-version="5.1">
- <header className="sw-top"><div className="sw-brand"><Network size={21}/><b>SOMA</b><span className="sw-project">/ In Passing</span><small>V5.1 BETA</small></div><div className="sw-top-actions"><span className="sw-readiness"><i className={blocker?'pending':'ready'}/>{sourceNeed.length?sourceReady+'/'+sourceNeed.length+' kamera siap':blocker?'Cue belum siap':'Cue siap'}</span><details className="sw-menu"><summary title="Workspace" aria-label="Workspace settings"><Settings2 size={17}/></summary><div><label><input type="checkbox" checked={reduce} onChange={e=>setReduce(e.target.checked)}/> Kurangi animasi</label><button onClick={()=>leave(true)}>Node Canvas V5</button><button onClick={()=>leave()}>Legacy Studio</button></div></details><button className="sw-blackout" onClick={blackout} aria-label="Blackout semua output"><Square size={15}/> Blackout</button></div></header>
- <main className="sw-main"><section className="sw-work"><SignalGraph records={records} bindings={bindings} selected={selected} onSelect={setSelected} next={next} running={running} signals={signals} now={now} readySources={readySources} status={statuses} details={details} locked={!!running} onBind={bind} onNotice={announce} preview={id=><FeedThumb registry={registry} id={id} allowed={bindings.cam2!==id||consent}/>} /></section>
- <aside className="sw-rail"><div className="sw-monitors"><MonitorPanel name="Floor" surface="floor" refCanvas={floor} latched={latches.floor} running={running} onToggle={()=>toggleSurface('floor')} onFull={()=>full('floor')}/><MonitorPanel name="Canvas" surface="canvas" refCanvas={canvas} latched={latches.canvas} running={running} onToggle={()=>toggleSurface('canvas')} onFull={()=>full('canvas')}/></div>
- <section className="sw-inspector" aria-label="Inspector"><header><span>Inspector</span><b>{inspectTitle}</b></header><div className="sw-inspector-body">
+ return <div className="soma-signal" data-reduced-motion={reduce} data-version="5.2">
+ <header className="sw-top"><div className="sw-brand"><Network size={21}/><b>SOMA</b><span className="sw-project">/ In Passing</span><small>V5.2 BETA</small></div><div className="sw-top-actions"><span className="sw-readiness"><i className={blocker?'pending':'ready'}/>{sourceNeed.length?sourceReady+'/'+sourceNeed.length+' kamera siap':blocker?'Cue belum siap':'Cue siap'}</span><details className="sw-menu"><summary title="Workspace" aria-label="Workspace settings"><Settings2 size={17}/></summary><div><label><input type="checkbox" checked={reduce} onChange={e=>setReduce(e.target.checked)}/> Kurangi animasi</label><button onClick={()=>leave(true)}>Node Canvas V5</button><button onClick={()=>leave()}>Legacy Studio</button></div></details><button className="sw-blackout" onClick={blackout} aria-label="Blackout semua output"><Square size={15}/> Blackout</button></div></header>
+ <main className="sw-main" style={{"--sw-rail-width":railWidth+"px"} as CSSProperties}><section className="sw-work"><SignalGraph records={records} bindings={bindings} selected={selected} onSelect={selectNode} next={next} running={running} signals={signals} now={now} readySources={readySources} status={statuses} details={details} locked={!!running} onBind={bind} onNotice={announce} preview={id=><FeedThumb registry={registry} id={id} allowed={bindings.cam2!==id||consent}/>} /></section>
+ <aside className="sw-rail"><div className="sw-rail-tools"><label title="Lebar monitor"><span>Monitor</span><input aria-label="Lebar monitor" type="range" min={280} max={440} step={20} value={railWidth} onChange={e=>setRailWidth(+e.target.value)}/></label></div><div className="sw-monitors"><MonitorPanel name="Floor" surface="floor" refCanvas={floor} latched={latches.floor} running={running} onToggle={()=>toggleSurface('floor')} onFull={()=>full('floor')}/><MonitorPanel name="Canvas" surface="canvas" refCanvas={canvas} latched={latches.canvas} running={running} onToggle={()=>toggleSurface('canvas')} onFull={()=>full('canvas')}/></div>
+ <section className={"sw-inspector"+(inspectorOpen?"":" collapsed")} aria-label="Inspector"><header><button className="sw-inspector-toggle" aria-expanded={inspectorOpen} aria-label={inspectorOpen?"Collapse inspector":"Expand inspector"} onClick={()=>setInspectorOpen(v=>!v)}><span>Inspector</span><b>{inspectTitle}</b><span aria-hidden="true">{inspectorOpen?"−":"+"}</span></button></header><div className="sw-inspector-body" hidden={!inspectorOpen}>
  {selected==='add'||selectedRole?<>{sourcePicker}{selectedRole&&<label>Sumber {ROLE_NAMES[selectedRole]}<select disabled={!!running} value={bindings[selectedRole]} onChange={e=>bind(selectedRole,e.target.value)}><option value="">Belum terhubung</option>{records.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label>}</>:null}
- {selectedSource&&<><div className="sw-info">{selectedSource.message}</div><label>Assign ke<select aria-label="Assign kamera" value="" disabled={!!running} onChange={e=>{if(e.target.value)bind(e.target.value as Role,selectedSource.id);}}><option value="">Pilih role</option>{ROLES.map(r=><option key={r} value={r}>{ROLE_NAMES[r]}{bindings[r]===selectedSource.id?' · terhubung':''}</option>)}</select></label><div className="sw-inspector-actions">{ROLES.filter(r=>bindings[r]===selectedSource.id).map(r=><button key={r} disabled={!!running} onClick={()=>bind(r,'')}>Lepas {ROLE_NAMES[r]}</button>)}{selectedSource.kind==='device'&&<button onClick={()=>void registry.connect(selectedSource.id)}><RefreshCw size={14}/> Retry</button>}<button disabled={!!running} onClick={()=>remove(selectedSource.id)} title="Hapus kamera"><Trash2 size={14}/> Hapus</button></div></>}
+ {selectedSource&&<><div className="sw-info">{selectedSource.message}</div><label>Assign ke<select aria-label="Assign kamera" value="" disabled={!!running} onChange={e=>{if(e.target.value)bind(e.target.value as Role,selectedSource.id);}}><option value="">Pilih role</option>{ROLES.map(r=><option key={r} value={r}>{ROLE_NAMES[r]}{bindings[r]===selectedSource.id?' · terhubung':''}</option>)}</select></label><div className="sw-inspector-actions">{ROLES.filter(r=>bindings[r]===selectedSource.id).map(r=><button key={r} disabled={!!running} onClick={()=>bind(r,'')}>Lepas {ROLE_NAMES[r]}</button>)}{selectedSource.kind==='device'&&<button onClick={()=>{if(state.current.bindings.cam2===selectedSource.id||state.current.bindings.cam3===selectedSource.id)resetVerification();void registry.connect(selectedSource.id);}}><RefreshCw size={14}/> Retry</button>}<button disabled={!!running} onClick={()=>remove(selectedSource.id)} title="Hapus kamera"><Trash2 size={14}/> Hapus</button></div></>}
  {records.filter(r=>r.kind==='phone').map(r=><div key={r.id} hidden={selected!==r.id}><PhoneCameraReceiver initialMode="qr" onStream={stream=>registry.connectPhone(r.id,stream)} onDisconnect={()=>registry.disconnect(r.id)}/></div>)}
  {['foot','trace','pose','floor'].includes(selected)&&<><label>Decay <b>{Math.round(decay/1000)}s</b><input type="range" min={1000} max={60000} step={1000} value={decay} onChange={e=>setDecay(+e.target.value)}/></label><button onClick={()=>live.resetTracking()}>Reset A/B</button><details><summary>Advanced</summary><p>Pose 33 landmarks · estimasi kontak kaki · dua performer.</p><p>{health}</p></details></>}
  {['archive','canvas'].includes(selected)&&<label><Film size={15}/> Arsip lokal<input type="file" accept="video/*,image/*" onChange={e=>selectMedia(e.target.files?.[0])}/><small>{archive?.name||'Belum ada file'}{mediaState==='loading'?' · Memuat…':mediaState==='error'?' · Gagal dibuka':''}</small></label>}
- {selected==='session'&&<><div className="sw-info">{savedCount} event · {timeText(savedDuration)}{unsaved?' · belum tersimpan':''}</div><div className="sw-inspector-actions"><button disabled={!savedCount&&!unsaved&&!recording} onClick={exportLog}><Download size={14}/> Ekspor JSON</button></div><small>Rekaman tersedia untuk F3B setelah tersimpan.</small></>}
+ {selected==='session'&&<><div className="sw-info">{savedCount} event · {timeText(savedDuration)}{unsaved?' · belum tersimpan':''}</div><div className="sw-inspector-actions"><button disabled={!savedCount&&!unsaved&&!recording} onClick={exportLog}><Download size={14}/> Ekspor JSON</button></div><label>Impor sesi JSON<input type="file" aria-label="Impor sesi JSON" accept=".json,application/json" disabled={!!running||saving} onChange={e=>{const file=e.target.files?.[0];e.target.value='';void importLog(file);}}/></label><small>Rekaman tersedia untuk F3B setelah tersimpan.</small></>}
  {['capture','hand','cam2','cam3'].includes(selected)&&<><label className="sw-check"><input type="checkbox" checked={consent} onChange={e=>changeConsent(e.target.checked)}/> Persetujuan penonton</label>{consent&&<><div className="sw-verify">{bindings.cam2?<FeedThumb registry={registry} id={bindings.cam2} allowed={consent}/>:<small>Hubungkan kamera penonton.</small>}</div><button disabled={verified||!ready.fresh.cam2||!ready.fresh.cam3} onClick={verify}>{verified?<><Check size={14}/> Frame diperiksa</>:'Verifikasi frame penonton'}</button></>}<div className="sw-inspector-actions"><button disabled={!verified||armed||running!=='F3A'} onClick={()=>void arm()}>Arm</button><button disabled={!armed||photos>=4} onClick={()=>void capture('manual-'+Date.now())}>Foto</button><button onClick={()=>{purgePhotos();if(state.current.running==='F3B')setBlank('all',true);}}>Hapus foto</button></div><div className="sw-photo-slots">{photoStore.slots.map((p,i)=><div key={p?.id??i}>{p&&consent?<img className="soma-enter" src={p.url} alt={'Foto '+(i+1)}/>:<span>{String(i+1).padStart(2,'0')}</span>}</div>)}</div><small>{photos}/4 foto · {armed?'Armed':'Disarmed'}</small></>}
  {['floor','canvas'].includes(selected)&&<div className="sw-output-note"><small>Preview lokal. Kalibrasi proyektor fisik tetap di Legacy Studio.</small><button onClick={()=>leave()}>Buka Legacy Studio</button></div>}
  </div></section></aside></main>
  <footer className="sw-transport"><div className="sw-cue-list" aria-label="Cue"><div className="sw-current"><span>Running</span><b>{running??'—'}</b></div>{(Object.keys(CUES) as CueId[]).map(id=><button key={id} className={'sw-cue'+(next===id?' next':'')+(running===id?' running':'')} aria-pressed={next===id} onClick={()=>{setNext(id);}}><b>{id}</b><small>{CUES[id]}</small></button>)}</div>
- <div className="sw-transport-info"><button className={'sw-blocker '+(blocker?'blocked':'')} onClick={()=>{if(blocker)setSelected(blocker.target);}} disabled={!blocker} title={blocker?.text??'Cue siap'}>{blocker?.text??'Cue siap'}</button><span className="sw-notice" role="status" title={notice}>{notice}</span></div>
+ <div className="sw-transport-info"><button className={'sw-blocker '+(blocker?'blocked':'')} onClick={()=>{if(blocker)selectNode(blocker.target);}} disabled={!blocker} title={blocker?.text??'Cue siap'}>{blocker?.text??'Cue siap'}</button><span className="sw-notice" role="status" title={notice}>{notice}</span></div>
  <div className="sw-transport-actions"><span className="sw-time">{timeText(elapsed)}</span><button className={'sw-rec'+(recording?' recording':'')} disabled={saving||(!recording&&(running!=='F1'||!ready.fresh.cam1))} aria-label={recording?'Stop recording':'Record F1'} onClick={recording?stopRecord:startRecord}><Circle size={15} fill={recording?'currentColor':'none'}/>{saving?'Saving':recording?'REC':'Record'}</button><button aria-label="Stop cue" disabled={!running} onClick={stop}><Square size={15}/></button><button className="sw-go" disabled={!!blocker||running===next} onClick={go}><Play size={15} fill="currentColor"/> GO</button></div></footer>
  {archive?.video&&<video key={archive.url} ref={archiveVideo} src={archive.url} muted loop playsInline preload="auto" onLoadedData={mediaLoaded} onError={()=>{setMediaState('error');announce('Arsip gagal dibuka.');}} style={{display:'none'}}/>}{archive&&!archive.video&&<img key={archive.url} ref={archiveImage} src={archive.url} alt="" onLoad={mediaLoaded} onError={()=>{setMediaState('error');announce('Arsip gagal dibuka.');}} style={{display:'none'}}/>}
  </div>;
