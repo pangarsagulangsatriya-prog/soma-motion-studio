@@ -95,7 +95,7 @@ type Props={
  onNavigateStageWorkspace:(workspace:StageModuleWorkspace)=>void;
  frameRef:RefObject<MotionFrame>;videoRef:RefObject<HTMLVideoElement|null>;
  tracker:LiveFloorTrackingEngine;router:MultiPoseGaitRouter;projection:Projection;
- audioAnalyser?:AnalyserNode|null;
+ audioAnalyser?:AnalyserNode|null;onTakeAudio?:()=>boolean;
  cameraOn:boolean;cameraBusy:boolean;cameraError:string;bodySelected:boolean;legacyApproved:boolean;
  cameraDevices:MediaDeviceInfo[];selectedCameraId:string;
  onSelectCameraDevice:(deviceId:string)=>Promise<void>;
@@ -118,7 +118,7 @@ const blockedReason=(cameraOn:boolean,calibrated:boolean,confirmed:boolean)=>
  !cameraOn?'Kamera Body belum aktif.':!calibrated?'Lantai belum dikalibrasi.':
  !confirmed?'Konfirmasi kalibrasi lantai.':'Menunggu event pijakan.';
 export function FootprintsStageWorkspace({
- navigationRequest,onActiveToolChange,onNavigateStageWorkspace,frameRef,videoRef,tracker,router,projection,audioAnalyser,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
+ navigationRequest,onActiveToolChange,onNavigateStageWorkspace,frameRef,videoRef,tracker,router,projection,audioAnalyser,onTakeAudio,cameraOn,cameraBusy,cameraError,bodySelected,legacyApproved,
  cameraDevices,selectedCameraId,onSelectCameraDevice,
  phoneActive,sourceStatus,onSwitchSource,experimentPuppet,experimentPuppetRevision,
  performerCount,onPerformerCount,onStartBody,onOpenSimulator,onOpenLiveFloor,onOpenProjection,
@@ -1034,6 +1034,9 @@ export function FootprintsStageWorkspace({
      floorEvents={()=>tracker.session?.events??[]}
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
+     audioWorkspaceActive={composerOpen&&!mappingOpen&&!operatorMode}
+     audioSourceReady={touchDemo||experimentalKind==='simulator'&&selectedExperimentFrame?.kind==='simulator'||experimentalKind==='video'&&canPaintVideoFrame(selectedExperimentFrame)||!experimentalKind&&cameraOn&&bodySelected&&sourceStatus.phase==='ready'}
+     onTakeAudio={onTakeAudio}
      lineSource={sourceStatus.selection==='phone'?'phone':'camera'}
      identitySafe={!identityStatus.ambiguous}
       onOpenMapTrack={()=>onNavigateStageWorkspace('track')}

@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {Maximize2,Minimize2} from 'lucide-react';
+import {FootMotionAudioPanel} from './FootMotionAudioPanel.tsx';
 import type {ChangeEvent,PointerEvent,RefObject,KeyboardEvent} from 'react';
 import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
@@ -117,6 +118,7 @@ type Props={
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
+ audioWorkspaceActive?:boolean;audioSourceReady?:boolean;onTakeAudio?:()=>boolean;
  lineSource?:'camera'|'phone';
  identitySafe:boolean;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
@@ -128,7 +130,7 @@ type Props={
  onMapOutputInvalidated?:(surface?:'floor'|'body')=>void;
  mapOutputSaved?:{floor:boolean;body:boolean};
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapWorkspace,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,audioWorkspaceActive=false,audioSourceReady=false,onTakeAudio,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapWorkspace,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
  const rasterReadyCallback=useRef(onComposeRasterChange);rasterReadyCallback.current=onComposeRasterChange;
  const lastRasterReady=useRef<boolean|null>(null);
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
@@ -1176,6 +1178,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerDownCapture={onInspectorPointerDown} onPointerUpCapture={onInspectorPointerEnd}
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
+  <FootMotionAudioPanel visible={monitorView==='FLOOR'} allowed={audioWorkspaceActive&&!workspaceHidden&&!mapMode&&!blackout&&!previewBlackout&&previewLive&&!footprint?.hold&&monitorView==='FLOOR'&&(lineTrails||liquidEnabled)} sourceReady={audioSourceReady&&identitySafe&&timelineMode==='live'&&(lineTrails?!lineDemo:liquidMode==='track')} trace={lineTrails} events={motionEvents} session={motionSession} onTakeAudio={onTakeAudio}/>
   {!lineTrails&&monitorView==='FLOOR'&&<div className="cp25-inspector-switch">
    <div className="cp25-inspector-header">
     <div><strong>Visual</strong><span>{getComposeVisualStyle(steering.styleId).name}</span></div>
