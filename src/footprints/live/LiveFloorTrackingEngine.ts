@@ -144,7 +144,9 @@ export class LiveFloorTrackingEngine{
   if(previous!==undefined&&sample.t-previous>450)this.lose(side,performerId);
   this.seen.set(key,sample.t);this.received.set(key,sample.t);
   this.motion.set(key,{performerId,foot:side,motion:sample.motionKind??'unknown',confidence:sample.confidence});
-  const now=Math.max(this.logicalTime+1,Math.round(sample.t));
+  // Different feet may legitimately land in the same camera frame. The
+  // session schema allows equal timestamps; per-foot ordering is independent.
+  const now=Math.max(this.logicalTime,sample.t);
   this.logicalTime=now;
   const observe=(phase:'swing'|'stance',p:FloorPoint|null,heading:number)=>
    this.eventEngine!.observe({performerId,foot:side,
