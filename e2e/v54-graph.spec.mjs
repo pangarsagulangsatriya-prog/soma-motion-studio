@@ -56,3 +56,10 @@ test('V5.4 custom frame membership, undo, persistence and arrange',async({page})
  await expect(page.locator('[data-group]')).toHaveCount(4);await expect(page.locator('[data-node="foot"]')).toBeAttached();
  await page.getByRole('button',{name:'Undo layout',exact:true}).click();await expect(page.locator('[data-group]')).toHaveCount(5);
 });
+
+test('V5.4 canonical workspace, explicit fallback and viewport safety',async({page})=>{
+ await page.goto('/?workspace=nodes');await expect(page.locator('.soma-signal')).toHaveAttribute('data-version','5.4');
+ for(const [width,height] of [[1440,900],[1280,800],[1024,768],[1280,600],[390,844]]){await page.setViewportSize({width,height});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1)).toBe(true);await expect(page.getByRole('button',{name:'Blackout semua output'})).toBeInViewport();await expect(page.getByRole('button',{name:'GO',exact:true})).toBeInViewport();}
+ await page.setViewportSize({width:1440,height:900});await page.getByLabel('Workspace settings').click();await page.getByRole('button',{name:'Adaptive V5.3',exact:true}).click();await expect(page.locator('.soma-signal')).toHaveAttribute('data-version','5.3');
+ await page.getByLabel('Workspace settings').click();await page.getByRole('button',{name:'Graph Editor V5.4',exact:true}).click();await expect(page.locator('.soma-signal')).toHaveAttribute('data-version','5.4');
+});
