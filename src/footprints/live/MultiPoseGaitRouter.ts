@@ -1,7 +1,7 @@
 import type {MotionFrame} from '../../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../gait-analysis/index.ts';
 import {LiveFloorTrackingEngine,type CameraBinding} from './LiveFloorTrackingEngine.ts';
-import {TwoPersonIdentityTracker,type IdentityFrame,type LivePerformerId} from './TwoPersonIdentityTracker.ts';
+import {TwoPersonIdentityTracker,type IdentityFrame,type LivePerformerId,type ActorIdentityState} from './TwoPersonIdentityTracker.ts';
 import {GhostFootstepPredictor} from './GhostFootstepPredictor.ts';
 import {createFloorSession,type FloorSession,type FootstepEvent} from '../spatial/events.ts';
 
@@ -13,6 +13,7 @@ export type MultiPoseStatus={
  observedFrameTime:number|null;
  /** Software identity generation; changes only on explicit source/identity reset. */
  identityEpoch?:number;
+ actorStates?:Record<LivePerformerId,ActorIdentityState>;
 };
 /**
  * In two-person mode, reuses the 2 poses ALREADY in MotionFrame.poses.
@@ -72,11 +73,11 @@ export class MultiPoseGaitRouter{
   return {mode:this.mode,visible:r?.assignments.map(a=>a.id)??[],
    ambiguous:r?.ambiguous??false,reason:r?.reason??'Menunggu pose kamera.',
    ghostCount:0,poseIndices:{...indices},observedFrameTime:r&&!r.ambiguous&&(indices.A!==null||indices.B!==null)?this.previewFrame?.time??null:null,
-   identityEpoch:this.previewEpoch};
+   identityEpoch:this.previewEpoch,actorStates:r?.states};
  }
  observePreview(frame:MotionFrame|null):void{
   if(this.mode!==2)return;
-  if(!frame||frame.source!=='camera'||!frame.tracked||!Number.isFinite(frame.time)||frame.time<0||!frame.poses?.length){
+  if(!frame||frame.source!=='camera'||!Number.isFinite(frame.time)||frame.time<0||!frame.poses?.length){
    if(this.previewFrame){this.previewFrame=null;this.previewResult=null;this.previewIndices={A:null,B:null};this.invalidate();}
    return;
   }
