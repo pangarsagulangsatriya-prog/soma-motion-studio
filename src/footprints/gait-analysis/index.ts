@@ -24,12 +24,13 @@ type Internal={
  stationarySince:number|null;lastStamp:number;
  stanceAnchor:Point|null;anchorHeading:number;
  stanceSince:number|null;
+ pendingLanding:boolean;
 };
 const blank=():Internal=>({
  lastTime:-1,relative:null,filtered:null,lastImage:null,stanceImageAnchor:null,
  heading:0,baselineY:null,
  phase:'unknown',stationarySince:null,lastStamp:-1e9,
- stanceAnchor:null,anchorHeading:0,stanceSince:null
+ stanceAnchor:null,anchorHeading:0,stanceSince:null,pendingLanding:false
 });
 const valid=(p:Landmark|undefined)=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&
  p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&(p.visibility??0)>=.55;
@@ -118,19 +119,23 @@ export class GaitAnalyzer{
   if(lifted||swungFast){
    phase='swing';motionKind='step';
    state.stationarySince=null;
-   state.stanceSince=null;
+   state.stanceSince=null;state.pendingLanding=false;
   }else if(pivot||slide){
    // A planted pivot/drag cannot generate another contact until a separate
    // swing and subsequent stable landing have been observed.
    phase='stance';motionKind=pivot?'pivot':'slide';
    state.stationarySince=null;
+   state.pendingLanding=false;
   }else {
    const nearFloor=rise<Math.max(.018,span*.10);
    if(nearFloor&&speed<.27){
     state.stationarySince??=clock;
     if(clock-state.stationarySince>=110){
-     if(phase!=='stance'&&clock-state.lastStamp>=320){
-      stamp=true;state.lastStamp=clock;
+     if(phase!=='stance')state.pendingLanding=true;
+     // A landing confirmed during cooldown used to be discarded permanently.
+     // Keep it pending only while the same foot remains stably planted.
+     if(state.pendingLanding&&clock-state.lastStamp>=320){
+      stamp=true;state.lastStamp=clock;state.pendingLanding=false;
      }
      if(phase!=='stance'){
       state.stanceAnchor={...relative};
@@ -143,7 +148,7 @@ export class GaitAnalyzer{
      // Update baseline slowly only while a foot is stably planted.
      state.baselineY=baseline*.96+relative.y*.04;
     }
-   }else state.stationarySince=null;
+   }else {state.stationarySince=null;state.pendingLanding=false;}
   }
   if(phase==='stance'&&!state.stanceAnchor){
    state.stanceAnchor={...relative};
@@ -157,7 +162,9 @@ export class GaitAnalyzer{
   const confidence=Math.min(1,Math.max(0,
    Math.min(ankle.visibility??0,heel.visibility??0,toe.visibility??0,
     hip.visibility??0,otherHip.visibility??0)));
-  return {x:clamp(filtered.x),y:clamp(filtered.y),heading,side,t:clock,
+  // A sole stamp is anchored to the observed landing, not the lagged trail.
+  const position=stamp?stage:filtered;
+  return {x:clamp(position.x),y:clamp(position.y),heading,side,t:clock,
    join,stamp,phase,confidence,relativeSpeed:speed,motionKind,
    liftEstimate:rise,
    stanceDurationMs:phase==='stance'&&state.stanceSince!==null?
