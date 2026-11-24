@@ -82,6 +82,18 @@ export class AudioEngine {
   }
   if(kind==='kick')src.onended=()=>{g.disconnect();src.disconnect();};src.start(t);src.stop(t+duration+.02);this.hits.push({source:src,gain:g,end:t+duration});
  }
+ /** Bounded procedural material voice; shares the existing distortion, master and safety bus. */
+ playTexture(samples:Float32Array,pan:number,maxVoices:number){
+  if(!this.context||!this.enabled||this.muted||!this.synthEnabled)return;
+  const c=this.context,t=c.currentTime;if(!samples.length||samples.length>c.sampleRate*.65)return;
+  this.hits=this.hits.filter(h=>h.end>t);const cap=Math.max(1,Math.min(6,Math.floor(maxVoices)||1)-(this.gated?1:0));
+  while(this.hits.length>=cap){const old=this.hits.shift()!;old.gain.gain.setTargetAtTime(0,t,.005);try{old.source.stop(t+.02);}catch{}}
+  const b=c.createBuffer(1,samples.length,c.sampleRate),data=b.getChannelData(0);
+  for(let i=0;i<samples.length;i++)data[i]=Number.isFinite(samples[i])?clamp(samples[i],-.75,.75):0;
+  const source=c.createBufferSource(),g=c.createGain(),stereo=c.createStereoPanner();source.buffer=b;g.gain.value=.8;stereo.pan.value=Number.isFinite(pan)?clamp(pan,-.8,.8):0;
+  source.connect(g).connect(stereo).connect(this.bus);source.onended=()=>{source.disconnect();g.disconnect();stereo.disconnect();};
+  source.start(t);this.hits.push({source,gain:g,end:t+b.duration});
+ }
  setMaster(value:number){if(this.context)this.master.gain.setTargetAtTime(this.muted?0:clamp(value),this.context.currentTime,.025);}
  setSynthEnabled(value:boolean){this.synthEnabled=value;if(!value&&this.context){const t=this.context.currentTime;this.env.gain.cancelScheduledValues(t);this.env.gain.setTargetAtTime(0,t,.02);this.safety.gain.cancelScheduledValues(t);this.safety.gain.setTargetAtTime(0,t,.02);this.gated=false;}}
  mute(){this.muted=true;this.gated=false;this.activeVoices=0;if(this.context){const t=this.context.currentTime;this.master.gain.cancelScheduledValues(t);this.master.gain.setTargetAtTime(0,t,.008);this.env.gain.cancelScheduledValues(t);this.env.gain.setTargetAtTime(0,t,.008);this.safety.gain.cancelScheduledValues(t);this.safety.gain.setTargetAtTime(0,t,.008);}}

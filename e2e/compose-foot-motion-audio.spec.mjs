@@ -16,3 +16,10 @@ test('shared Compose audio panel starts off, can unlock, switches visual mode an
  await expect(panel.getByRole('button',{name:'Aktifkan audio'})).toBeDisabled();
  await expect(panel.getByRole('button',{name:'Matikan audio'})).toHaveCount(0);
 });
+
+for(const presets of [['grit','crush','fracture'],['metalSkin','subPressure','erosion']])test('experimental textures generate real analyser signal: '+presets.join(', '),async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Compose workspace'}).click();const panel=page.getByRole('region',{name:'Audio gerak'});
+ await panel.getByRole('button',{name:'Aktifkan audio'}).click();await expect(panel.getByRole('button',{name:'Matikan audio'})).toBeVisible();
+ for(const preset of presets){await panel.getByLabel('Karakter suara').selectOption(preset);await panel.getByLabel('Distorsi audio').fill('0.8');await expect.poll(()=>panel.getByRole('meter',{name:'Level audio'}).evaluate(m=>m.value),{timeout:3000}).toBeLessThan(.001);await panel.getByRole('button',{name:'Tes audio'}).click();await expect.poll(()=>panel.getByRole('meter',{name:'Level audio'}).evaluate(m=>m.value),{timeout:2000,intervals:[20,30,50]}).toBeGreaterThan(.001);}
+ await page.getByRole('button',{name:'Kirim perintah blackout SOMA',exact:true}).click();await expect(panel.getByRole('button',{name:'Aktifkan audio'})).toBeDisabled();await expect(panel.getByRole('meter',{name:'Level audio'})).toHaveCount(0);
+});

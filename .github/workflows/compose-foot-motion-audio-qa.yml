@@ -2,6 +2,9 @@ name: Compose Foot Motion Audio QA
 on:
   pull_request:
     paths:
+      - 'src/engine/audio.ts'
+      - 'src/studio/v3/experimentalFootAudio.ts'
+      - 'src/studio/v3/foot-motion-audio.css'
       - 'src/studio/v3/FootMotionAudioPanel.tsx'
       - 'src/studio/v3/footMotionAudioModel.ts'
       - 'src/studio/v3/SurfaceComposer.tsx'

@@ -10,3 +10,4 @@
 #soma-compose-focus .foot-motion-audio button:focus-visible,#soma-compose-focus .foot-motion-audio select:focus-visible{outline:2px solid #a7d4a8;outline-offset:2px}
 
 #soma-compose-focus .foot-motion-meter{display:flex;align-items:center;gap:10px}#soma-compose-focus .foot-motion-meter meter{flex:1;height:8px;min-width:60px;accent-color:#a7d4a8}#soma-compose-focus .foot-motion-meter meter::-webkit-meter-optimum-value{background:#a7d4a8}
+#soma-compose-focus .texture-description{line-height:1.4;color:#b4cbb8}#soma-compose-focus .foot-motion-audio-settings select{max-width:155px;width:100%;min-width:0}#soma-compose-focus .foot-motion-audio-settings label{grid-template-columns:minmax(0,1fr) auto}
