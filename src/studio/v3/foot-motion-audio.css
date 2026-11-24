@@ -8,3 +8,5 @@
 #soma-compose-focus .foot-motion-audio-settings select{background:#0e1913;color:#edf4ee;border:1px solid #43594a;border-radius:5px;padding:4px}
 #soma-compose-focus .foot-motion-volume input{grid-column:1/-1;width:100%;accent-color:#a7d4a8}
 #soma-compose-focus .foot-motion-audio button:focus-visible,#soma-compose-focus .foot-motion-audio select:focus-visible{outline:2px solid #a7d4a8;outline-offset:2px}
+
+#soma-compose-focus .foot-motion-meter{display:flex;align-items:center;gap:10px}#soma-compose-focus .foot-motion-meter meter{flex:1;height:8px;min-width:60px;accent-color:#a7d4a8}#soma-compose-focus .foot-motion-meter meter::-webkit-meter-optimum-value{background:#a7d4a8}
