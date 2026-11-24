@@ -93,7 +93,7 @@ export class TwoPersonIdentityTracker{
   if(time<=this.lastTime)return {assignments:[],lost:[],ambiguous:true,reason:'Frame identitas tidak berurutan.',states:this.states(this.lastTime,[])};
   this.lastTime=time;
   if(this.identityLocked)return finish([],true,'Persilangan tubuh belum dapat dipisahkan dengan aman. Reset identitas A/B untuk lanjut.');
-  if(this.crossingSince!==null&&time-this.crossingSince>this.recoveryMs){
+  if(this.crossingSince!==null&&ids.some(id=>time-(this.known.get(id)?.time??-Infinity)>250)){
    this.identityLocked=true;return finish([],true,'Pemulihan identitas melewati batas waktu. Reset identitas A/B untuk lanjut.');
   }
   const found=poses.map(locate).filter((x):x is Observation=>!!x)
@@ -132,7 +132,12 @@ export class TwoPersonIdentityTracker{
    const get=(id:LivePerformerId,index:number)=>candidates.find(c=>c.id===id&&c.index===index)?.cost??Infinity;
    const straight=get('A',0)+get('B',1),swapped=get('A',1)+get('B',0);
    const both=found.length===2&&this.known.size===2;
-   if(both&&Number.isFinite(Math.min(straight,swapped))&&Math.abs(straight-swapped)>=this.ambiguityMargin){
+   const crossingEvidence=this.crossingSince===null||(()=>{
+    const a=this.known.get('A')!,b=this.known.get('B')!,k=shared(a.observation,b.observation);
+    return !!k&&found.length===2&&found.every(o=>o.anchors[k])&&
+     close(predict(a,k,time),predict(b,k,time))>=this.ambiguityMargin;
+   })();
+   if(both&&crossingEvidence&&Number.isFinite(Math.min(straight,swapped))&&Math.abs(straight-swapped)>=this.ambiguityMargin){
     if(straight<swapped){add('A',0);add('B',1);}else{add('B',0);add('A',1);}
     this.crossingSince=null;
    }else if(this.crossingSince!==null){
