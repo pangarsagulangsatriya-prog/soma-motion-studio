@@ -73,7 +73,7 @@ export class MultiPoseGaitRouter{
  }
  observePreview(frame:MotionFrame|null):void{
   if(this.mode!==2)return;
-  if(!frame||frame.source!=='camera'||!frame.tracked||!Number.isFinite(frame.time)||frame.time<=0||!frame.poses?.length){
+  if(!frame||frame.source!=='camera'||!frame.tracked||!Number.isFinite(frame.time)||frame.time<0||!frame.poses?.length){
    if(this.previewFrame){this.previewFrame=null;this.previewResult=null;this.previewIndices={A:null,B:null};this.invalidate();}
    return;
   }

@@ -80,11 +80,11 @@ test('live display samples current frame and router, color gate uses same UI sta
  const pulse=read('../src/studio/v3/useTrackFeedbackPulse.ts');
  assert.match(stage,/const feedback=useTrackFeedbackPulse\(/);
  assert.match(stage,/trackingFeedbackRef\.current=feedback/);
- assert.match(stage,/liveSkeletonPresentation\(f,identities,performerCount,identityConfirmed\)/);
+ assert.match(stage,/liveSkeletonPresentation\(f,router\.previewStatus,performerCount,identityConfirmed\)/);
  assert.match(stage,/data-tracking-state=\{feedback.state\}/);
  assert.match(stage,/aria-live="polite" aria-atomic="true"/);
  assert.match(pulse,/window\.setInterval\(tick,160\)/);
- assert.match(pulse,/router\.status/);
+ assert.match(pulse,/router\.previewStatus/);
  assert.match(pulse,/now-frame.time<450/);
  assert.match(pulse,/pulseRef\.current\?\.key!==key/);
 });
