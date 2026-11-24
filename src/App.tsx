@@ -513,6 +513,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      url.searchParams.delete('f3');url.searchParams.set('stage','2');
      window.location.assign(url.toString());
     }}
+    onNodeCanvas={()=>{requestStageBlackout(()=>projection.setTransport('blackout'));requestSoftwarePreviewBlackout();if(cameraOn)stopCamera();const url=new URL(window.location.href);url.search='';url.searchParams.set('workspace','nodes');window.location.assign(url.toString());}}
     onCameraHub={()=>{clearF3();setCaptureOpen(false);setClean(false);setCameraHubActive(true);}}
      onF3Capture={()=>{
       if(stageTwo){const url=new URL(window.location.href);url.searchParams.delete('stage');url.searchParams.set('f3','1');window.location.assign(url.toString());return;}
