@@ -38,7 +38,7 @@ export function dualTracePoseFrames(input:V3Input,o:Pick<V3InputOptions,
   }
   return frames;
  }
- const f=o.live;if(!f||!f.tracked||f.source!=='camera'||f.time!==input.frameMs)
+ const f=o.live;if(!f||(o.performers===1&&!f.tracked)||f.source!=='camera'||f.time!==input.frameMs)
   return [];
  const pick=(actor:DualActor,index:number,confidence:number)=>{
   const points=o.performers===1?f.pose:f.poses?.[index];

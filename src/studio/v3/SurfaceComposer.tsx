@@ -751,18 +751,23 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
       nowMs:now
      });
     }else if(activeView!=='FLOOR'){
-     const livePoseA=cameraOnRef.current&&bodySelectedRef.current?extractLiveLowerBodyPose(frameRefLive.current.current?.pose,'A'):null;
-     const simPerformers:1|2=activeView==='SPLIT'||activeView==='LEG B'||performerRef.current===2?2:2;
-     const simFrame=buildSimulatedLowerBodyFrame(now,simActionRef.current,simPerformers);
-     const frame=livePoseA
-      ?{
-        performers:performerRef.current===2&&simFrame.performers[1]?[livePoseA,simFrame.performers[1]]:[livePoseA],
-        crossing:!identitySafeRef.current,
-        ambiguous:!identitySafeRef.current,
-        source:'live' as const,
-        actionLabel:'LIVE TRACKING · LOWER BODY'
-       }
-      :simFrame;
+     const liveMode=cameraOnRef.current&&bodySelectedRef.current&&!experimentSourceRef.current;
+     const raw=frameRefLive.current.current,identity=routerRef.current.previewStatus;
+     const fresh=raw.source==='camera'&&raw.time>0&&now>=raw.time&&now-raw.time<350;
+     const livePerformers=liveMode&&fresh?(['A','B'] as const).flatMap(id=>{
+      if(performerRef.current===1){
+       if(id!=='A'||!raw.tracked)return [];
+       const pose=extractLiveLowerBodyPose(raw.pose,id);return pose?[pose]:[];
+      }
+      if(identity.ambiguous||identity.observedFrameTime!==raw.time)return [];
+      const index=identity.poseIndices[id],pose=index===null?null:extractLiveLowerBodyPose(raw.poses?.[index],id);
+      return pose?[pose]:[];
+     }):[];
+     const simPerformers:1|2=activeView==='SPLIT'||activeView==='LEG B'||performerRef.current===2?2:1;
+     const frame=liveMode?{
+       performers:livePerformers,crossing:identity.ambiguous,ambiguous:identity.ambiguous,
+       source:'live' as const,actionLabel:livePerformers.length?'LIVE TRACKING · LOWER BODY':'LIVE · MENUNGGU POSE'
+      }:buildSimulatedLowerBodyFrame(now,simActionRef.current,simPerformers);
      const lb=lowerBodyRef.current;
      renderLowerBodyStageMonitor(ctx,preview.width,preview.height,{
       view:activeView,
