@@ -210,7 +210,7 @@ export function DualSurfaceRoutingPanel({
   videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
   router={router} experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={liveSourceKind}
   videoFloorCalibration={videoFloorCalibration}
-  mapOutputSaved={selectedOutputSaved}
+  mapOutputSaved={selectedOutputSaved} allowLegacyCameraEditing={sourceKind==='camera'}
   performerCount={performerCount} cameraOn={cameraOn}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
@@ -221,7 +221,7 @@ export function DualSurfaceRoutingPanel({
    allBlackout();setProofs({body:null,floor:null});
    setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
    if(floorTracker?.isCalibrated)floorTracker.revoke('Bidang kamera berubah. Terapkan ulang empat sudut.');
-   router?.reset();
+   router?.resetCalibrated();
   }}
   onBeginProjectorEdit={()=>{
    onMapOutputInvalidated?.(selected);
@@ -238,7 +238,7 @@ export function DualSurfaceRoutingPanel({
     });
     allBlackout();
     floorTracker.configure(config,binding);floorTracker.confirm(true);
-    router?.reset();
+    router?.resetCalibrated();
     setProofs({body:null,floor:null});
     setRequested({body:'blackout',floor:'blackout'});setArmed({body:false,floor:false});
     setMessage('Bidang kamera disimpan. Uji output fisik perlu diulang.');

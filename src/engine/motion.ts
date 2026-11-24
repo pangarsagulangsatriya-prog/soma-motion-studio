@@ -33,15 +33,20 @@ export class MotionProcessor {
    f.features.leftX=l?screenX(l[9].x):.5;f.features.leftY=l?1-l[9].y:.5;
    if(l) f.features.spread=clamp(distance(r[9],l[9])/.8);
   }
-  const body=f.pose;const useBody=s.input==='body';
-  if(body.length&&[11,12,23,24].every(i=>(body[i].visibility??1)>.55)){
+  const useBody=s.input==='body';
+  // Detector order is not actor identity. An occluded first pose must not hide a valid second pose.
+  const validTorso=(body:Landmark[])=>body.length>=33&&[11,12,23,24].every(i=>Number.isFinite(body[i].x)&&Number.isFinite(body[i].y)&&(body[i].visibility??1)>.55);
+  const primary=useBody?(p?.landmarks.findIndex(validTorso)??-1):0;
+  if(primary>=0&&p?.landmarks[primary])f.pose=p.landmarks[primary];
+  const body=f.pose;
+  if(validTorso(body)){
    const midpoint=(a:number,b:number):Landmark=>({x:(body[a].x+body[b].x)/2,y:(body[a].y+body[b].y)/2,z:(body[a].z+body[b].z)/2});
    const sh=midpoint(11,12),hip=midpoint(23,24);const torso=Math.max(distance(sh,hip),.08);
    const visible=(i:number)=>(body[i].visibility??1)>.5;
    f.quality=[11,12,23,24].reduce((a,i)=>a+(body[i].visibility??1),0)/4;
    f.features.lean=clamp(.5+(s.mirror?-1:1)*(sh.x-hip.x)/torso);
    f.features.armRaise=(visible(15)&&visible(16))?clamp(((sh.y-body[15].y)+(sh.y-body[16].y))/(2*torso)+.25):0;
-   const world=p?.worldLandmarks?.[0];
+   const world=p?.worldLandmarks?.[Math.max(0,primary)];
    f.features.bend=world?clamp(Math.abs((world[11].z+world[12].z-world[23].z-world[24].z)/2)/.45):clamp(1-(hip.y-sh.y)/torso);
    f.features.leftElbow=visible(13)&&visible(15)?angle(body[11],body[13],body[15])/180:0;f.features.rightElbow=visible(14)&&visible(16)?angle(body[12],body[14],body[16])/180:0;f.features.leftKnee=visible(25)&&visible(27)?angle(body[23],body[25],body[27])/180:0;f.features.rightKnee=visible(26)&&visible(28)?angle(body[24],body[26],body[28])/180:0;
    f.features.squat=[25,26,27,28].every(visible)?clamp((170-(angle(body[23],body[25],body[27])+angle(body[24],body[26],body[28]))/2)/85):0;

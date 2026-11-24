@@ -13,10 +13,10 @@ const wait=(signal:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  const cancel=()=>{clearTimeout(timer);reject(Error('Pairing dibatalkan.'));};
  signal.addEventListener('abort',cancel,{once:true});
 });
-export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
+export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual,engineError}:{
  onStream:(stream:MediaStream)=>Promise<void>|void;
  onDisconnect:()=>void;
- onUseManual?:()=>void;
+ onUseManual?:()=>void;engineError?:string;
 }){
  // GitHub Pages cannot run /api/phone-pair. Show a real scan-able link to
  // the hosted phone sender, and explicitly continue via manual SDP exchange.
@@ -58,6 +58,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
   if(feedback){setStatus('Pairing dihentikan. Buat QR baru untuk menyambung.');setPhase('idle');}
  };
  useEffect(()=>()=>terminate(false),[]);
+ useEffect(()=>{if(engineError&&streamRef.current){terminate(false);setPhase('error');setStatus(engineError);}},[engineError]);
  const start=async()=>{
   terminate(false);
   const version=++generation.current;
@@ -104,6 +105,8 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
        terminate(false);
       }
      },850);
+     let videoAccepted=false;
+     const markReady=()=>{if(generation.current!==version||pcRef.current!==pc||!videoAccepted||pc.connectionState!=='connected')return;setPhase('connected');setRoom(null);setStatus('Video HP diterima oleh engine SOMA.');};
      pc.addEventListener('track',event=>{
       if(pcRef.current!==pc||generation.current!==version)return;
       const stream=event.streams[0]??new MediaStream([event.track]);
@@ -113,7 +116,9 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
        setPhase('error');setStatus('Track video HP berhenti. Periksa kamera dan sambungkan ulang.');
        terminate(false);
       },{once:true});
-      void Promise.resolve(callback.current.onStream(stream)).catch(e=>{
+      setPhase('negotiating');setStatus('Menerima frame video dan memuat pelacak…');
+      void Promise.resolve(callback.current.onStream(stream)).then(()=>{if(generation.current!==version)return;videoAccepted=true;markReady();}).catch(e=>{
+       if(generation.current!==version)return;
        setStatus('SOMA tidak dapat mengolah video HP: '+String(e));setPhase('error');
        terminate(false);
       });
@@ -124,8 +129,8 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
        reportPhoneTransport(telemetryOwner,{state:'connected',
         reason:'WebRTC QR tersambung; statistik video dipantau.'});
        void samplePhonePeer(telemetryOwner,pc,'qr');
-       setPhase('connected');setRoom(null);
-       setStatus('Kamera HP tersambung. Kalibrasi ulang lantai sebelum proyeksi.');
+       if(!videoAccepted){setPhase('negotiating');setStatus('Jalur HP tersambung · menunggu frame video dan pelacak.');}
+       markReady();
       }else if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
        reportPhoneTransport(telemetryOwner,{state:'interrupted',
         reason:'Koneksi HP terputus; ulangi pairing dan kalibrasi.'});
@@ -183,7 +188,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
  }
  return <div className="soma-auto-pair" data-phase={phase}
   aria-label="QR pairing kamera HP">
-  {!room&&phase!=='connected'&&<button type="button"
+  {!room&&phase!=='connected'&&phase!=='negotiating'&&<button type="button"
    className="soma-setup-primary soma-track-create-qr"
    onClick={()=>void start()} disabled={phase==='creating'}
    aria-label={phase==='creating'?'Menyiapkan kode QR':'Tampilkan QR kamera HP'}>
@@ -209,6 +214,7 @@ export function AutomaticPhoneReceiver({onStream,onDisconnect,onUseManual}:{
      aria-label="Buat ulang kode QR"><RefreshCw size={15} aria-hidden="true"/></button>
    </div>
   </div>}
+  {phase==='negotiating'&&!room&&<button type="button" className="soma-setup-secondary" onClick={()=>terminate()}>Batalkan sambungan</button>}
   {phase==='connected'&&<div className="soma-track-pair-connected" role="status">
    <Check size={15} aria-hidden="true"/> HP tersambung
    <button type="button" className="soma-setup-secondary"

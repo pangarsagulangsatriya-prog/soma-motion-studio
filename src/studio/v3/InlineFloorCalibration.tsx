@@ -39,7 +39,7 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
  const dirty=useCallback(()=>{
   onBlackout();
   if(tracker.isCalibrated)tracker.revoke('Bidang lantai diubah. Terapkan dan konfirmasi ulang.');
-  router.reset();
+  router.resetCalibrated();
  },[onBlackout,tracker,router]);
  const place=useCallback((x:number,y:number)=>{
   if(!cameraReady)return;
@@ -83,7 +83,7 @@ export function InlineFloorCalibration({videoRef,tracker,router,cameraOn,bodySel
    if(!key||tracker.boundCamera!==key)
     throw Error('Kamera atau resolusi berubah. Terapkan ulang empat titik.');
    if(!tracker.isCalibrated)throw Error('Terapkan empat titik terlebih dahulu.');
-   onBlackout();tracker.confirm(true);router.reset();
+   onBlackout();tracker.confirm(true);router.resetCalibrated();
    setMessage('Kalibrasi dikonfirmasi. Langkahkan kaki untuk memeriksa Contact.');
   }catch(e){setMessage(e instanceof Error?e.message:'Gagal mengonfirmasi lantai.');}
  };

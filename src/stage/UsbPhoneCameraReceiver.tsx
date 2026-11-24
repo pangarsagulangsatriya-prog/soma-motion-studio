@@ -9,8 +9,8 @@ const LAST_CAMERA_LABEL_KEY='soma-universal-camera-label-v1';
 
 /** Compact universal device picker. CameraTracker stays in App; this component
  * only owns capture, permissions, and release of the raw MediaStream. */
-export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
- onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;
+export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone',engineError}:{
+ onStream:(stream:MediaStream)=>Promise<void>|void;onDisconnect:()=>void;engineError?:string;
  intent?:CameraIntent;
 }){
  const [devices,setDevices]=useState<MediaDeviceInfo[]>([]);
@@ -35,6 +35,7 @@ export function UsbPhoneCameraReceiver({onStream,onDisconnect,intent='phone'}:{
   endedHandler.current=null;
   if(mounted.current)setVideoInfo('');
  },[]);
+ useEffect(()=>{if(engineError&&active.current){stop(true);setPhase('error');setMessage(engineError);}},[engineError,stop]);
  const refresh=useCallback(async()=>{
   if(!navigator.mediaDevices?.enumerateDevices){
    setPhase('error');setMessage('Browser belum mendukung daftar kamera.');return;

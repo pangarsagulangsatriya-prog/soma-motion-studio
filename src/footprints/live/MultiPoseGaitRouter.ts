@@ -47,7 +47,10 @@ export class MultiPoseGaitRouter{
  }
  get activeMode(){return this.mode;}
  reset(){
-  this.identity.reset();this.previewFrame=null;this.previewResult=null;this.previewIndices={A:null,B:null};this.previewEpoch++;this.analyzers.clear();this.predictor=null;
+  this.identity.reset();this.previewFrame=null;this.previewResult=null;this.previewIndices={A:null,B:null};this.previewEpoch++;this.resetCalibrated();
+ }
+ /** Geometry changes invalidate physical gait samples, not observed camera identities. */
+ resetCalibrated(){this.analyzers.clear();this.predictor=null;
   this.visible=[];this.ambiguous=false;this.poseIndices={A:null,B:null};
   this.observedFrameTime=null;this.lastTimestamp=0;this.lastWallMs=0;
   this.reason='Identitas direset; tempatkan kedua tubuh dalam bingkai.';this.invalidate();
