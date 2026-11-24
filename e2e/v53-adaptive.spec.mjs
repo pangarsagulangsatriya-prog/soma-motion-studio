@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 const red={name:'archive-red.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#d02020"/></svg>')};
 test('V5.3 adaptive settings preserve actual output and cue',async({page})=>{
- await page.goto('/?workspace=nodes-v53');await expect(page.locator('[data-version="5.3"]')).toBeVisible();
+ await page.goto('/?workspace=nodes');await expect(page.locator('[data-version="5.3"]')).toBeVisible();
  await expect(page.locator('.adaptive-inspector')).toBeHidden();
  await page.locator('[data-node="archive"] .sw-node-title').click();
  await expect(page.locator('.adaptive-inspector')).toBeHidden();
@@ -30,4 +30,15 @@ test('V5.3 quick decay shared with inspector and contextual capture',async({page
 test('V5.3 viewport safety controls and no document scroll',async({page})=>{
  await page.goto('/?workspace=nodes-v53');
  for(const [width,height] of [[1440,900],[1280,800],[1024,768],[1280,600],[390,844]]){await page.setViewportSize({width,height});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1)).toBe(true);await expect(page.getByRole('button',{name:'Blackout semua output'})).toBeInViewport();await expect(page.getByRole('button',{name:'GO',exact:true})).toBeInViewport();}
+});
+
+test('V5.3 default route and explicit V5.2 fallback',async({page})=>{
+ for(const [route,version] of [['nodes','5.3'],['nodes-v53','5.3'],['nodes-v52','5.2']]){
+  await page.goto('/?workspace='+route);
+  await expect(page.locator('.soma-signal')).toHaveAttribute('data-version',version);
+  if(version==='5.3')await expect(page.locator('.adaptive-inspector')).toBeHidden();
+ }
+ await page.getByLabel('Workspace settings').click();
+ await page.getByRole('button',{name:'Adaptive V5.3',exact:true}).click();
+ await expect(page.locator('.soma-signal')).toHaveAttribute('data-version','5.3');
 });
