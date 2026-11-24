@@ -1,5 +1,6 @@
 /** Watch video arrival independently from AI inference. A missing body is not a broken camera. */
 export class CameraLiveness {
+ constructor(readonly timeoutMs=8000){}
  private lastTime=-1;
  private lastArrival:number|null=null;
  sample(videoTime:number,now:number,visible=true):boolean{
@@ -7,6 +8,6 @@ export class CameraLiveness {
   if(this.lastArrival===null||videoTime!==this.lastTime){
    this.lastArrival=now;this.lastTime=videoTime;return false;
   }
-  return now-this.lastArrival>=8000;
+  return now-this.lastArrival>=this.timeoutMs;
  }
 }

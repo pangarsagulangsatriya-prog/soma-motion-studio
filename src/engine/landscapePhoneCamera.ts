@@ -3,6 +3,7 @@
  * surface before entering the existing CameraTracker. CSS-only rotation would
  * leave pose landmarks and calibrated floor coordinates in portrait space.
  */
+import {CameraLiveness} from './cameraLiveness.ts';
 import {isPortraitStreamDimensions} from './cameraConstraints.ts';
 import {waitForDecodedVideo} from './decodedVideo.ts';
 
@@ -62,10 +63,12 @@ export async function createLandscapePhoneCamera(input:MediaStream,
  let raf=0,stopped=false,output:MediaStream|null=null,mutedTimer:ReturnType<typeof setTimeout>|null=null;
  let overrideRotation:LandscapeRotation|null=null,mirrored=false;
  let frameCallbackId:number|null=null,frameWatchdog:ReturnType<typeof setInterval>|null=null;
- let lastDecodedFrame=performance.now();
+ let decodedSerial=0;
+ const decodedWatch=new CameraLiveness(3200);
+ const onVisibility=()=>{decodedWatch.sample(decodedSerial,performance.now(),false);};
  const onEnded=()=>{if(stopped)return;stop();onSourceEnded();};
  const onMute=()=>{if(mutedTimer)clearTimeout(mutedTimer);
-  mutedTimer=setTimeout(()=>{if(track.muted)onEnded();},1500);};
+  mutedTimer=setTimeout(()=>{if(track.muted&&document.visibilityState==='visible')onEnded();},3200);};
  const onUnmute=()=>{if(mutedTimer)clearTimeout(mutedTimer);mutedTimer=null;};
  const stop=()=>{
   if(stopped)return;
@@ -73,6 +76,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   if(frameCallbackId!==null)source.cancelVideoFrameCallback?.(frameCallbackId);
   if(frameWatchdog)clearInterval(frameWatchdog);frameWatchdog=null;
   if(mutedTimer)clearTimeout(mutedTimer);mutedTimer=null;
+  document.removeEventListener('visibilitychange',onVisibility);
   track.removeEventListener('ended',onEnded);
   track.removeEventListener('mute',onMute);
   track.removeEventListener('unmute',onUnmute);
@@ -80,6 +84,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   source.pause();source.srcObject=null;source.remove();
   input.getTracks().forEach(t=>t.stop());
  };
+ document.addEventListener('visibilitychange',onVisibility);
  track.addEventListener('ended',onEnded);
  track.addEventListener('mute',onMute);
  track.addEventListener('unmute',onUnmute);
@@ -90,19 +95,25 @@ export async function createLandscapePhoneCamera(input:MediaStream,
   // requestVideoFrameCallback confirms newly decoded frames, not merely a live track.
   // In hidden tabs a browser can throttle callbacks: avoid false disconnection there.
   if(typeof source.requestVideoFrameCallback==='function'){
-   const onDecoded=()=>{lastDecodedFrame=performance.now();
+   const onDecoded=()=>{decodedSerial++;
     if(!stopped)frameCallbackId=source.requestVideoFrameCallback(onDecoded);};
    frameCallbackId=source.requestVideoFrameCallback(onDecoded);
-   frameWatchdog=setInterval(()=>{
-    if(!stopped&&document.visibilityState==='visible'&&performance.now()-lastDecodedFrame>3200)onEnded();
-   },550);
   }
-  let lastPaint=0,lastSourceTime=-1;
+  // Start a fresh grace window after a background tab becomes visible.
+  // Browsers without decoded-frame callbacks use media time as a fallback.
+  frameWatchdog=setInterval(()=>{
+   if(stopped)return;
+   const progress=typeof source.requestVideoFrameCallback==='function'?decodedSerial:source.currentTime;
+   if(decodedWatch.sample(progress,performance.now(),document.visibilityState==='visible'))onEnded();
+  },550);
+  let lastPaint=0,lastSourceTime=-1,lastDrawnSerial=-1;
   const manualCapture=()=>output?.getVideoTracks()[0] as (MediaStreamTrack&{requestFrame?:()=>void})|undefined;
   const paint=(time:number)=>{
    if(stopped)return;
    raf=requestAnimationFrame(paint);
-   if(time-lastPaint<1000/PHONE_LANDSCAPE_FPS||source.readyState<2||source.currentTime===lastSourceTime)return;
+   const hasDecodedCallback=typeof source.requestVideoFrameCallback==='function';
+   if(time-lastPaint<1000/PHONE_LANDSCAPE_FPS||source.readyState<2||
+     (hasDecodedCallback?decodedSerial===lastDrawnSerial:source.currentTime===lastSourceTime))return;
    lastPaint=time;
    const sw=source.videoWidth,sh=source.videoHeight;
    if(!sw||!sh)return;
@@ -112,7 +123,7 @@ export async function createLandscapePhoneCamera(input:MediaStream,
    if(p.rotation)ctx.rotate(p.rotation*Math.PI/180);
    if(mirrored)ctx.scale(-1,1);
    ctx.drawImage(source,-sw*p.scale/2,-sh*p.scale/2,sw*p.scale,sh*p.scale);
-   ctx.restore();lastSourceTime=source.currentTime;manualCapture()?.requestFrame?.();
+   ctx.restore();lastSourceTime=source.currentTime;lastDrawnSerial=decodedSerial;manualCapture()?.requestFrame?.();
   };
   // Paint the first frame immediately so downstream video never starts blank.
   output=canvas.captureStream(PHONE_LANDSCAPE_FPS);
