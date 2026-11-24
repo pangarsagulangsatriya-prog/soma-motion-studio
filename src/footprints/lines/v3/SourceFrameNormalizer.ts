@@ -109,7 +109,7 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
    samples,ready:true,paused:false,seeking:false,
    status:samples.length?'Track · '+samples.length+' kaki terbaca':'Track · belum mendeteksi kaki'};
  }
- if(!f.tracked||!f.poses?.length)return empty(sourceKind,sourceKey,f.time,nowMs,'Track · belum mendeteksi tubuh');
+ if(!f.poses?.length)return empty(sourceKind,sourceKey,f.time,nowMs,'Track · belum mendeteksi tubuh');
  if(status.ambiguous||status.observedFrameTime!==f.time){
   return {source:sourceKind,sourceKey,frameMs:f.time,presentationMs:nowMs,
    samples:[],ready:true,paused:false,seeking:false,status:'Track · identitas A/B belum stabil'};
