@@ -2,7 +2,33 @@
  * Tracks the existing observed heel/toe samples; never produces a contact event,
  * writes to the physical FLOOR raster, or changes Map/Perform safety gates.
  */
-import type {FootLineSample} from '../../footprints/lines/FootLineSampleAdapter.ts';
+import {footSamplesFromLive,footSamplesFromPose,type FootLineSample} from '../../footprints/lines/FootLineSampleAdapter.ts';
+import type {MotionFrame} from '../../engine/types.ts';
+import type {MultiPoseStatus} from '../../footprints/live/MultiPoseGaitRouter.ts';
+
+/** Software only: collect both observed performers, plus anonymous diagnostic
+ * points for unmatched poses. Never pass these samples to physical output or audio. */
+export function composeLiveFootSamples(frame:MotionFrame,status:MultiPoseStatus,count:1|2,
+ source:'camera'|'phone',sessionId:string):FootLineSample[]{
+ if(frame.source!=='camera'||!Number.isFinite(frame.time)||frame.time<=0)return [];
+ if(count===1)return footSamplesFromLive(frame,status,count,source,sessionId,0,'A');
+ const matched=!status.ambiguous&&status.observedFrameTime===frame.time;
+ const known=new Set<number>();
+ const result:FootLineSample[]=[];
+ if(matched)for(const id of ['A','B'] as const){
+  const index=status.poseIndices[id];
+  if(index===null||known.has(index)||!frame.poses?.[index])continue;
+  known.add(index);
+  result.push(...footSamplesFromLive(frame,status,2,source,sessionId,0,id));
+ }
+ for(const [index,pose] of (frame.poses??[]).slice(0,2).entries()){
+  if(known.has(index))continue;
+  result.push(...footSamplesFromPose(pose,{sessionId,generation:0,source,
+   actorId:'unassigned-'+index,atMs:frame.time,coordinateBasis:'image-2d'}));
+ }
+ return result;
+}
+
 import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
 
 export type ComposePoseMark={actorId:string;foot:'left'|'right';x:number;y:number;
@@ -20,6 +46,8 @@ export function useComposeFloorPoseFallback(input:{
   input.timelineMode==='live'&&input.verifiedImprints===0;
 }
 const COLORS={left:'#f5b77b',right:'#9be9c9'} as const;
+const anonymous=(id:string)=>id.startsWith('unassigned-');
+const markColor=(m:ComposePoseMark)=>m.actorId==='A'?'#f18d82':m.actorId==='B'?'#9bcce9':COLORS[m.foot];
 const valid=(s:FootLineSample)=>Number.isFinite(s.atMs)&&s.atMs>=0&&
  Number.isFinite(s.x)&&Number.isFinite(s.y)&&s.x>=0&&s.x<=1&&s.y>=0&&s.y<=1&&
  s.confidence>=.5;
@@ -50,6 +78,8 @@ export class ComposeFloorPosePreview{
     x:sample.x,y:sample.y,atMs:nowMs,
     ...(Number.isFinite(sample.headingRad)?{headingRad:sample.headingRad}:{})};
    this.active.set(id,point);
+   // Raw detection indices are not identities: show current points only.
+   if(anonymous(sample.actorId))continue;
    const previous=[...this.marks].reverse().find(m=>m.actorId===point.actorId&&m.foot===point.foot);
    const traveled=previous?distancePx(point,previous):Infinity;
    // One first footprint, then distance-spaced imprints; never stamp on every frame.
@@ -78,16 +108,23 @@ export class ComposeFloorPosePreview{
    paintAuthenticFootprint(ctx,{side:mark.foot,
     x:mark.x*width,y:mark.y*height,
     headingRad:mark.headingRad,
-    widthPx,lengthPx:length,alpha,color:COLORS[mark.foot]});
+    widthPx,lengthPx:length,alpha,color:markColor(mark)});
   }
   // Show the latest observed sole at full opacity even while the performer stands still.
-  for(const mark of current)paintAuthenticFootprint(ctx,{side:mark.foot,
-   x:mark.x*width,y:mark.y*height,headingRad:mark.headingRad,
-   widthPx,lengthPx:length,alpha:.96,color:COLORS[mark.foot]});
+  for(const mark of current){
+   if(anonymous(mark.actorId)){
+    ctx.globalAlpha=.85;ctx.strokeStyle='#c4cac6';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(mark.x*width,mark.y*height,Math.max(4,7*scale),0,Math.PI*2);ctx.stroke();
+    continue;
+   }
+   paintAuthenticFootprint(ctx,{side:mark.foot,
+    x:mark.x*width,y:mark.y*height,headingRad:mark.headingRad,
+    widthPx,lengthPx:length,alpha:.96,color:markColor(mark)});
+  }
   ctx.globalCompositeOperation='source-over';
   ctx.globalAlpha=1;ctx.fillStyle='#d5e9dd';
   ctx.font=`${Math.max(12,Math.round(12*scale))}px system-ui,sans-serif`;
-  ctx.fillText('JEJAK 2D · PREVIEW',16*scale,26*scale);
+  ctx.fillText(current.some(m=>anonymous(m.actorId))?'POSISI KAKI 2D · A/B BELUM PASTI':'JEJAK 2D · PREVIEW',16*scale,26*scale);
   ctx.restore();
   return true;
  }
