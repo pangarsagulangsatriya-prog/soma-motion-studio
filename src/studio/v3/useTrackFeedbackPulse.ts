@@ -29,7 +29,7 @@ export function useTrackFeedbackPulse(input:Input):TrackFeedback{
   const now=performance.now();
   const frame=frameRef.current;
   const live=selection==='webcam'||selection==='phone';
-  const validFrame=live&&cameraOn&&bodySelected&&frameFresh&&
+  const validFrame=live&&cameraOn&&bodySelected&&(frameFresh||performerCount===2&&!!frame.poses?.length)&&
    frame.source==='camera'&&frame.time>0&&now>=frame.time&&now-frame.time<450;
   return deriveTrackFeedback({
    selection,phase,cameraOn,frameFresh:live?validFrame:frameFresh,
