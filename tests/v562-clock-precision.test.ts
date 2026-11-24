@@ -42,3 +42,11 @@ test('live contacts use capture-domain time and stale history never enters audio
  const contacts=engine.recent.filter(x=>x.kind==='contact');
  assert.equal(contacts.length,1);assert.equal(contacts[0].atMs,11100);
 });
+
+test('simultaneous feet keep the same capture timestamp',()=>{
+ const tracker=floor();
+ const base={x:.25,y:.8,heading:0,t:12000.25,join:false,stamp:true,phase:'stance' as const,confidence:.95,relativeSpeed:0};
+ tracker.ingest({...base,side:0},0,16/9,binding,'A');
+ tracker.ingest({...base,x:.45,side:1},1,16/9,binding,'B');
+ assert.deepEqual(tracker.session?.events.map(e=>e.timestampMs),[12000.25,12000.25]);
+});
