@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'src/studio/v51/**'
+      - 'src/studio/v53/**'
+      - 'tests/v53-adaptive.test.ts'
+      - 'e2e/v53-adaptive.spec.mjs'
       - 'src/main.tsx'
       - 'tests/v51-signal.test.ts'
       - 'e2e/v51-signal.spec.mjs'
@@ -23,7 +26,7 @@ jobs:
       - run: npm run build -- --mode githubpages
       - run: npm install --no-save --package-lock=false @playwright/test@1.55.1
       - run: npx playwright install chromium
-      - run: npx playwright test -c e2e/playwright.config.mjs e2e/v51-signal.spec.mjs --project=wide-1440
+      - run: npx playwright test -c e2e/playwright.config.mjs e2e/v51-signal.spec.mjs e2e/v53-adaptive.spec.mjs --project=wide-1440
       - uses: actions/upload-artifact@v4
         if: always()
         with:
