@@ -384,10 +384,14 @@ export function LineTrailsV3Stage(props:StageProps){
         brushStore.append(dabs,event.id);
        }
       }
-      if(input.source!=='demo'&&p.motionEvents)
-       p.impressions.ingestContacts(p.motionEvents(),input.source,input.frameMs);
       lastFrameMs=input.frameMs;lastGoodAt=now;
       lastStale=false;
+     }
+     // Contact bus is fed at an independent cadence from pose inference.
+     // Poll even when the same pose is held, otherwise a late contact is lost.
+     if(input.ready&&!input.paused&&input.source!=='demo'&&p.motionEvents){
+      const session=p.motionSession?.();
+      p.impressions.ingestContacts(p.motionEvents().filter(e=>!session||e.sessionId===session),input.source,input.frameMs);
      }
      if(input.paused){
       if(!lastPaused)cutUpper('pause');

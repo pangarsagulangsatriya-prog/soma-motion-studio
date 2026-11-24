@@ -39,6 +39,7 @@ type Last={x:number;y:number;atMs:number};
 export class FloorInteractionEngine{
  private source:FloorInteractionSource|null=null;
  private events:FloorInteractionEvent[]=[];
+ private canonical:FootMotionEventV2[]=[];
  private actorPositions=new Map<string,Last>();
  private lastPresenceEmit=new Map<string,number>();
  private seenContacts=new Set<string>();
@@ -53,12 +54,12 @@ export class FloorInteractionEngine{
  get activeSource(){return this.source;}
  get currentSessionId(){return this.sessionId;}
  get canonicalRecent():readonly FootMotionEventV2[]{
-  return this.events.map(event=>toFootMotionEvent(event,this.sessionId,this.epoch));
+  return this.canonical;
  }
  reset(source:FloorInteractionSource|null=null){
   this.epoch++;
   this.sessionId='floor-session-'+this.instanceId+'-'+this.epoch;
-  this.source=source;this.events=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
+  this.source=source;this.events=[];this.canonical=[];this.actorPositions.clear();this.lastPresenceEmit.clear();
   this.seenContacts.clear();this.seenOrder=[];
   this.seenPhases.clear();this.seenPhaseOrder=[];
   this.serial=0;
@@ -66,7 +67,10 @@ export class FloorInteractionEngine{
  private push(part:Omit<FloorInteractionEvent,'id'>){
   const event={...part,id:'interaction-'+(++this.serial)} as FloorInteractionEvent;
   this.events.push(event);
-  if(this.events.length>480)this.events.splice(0,this.events.length-480);
+  this.canonical=[...this.canonical,toFootMotionEvent(event,this.sessionId,this.epoch)].slice(-480);
+  if(this.events.length>480){
+   const excess=this.events.length-480;this.events.splice(0,excess);
+  }
   return event;
  }
  private accepts(o:FloorObservation):boolean{

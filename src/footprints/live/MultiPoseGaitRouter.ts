@@ -148,7 +148,7 @@ export class MultiPoseGaitRouter{
    if(index<0||index>=2)continue;
    this.poseIndices[id]=index;
   }
-  if(this.poseIndices.A!==null&&this.poseIndices.B!==null)
+  if(this.poseIndices.A!==null||this.poseIndices.B!==null)
    this.observedFrameTime=frame.time;
   for(const {id,pose} of result.assignments){
    let analyzer=this.analyzers.get(id);
