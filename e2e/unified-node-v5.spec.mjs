@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 test('unified canvas: cue switching, missing source, real local media pixels and per-surface blackout',async({page})=>{
- await page.goto('/?workspace=nodes');
+ await page.goto('/?workspace=nodes-v5');
  await expect(page.locator('.soma-node-v5')).toBeVisible();
  await expect(page.locator('.nv-node')).toHaveCount(17);
  await expect(page.locator('.nv-node.camera')).toHaveCount(3);
