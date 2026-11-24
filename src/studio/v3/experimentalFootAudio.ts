@@ -39,7 +39,7 @@ export function texturePCM(id:TextureId,controls:TextureControls,event:{kind:Tex
   }
   const attack=Math.min(1,t/(contact?.004:.012)),release=Math.min(1,(dur-t)/.025),decay=contact?Math.exp(-u*(id==='metalSkin'||id==='erosion'?2.2:4.1)):1;
   const gain=(contact?.52:.20+speed*.24)*(slide?1.1:1),shaped=Math.tanh(v*(1+drive*5));
-  out[i]=clamp(shaped*attack*release*decay*gain,-.75,.75);
+  out[i]=i===0||i===n-1?0:clamp(shaped*attack*release*decay*gain,-.75,.75);
  }
  return out;
 }
