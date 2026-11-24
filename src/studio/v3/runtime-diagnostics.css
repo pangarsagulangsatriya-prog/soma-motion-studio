@@ -1,0 +1,8 @@
+.soma-runtime-diagnostics{border:1px solid #395240;border-radius:7px;padding:8px 10px;color:#b9cdbb;font-size:11px;min-width:0}
+.soma-runtime-diagnostics summary{cursor:pointer;color:#d8e7d5;font-weight:600;padding:4px 0}
+.soma-runtime-content{display:grid;gap:8px;padding-top:6px}
+.soma-runtime-reason{margin:0;color:#e0c69c;line-height:1.4}
+.soma-runtime-content dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 9px;margin:0;font-variant-numeric:tabular-nums}
+.soma-runtime-content dt{color:#a5b8a7}.soma-runtime-content dd{margin:0;text-align:right;color:#e1ece0}
+.soma-runtime-actor{display:flex;flex-wrap:wrap;gap:5px 10px;border-top:1px solid #334739;padding-top:5px}
+.soma-runtime-actor strong{width:100%}.soma-runtime-content small{font-size:10px;line-height:1.4;color:#a0b3a1}
