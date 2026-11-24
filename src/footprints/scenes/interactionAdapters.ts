@@ -80,7 +80,7 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
   performerCount===2&&!idsValid)return;
  const visibleActors:Set<string>=performerCount===1?new Set(['performer-1']):
   new Set(identity.visible.filter(id=>identity.poseIndices[id]!==null));
- for(const e of tracker.session?.events??[]){
+ for(const e of tracker.recentEventsSince(nowMs-450)){
   if(e.source!=='camera'||e.confidence<.55||
    !visibleActors.has(e.performerId)||
    e.timestampMs>frame.time+70||e.timestampMs<nowMs-450)continue;
@@ -90,7 +90,7 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
     x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
     basis:'calibrated-estimate',verified:true,headingRad:e.headingRad});
   }else if(e.kind==='move'||e.kind==='release'){
-   engine.motionPhase({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
+   engine.motionPhase({source,eventId:`${tracker.sessionEpoch}:${e.id}`,actorId:e.performerId,foot:e.foot,
     kind:e.kind==='move'?'slide':'release',
     x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
     basis:'calibrated-estimate',headingRad:e.headingRad});
