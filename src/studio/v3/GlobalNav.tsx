@@ -21,12 +21,12 @@ const labsIcons:Record<LabsId,typeof Footprints>={
 };
 
 export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',onStageTwoLab,onFootprints,onStageTwo,onInstrument,onArchive,
- onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,cameraHubActive=false,captureActive=false,onF3Capture,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
+ onProjection,onPreset,onPerform,onHelp,onBlackout,onCameraHub,onNodeCanvas,cameraHubActive=false,captureActive=false,onF3Capture,onStageTool,onSoundLab,onHydraLab,onCaptureLab,preset,sourceLabel,trackingLabel,outputLabel,sourceSelection,sourceBusy,onSelectSource}:{
  workspace:Workspace;scene:SceneId;perform:boolean;stageTwo?:boolean;stageTwoLab?:StageTwoLabId;
  onStageTwoLab?:(id:StageTwoLabId)=>void;onFootprints:()=>void;onStageTwo:()=>void;
  onInstrument:(scene:LegacyScene)=>void;onArchive:()=>void;onProjection:()=>void;
  onPreset:()=>void;onPerform:()=>void;onHelp:()=>void;onBlackout:()=>void;
- onCameraHub:()=>void;cameraHubActive?:boolean;captureActive?:boolean;onF3Capture:()=>void;
+ onCameraHub:()=>void;onNodeCanvas?:()=>void;cameraHubActive?:boolean;captureActive?:boolean;onF3Capture:()=>void;
  onStageTool:(tool:StageNavigationTool)=>void;
  onSoundLab:()=>void;onHydraLab:()=>void;onCaptureLab:()=>void;
  selectedTool:StageNavigationTool;preset:string;
@@ -178,6 +178,7 @@ export function GlobalNav({workspace,scene,stageTwo=false,stageTwoLab='liquid',o
     <span title="Status koneksi output">{outputLabel}</span>
    </div>}
    <div className="v3-global-actions">
+    {!stageTwo&&onNodeCanvas&&<button type="button" className="v3-preset" title="Unified Node Canvas · beta" onClick={onNodeCanvas}><Network size={15}/><span>Node Canvas</span></button>}
     {stageTwo&&<button ref={labsRef} type="button" className="soma-header-labs-btn"
      aria-label="Instrumen Stage 2" title="Cari semua instrumen Stage 2"
      aria-haspopup="dialog" aria-expanded={labsOpen} aria-controls="soma-labs-panel"
