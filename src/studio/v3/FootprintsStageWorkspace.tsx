@@ -195,7 +195,7 @@ export function FootprintsStageWorkspace({
   interactionEngineRef.current.reset(interactionSource);
   touchPointers.current.clear();
   setFloorInteractionStats({actors:0,contacts:0,events:0});
- },[interactionSource,experimentClip,sourceStatus.phase]);
+ },[interactionSource,experimentClip,sourceStatus.phase,tracker.sessionEpoch]);
  // The same preview event bus accepts all four source adapters and Touch.
  // It draws an independent SOFTWARE overlay; existing FloorSession/projector
  // raster and its hardware authorization are never modified.
