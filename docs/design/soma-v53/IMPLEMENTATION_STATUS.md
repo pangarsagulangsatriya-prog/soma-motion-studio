@@ -1,3 +1,5 @@
 # V5.3 implementation increment 1
 Opt-in route: ?workspace=nodes-v53. Current ?workspace=nodes remains V5.2. Existing runtimes reused. Floating/docked/closed Inspector, saved geometry and dock preferences, independent monitor dock, contextual node settings, progressive capture prerequisites, shared quick decay, focus and minimap controls, monitor state metadata. Escape remains emergency blackout.
 Partial #279–#287; #288 QA pending. No full capability registry, all-node quick controls, exact crop verification upgrade, optical mapping, camera inference overhaul, replay timeline, physical acceptance, or arbitrary graph routing. Panel exit/dock animation and advanced port hit targets require additional polish. Do not close issues without evidence. Vercel config unchanged; Pages only.
+## Routing correction
+The canonical `?workspace=nodes` now uses V5.3, matching the existing entry point from Legacy Studio. `?workspace=nodes-v53` remains an alias; `?workspace=nodes-v52` is the explicit V5.2 fallback. No runtime or Vercel changes. Route regression added. Publication evidence is tracked by the Pages workflow.

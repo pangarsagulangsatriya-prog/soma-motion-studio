@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 const archive={name:'archive-red.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#d02020"/></svg>')};
 test('V5.1 real archive preview, next cue isolation and latched blackout',async({page})=>{
- await page.goto('/?workspace=nodes');
+ await page.goto('/?workspace=nodes-v52');
  await expect(page.locator('.soma-signal[data-version="5.2"]')).toBeVisible();
  await expect(page.locator('.sw-node')).toHaveCount(13);
  await expect(page.getByRole('button',{name:'GO',exact:true})).toBeDisabled();
@@ -28,7 +28,7 @@ test('V5.1 real archive preview, next cue isolation and latched blackout',async(
  await expect.poll(async()=> (await pixel('canvas'))[0]).toBe(0);
 });
 test('V5.1 grouped graph, keyboard layout, compact controls and reduced motion',async({page})=>{
- await page.goto('/?workspace=nodes');
+ await page.goto('/?workspace=nodes-v52');
  await expect(page.locator('[data-node="session"]')).toHaveCount(1);
  await expect(page.locator('[data-node="floor"]')).toHaveCount(1);
  await expect(page.locator('[data-node="canvas"]')).toHaveCount(1);
@@ -44,7 +44,7 @@ test('V5.1 grouped graph, keyboard layout, compact controls and reduced motion',
 });
 
 test('V5.2 layout history, minimap and collapsed inspector preserve controls',async({page})=>{
- await page.goto('/?workspace=nodes');
+ await page.goto('/?workspace=nodes-v52');
  const node=page.locator('[data-node="foot"]');const before=await node.evaluate(n=>n.style.left);
  await node.locator('.sw-node-title').focus();await page.keyboard.press('ArrowRight');
  await expect.poll(()=>node.evaluate(n=>n.style.left)).not.toBe(before);
@@ -60,7 +60,7 @@ test('V5.2 layout history, minimap and collapsed inspector preserve controls',as
  await page.getByRole('button',{name:'Expand inspector',exact:true}).click();await expect(page.locator('.sw-inspector-body')).toBeVisible();
 });
 test('V5.2 valid session import persists; invalid input cannot overwrite',async({page})=>{
- await page.goto('/?workspace=nodes');
+ await page.goto('/?workspace=nodes-v52');
  await page.locator('[data-node="session"] .sw-node-title').click();
  const file={name:'f1.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({schema:'soma.visual-session',version:1,duration:1000,events:[{at:100,kind:'foot',mark:{actor:'A',side:'left',x:.4,y:.4,heading:0,t:100}}]}))};
  await page.getByLabel('Impor sesi JSON').setInputFiles(file);
