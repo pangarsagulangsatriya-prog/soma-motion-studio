@@ -47,3 +47,13 @@
 .graph-v54 .v54-marquee{position:absolute;z-index:5;pointer-events:none;border:1px solid #a7d4a8;background:#a7d4a822}
 .graph-v54[data-tool=note]{cursor:crosshair}
 .graph-v54 .sw-port::after{content:'';position:absolute;inset:-4px;border-radius:50%}
+
+.graph-v54[data-tool=frame]{cursor:crosshair}
+.graph-v54 .v54-membership{position:absolute;top:0;left:44px;width:168px;max-height:270px;overflow:auto;display:flex;flex-direction:column;gap:4px;padding:8px;background:#202d25;border:1px solid #607864;border-radius:6px;box-shadow:0 8px 20px #0007}
+.graph-v54 .v54-membership button{width:100%;height:auto;min-height:24px;text-align:left;justify-content:flex-start;padding:4px}
+.graph-v54 .v54-guide{position:absolute;z-index:5;pointer-events:none;background:#a7d4a8b0}.graph-v54 .v54-guide.vertical{top:0;width:1px}.graph-v54 .v54-guide.horizontal{left:0;height:1px}
+.graph-v54 .sw-port::after{inset:calc(-1 * var(--port-hit,4px))}
+.graph-v54 .sw-wire-hint{left:54px;max-width:calc(100% - 64px);flex-wrap:wrap}
+.graph-v54 .sw-node.is-muted{opacity:.46}.graph-v54 .sw-edge.planned:not(.delivered):not(.running){stroke-dasharray:5 4}
+.graph-v54 .sw-node-title:focus-visible,.graph-v54 button:focus-visible{outline:2px solid #a7d4a8;outline-offset:2px}
+@media(max-width:850px){.graph-v54 .v54-tools{gap:2px;padding:3px}.graph-v54 .v54-tools button{height:23px;width:23px}.graph-v54 .sw-wire-hint{top:40px;left:36px}}
