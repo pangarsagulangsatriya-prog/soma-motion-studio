@@ -98,7 +98,7 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
    samples,ready:true,paused:false,seeking:false,status:'Simulasi · '+samples.length+' kaki'};
  }
  const f=o.live;
- const sourceKey='track:'+sourceKind+':'+o.motionSession+':'+performers;
+ const sourceKey='track:'+sourceKind+':'+o.motionSession+':'+performers+':'+(status.identityEpoch??0);
  if(!o.cameraOn||!o.bodySelected||!f||f.source!=='camera'||f.time<=0)
   return empty(sourceKind,sourceKey,-1,nowMs,'Track · menunggu kamera');
  if(nowMs-f.time>550||nowMs<f.time)
@@ -109,6 +109,7 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
    samples,ready:true,paused:false,seeking:false,
    status:samples.length?'Track · '+samples.length+' kaki terbaca':'Track · belum mendeteksi kaki'};
  }
+ if(!f.tracked||!f.poses?.length)return empty(sourceKind,sourceKey,f.time,nowMs,'Track · belum mendeteksi tubuh');
  if(status.ambiguous||status.observedFrameTime!==f.time){
   return {source:sourceKind,sourceKey,frameMs:f.time,presentationMs:nowMs,
    samples:[],ready:true,paused:false,seeking:false,status:'Track · identitas A/B belum stabil'};
@@ -121,5 +122,5 @@ export function normalizeTrajectoryInput(o:V3InputOptions):V3Input{
  }
  return {source:sourceKind,sourceKey,frameMs:f.time,presentationMs:nowMs,
   samples,ready:true,paused:false,seeking:false,
-  status:samples.length?'Track 2P · '+samples.length+' kaki':'Track · kaki tidak terlihat'};
+  status:samples.length?'Track · '+status.visible.length+'/2 aktor · '+samples.length+' kaki terbaca':'Track · kaki tidak terlihat'};
 }

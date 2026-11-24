@@ -1,7 +1,7 @@
 import type {MotionFrame} from '../../engine/types.ts';
 import {GaitAnalyzer,type GaitSample} from '../gait-analysis/index.ts';
 import {LiveFloorTrackingEngine,type CameraBinding} from './LiveFloorTrackingEngine.ts';
-import {TwoPersonIdentityTracker,type LivePerformerId} from './TwoPersonIdentityTracker.ts';
+import {TwoPersonIdentityTracker,type IdentityFrame,type LivePerformerId} from './TwoPersonIdentityTracker.ts';
 import {GhostFootstepPredictor} from './GhostFootstepPredictor.ts';
 import {createFloorSession,type FloorSession,type FootstepEvent} from '../spatial/events.ts';
 
@@ -11,6 +11,8 @@ export type MultiPoseStatus={
  /** Stable identity router IDs → pose index in precisely the latest observed MotionFrame. */
  poseIndices:{A:number|null;B:number|null};
  observedFrameTime:number|null;
+ /** Software identity generation; changes only on explicit source/identity reset. */
+ identityEpoch?:number;
 };
 /**
  * In two-person mode, reuses the 2 poses ALREADY in MotionFrame.poses.
@@ -19,6 +21,10 @@ export type MultiPoseStatus={
  */
 export class MultiPoseGaitRouter{
  private identity=new TwoPersonIdentityTracker();
+ private previewFrame:MotionFrame|null=null;
+ private previewResult:IdentityFrame|null=null;
+ private previewIndices:{A:number|null;B:number|null}={A:null,B:null};
+ private previewEpoch=0;
  private analyzers=new Map<LivePerformerId,GaitAnalyzer>();
  private predictor:GhostFootstepPredictor|null=null;
  private mode:1|2=1;
@@ -41,7 +47,7 @@ export class MultiPoseGaitRouter{
  }
  get activeMode(){return this.mode;}
  reset(){
-  this.identity.reset();this.analyzers.clear();this.predictor=null;
+  this.identity.reset();this.previewFrame=null;this.previewResult=null;this.previewIndices={A:null,B:null};this.previewEpoch++;this.analyzers.clear();this.predictor=null;
   this.visible=[];this.ambiguous=false;this.poseIndices={A:null,B:null};
   this.observedFrameTime=null;this.lastTimestamp=0;this.lastWallMs=0;
   this.reason='Identitas direset; tempatkan kedua tubuh dalam bingkai.';this.invalidate();
@@ -54,6 +60,31 @@ export class MultiPoseGaitRouter{
   return {mode:this.mode,visible:this.visible.slice(),ambiguous:this.ambiguous,
    reason:this.reason,ghostCount:this.getGhosts(this.displayClockMs).length,
    poseIndices:{...this.poseIndices},observedFrameTime:this.observedFrameTime};
+ }
+ /** The detector's identity assignment is independent of a physical floor.
+  * A same-frame snapshot is shared by the optional calibrated gait route.
+  * A missing second actor never creates a replacement A or B. */
+ get previewStatus():MultiPoseStatus{
+  const r=this.previewResult,indices=this.previewIndices;
+  return {mode:this.mode,visible:r?.assignments.map(a=>a.id)??[],
+   ambiguous:r?.ambiguous??false,reason:r?.reason??'Menunggu pose kamera.',
+   ghostCount:0,poseIndices:{...indices},observedFrameTime:r&&!r.ambiguous&&(indices.A!==null||indices.B!==null)?this.previewFrame?.time??null:null,
+   identityEpoch:this.previewEpoch};
+ }
+ observePreview(frame:MotionFrame|null):void{
+  if(this.mode!==2)return;
+  if(!frame||frame.source!=='camera'||!frame.tracked||!Number.isFinite(frame.time)||frame.time<0||!frame.poses?.length){
+   if(this.previewFrame){this.previewFrame=null;this.previewResult=null;this.previewIndices={A:null,B:null};this.invalidate();}
+   return;
+  }
+  if(this.previewFrame?.time===frame.time)return;
+  if(this.previewFrame&&frame.time<this.previewFrame.time)return;
+  const prior=this.previewStatus;
+  const result=this.identity.observe(frame.poses,frame.time);
+  const indices:{A:number|null;B:number|null}={A:null,B:null};
+  if(!result.ambiguous)for(const {id,pose} of result.assignments){const i=frame.poses.indexOf(pose);if(i>=0&&i<2)indices[id]=i;}
+  this.previewFrame=frame;this.previewResult=result;this.previewIndices=indices;
+  if(prior.ambiguous!==result.ambiguous||prior.poseIndices.A!==indices.A||prior.poseIndices.B!==indices.B||prior.reason!==result.reason)this.invalidate();
  }
  getGhosts(timeMs:number):FootstepEvent[]{
   if(!this.floor.isConfirmed)return [];
@@ -93,8 +124,13 @@ export class MultiPoseGaitRouter{
    this.visible=[];this.predictor?.reset();this.reason='Konfirmasi kalibrasi kamera dahulu.';this.invalidate();
    return;
   }
-  const result=this.identity.observe(frame.poses,clock);
-  for(const id of result.lost){
+  this.observePreview(frame);
+  // Physical output retains its independent calibration/binding gate above.
+  // Reject a delayed callback instead of applying identity from another frame.
+  const result=this.previewFrame?.time===frame.time?this.previewResult:null;
+  if(!result){for(const id of this.visible){this.floor.losePerformer(id);this.predictor?.lose(id);this.analyzers.get(id)?.reset();}this.visible=[];this.invalidate();return;}
+  const lost=new Set([...result.lost,...this.visible.filter(id=>!result.assignments.some(a=>a.id===id))]);
+  for(const id of lost){
    this.floor.losePerformer(id);this.predictor?.lose(id);
    this.analyzers.get(id)?.reset();
   }

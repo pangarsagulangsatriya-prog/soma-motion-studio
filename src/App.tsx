@@ -156,7 +156,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
  useEffect(()=>{tracker.setProjection(projection.running);return()=>tracker.setProjection(false);},[tracker,projection.running]);
  const photoGestureEnabled=useRef(false);photoGestureEnabled.current=photoArchive.enabled||cameraCue.frame.open;
  const update=useCallback((patch:Partial<Settings>)=>{const next={...sr.current,...patch};sr.current=next;setSettings(next);},[]);
- const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);phoneLandscapeRef.current?.stop();phoneLandscapeRef.current=null;setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper]);
+ const stopCamera=useCallback(()=>{cameraOperation.current++;activeCameraMode.current='laptop';tracker.stop(video.current??undefined);phoneLandscapeRef.current?.stop();phoneLandscapeRef.current=null;setCameraOn(false);setCameraBusy(false);setStatus('Kamera belum aktif');multiPoseRouter.observePreview(null);const f=emptyFrame();f.time=performance.now();frameRef.current=f;setFrame(f);engine.update(mapper.process(f,sr.current),sr.current,false,false);},[tracker,engine,mapper,multiPoseRouter]);
  // Camera recognition belongs to macOS; never assume a USB cable equals video.
  useEffect(()=>{
   const media=navigator.mediaDevices;
@@ -185,7 +185,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   return()=>{alive=false;media.removeEventListener?.('devicechange',refresh);};
  },[deviceId,cameraOn,cameraBusy,stopCamera,projection.setTransport,liveFloorEngine,multiPoseRouter]);
  const processFrame=useCallback((f:MotionFrame)=>{
-  frameRef.current=f;cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
+  frameRef.current=f;multiPoseRouter.observePreview(f);cameraCue.processFrame(f);const s=sr.current,p=mapper.process(f,s);visualParams.current=visualMapper.process(f,s);engine.update(p,s,f.features.open>.5,f.tracked,f.features.armRaise);
   if(f.tracked)hasPlayed.current=true;
   const hold=holdTrigger.update(!photoGestureEnabled.current&&s.layers.tracking==='trigger'&&s.layers.gestureTrigger&&['hands','mouse'].includes(s.input)&&f.tracked&&f.features.open>.5,f.time);
   if(hold.fired){trackingLatchRef.current=!trackingLatchRef.current;setTrackingLatched(trackingLatchRef.current);trackingVisible.current=trackingLatchRef.current;notify(trackingLatchRef.current?'Garis tracking tampil.':'Garis tracking tersembunyi.');}
@@ -193,7 +193,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
   motionLog.add(f);
   if(cal.current){if(f.tracked){cal.current.xs.push(f.features.x);cal.current.ys.push(f.features.y);}const left=cal.current.end-performance.now();setCalibration(Math.max(0,Math.ceil(left/1000)));if(left<=0){const c=cal.current;cal.current=null;setCalibration(null);const minX=Math.min(...c.xs),maxX=Math.max(...c.xs),minY=Math.min(...c.ys),maxY=Math.max(...c.ys);if(c.xs.length<20||maxX-minX<.12||maxY-minY<.12)notify('Jangkauan belum cukup. Coba lagi sambil bergerak ke kiri, kanan, atas, dan bawah.');else{update({calibration:{minX,maxX,minY,maxY}});notify('Jangkauan gerak tersimpan.');}}}
   if(f.time-lastUI.current>100){lastUI.current=f.time;setFrame({...f});setTriggerProgress(hold.progress);setLogCount(motionLog.rows.length);if(motionLog.full){setLogging(false);notify('Log mencapai batas 18.000 sampel. Silakan ekspor datanya.');motionLog.full=false;}}
- },[engine,mapper,visualMapper,holdTrigger,motionLog,notify,update,cameraCue.processFrame]);
+ },[engine,mapper,visualMapper,holdTrigger,motionLog,notify,update,cameraCue.processFrame,multiPoseRouter]);
  async function startCamera(overrideDeviceId?:string){
   const op=++cameraOperation.current;
   requestedFootprintsChoice.current='webcam';setFootprintsChoice('webcam');
