@@ -144,7 +144,7 @@ export function feedSimulatorFloorInteractions(engine:FloorInteractionEngine,
    x:uv.x,y:uv.y,confidence:1,atMs:frame.timeMs,basis:'simulated'});
  }
  for(const e of frame.session.events){
-  if(e.timestampMs>frame.timeMs)continue;
+  if(e.timestampMs>frame.timeMs||frame.timeMs-e.timestampMs>1000)continue;
   const uv=floorToUV(floor,e.positionM);
   if(e.kind==='contact'){
    engine.contact({source:'simulator',eventId:e.id,actorId:e.performerId,
