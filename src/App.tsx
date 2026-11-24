@@ -617,6 +617,7 @@ export default function App({stageTwo=false}:{stageTwo?:boolean}={}){
      }}
      frameRef={frameRef} videoRef={video} tracker={liveFloorEngine}
      router={multiPoseRouter} projection={projection} audioAnalyser={audioOn?engine.analyser:null}
+     onTakeAudio={()=>{if(recording||footprintRecording)return false;engine.mute();setMuted(true);playback.current?.pause();setPlaying(null);return true;}}
      cameraOn={cameraOn} cameraBusy={cameraBusy} cameraError={cameraError}
      bodySelected={settings.input==='body'} legacyApproved={liveFloorVerified}
      phoneActive={activeCameraMode.current==='phone'&&cameraOn&&!cameraBusy}

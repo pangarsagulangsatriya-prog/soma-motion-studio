@@ -1,0 +1,10 @@
+#soma-compose-focus .foot-motion-audio{display:flex;flex-direction:column;gap:8px;padding:10px;margin:0 0 10px;border:1px solid #38503e;border-radius:8px;background:#152119;color:#e8f1e5;font-size:12px}
+#soma-compose-focus .foot-motion-audio header{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+#soma-compose-focus .foot-motion-audio header>div{display:flex;align-items:center;gap:6px;flex-wrap:wrap}#soma-compose-focus .foot-motion-audio small{font-size:10px;color:#a5b8a7}
+#soma-compose-focus .foot-motion-audio button{min-height:28px;padding:4px 8px;background:#21372a;border:1px solid #49664e;border-radius:5px;color:#edf4ee}
+#soma-compose-focus .foot-motion-audio button[aria-pressed=true]{background:#36583c;border-color:#a7d4a8}
+#soma-compose-focus .foot-motion-audio-settings{display:grid;gap:8px}
+#soma-compose-focus .foot-motion-audio-settings label{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;color:#c5d7c7}
+#soma-compose-focus .foot-motion-audio-settings select{background:#0e1913;color:#edf4ee;border:1px solid #43594a;border-radius:5px;padding:4px}
+#soma-compose-focus .foot-motion-volume input{grid-column:1/-1;width:100%;accent-color:#a7d4a8}
+#soma-compose-focus .foot-motion-audio button:focus-visible,#soma-compose-focus .foot-motion-audio select:focus-visible{outline:2px solid #a7d4a8;outline-offset:2px}
