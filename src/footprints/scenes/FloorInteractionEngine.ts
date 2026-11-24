@@ -67,9 +67,9 @@ export class FloorInteractionEngine{
  private push(part:Omit<FloorInteractionEvent,'id'>){
   const event={...part,id:'interaction-'+(++this.serial)} as FloorInteractionEvent;
   this.events.push(event);
-  this.canonical.push(toFootMotionEvent(event,this.sessionId,this.epoch));
+  this.canonical=[...this.canonical,toFootMotionEvent(event,this.sessionId,this.epoch)].slice(-480);
   if(this.events.length>480){
-   const excess=this.events.length-480;this.events.splice(0,excess);this.canonical.splice(0,excess);
+   const excess=this.events.length-480;this.events.splice(0,excess);
   }
   return event;
  }
