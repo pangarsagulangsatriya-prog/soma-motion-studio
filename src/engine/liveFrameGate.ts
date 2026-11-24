@@ -2,7 +2,8 @@
  * or a newer result, and never let a backlog present old motion as live. */
 export class LiveFrameGate {
  private lastPublished=-Infinity;
- constructor(readonly maxAgeMs=350){}
+ readonly maxAgeMs:number;
+ constructor(maxAgeMs=350){this.maxAgeMs=maxAgeMs;}
  accept(capturedAt:number,now:number):boolean{
   if(!Number.isFinite(capturedAt)||!Number.isFinite(now)||capturedAt<=this.lastPublished||
    capturedAt<0||now<capturedAt||now-capturedAt>this.maxAgeMs)return false;
