@@ -3,8 +3,9 @@ import {compileCuePlan,type CueId} from '../v5/NodeGraphModel.ts';
 export type Point={x:number;y:number};
 export type View={x:number;y:number;z:number};
 export type GroupId='sources'|'process'|'session'|'output';
-export type GroupMeta={title:string;note:string;extraW:number;extraH:number};
+export type GroupMeta={title:string;note:string;extraW:number;extraH:number;collapsed?:boolean};
 export type GroupMap=Record<GroupId,GroupMeta>;
+export type FreeNote={id:string;x:number;y:number;text:string};
 export type Geometry={id:string;x:number;y:number;w:number;h:number;kind:string};
 export const GROUPS:GroupId[]=['sources','process','session','output'];
 export const KEY='soma.graph-view.v1';
@@ -22,10 +23,11 @@ export function parseDocument(raw:unknown,legacy:unknown={}){
   const v=value as Point|null;if(v&&finite(v.x)&&finite(v.y))positions[id]={x:clamp(v.x,12,2200),y:clamp(v.y,38,2400)};
  }
  const groups=structuredClone(defaults);const meta=valid?p.groups as Partial<GroupMap>|undefined:undefined;
- for(const id of GROUPS){const v=meta?.[id];if(v&&typeof v==='object')groups[id]={title:typeof v.title==='string'&&v.title.trim()?v.title.trim().slice(0,60):defaults[id].title,note:typeof v.note==='string'?v.note.slice(0,240):'',extraW:finite(v.extraW)?clamp(v.extraW,0,500):0,extraH:finite(v.extraH)?clamp(v.extraH,0,500):0};}
+ for(const id of GROUPS){const v=meta?.[id];if(v&&typeof v==='object')groups[id]={title:typeof v.title==='string'&&v.title.trim()?v.title.trim().slice(0,60):defaults[id].title,note:typeof v.note==='string'?v.note.slice(0,240):'',extraW:finite(v.extraW)?clamp(v.extraW,0,500):0,extraH:finite(v.extraH)?clamp(v.extraH,0,500):0,collapsed:v.collapsed===true};}
  const v=valid?p.viewport as View|undefined:undefined;
  const viewport=v&&finite(v.x)&&finite(v.y)&&finite(v.z)?{x:clamp(v.x,-10000,10000),y:clamp(v.y,-10000,10000),z:clamp(v.z,.2,2)}:null;
- return {positions,groups,viewport};
+ const notes:FreeNote[]=[];const seen=new Set<string>();if(valid&&Array.isArray(p.notes))for(const n of p.notes.slice(0,100)){if(!n||typeof n.id!=='string'||!/^note-[a-zA-Z0-9-]+$/.test(n.id)||seen.has(n.id)||!finite(n.x)||!finite(n.y)||typeof n.text!=='string')continue;seen.add(n.id);notes.push({id:n.id,x:clamp(n.x,12,2200),y:clamp(n.y,38,2400),text:n.text.slice(0,500)});}
+ return {positions,groups,viewport,notes,snap:valid&&p.snap===true};
 }
 export function loadDocument(){try{return parseDocument(JSON.parse(localStorage.getItem(KEY)||'null'),JSON.parse(localStorage.getItem('soma.signal-layout.v1')||'{}'));}catch{return parseDocument(null);}}
 export function frameBounds(cards:Geometry[],id:GroupId,meta:GroupMeta){
@@ -49,3 +51,12 @@ export function edgeVisual(planned:boolean,running:boolean,fresh:boolean,failed:
  const eligible=planned||running;
  return {eligible,delivered:running&&fresh&&!failed,focused:eligible&&focused,muted:!eligible};
 }
+
+/** Proxy identity stays tied to the original visible card + logical handle. */
+export type ProxyEndpoint={card:string;key:string;direction:'in'|'out';type:string;label:string};
+export function proxyEndpoints(group:GroupId,cards:Geometry[],edges:{a:string;b:string;ak:string;bk:string;type:string}[]):ProxyEndpoint[]{
+ const members=new Set(cards.filter(c=>groupOf(c)===group).map(c=>c.id));const found=new Map<string,ProxyEndpoint>();
+ for(const e of edges){const a=members.has(e.a),b=members.has(e.b);if(a===b)continue;const card=a?e.a:e.b,key=a?e.ak:e.bk,direction=a?'out':'in';const id=direction+':'+card+':'+key;found.set(id,{card,key,direction,type:e.type,label:card+' · '+key});}return [...found.values()];
+}
+export function snapDelta(origin:Point,dx:number,dy:number,snap:boolean,step=12):Point{return snap?{x:Math.round((origin.x+dx)/step)*step-origin.x,y:Math.round((origin.y+dy)/step)*step-origin.y}:{x:dx,y:dy};}
+export function marqueeMembers(cards:Geometry[],a:Point,b:Point){const l=Math.min(a.x,b.x),r=Math.max(a.x,b.x),t=Math.min(a.y,b.y),d=Math.max(a.y,b.y);return cards.filter(c=>c.x+c.w>=l&&c.x<=r&&c.y+c.h>=t&&c.y<=d).map(c=>c.id);}

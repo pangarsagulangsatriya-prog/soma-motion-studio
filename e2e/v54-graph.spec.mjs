@@ -27,3 +27,13 @@ test('V5.4 actual archive output continues when next cue changes; Escape remains
  const pixel=()=>page.locator('[data-surface="canvas"] canvas').evaluate(c=>c.getContext('2d').getImageData(800,450,1,1).data[0]);await expect.poll(pixel).toBeGreaterThan(170);
  await page.getByRole('button',{name:'Close inspector',exact:true}).click();await page.getByRole('button',{name:'F1 Jejak',exact:true}).click();await expect(page.locator('.sw-current b')).toHaveText('F2');await expect(page.locator('[data-node="archive"]')).toHaveClass(/is-running/);await expect(page.locator('[data-edge="edge-12"] path').first()).toHaveClass(/running/);await expect.poll(pixel).toBeGreaterThan(170);await page.keyboard.press('Escape');await expect.poll(pixel).toBe(0);
 });
+
+test('V5.4 collapses view only, preserves external wire ids and restores nodes',async({page})=>{
+ await page.goto('/?workspace=nodes-v54');await page.getByRole('button',{name:'Collapse Process',exact:true}).click();
+ await expect(page.locator('[data-node="foot"]')).toHaveCount(0);await expect(page.locator('[data-edge="edge-06"] path').first()).toBeAttached();
+ await expect(page.locator('[data-proxy]').first()).toBeAttached();
+ await page.getByRole('button',{name:'Expand Process',exact:true}).click();await expect(page.locator('[data-node="foot"]')).toBeAttached();
+ await page.locator('[data-node="foot"] .sw-node-title').click();await page.locator('[data-node="trace"] .sw-node-title').click({modifiers:['Shift']});
+ await expect(page.locator('[data-node="foot"]')).toHaveClass(/is-selected/);await expect(page.locator('[data-node="trace"]')).toHaveClass(/is-selected/);
+ await page.getByRole('button',{name:'Snap to grid',exact:true}).click();await expect(page.getByRole('button',{name:'Snap to grid',exact:true})).toHaveAttribute('aria-pressed','true');
+});

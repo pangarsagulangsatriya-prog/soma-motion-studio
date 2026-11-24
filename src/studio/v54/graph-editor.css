@@ -32,3 +32,18 @@
 .graph-v54 .sw-legend{pointer-events:none}
 @media(max-width:850px){.graph-v54 .v54-tools{left:4px;top:42px}.graph-v54 .v54-tools button{width:25px;height:25px}}
 @media(prefers-reduced-motion:reduce){.graph-v54 *{transition:none!important;animation:none!important}}
+
+/* Interaction polish: view-only collapsed endpoint proxies, notes and selection. */
+.graph-v54 .v54-collapsed-summary{position:absolute;left:12px;top:35px;color:#b3c6b7;font-size:11px;pointer-events:none}
+.graph-v54 .v54-proxy{position:absolute;width:12px;height:12px;min-height:0;padding:0;transform:translateY(-50%);border:1px solid #b3c6b7;background:#657d6b;pointer-events:auto;border-radius:3px}
+.graph-v54 .v54-proxy.in{left:-6px}.graph-v54 .v54-proxy.out{right:-6px}
+.graph-v54 .v54-proxy.video{background:#7bb8b1;border-radius:50%}.graph-v54 .v54-proxy.pose{background:#91aee0}.graph-v54 .v54-proxy.visual{background:#a7d4a8}
+.graph-v54 .v54-free-note{position:absolute;width:190px;min-height:90px;z-index:3;background:#353e2b;border:1px solid #76865c;border-radius:6px;color:#e4e9d0;font-size:12px;overflow:hidden}
+.graph-v54 .v54-free-note header{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#414b32;cursor:grab;touch-action:none}
+.graph-v54 .v54-free-note header button{padding:2px;border:0;background:transparent;min-height:20px}
+.graph-v54 .v54-free-note textarea{display:block;box-sizing:border-box;width:100%;min-height:60px;padding:6px;background:#19221e;color:#edf4ee;border:0}
+.graph-v54 .v54-free-note>button{margin:4px;padding:4px;white-space:normal;text-align:left;overflow-wrap:anywhere}
+.graph-v54 .v54-free-note .v54-note-text{display:block;width:calc(100% - 8px);border:0;background:transparent;white-space:pre-wrap}
+.graph-v54 .v54-marquee{position:absolute;z-index:5;pointer-events:none;border:1px solid #a7d4a8;background:#a7d4a822}
+.graph-v54[data-tool=note]{cursor:crosshair}
+.graph-v54 .sw-port::after{content:'';position:absolute;inset:-4px;border-radius:50%}
