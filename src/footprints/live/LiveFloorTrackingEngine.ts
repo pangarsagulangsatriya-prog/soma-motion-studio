@@ -73,6 +73,14 @@ export class LiveFloorTrackingEngine{
   }
   return this.cachedSession;
  }
+ /** Capture-domain events only. The append-only history is time ordered.
+  * Query a small recent window without cloning/validating the entire session. */
+ recentEventsSince(sinceMs:number):readonly FootstepEvent[]{
+  if(!Number.isFinite(sinceMs))return [];
+  let start=this.events.length;
+  while(start>0&&this.events[start-1].timestampMs>=sinceMs)start--;
+  return this.events.slice(start);
+ }
  get status():LiveFloorStatus{
   return {calibrated:!!this.calibration,confirmed:this.confirmed,cameraMatched:!!this.bindingKey,
    tracking:this.confirmed&&this.received.size>0,contacts:this.contactCount,events:this.events.length,
