@@ -34,6 +34,7 @@ import {PersistentBodyMaskEngine} from '../../stage/persistentBodyMaskEngine.ts'
 import {LiveBodyProjectionBridge} from '../../stage/liveBodyProjectionBridge.ts';
 import {PhoneCameraReceiver} from '../../stage/PhoneCameraReceiver.tsx';
 import {SOURCE_CHOICES,type FootprintsInputChoice,type FootprintsInputStatus} from './sourceSwitchModel.ts';
+import {RuntimeDiagnosticsPanel} from './RuntimeDiagnosticsPanel.tsx';
 import {trackStatus} from './trackViewModel.ts';
 import {liveSkeletonPresentation} from './trackFeedbackModel.ts';
 import {useTrackFeedbackPulse} from './useTrackFeedbackPulse.ts';
@@ -128,6 +129,7 @@ export function FootprintsStageWorkspace({
 }:Props){
  const composeLayout=useComposeMonitorLayout();
  const cameraCanvas=useRef<HTMLCanvasElement>(null);
+ const trackLoopFpsRef=useRef<number|null>(null);
  const composeFloorOverlay=useRef<HTMLCanvasElement>(null);
  const [showComposeEvents,setShowComposeEvents]=useState(true);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
@@ -384,12 +386,15 @@ export function FootprintsStageWorkspace({
  // Reuses the single SOMA camera frame and calibrated FloorSession V3.
  // No camera acquisition, new gait engine or pad event generation here.
  useEffect(()=>{
-  let raf=0,lastDraw=0,lastFloorRevision=-1,lastStatus='';
+  let raf=0,lastDraw=0,lastFloorRevision=-1,lastStatus='',sampleStart=performance.now(),sampleCount=0;
+  trackLoopFpsRef.current=null;
   const draw=(now:number)=>{
    raf=requestAnimationFrame(draw);
    if(experimentalKind)return;
    if(now-lastDraw<1000/18)return;
    lastDraw=now;
+   sampleCount++;
+   if(now-sampleStart>=1000){trackLoopFpsRef.current=sampleCount*1000/(now-sampleStart);sampleStart=now;sampleCount=0;}
    const f=frameRef.current,v=videoRef.current;
    const identities=router.status;
    const cameraSourceReady=cameraOn&&sourceStatus.phase==='ready'&&
@@ -1177,6 +1182,10 @@ export function FootprintsStageWorkspace({
        <strong>{feedback.state==='ready'?'Input siap':feedback.state==='synthetic'?'Simulasi siap':'Periksa input'}</strong>
        <span>{feedback.state==='ready'?'Gerakkan kaki dan periksa garisnya.':feedback.state==='synthetic'?'Lanjut untuk mengatur bidang.':feedback.hint||feedback.label}</span>
       </section>
+      {!experimentalKind&&!composerOpen&&!operatorMode&&(sourceStatus.selection==='webcam'||sourceStatus.selection==='phone')&&
+       <RuntimeDiagnosticsPanel frameRef={frameRef} videoRef={videoRef} tracker={tracker} router={router}
+        ready={cameraOn&&bodySelected&&sourceStatus.phase==='ready'} performers={performerCount}
+        paintFpsRef={trackLoopFpsRef}/>}
      </aside>
      {composerOpen&&showSetupHint&&ownership.showInlineAssistant&&
       <InlineSetupAssistant hint={setupHint} onAction={handleAssistantAction}/>}
