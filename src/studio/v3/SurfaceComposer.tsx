@@ -118,7 +118,7 @@ type Props={
  floorEvents:()=>{id:string;kind:string;performerId:string;timestampMs:number}[];
  motionEvents?:()=>readonly FootMotionEventV2[];
  motionSession?:()=>string;
- audioWorkspaceActive?:boolean;audioSourceReady?:boolean;onTakeAudio?:()=>boolean;
+ audioWorkspaceActive?:boolean;audioSourceReady?:boolean;audioContactReady?:boolean;onTakeAudio?:()=>boolean;
  lineSource?:'camera'|'phone';
  identitySafe:boolean;previewIdentitySafe?:boolean;previewIdentityReason?:string;onResetPreviewIdentity?:()=>void;onClose:()=>void;initialOutputQA?:boolean;experimentLocked?:boolean;
  embedded?:boolean;mapMode?:boolean;workspaceHidden?:boolean;
@@ -130,7 +130,7 @@ type Props={
  onMapOutputInvalidated?:(surface?:'floor'|'body')=>void;
  mapOutputSaved?:{floor:boolean;body:boolean};
 };
-export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,previewIdentitySafe=identitySafe,previewIdentityReason,onResetPreviewIdentity,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,audioWorkspaceActive=false,audioSourceReady=false,onTakeAudio,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapWorkspace,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
+export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImportAssets,onRemoveAsset,assetNotice,frameRef,videoRef,router,floorTracker,projection,floorCanvas,cameraOn,bodySelected,bodyCanvas,outputBodyRaster,outputFloorRaster,experimentSource=null,experimentInputCanvas,experimentFrameRef,videoFloorProfile=null,experimentFloorCanvas,experimentReady=false,performerCount,floorReady,floorEvents,identitySafe,previewIdentitySafe=identitySafe,previewIdentityReason,onResetPreviewIdentity,onClose,experimentLocked=false,embedded=false,mapMode=false,workspaceHidden=false,composePreviewCanvas,motionEvents,motionSession,audioWorkspaceActive=false,audioSourceReady=false,audioContactReady=false,onTakeAudio,lineSource='camera',previewResumeRevision=0,previewBlackout=false,onOpenMapTrack,onOpenMapWorkspace,onOpenMapCompose,onComposeRasterChange,onMapOutputSaved,onMapOutputInvalidated,mapOutputSaved={floor:false,body:false}}:Props){
  const rasterReadyCallback=useRef(onComposeRasterChange);rasterReadyCallback.current=onComposeRasterChange;
  const lastRasterReady=useRef<boolean|null>(null);
  const experimentSourceRef=useRef(experimentSource);experimentSourceRef.current=experimentSource;
@@ -1182,7 +1182,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
   onPointerCancelCapture={onInspectorPointerEnd} onKeyDownCapture={onInspectorKeyDown}
   onKeyUpCapture={onInspectorKeyUp} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))history.endGroup();}}>
   {!experimentSource&&cameraOn&&performerCount===2&&!previewIdentitySafe&&<div className="lt-beta-status" role="status"><span>{previewIdentityReason||'Identitas A/B belum stabil'}</span> <button type="button" onClick={onResetPreviewIdentity} disabled={!onResetPreviewIdentity}>Baca ulang A/B</button></div>}
-  <FootMotionAudioPanel visible={monitorView==='FLOOR'} allowed={audioWorkspaceActive&&!workspaceHidden&&!mapMode&&!blackout&&!previewBlackout&&previewLive&&!footprint?.hold&&monitorView==='FLOOR'&&(lineTrails||liquidEnabled)} sourceReady={audioSourceReady&&previewIdentitySafe&&timelineMode==='live'&&(lineTrails?!lineDemo:liquidMode==='track')} trace={lineTrails} events={motionEvents} session={motionSession} onTakeAudio={onTakeAudio}/>
+  <FootMotionAudioPanel visible={monitorView==='FLOOR'} allowed={audioWorkspaceActive&&!workspaceHidden&&!mapMode&&!blackout&&!previewBlackout&&previewLive&&!footprint?.hold&&monitorView==='FLOOR'&&(lineTrails||liquidEnabled)} sourceReady={audioSourceReady&&timelineMode==='live'&&(lineTrails?!lineDemo:liquidMode==='track')} contactReady={audioContactReady} trace={lineTrails} events={motionEvents} session={motionSession} onTakeAudio={onTakeAudio}/>
   {!lineTrails&&monitorView==='FLOOR'&&<div className="cp25-inspector-switch">
    <div className="cp25-inspector-header">
     <div><strong>Visual</strong><span>{getComposeVisualStyle(steering.styleId).name}</span></div>
