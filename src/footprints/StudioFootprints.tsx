@@ -107,16 +107,21 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
    const clock=elapsed.current;
    if(!c.hold&&f.source==='camera'&&f.time!==lastFrame.current){
     lastFrame.current=f.time;
-    const valid=f.tracked&&f.pose.length>=33&&f.time<=now&&now-f.time<350;
-    if(valid)trackingLost.current=false;
+    const fresh=Number.isFinite(f.time)&&f.time>0&&f.time<=now&&now-f.time<350;
+    const valid=f.tracked&&f.pose.length>=33&&fresh;
+    const multiValid=fresh&&!!f.poses?.some(pose=>pose.length>=33);
+    if(valid||multiValid)trackingLost.current=false;
     const video=p.videoRef.current;
     const aspect=video?.videoWidth&&video?.videoHeight?video.videoWidth/video.videoHeight:4/3;
     const factorX=Math.min(1,aspect/(16/9)),factorY=Math.min(1,(16/9)/aspect);
     for(let side=0;side<2;side++){
      if(c.gaitAnalysis||p.forceGaitForLiveFloor){
-      const mark=gait.current.observe({...f,tracked:valid},side as 0|1,clock,aspect);
+      const observed=gait.current.observe({...f,tracked:valid},side as 0|1,f.time,aspect);
+      // Gait and the calibrated event bus use capture time. Legacy drawing/export
+      // keeps its own pause-aware elapsed clock.
+      const mark=observed?{...observed,t:clock}:null;
       if(!mark){live.current[side]=null;lastPrint.current[side]=null;p.onGaitSample?.(null,side as 0|1,aspect);continue;}
-      p.onGaitSample?.(mark,side as 0|1,aspect);
+      p.onGaitSample?.(observed,side as 0|1,aspect);
       live.current[side]=mark;
       view.current.push(mark);
       if(session.current.length<100000)session.current.push({...mark});
@@ -138,14 +143,14 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
      live.current[side]=mark;view.current.push(mark);
      if(session.current.length<100000)session.current.push({...mark});
     }
-    p.onPoseFrame?.(valid?f:null,clock,aspect);
+    p.onPoseFrame?.(valid||multiValid?f:null,f.time,aspect);
    }
    if(!c.hold&&now-f.time>400){
     live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();
     if(!trackingLost.current){trackingLost.current=true;
      const v=p.videoRef.current,aspect=v?.videoWidth&&v?.videoHeight?v.videoWidth/v.videoHeight:4/3;
      p.onGaitSample?.(null,0,aspect);p.onGaitSample?.(null,1,aspect);
-     p.onPoseFrame?.(null,clock,aspect);
+     p.onPoseFrame?.(null,now,aspect);
     }
    }
    view.current=view.current.filter(m=>clock-m.t<(c.life+c.delay)*1000).slice(-12000);
