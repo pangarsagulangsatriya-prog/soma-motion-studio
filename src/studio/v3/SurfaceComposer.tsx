@@ -1043,7 +1043,8 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     </div>
     <div className="uxr3-compose-preview-bar">
      <div className="lb-view-tabs" role="group" aria-label="Pilih bidang preview">
-      {COMPOSE_VIEW_TABS.filter(tab=>composeUiMode==='advanced'||monitorView!=='FLOOR'||tab.id==='FLOOR'||tab.id==='SPLIT').map(tab=><button key={tab.id} type="button"
+      {COMPOSE_VIEW_TABS.map(tab=><button key={tab.id} type="button"
+       hidden={composeUiMode==='quick'&&monitorView==='FLOOR'&&tab.id!=='FLOOR'&&tab.id!=='SPLIT'}
        title={tab.title}
        aria-pressed={monitorView===tab.id}
        onClick={()=>selectMonitorView(tab.id)}>{composeUiMode==='quick'&&tab.id==='FLOOR'?'LANTAI':tab.label}</button>)}
