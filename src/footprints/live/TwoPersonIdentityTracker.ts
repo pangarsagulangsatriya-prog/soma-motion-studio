@@ -21,7 +21,8 @@ const locate=(pose:Landmark[]):{center:Center;confidence:number;pose:Landmark[]}
  * Two-person identity assignment over MediaPipe's existing poses[].
  * The model does not provide persistent person IDs. This gate deliberately
  * suppresses crossed/ambiguous matches instead of silently swapping A and B.
- * Explicit RESET required after losing both people far from their last places.
+ * Initial ambiguity is recoverable before any identity is assigned.
+ * Established ambiguous crossings remain fail-closed until explicit reset.
  */
 export class TwoPersonIdentityTracker{
  private known=new Map<LivePerformerId,Track>();
@@ -95,12 +96,14 @@ export class TwoPersonIdentityTracker{
     }
    }
   }
-  if(ambiguous)this.identityLocked=true;
+  // Do not latch a permanent identity fault before A/B have ever been assigned.
+  // An initial overlap has no established identity to protect; retry on the next frame.
+  if(ambiguous&&this.known.size>0)this.identityLocked=true;
   this.detected=ambiguous?new Set<LivePerformerId>():current;
   return {assignments:ambiguous?[]:chosen,
    lost:ids.filter(id=>previous.has(id)&&(!current.has(id)||ambiguous)),
    ambiguous,
-   reason:ambiguous?'Tubuh berdekatan atau saling menutup. Reset identitas A/B untuk lanjut.':
+   reason:ambiguous?(this.identityLocked?'Tubuh berdekatan atau saling menutup. Reset identitas A/B untuk lanjut.':'Tubuh berdekatan; menunggu posisi terpisah untuk menetapkan A/B.'):
     chosen.length?'Tubuh '+chosen.map(x=>x.id).join(' & ')+' terbaca.':
     found.length?'Identitas belum pasti. Kembalikan tubuh ke posisi terakhir atau reset identitas.':
     'Menunggu performer memasuki gambar.'};
