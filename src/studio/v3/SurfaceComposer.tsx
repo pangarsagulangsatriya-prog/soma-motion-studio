@@ -48,8 +48,8 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
-import {footSamplesFromExperiment,footSamplesFromLive} from '../../footprints/lines/FootLineSampleAdapter.ts';
-import {ComposeFloorPosePreview,useComposeFloorPoseFallback} from './ComposeFloorPosePreview.ts';
+import {footSamplesFromExperiment} from '../../footprints/lines/FootLineSampleAdapter.ts';
+import {ComposeFloorPosePreview,useComposeFloorPoseFallback,composeLiveFootSamples} from './ComposeFloorPosePreview.ts';
 import {DEFAULT_FULLSCREEN_DIAGNOSTICS,type FullscreenDiagnostics}
  from '../../footprints/lines/FullscreenInputDiagnostics.ts';
 import {DEFAULT_LINE_TRAILS_OPTIONS,type LineTrailsOptions} from '../../footprints/lines/LineTrailCanvasRenderer.ts';
@@ -813,11 +813,14 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      :experimentType==='simulator'?'simulator':lineSourceRef.current+':'+session;
     const samples=experimentType
      ?(experiment&&experiment.kind===experimentType?
-      footSamplesFromExperiment(experiment,'compose-floor-preview',0,'A'):[])
-     :cameraOnRef.current&&bodySelectedRef.current&&frame.tracked&&
+      (performerRef.current===2?
+       [...footSamplesFromExperiment(experiment,'compose-floor-preview',0,'A'),
+        ...footSamplesFromExperiment(experiment,'compose-floor-preview',0,'B')]:
+       footSamplesFromExperiment(experiment,'compose-floor-preview',0,'A')):[])
+     :cameraOnRef.current&&bodySelectedRef.current&&
        frame.source==='camera'&&frame.time>0&&now>=frame.time&&now-frame.time<450
-      ?footSamplesFromLive(frame,routerRef.current.previewStatus,performerRef.current,
-         lineSourceRef.current,session,0,'A'):[];
+      ?composeLiveFootSamples(frame,routerRef.current.previewStatus,performerRef.current,
+         lineSourceRef.current,session):[];
     floorPosePreview.current.ingest(samples,now,sourceKey);
     const ctx=preview?.getContext('2d');
     const painted=!!preview&&!!ctx&&floorPosePreview.current.paint(
