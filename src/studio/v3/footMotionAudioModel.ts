@@ -10,7 +10,7 @@ export type FootAudioAction={kind:'contact'|'motion';event:FootMotionEventV2};
 export class FootAudioCursor{
  private session='';private seen=new Set<string>();
  reset(session:string,events:readonly FootMotionEventV2[]){this.session=session;this.seen=new Set(events.filter(e=>e.sessionId===session&&validFootMotionEvent(e)).map(e=>e.eventId));}
- consume(session:string,events:readonly FootMotionEventV2[],mode:FootAudioMode,now:number):FootAudioAction[]{
+ consume(session:string,events:readonly FootMotionEventV2[],mode:FootAudioMode,now:number,experimental=false):FootAudioAction[]{
   if(this.session!==session){this.reset(session,events);return [];}
   const out:FootAudioAction[]=[];
   for(const e of events){
@@ -19,13 +19,12 @@ export class FootAudioCursor{
    if(e.actorId.startsWith('unassigned-')||e.confidence<.5)continue;
    if((e.source==='camera'||e.source==='phone'||e.source==='touch')&&(e.atMs>now+50||now-e.atMs>450))continue;
    if(footMotionCanStamp(e))out.push({kind:'contact',event:e});
-   else if(mode==='trace'&&e.kind==='movement'&&e.speed>.018)out.push({kind:'motion',event:e});
+   else if((mode==='trace'&&e.kind==='movement'&&e.speed>.018)||(experimental&&(e.kind==='slide'||e.kind==='pivot')&&e.foot!=='unknown'&&e.coordinateBasis!=='presence-only'))out.push({kind:'motion',event:e});
   }
   // Bus is capped at 480 events; keep recent ids so long sessions remain bounded.
   if(this.seen.size>2000)this.seen=new Set(events.filter(e=>e.sessionId===session&&validFootMotionEvent(e)).map(e=>e.eventId));
   // No accumulated burst on a slow frame. Two contacts + latest movement.
-  const contacts=out.filter(x=>x.kind==='contact').slice(-2),motion=out.filter(x=>x.kind==='motion').at(-1);
-  return motion?[...contacts,motion]:contacts;
+  const contacts=out.filter(x=>x.kind==='contact').slice(-2);const motions=out.filter(x=>x.kind==='motion');if(experimental){const byActor=new Map<string,FootAudioAction>();for(const action of motions){const prior=byActor.get(action.event.actorId);if(!prior||action.event.kind!=='movement'||prior.event.kind==='movement')byActor.set(action.event.actorId,action);}return [...contacts,...[...byActor.values()].slice(-2)];}const motion=motions.at(-1);return motion?[...contacts,motion]:contacts;
  }
 }
 export function footAudioSettings(character:Character,volume:number,mode:FootAudioMode):Settings{
