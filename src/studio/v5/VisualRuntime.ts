@@ -3,6 +3,9 @@ import {GaitAnalyzer} from '../../footprints/gait-analysis/index.ts';
 import {TwoPersonIdentityTracker} from '../../footprints/live/TwoPersonIdentityTracker.ts';
 import {upperGestureAnchors} from '../../footprints/dual-trace/UpperGestureAnchorAdapter.ts';
 import {UpperGestureStrokeTracker,type UpperGestureEvent} from '../../footprints/dual-trace/UpperGestureStrokeTracker.ts';
+import {PathObservationRouter,type PathStanceHint} from '../../footprints/lines/v3/PathObservationRouter.ts';
+import {resolvePoseFeet} from '../../footprints/lines/v3/FootPositionResolver.ts';
+import type {FootBrushPose} from '../../footprints/lines/v3/FootBrushPoseAdapter.ts';
 import {ActorPathTracker,type PathEvent} from '../../footprints/lines/v3/ActorPathTracker.ts';
 import {DualTraceV2Renderer} from '../../footprints/dual-trace/DualTraceV2Renderer.ts';
 import {PainterlyImpressionEngine,lifetimeOpacity} from '../../footprints/lines/v3/PainterlyImpressionEngine.ts';
@@ -38,11 +41,12 @@ export class VisualRuntime{
  private gaits={A:new GaitAnalyzer(),B:new GaitAnalyzer()};
  private upper=new UpperGestureStrokeTracker();
  private path=new ActorPathTracker();
+ private pathRouter=new PathObservationRouter();
  private trace:DualTraceV2Renderer|null=null;
  private impressions=new PainterlyImpressionEngine();
  marks:FootMark[]=[];last=-1;source='';reason='Menunggu frame';epoch=0;
  clear(){this.trace?.clearBoth();this.trace=null;this.impressions.reset();this.marks=[];this.resetTracking();}
- resetTracking(){this.identity.reset();this.gaits.A.reset();this.gaits.B.reset();this.upper.cutAll('reset');this.path.cutAll('reset');this.trace?.cutAll();this.last=-1;this.epoch++;}
+ resetTracking(){this.identity.reset();this.gaits.A.reset();this.gaits.B.reset();this.upper.cutAll('reset');this.path.cutAll('reset');this.pathRouter.reset();this.trace?.cutAll();this.last=-1;this.epoch++;}
  apply(e:VisualEvent){if(e.kind==='foot'){this.marks.push(e.mark);if(this.marks.length>10000)this.marks.shift();return;}
   this.trace??=new DualTraceV2Renderer();if(e.kind==='upper')this.trace.ingestUpper(e.event,10,18);else this.trace.ingestPath(e.event,27,'rough-sumi',true);}
  ingest(frame:MotionFrame,source:string,aspect:number,at:number,emit:(e:VisualEvent)=>void){
@@ -51,12 +55,17 @@ export class VisualRuntime{
   const actors=this.identity.observe(frame.tracked?(frame.poses?.length?frame.poses:[frame.pose]):[],frame.time);
   this.reason=actors.reason;
   const anchors=actors.assignments.flatMap(a=>upperGestureAnchors({actorId:a.id,source:'camera',sourceKey:source,epoch:this.epoch,timeMs:frame.time,identityConfidence:a.confidence,landmarks:a.pose,coordinateBasis:'image-2d'}));
-  for(const a of actors.assignments){for(const side of [0,1] as const){
+  const footPoses:FootBrushPose[]=[],hints:PathStanceHint[]=[];
+  for(const a of actors.assignments){
+   for(const p of resolvePoseFeet(a.pose,{sessionId:source,generation:this.epoch,source:'camera',actorId:a.id,atMs:frame.time,coordinateBasis:'image-2d'}))footPoses.push({actorId:a.id,foot:p.foot,sourceKey:source,epoch:this.epoch,atMs:frame.time,coordinateBasis:'image-2d',center:{x:p.x,y:p.y},heel:p.heel,toe:p.toe,ankle:p.ankle,headingRad:p.headingRad,confidence:p.confidence,provenance:'detected-estimate'});
+   for(const side of [0,1] as const){
    const s=this.gaits[a.id].observe({...frame,pose:a.pose},side,frame.time,aspect);
+   if(s&&s.confidence>=.65&&s.phase!=='unknown')hints.push({actorId:a.id,foot:side?'right':'left',kind:s.motionKind==='pivot'?'pivot':s.phase==='swing'?'swing':'contact',atMs:frame.time,confidence:s.confidence,basis:'video-2d-estimate'});
    if(s?.stamp&&s.confidence>=.55)emit({at,kind:'foot',mark:{actor:a.id,side:side?'right':'left',x:s.x,y:s.y,heading:s.heading+Math.PI/2,t:at}});
   }}
   for(const a of actors.lost)this.gaits[a].reset();
-  if(actors.ambiguous){for(const e of this.upper.cutAll('identity'))emit({at,kind:'upper',event:e});this.trace?.cutAll();return;}
+  if(actors.ambiguous){for(const e of this.upper.cutAll('identity'))emit({at,kind:'upper',event:e});for(const e of this.path.cutAll('identity'))emit({at,kind:'path',event:e});this.pathRouter.reset();this.trace?.cutAll();return;}
+  for(const e of this.path.ingest(this.pathRouter.ingest(footPoses,hints),frame.time))emit({at,kind:'path',event:e});
   for(const e of this.upper.ingest(anchors,frame.time))emit({at,kind:'upper',event:e});
  }
  paintFloor(ctx:CanvasRenderingContext2D,at:number,life:number){

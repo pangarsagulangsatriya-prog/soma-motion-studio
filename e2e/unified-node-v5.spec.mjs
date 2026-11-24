@@ -1,0 +1,24 @@
+import {test,expect} from '@playwright/test';
+test('unified canvas: cue switching, missing source, real local media pixels and per-surface blackout',async({page})=>{
+ await page.goto('/?workspace=nodes');
+ await expect(page.locator('.soma-node-v5')).toBeVisible();
+ await expect(page.locator('.nv-node')).toHaveCount(17);
+ await expect(page.locator('.nv-node.camera')).toHaveCount(3);
+ await page.getByRole('button',{name:'GO',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Camera 01 belum');
+ await page.getByRole('button',{name:/F2 Video arsip/}).click();
+ await expect(page.locator('.nv-node')).toHaveCount(17);
+ await page.locator('.nv-node.media').click();
+ await page.locator('.nv-inspector input[type=file]').setInputFiles({name:'red.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#d02020"/></svg>')});
+ await page.getByRole('button',{name:'GO',exact:true}).click();
+ const pixel=async(index)=>page.locator('.nv-monitor canvas').nth(index).evaluate(c=>Array.from(c.getContext('2d').getImageData(800,450,1,1).data));
+ await expect.poll(async()=> (await pixel(1))[0]).toBeGreaterThan(170);
+ expect((await pixel(0))[0]).toBeLessThan(30);
+ await page.locator('.nv-monitor').nth(1).getByRole('button',{name:'Black',exact:true}).click();
+ await expect.poll(async()=> (await pixel(1))[0]).toBeLessThan(30);
+ await page.locator('.nv-monitor').nth(1).getByRole('button',{name:'Tampilkan',exact:true}).click();
+ await expect.poll(async()=> (await pixel(1))[0]).toBeGreaterThan(170);
+ await page.getByRole('button',{name:'Blackout',exact:true}).click();
+ await expect.poll(async()=> (await pixel(1))[0]).toBeLessThan(30);
+ await expect(page.locator('.nv-status')).toContainText('READY');
+});

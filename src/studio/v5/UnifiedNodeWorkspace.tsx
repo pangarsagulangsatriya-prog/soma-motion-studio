@@ -18,7 +18,7 @@ const cueNames:Record<CueId,string>={F1:'Jejak live',F2:'Video arsip',F3A:'Captu
 const roles:Role[]=['cam1','cam2','cam3'];
 const graph=defaultUnpackingGraph();
 const layout:Record<string,[number,number]>={cam1:[18,58],cam2:[18,175],cam3:[18,292],archive:[18,409],saved:[18,526],photos:[18,643],pose:[225,58],hand:[225,292],foot:[432,28],trace:[432,145],capture:[432,292],rec:[639,28],replay:[432,526],floorMix:[639,180],canvasMix:[639,409],floor:[846,180],canvas:[846,409]};
-const labels:Record<string,string>={cam1:'Performer · video',cam2:'Penonton · video',cam3:'Gestur · video',pose:'33 landmarks',hand:'Pose + hand',foot:'Gait / contact',trace:'Head + shoulder ink',rec:'Local session',replay:'Timed events',capture:'4 foto · consent',floorMix:'Footprint layer',canvasMix:'Media + ink + foto',archive:'MP4 / gambar',saved:'F1 recording',photos:'4 slot',floor:'Preview lantai',canvas:'Preview kanvas'};
+const labels:Record<string,string>={cam1:'Performer · video',cam2:'Penonton · video',cam3:'Gestur · video',pose:'33 landmarks',hand:'Pose + hand',foot:'Gait / contact',trace:'Foot + head + shoulder ink',rec:'Local session',replay:'Timed events',capture:'4 foto · consent',floorMix:'Footprint layer',canvasMix:'Media + ink + foto',archive:'MP4 / gambar',saved:'F1 recording',photos:'4 slot',floor:'Preview lantai',canvas:'Preview kanvas'};
 const fill=(c:CanvasRenderingContext2D,color='#050807')=>{c.fillStyle=color;c.fillRect(0,0,c.canvas.width,c.canvas.height);};
 const fit=(ctx:CanvasRenderingContext2D,img:HTMLVideoElement|HTMLImageElement,alpha=1)=>{const w=img instanceof HTMLVideoElement?img.videoWidth:img.naturalWidth,h=img instanceof HTMLVideoElement?img.videoHeight:img.naturalHeight;if(!w||!h)return;const W=ctx.canvas.width,H=ctx.canvas.height,k=Math.min(W/w,H/h);ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(img,(W-w*k)/2,(H-h*k)/2,w*k,h*k);ctx.restore();};
 function FeedThumbnail({registry,id}:{registry:CameraHubRegistry;id:string}){
@@ -46,7 +46,7 @@ export function UnifiedNodeWorkspace(){
  const photoStore=useRef(new F3PhotoStore()).current,machine=useRef(new F3SessionMachine()).current;
  const framing=useRef(new F3FramingController()).current,punch=useRef(new F3PunchEngine()).current,fusion=useRef(new F3MotionFusion()).current;
  const log=useRef<SessionLog>(emptyLog()),saved=useRef<SessionLog>(emptyLog());
- const clock=useRef({start:0,replayStart:0,index:0,lastGesture:-1,lastUi:0,serial:0});
+ const clock=useRef({start:0,replayStart:0,index:0,lastGesture:-1,lastGestureTime:-1,lastUi:0,serial:0});
  const images=useRef(new Map<string,HTMLImageElement>());
  const alive=useRef(true),recOn=useRef(false),consentRef=useRef(false),armedRef=useRef(false),captureGen=useRef(0);
  const current=useRef({bindings,cue,running,decay,blank,archive});current.current={bindings,cue,running,decay,blank,archive};
@@ -58,7 +58,7 @@ export function UnifiedNodeWorkspace(){
  },[registry,fusion,photoStore]);
  useEffect(()=>()=>{if(archive)URL.revokeObjectURL(archive.url);},[archive]);
  const fresh=(id:string,now=performance.now())=>{const feed=registry.feed(id),record=registry.get(id);return !!feed&&record?.phase==='live'&&feed.video.readyState>=2&&!feed.video.paused&&hubFrameIsFresh(feed.frameAt,now,950)&&((feed.video.srcObject as MediaStream|null)?.getVideoTracks?.().some(t=>t.readyState==='live')??false);};
- const addDevice=async()=>{try{let chosen=device;if(!chosen){const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false});chosen=s.getVideoTracks()[0]?.getSettings().deviceId??'';s.getTracks().forEach(t=>t.stop());await refresh();}
+ const addDevice=async()=>{try{let chosen=device;if(!chosen&&records.length&&devices.length){setNotice('Pilih perangkat lain dari daftar kamera.');return;}if(!chosen){const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false});chosen=s.getVideoTracks()[0]?.getSettings().deviceId??'';s.getTracks().forEach(t=>t.stop());await refresh();}
   if(!chosen)throw Error('Pilih perangkat kamera.');const old=registry.findDevice(chosen);const id=old?.id??registry.create(chosen,devices.find(d=>d.deviceId===chosen)?.label||'Kamera '+(records.length+1));setSelected(id);
   setBindings(b=>{const role=roles.find(r=>!b[r]);return role&&!Object.values(b).includes(id)?{...b,[role]:id}:b;});
   if(!old||old.phase!=='live')await registry.connect(id);setNotice('Kamera terdaftar. Periksa frame pada node.');
@@ -68,14 +68,15 @@ export function UnifiedNodeWorkspace(){
  const startRecord=()=>{if(current.current.cue!=='F1'||!current.current.running){setNotice('Jalankan F1 terlebih dahulu.');return;}live.clear();log.current=emptyLog();clock.current.start=performance.now();recOn.current=true;setRecording(true);setCount(0);setNotice('Merekam event visual F1.');};
  const disarm=()=>{armedRef.current=false;setArmed(false);machine.disarm();punch.reset();captureGen.current++;};
  const selectCue=(id:CueId)=>{stopRecord();disarm();setRunning(false);setCue(id);setBlank({floor:false,canvas:false});archiveVideo.current?.pause();setElapsed(0);setNotice('Cue '+id+' dipilih. Tekan GO untuk preview.');};
- const go=()=>{if(cue==='F3B'&&!saved.current.events.length){setNotice('Rekaman F1 belum tersedia.');return;}if(cue==='F2'&&!archive){setNotice('Pilih arsip video atau gambar.');return;}
+ const go=()=>{if(cue==='F3B'&&(!saved.current.events.length||!archive||photoStore.count<1)){setNotice('F3B memerlukan rekaman F1, arsip, dan minimal satu foto penonton yang disetujui.');return;}if(cue==='F2'&&!archive){setNotice('Pilih arsip video atau gambar.');return;}
   if(cue==='F1'&&!fresh(bindings.cam1)){setNotice('Camera 01 belum mengirim frame segar.');return;}
   if(cue==='F3A'&&(!bindings.cam2||bindings.cam2===bindings.cam3||!fresh(bindings.cam2)||!fresh(bindings.cam3))){setNotice('Hubungkan dua sumber berbeda untuk F3.');return;}
   setBlank({floor:false,canvas:false});setRunning(true);clock.current.replayStart=performance.now();clock.current.index=0;replay.clear();if(cue==='F1'){live.clear();clock.current.start=performance.now();}if(cue==='F2'||cue==='F3B')void archiveVideo.current?.play().catch(()=>setNotice('Video belum bisa diputar.'));setNotice('Preview '+cue+' berjalan. Output fisik belum diotorisasi.');
  };
  const stop=()=>{stopRecord();disarm();setRunning(false);archiveVideo.current?.pause();setNotice('Cue dihentikan.');};
  const blackout=()=>{stop();setBlank({floor:true,canvas:true});};
- useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape'||(e.code==='KeyB'&&!['INPUT','SELECT','TEXTAREA'].includes((e.target as HTMLElement)?.tagName))){setBlank({floor:true,canvas:true});setRunning(false);recOn.current=false;setRecording(false);armedRef.current=false;setArmed(false);machine.disarm();captureGen.current++;archiveVideo.current?.pause();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[machine]);
+ const blackoutRef=useRef(blackout);blackoutRef.current=blackout;
+ useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape'||(e.code==='KeyB'&&!['INPUT','SELECT','TEXTAREA'].includes((e.target as HTMLElement)?.tagName))){blackoutRef.current();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[machine]);
  const capture=async(eventId:string,preset:'manual'|'straight'='manual')=>{
   const b=current.current.bindings,now=performance.now(),f=registry.feed(b.cam2),aFresh=fresh(b.cam3,now),bFresh=fresh(b.cam2,now);
   if(current.current.cue!=='F3A'||!current.current.running||!consentRef.current||!armedRef.current||!f||b.cam2===b.cam3||!machine.begin(eventId,aFresh,bFresh,photoStore.count<4))return;
@@ -94,12 +95,12 @@ export function UnifiedNodeWorkspace(){
    if(!s.running){fill(cf);fill(cc);return;}
    if(s.cue==='F1'){
     const at=Math.max(0,now-clock.current.start);
-    if(fLive&&f?.frame){live.ingest(f.frame,s.bindings.cam1,f.video.videoWidth/Math.max(1,f.video.videoHeight),at,(e)=>{live.apply(e);if(recOn.current&&!appendEvent(log.current,e)){recOn.current=false;setRecording(false);setNotice('Batas sesi tercapai. Rekaman dapat diekspor.');}});}
+    if(fLive&&f?.frame){live.ingest(f.frame,s.bindings.cam1,f.video.videoWidth/Math.max(1,f.video.videoHeight),at,(e)=>{live.apply(e);if(recOn.current&&!appendEvent(log.current,e)){stopRecord();setNotice('Batas sesi tercapai. Rekaman disimpan.');}});}
     if(!s.blank.floor&&fLive)live.paintFloor(cf,at,s.decay);else fill(cf);
     if(!s.blank.canvas&&fLive)live.paintTrace(cc,at);else fill(cc);
    }else if(s.cue==='F2'){fill(cf);fill(cc);if(!s.blank.canvas){if(s.archive?.video&&archiveVideo.current)fit(cc,archiveVideo.current);else if(archiveImage.current)fit(cc,archiveImage.current);}}
    else if(s.cue==='F3A'){fill(cf);if(!aLive||!bLive){if(armedRef.current)disarm();fill(cc);}else if(!s.blank.canvas&&consentRef.current&&a&&b){
-    if(fusion.status==='ready'&&armedRef.current&&now-clock.current.lastGesture>90){clock.current.lastGesture=now;try{const m=fusion.sample(a.video,++clock.current.serial,now);if(m){framing.step(m,now);if(framing.resizing)punch.pauseResize(now);else{const result=punch.step(m,now,true);if(result.kind==='capture'&&result.eventId)void capture('gesture-'+result.eventId+'-'+captureGen.current,'straight');}}}catch{disarm();setNotice('Detektor gestur berhenti; arm ulang untuk lanjut.');}}
+    if(fusion.status==='ready'&&armedRef.current&&now-clock.current.lastGesture>90&&a.video.currentTime!==clock.current.lastGestureTime){clock.current.lastGesture=now;clock.current.lastGestureTime=a.video.currentTime;try{const m=fusion.sample(a.video,++clock.current.serial,now);if(m){framing.step(m,now);if(framing.resizing)punch.pauseResize(now);else{const result=punch.step(m,now,true);if(result.kind==='capture'&&result.eventId)void capture('gesture-'+result.eventId+'-'+captureGen.current,'straight');}}}catch{disarm();setNotice('Detektor gestur berhenti; arm ulang untuk lanjut.');}}
     const stage=makeF3StageFrame({sourceId:s.bindings.cam2,frameId:registry.get(s.bindings.cam2)?.frames??0,timestamp:now,crop:framing.crop(b.video.videoWidth,b.video.videoHeight),slots:photoStore.slots,state:'LIVE'});stage.overlay={...stage.overlay,corners:false,liveIndicator:false};drawF3Stage(cc,stage,a.video,b.video);
    }else fill(cc);}
    else{const at=Math.min(saved.current.duration,now-clock.current.replayStart);clock.current.index=replayUntil(saved.current,clock.current.index,at,e=>replay.apply(e));if(!s.blank.floor)replay.paintFloor(cf,at,s.decay);else fill(cf);if(!s.blank.canvas){replay.paintTrace(cc,at);if(s.archive?.video&&archiveVideo.current)fit(cc,archiveVideo.current,.36);else if(archiveImage.current)fit(cc,archiveImage.current,.36);
