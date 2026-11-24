@@ -1036,7 +1036,9 @@ export function FootprintsStageWorkspace({
      motionEvents={()=>interactionEngineRef.current.canonicalRecent}
      motionSession={()=>interactionEngineRef.current.currentSessionId}
      audioWorkspaceActive={composerOpen&&!mappingOpen&&!operatorMode}
-     audioSourceReady={touchDemo||experimentalKind==='simulator'&&selectedExperimentFrame?.kind==='simulator'||experimentalKind==='video'&&canPaintVideoFrame(selectedExperimentFrame)||!experimentalKind&&cameraOn&&bodySelected&&sourceStatus.phase==='ready'}
+     audioSourceReady={touchDemo||experimentalKind==='simulator'&&selectedExperimentFrame?.kind==='simulator'||experimentalKind==='video'&&canPaintVideoFrame(selectedExperimentFrame)||!experimentalKind&&cameraOn&&bodySelected&&sourceStatus.phase==='ready'&&frameFresh&&
+      (performerCount===1||!previewIdentity.ambiguous&&previewIdentity.visible.length>0)}
+     audioContactReady={touchDemo||!!experimentalKind||floorStatus.confirmed&&cameraMatched}
      onTakeAudio={onTakeAudio}
      lineSource={sourceStatus.selection==='phone'?'phone':'camera'}
      identitySafe={!identityStatus.ambiguous}
