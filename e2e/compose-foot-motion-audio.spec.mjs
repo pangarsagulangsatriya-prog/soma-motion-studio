@@ -12,7 +12,7 @@ test('shared Compose audio panel starts off, can unlock, switches visual mode an
  await expect.poll(()=>panel.getByRole('meter',{name:'Level audio'}).evaluate(m=>m.value),{timeout:2000,intervals:[20,30,50]}).toBeGreaterThan(.001);
  await page.locator('#soma-compose-monitor button.lt-beta-trigger').click();
  await expect(panel).toContainText('Pijakan + gerak');await expect(panel.getByLabel('Karakter suara')).toHaveValue('raw');
- await page.getByRole('button',{name:'Blackout',exact:true}).click();
+ await page.getByRole('button',{name:'Kirim perintah blackout SOMA',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Aktifkan audio'})).toBeDisabled();
  await expect(panel.getByRole('button',{name:'Matikan audio'})).toHaveCount(0);
 });
