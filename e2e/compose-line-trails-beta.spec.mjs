@@ -60,7 +60,8 @@ test('Line Trails Beta: switch back to the previous Mineral Ink controls',async(
  await beta.click({noWaitAfter:true});
  await expect.poll(async()=>await page.locator('.s64-layout').getAttribute('data-line-trails-active'),{timeout:8000}).toBe('false');
  await expect(beta).toHaveAttribute('aria-pressed','false',{timeout:8000});
- await expect(page.getByText('Style Library')).toBeVisible();
+ await expect(page.getByText('Gaya visual')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Sederhana',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('.lt-beta-frame')).toHaveCount(0);
 });
 test('Line Trails Beta: clear, visibility switches and blackout preserve Track',async({page})=>{
@@ -208,6 +209,10 @@ test('Regression: red Garis BETA button remains visible after disabling lines an
  await beta.click();
  await expect(beta).toBeVisible();
  await expect(beta).toHaveAttribute('aria-pressed','false');
+ // The compact UI keeps LEG A/B in Advanced; verify navigation remains reachable.
+ await expect(page.getByRole('button',{name:'Sederhana',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Lanjutan',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Lanjutan',exact:true})).toHaveAttribute('aria-pressed','true');
  await monitor.getByRole('button',{name:'LEG A'}).click();
  await expect(beta).toBeVisible();
  await monitor.getByRole('button',{name:'FLOOR'}).click();

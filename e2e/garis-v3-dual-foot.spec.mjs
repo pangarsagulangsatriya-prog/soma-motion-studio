@@ -75,6 +75,9 @@ test('V3 debug is optional; V2 rollback restores old styles without losing navig
  await expect(page.getByRole('region',{name:'Kontrol Garis V3'})).toBeVisible();
  await beta.click();
  await expect(beta).toHaveAttribute('aria-pressed','false');
+ // Quick hides diagnostic LEG A/B until operator chooses the Advanced inspector.
+ await expect(page.getByRole('button',{name:'Sederhana',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Lanjutan',exact:true}).click();
  await monitor.getByRole('button',{name:'LEG A'}).click();
  await expect(beta).toBeVisible();
  await monitor.getByRole('button',{name:'FLOOR'}).click();
