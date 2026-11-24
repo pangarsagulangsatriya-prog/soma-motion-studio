@@ -412,7 +412,7 @@ export function FootprintsStageWorkspace({
    const fresh=cameraSourceReady&&bodySelected&&f.source==='camera'&&f.tracked&&
     f.time<=now&&now-f.time<450;
    setFrameFresh(prev=>prev===fresh?prev:fresh);
-   const videoAvailable=!!((cameraSourceReady||cameraBusy)&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight&&v.srcObject instanceof MediaStream&&v.srcObject.active);
+   const videoAvailable=!!((cameraSourceReady||(cameraBusy&&sourceStatus.phase==='connecting'&&(sourceStatus.selection==='webcam'||sourceStatus.selection==='phone')))&&v&&v.readyState>=2&&v.videoWidth&&v.videoHeight&&v.srcObject instanceof MediaStream&&v.srcObject.active);
    setVideoReady(prev=>prev===videoAvailable?prev:videoAvailable);
    const camera=cameraCanvas.current,cam=camera?.getContext('2d');
    if(camera&&cam){
