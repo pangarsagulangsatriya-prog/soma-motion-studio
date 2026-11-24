@@ -1,7 +1,7 @@
 import type {MotionFrame} from '../../engine/types.ts';
 import type {MultiPoseStatus} from '../live/MultiPoseGaitRouter.ts';
 import type {LiveFloorTrackingEngine} from '../live/LiveFloorTrackingEngine.ts';
-import {cameraGroundToFloor,floorToUV,stageUVToRawCamera,type FloorSpace}
+import {cameraGroundToFloor,floorToUV,type FloorSpace}
  from '../spatial/coordinates.ts';
 import type {ExperimentalFrame} from '../../studio/v3/experimentSourceModel.ts';
 import {paintAuthenticFootprint} from './authenticFootGeometry.ts';
@@ -35,13 +35,13 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  identity:MultiPoseStatus;previewIdentity?:MultiPoseStatus;performerCount:1|2;tracker:LiveFloorTrackingEngine;
  cameraMatched:boolean;videoAspect:number;nowMs:number;
 }){
- const {source,frame,identity,performerCount,tracker,cameraMatched,videoAspect,nowMs}=input;
+ const {source,frame,identity,performerCount,tracker,cameraMatched,nowMs}=input;
  const preview=input.previewIdentity??identity;
- if(engine.activeSource!==source||!frame.tracked||frame.source!=='camera'||
+ if(engine.activeSource!==source||(performerCount===1&&!frame.tracked)||frame.source!=='camera'||
   nowMs-frame.time<0||nowMs-frame.time>450)return;
  const coordinates=(p:{x:number;y:number;confidence:number})=>{
   if(cameraMatched&&tracker.calibrationData){
-   const raw=stageUVToRawCamera(p,videoAspect);
+   const raw={x:p.x,y:p.y};
    // This transformation is only a visual XY anchor, never a foot-contact
    // estimate. The source of contact is exclusively LiveFloorTrackingEngine.
    const mapped=raw?cameraGroundToFloor(tracker.calibrationData,{
@@ -83,10 +83,10 @@ export function feedLiveFloorInteractions(engine:FloorInteractionEngine,input:{
  for(const e of tracker.session?.events??[]){
   if(e.source!=='camera'||e.confidence<.55||
    !visibleActors.has(e.performerId)||
-   e.timestampMs>frame.time+70)continue;
+   e.timestampMs>frame.time+70||e.timestampMs<nowMs-450)continue;
   const uv=floorToUV(tracker.floor!,e.positionM);
   if(e.kind==='contact'){
-   engine.contact({source,eventId:e.id,actorId:e.performerId,foot:e.foot,
+   engine.contact({source,eventId:`${tracker.sessionEpoch}:${e.id}`,actorId:e.performerId,foot:e.foot,
     x:uv.x,y:uv.y,confidence:e.confidence,atMs:e.timestampMs,
     basis:'calibrated-estimate',verified:true,headingRad:e.headingRad});
   }else if(e.kind==='move'||e.kind==='release'){
