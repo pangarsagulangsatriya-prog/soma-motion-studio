@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 const archive={name:'archive-red.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#d02020"/></svg>')};
 test('V5.1 real archive preview, next cue isolation and latched blackout',async({page})=>{
  await page.goto('/?workspace=nodes');
- await expect(page.locator('.soma-signal[data-version="5.1"]')).toBeVisible();
+ await expect(page.locator('.soma-signal[data-version="5.2"]')).toBeVisible();
  await expect(page.locator('.sw-node')).toHaveCount(13);
  await expect(page.getByRole('button',{name:'GO',exact:true})).toBeDisabled();
  await page.locator('[data-node="archive"] .sw-node-title').click();
@@ -41,4 +41,33 @@ test('V5.1 grouped graph, keyboard layout, compact controls and reduced motion',
  await expect(page.locator('.soma-signal')).toHaveAttribute('data-reduced-motion','true');
  await expect(page.getByRole('button',{name:'Blackout semua output'})).toBeVisible();
  await expect(page.getByRole('button',{name:'Record F1'})).toBeVisible();
+});
+
+test('V5.2 layout history, minimap and collapsed inspector preserve controls',async({page})=>{
+ await page.goto('/?workspace=nodes');
+ const node=page.locator('[data-node="foot"]');const before=await node.evaluate(n=>n.style.left);
+ await node.locator('.sw-node-title').focus();await page.keyboard.press('ArrowRight');
+ await expect.poll(()=>node.evaluate(n=>n.style.left)).not.toBe(before);
+ const changed=await node.evaluate(n=>n.style.left);
+ await page.getByRole('button',{name:'Undo layout',exact:true}).click();await expect.poll(()=>node.evaluate(n=>n.style.left)).toBe(before);
+ await page.getByRole('button',{name:'Redo layout',exact:true}).click();await expect.poll(()=>node.evaluate(n=>n.style.left)).toBe(changed);
+ await page.getByRole('button',{name:'Minimap: pindah viewport',exact:true}).click();
+ await page.getByRole('button',{name:'Fit graph',exact:true}).click();
+ await page.getByRole('button',{name:'Collapse inspector',exact:true}).click();
+ await expect(page.locator('.sw-inspector-body')).toBeHidden();
+ await expect(page.locator('.sw-monitor canvas')).toHaveCount(2);
+ await expect(page.getByRole('button',{name:'Blackout semua output'})).toBeVisible();
+ await page.getByRole('button',{name:'Expand inspector',exact:true}).click();await expect(page.locator('.sw-inspector-body')).toBeVisible();
+});
+test('V5.2 valid session import persists; invalid input cannot overwrite',async({page})=>{
+ await page.goto('/?workspace=nodes');
+ await page.locator('[data-node="session"] .sw-node-title').click();
+ const file={name:'f1.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({schema:'soma.visual-session',version:1,duration:1000,events:[{at:100,kind:'foot',mark:{actor:'A',side:'left',x:.4,y:.4,heading:0,t:100}}]}))};
+ await page.getByLabel('Impor sesi JSON').setInputFiles(file);
+ await expect(page.locator('.sw-inspector .sw-info')).toContainText('1 event');
+ await page.reload();await page.locator('[data-node="session"] .sw-node-title').click();await expect(page.locator('.sw-inspector .sw-info')).toContainText('1 event');
+ page.once('dialog',d=>d.accept());
+ await page.getByLabel('Impor sesi JSON').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"schema":"bad"}')});
+ await expect(page.locator('.sw-notice')).toContainText('Format sesi tidak valid.');
+ await expect(page.locator('.sw-inspector .sw-info')).toContainText('1 event');
 });
