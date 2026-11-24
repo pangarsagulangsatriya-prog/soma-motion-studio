@@ -1,0 +1,32 @@
+name: SOMA V5.6 regression (no deploy)
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: soma-regression-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: V5.5 to V5.6 end-to-end regression
+        run: node --experimental-strip-types --test tests/v55-motion-reliability.test.ts tests/v56*.test.ts
+      - name: Full unit regression
+        run: npm test
+      - name: Build GitHub Pages configuration (without publishing)
+        run: npm run build -- --mode githubpages
+        env:
+          VITE_SOMA_STAGE_OUTPUTS: enabled
+          VITE_SOMA_BUILD_ID: ${{ github.sha }}
