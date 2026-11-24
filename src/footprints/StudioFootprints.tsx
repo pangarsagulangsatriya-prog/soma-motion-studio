@@ -97,15 +97,18 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
   toggleVideo,exportPNG:savePNG,exportSVG:saveSVG,exportJSON:saveJSON,importJSON,count:()=>session.current.length
  }));
  useEffect(()=>{
-  let raf=0,prior=performance.now(),renderAt=0;
+  let raf=0,prior=performance.now(),renderAt=0,wasHeld=false;
   const tick=(now:number)=>{
    raf=requestAnimationFrame(tick);
    const p=latest.current,f=p.frameRef.current,c=p.config;
    const dt=Math.min(75,Math.max(0,now-prior));prior=now;
    if(!p.active)return;
+   if(wasHeld&&!c.hold){live.current=[null,null];lastPrint.current=[null,null];}
+   wasHeld=c.hold;
+   const collectLive=!c.hold||p.forceGaitForLiveFloor===true;
    if(!c.hold)elapsed.current+=dt;
    const clock=elapsed.current;
-   if(!c.hold&&f.source==='camera'&&f.time!==lastFrame.current){
+   if(collectLive&&f.source==='camera'&&f.time!==lastFrame.current){
     lastFrame.current=f.time;
     const fresh=Number.isFinite(f.time)&&f.time>0&&f.time<=now&&now-f.time<350;
     const valid=f.tracked&&f.pose.length>=33&&fresh;
@@ -119,9 +122,10 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
       const observed=gait.current.observe({...f,tracked:valid},side as 0|1,f.time,aspect);
       // Gait and the calibrated event bus use capture time. Legacy drawing/export
       // keeps its own pause-aware elapsed clock.
-      const mark=observed?{...observed,t:clock}:null;
-      if(!mark){live.current[side]=null;lastPrint.current[side]=null;p.onGaitSample?.(null,side as 0|1,aspect);continue;}
+      const mark=observed?{...observed,t:clock,join:observed.join&&!!live.current[side]}:null;
       p.onGaitSample?.(observed,side as 0|1,aspect);
+      if(c.hold)continue;
+      if(!mark){live.current[side]=null;lastPrint.current[side]=null;continue;}
       live.current[side]=mark;
       view.current.push(mark);
       if(session.current.length<100000)session.current.push({...mark});
@@ -145,8 +149,9 @@ export const StudioFootprints=forwardRef<FootprintsHandle,Props>(function Studio
     }
     p.onPoseFrame?.(valid||multiValid?f:null,f.time,aspect);
    }
-   if(!c.hold&&now-f.time>400){
-    live.current=[null,null];lastPrint.current=[null,null];gait.current.reset();
+   if(collectLive&&now-f.time>400){
+    if(!c.hold){live.current=[null,null];lastPrint.current=[null,null];}
+    gait.current.reset();
     if(!trackingLost.current){trackingLost.current=true;
      const v=p.videoRef.current,aspect=v?.videoWidth&&v?.videoHeight?v.videoWidth/v.videoHeight:4/3;
      p.onGaitSample?.(null,0,aspect);p.onGaitSample?.(null,1,aspect);
