@@ -86,6 +86,7 @@ import './cp01-compose-shell.css';
 import './cp02-cp03-composition.css';
 import './cp04-compose-microinteraction.css';
 import './cpux-compose-focus.css';
+import './compose-quick-v25.css';
 
 type WorkspaceView='stage'|'archive';
 type Props={
@@ -1036,6 +1037,7 @@ export function FootprintsStageWorkspace({
      lineSource={sourceStatus.selection==='phone'?'phone':'camera'}
      identitySafe={!identityStatus.ambiguous}
       onOpenMapTrack={()=>onNavigateStageWorkspace('track')}
+      onOpenMapWorkspace={()=>onNavigateStageWorkspace('map')}
       onOpenMapCompose={()=>onNavigateStageWorkspace('compose')}
      onClose={()=>{onBlackout();setComposerOpen(false);setMappingOpen(false);setComposerStartQA(false);}}/></div>}
     {operatorMode&&<PerformFinalPreview
