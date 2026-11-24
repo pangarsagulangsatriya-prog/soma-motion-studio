@@ -23,7 +23,7 @@ export function FootMotionAudioPanel(props:Props){
   return()=>{window.removeEventListener(SOFTWARE_PREVIEW_BLACKOUT_EVENT,blackout);document.removeEventListener('visibilitychange',visibility);request.current++;armed.current=false;const e=engine.current;engine.current=null;e?.mute();if(e)void e.dispose().catch(()=>{});};
  },[]);
  // Source/mode changes discard the previous audio input; only newly observed events can sound.
- useLayoutEffect(()=>{baseline();const e=engine.current;if(e&&armed.current){const s=footAudioSettings(controls.current.character,controls.current.volume,'step');e.update(footAudioParams(s),s,false,false);}},[props.sourceReady,props.trace]);
+ useLayoutEffect(()=>{testingUntil.current=0;baseline();const e=engine.current;if(e&&armed.current){const s=footAudioSettings(controls.current.character,controls.current.volume,'step');e.update(footAudioParams(s),s,false,false);}},[props.sourceReady,props.trace]);
  async function start(){
   if(!current.current.allowed||starting||engine.current)return;
   if(current.current.onTakeAudio?.()===false){setNotice('Hentikan rekaman lama sebelum menyalakan audio.');return;}
@@ -45,7 +45,7 @@ export function FootMotionAudioPanel(props:Props){
    const now=performance.now(),mode:FootAudioMode=p.trace?'trace':'step',s=footAudioSettings(controls.current.character,controls.current.volume,mode),session=p.session?.()??'',events=p.events?.()??[];
    e.setMaster(s.master);
    if(e.analyser){if(!analyserData||analyserData.length!==e.analyser.fftSize)analyserData=new Float32Array(e.analyser.fftSize);e.analyser.getFloatTimeDomainData(analyserData);let energy=0;for(const v of analyserData)energy+=v*v;setLevel(Math.min(1,Math.sqrt(energy/analyserData.length)*5));}
-   if(now<testingUntil.current)return;
+   if(now<testingUntil.current){cursor.current.reset(session,events);return;}
    if(!p.sourceReady||!previousReady||session!==previousSession||mode!==previousMode){cursor.current.reset(session,events);lastMotion.current=0;lastEvent.current=undefined;lastHit.current=0;hitEvent.current=undefined;e.update(footAudioParams(s),s,false,false);previousReady=p.sourceReady;previousSession=session;previousMode=mode;setNotice(p.sourceReady?'Menunggu event Track':'Menunggu sumber Track');return;}
    const actions=cursor.current.consume(session,events,mode,now),contacts=actions.filter(x=>x.kind==='contact'),motion=actions.find(x=>x.kind==='motion');
    if(motion){lastMotion.current=now;lastEvent.current=motion.event;}
@@ -72,6 +72,6 @@ export function FootMotionAudioPanel(props:Props){
    <label className="foot-motion-volume">Volume <output>{Math.round(volume*100)}%</output><input aria-label="Volume audio gerak" type="range" min="0" max="1" step=".01" value={volume} onChange={e=>{const value=Number(e.target.value);setVolume(value);engine.current?.setMaster(value*.5);}}/></label>
    <div className="foot-motion-meter"><meter aria-label="Level audio" min={0} max={1} value={level}/><button type="button" onClick={testSound} disabled={!props.allowed}>Tes audio</button></div>
   </div>}
-  <small role="status" className="foot-motion-audio-status">{notice}</small>
+  <small role="status" aria-label="Status audio gerak" className="foot-motion-audio-status">{notice}</small>
  </section>;
 }
