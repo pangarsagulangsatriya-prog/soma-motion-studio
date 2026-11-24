@@ -10,7 +10,7 @@ import './foot-motion-audio.css';
 type SoundPreset=Character|TextureId;
 function settingsFor(preset:SoundPreset,volume:number,mode:FootAudioMode,fx:TextureControls){const s=footAudioSettings(isTexture(preset)?TEXTURES[preset].character:preset,volume,mode);if(!isTexture(preset))return s;return {...s,mode:'percussion' as const,master:s.master*.8,macros:{...s.macros,roughness:fx.drive*.75,brightness:.30+fx.texture*.55,space:fx.space},reverb:fx.space*.45,delay:fx.space*.20};}
 function paramsFor(s:ReturnType<typeof settingsFor>,preset:SoundPreset,event?:FootMotionEventV2){const p=footAudioParams(s,event);return isTexture(preset)?{...p,filter:preset==='subPressure'?500:2500+(event?.speed??0)*6000,pan:0}:p;}
-type Props={visible:boolean;allowed:boolean;sourceReady:boolean;trace:boolean;events?:()=>readonly FootMotionEventV2[];session?:()=>string;onTakeAudio?:()=>boolean};
+type Props={visible:boolean;allowed:boolean;sourceReady:boolean;contactReady?:boolean;trace:boolean;events?:()=>readonly FootMotionEventV2[];session?:()=>string;onTakeAudio?:()=>boolean};
 export function FootMotionAudioPanel(props:Props){
  const current=useRef(props);current.current=props;
  const engine=useRef<AudioEngine|null>(null),cursor=useRef(new FootAudioCursor()),request=useRef(0),armed=useRef(false),lastMotion=useRef(0),lastEvent=useRef<FootMotionEventV2|undefined>(undefined),testingUntil=useRef(0),lastHit=useRef(0),hitEvent=useRef<FootMotionEventV2|undefined>(undefined);
@@ -52,7 +52,7 @@ export function FootMotionAudioPanel(props:Props){
    e.setMaster(s.master);
    if(e.analyser){if(!analyserData||analyserData.length!==e.analyser.fftSize)analyserData=new Float32Array(e.analyser.fftSize);e.analyser.getFloatTimeDomainData(analyserData);let energy=0;for(const v of analyserData)energy+=v*v;setLevel(Math.min(1,Math.sqrt(energy/analyserData.length)*5));}
    if(now<testingUntil.current){cursor.current.reset(session,events);return;}
-   if(!p.sourceReady||!previousReady||session!==previousSession||mode!==previousMode){cursor.current.reset(session,events);lastMotion.current=0;lastEvent.current=undefined;lastHit.current=0;hitEvent.current=undefined;lastTexture.current.clear();e.update(paramsFor(s,v.character),s,false,false);previousReady=p.sourceReady;previousSession=session;previousMode=mode;setNotice(p.sourceReady?'Menunggu event Track':'Menunggu sumber Track');return;}
+   if(!p.sourceReady||!previousReady||session!==previousSession||mode!==previousMode){cursor.current.reset(session,events);lastMotion.current=0;lastEvent.current=undefined;lastHit.current=0;hitEvent.current=undefined;lastTexture.current.clear();e.update(paramsFor(s,v.character),s,false,false);previousReady=p.sourceReady;previousSession=session;previousMode=mode;setNotice(p.sourceReady?(p.contactReady===false&&!p.trace?'Pijakan menunggu kalibrasi Map':'Menunggu event Track'):'Menunggu pose atau sumber Track');return;}
    const actions=cursor.current.consume(session,events,mode,now,experimental),contacts=actions.filter(x=>x.kind==='contact'),motion=actions.find(x=>x.kind==='motion');
    if(isTexture(v.character)){
     const preset=v.character;const playable=actions.filter(a=>a.kind==='contact'||now-(lastTexture.current.get(a.event.actorId)??-Infinity)>=textureInterval(a.event.speed,v.fx.texture));
@@ -61,7 +61,7 @@ export function FootMotionAudioPanel(props:Props){
      if(lastTexture.current.size>16){const oldest=lastTexture.current.keys().next().value;if(oldest!==undefined)lastTexture.current.delete(oldest);}
      setNotice(playable.some(a=>a.kind==='contact')?'Merespons pijakan':playable.some(a=>a.event.kind==='pivot')?'Resonansi putaran':'Merespons gesekan');
     }else if(lastHit.current>0&&now-lastHit.current<540){e.update(paramsFor(s,preset,hitEvent.current),s,false,true);}
-    else{e.update(paramsFor(s,preset),s,false,false);setNotice('Menunggu event Track');}
+    else{e.update(paramsFor(s,preset),s,false,false);setNotice(p.contactReady===false&&!p.trace?'Pijakan menunggu kalibrasi Map':'Menunggu event Track');}
     return;
    }
    if(motion){lastMotion.current=now;lastEvent.current=motion.event;}

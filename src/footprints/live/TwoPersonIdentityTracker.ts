@@ -21,7 +21,8 @@ const locate=(pose:Landmark[]):{center:Center;confidence:number;pose:Landmark[]}
  * Two-person identity assignment over MediaPipe's existing poses[].
  * The model does not provide persistent person IDs. This gate deliberately
  * suppresses crossed/ambiguous matches instead of silently swapping A and B.
- * Explicit RESET required after losing both people far from their last places.
+ * Initial ambiguity is recoverable before any identity is assigned.
+ * Established ambiguous crossings remain fail-closed until explicit reset.
  */
 export class TwoPersonIdentityTracker{
  private known=new Map<LivePerformerId,Track>();
@@ -43,7 +44,7 @@ export class TwoPersonIdentityTracker{
    .sort((a,b)=>a.center.x-b.center.x).slice(0,2);
   const previous=this.detected;
   const current=new Set<LivePerformerId>();
-  let ambiguous=false;
+  let ambiguous=false,competingIdentity=false;
   const chosen:PoseAssignment[]=[];
   const add=(id:LivePerformerId,index:number)=>{
    const f=found[index];current.add(id);
@@ -51,7 +52,7 @@ export class TwoPersonIdentityTracker{
    chosen.push({id,center:f.center,pose:f.pose,confidence:f.confidence});
   };
   if(found.length===2&&close(found[0].center,found[1].center)<this.separation){
-   ambiguous=true;
+   ambiguous=true;competingIdentity=true;
   }else if(!this.known.size){
    found.forEach((_,i)=>add(ids[i],i));
   }else {
@@ -74,20 +75,20 @@ export class TwoPersonIdentityTracker{
     const straight=a&&b?a.distance+b.distance:Infinity;
     const swapped=crossA&&crossB?crossA.distance+crossB.distance:Infinity;
     if(Number.isFinite(straight)&&Number.isFinite(swapped)&&Math.abs(straight-swapped)<this.ambiguityMargin){
-     ambiguous=true;
+     ambiguous=true;competingIdentity=true;
     }else if(straight<swapped){add('A',0);add('B',1);}
     else if(swapped<straight){add('B',0);add('A',1);}
     else {
      // Only one identifiable track may survive an occlusion.
      const byDistance=candidates.sort((a,b)=>a.distance-b.distance);
      if(byDistance.length===1)add(byDistance[0].id,byDistance[0].index);
-     else ambiguous=true;
+     else {ambiguous=true;competingIdentity=byDistance.length>1;}
     }
    }else {
     candidates.sort((a,b)=>a.distance-b.distance);
     const best=candidates[0],second=candidates.find(c=>c.id!==best?.id&&c.index===best?.index);
     if(best&&!(second&&Math.abs(second.distance-best.distance)<this.ambiguityMargin))add(best.id,best.index);
-    else if(found.length)ambiguous=true;
+    else if(found.length){ambiguous=true;competingIdentity=!!best&&!!second;}
     if(found.length===2&&chosen.length===1){
      const spare=ids.find(id=>!this.known.has(id));
      const remaining=[0,1].find(i=>i!==candidates[0]?.index);
@@ -95,12 +96,14 @@ export class TwoPersonIdentityTracker{
     }
    }
   }
-  if(ambiguous)this.identityLocked=true;
+  // Do not latch a permanent identity fault before A/B have ever been assigned.
+  // An initial overlap has no established identity to protect; retry on the next frame.
+  if(ambiguous&&competingIdentity&&this.known.size>0)this.identityLocked=true;
   this.detected=ambiguous?new Set<LivePerformerId>():current;
   return {assignments:ambiguous?[]:chosen,
    lost:ids.filter(id=>previous.has(id)&&(!current.has(id)||ambiguous)),
    ambiguous,
-   reason:ambiguous?'Tubuh berdekatan atau saling menutup. Reset identitas A/B untuk lanjut.':
+   reason:ambiguous?(this.identityLocked?'Tubuh berdekatan atau saling menutup. Reset identitas A/B untuk lanjut.':'Identitas belum pasti; menunggu posisi terpisah atau performer kembali ke posisi terakhir.'):
     chosen.length?'Tubuh '+chosen.map(x=>x.id).join(' & ')+' terbaca.':
     found.length?'Identitas belum pasti. Kembalikan tubuh ke posisi terakhir atau reset identitas.':
     'Menunggu performer memasuki gambar.'};
