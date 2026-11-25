@@ -44,7 +44,8 @@ import {
 import {renderLowerBodyStageMonitor} from './composeLowerBodyRenderer.ts';
 import {composeInspectorVisible} from './composeLowerBodyModel.ts';
 import {paintComposeSkeletonMonitor,type ComposeSkeletonBackdrop} from './composeSkeletonMonitor.ts';
-import type {ExperimentalFrame} from './experimentSourceModel.ts';
+import {canPaintVideoFrame,type ExperimentalFrame} from './experimentSourceModel.ts';
+import {directPlaybackFileKey} from '../../footprints/stage-optics/DirectVisualPlayback.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
 import {FootprintBrushEngine} from '../../footprints/lines/FootprintBrushEngine.ts';
@@ -862,11 +863,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     const live=previewLiveRef.current&&!blackoutRef.current;
     const experiment=experimentSourceRef.current;
     const experimentFrame=experimentFrameRef?.current??null;
-    const experimentSafe=!!(experiment&&experimentReadyRef.current&&live);
+    const experimentSafe=!!(experiment&&experimentReadyRef.current&&live&&!footprintRef.current?.hold&&
+     (experiment==='video'?canPaintVideoFrame(experimentFrame):experimentFrame?.kind==='simulator'));
     // A clip or virtual rig has a stable QA binding across playback frames.
     // The binding changes when the file, resolution or performer count changes.
     const experimentKey=experiment==='video'&&experimentFrame?.kind==='video'
-     ?'mp4:'+experimentFrame.name+':'+(experimentFrame.video?.videoWidth??0)+'x'+(experimentFrame.video?.videoHeight??0)
+     ?'mp4:'+directPlaybackFileKey(experimentFrame.clip??experimentFrame.video)+':'+experimentFrame.name+':'+(experimentFrame.video?.videoWidth??0)+'x'+(experimentFrame.video?.videoHeight??0)
      :experiment==='simulator'?'puppet:2d:'+performerRef.current:null;
     const cameraKey=experiment?experimentKey:floorRef.current.boundCamera;
     const floorKey=experiment?(experimentKey?JSON.stringify([experimentKey,performerRef.current]):null):

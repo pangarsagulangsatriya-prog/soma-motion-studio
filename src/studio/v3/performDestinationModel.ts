@@ -20,6 +20,7 @@ export function presentPerformDestination(input:{
  route:PerformOutputRouteMode;
  primary:PerformPrimaryAction;
  sourceReady?:boolean;
+ playback?:boolean;
  floor:PerformSurfaceBadge;
  body:PerformSurfaceBadge;
 }):DestinationPresentation{
@@ -55,8 +56,9 @@ export function presentPerformDestination(input:{
   case 'fix-setup':return {state:'Perlu setup',hint:primary.detail,tone:'attention',action:'Perbaiki setup',kind:'setup'};
   case 'open-output':return {state:'Siap dibuka',hint:'Jendela baru dimulai Blackout.',tone:'idle',action:'Buka Output',kind:'open'};
   case 'run-qa':return {state:'Terbuka · Blackout',hint:'Output fisik SOMA Direct masih terkunci oleh pemeriksaan perangkat. Feed Resolume tersedia untuk latihan.',tone:'open',action:'Pilih Feed Resolume',kind:'qa'};
+  case 'arm-playback':return {state:'Terbuka · Blackout',hint:primary.detail,tone:'open',action:primary.label,kind:'arm'};
   case 'arm-live':return {state:'Terbuka · siap diuji',hint:'Hanya setelah QA dan konfirmasi operator.',tone:'open',action:primary.label,kind:'arm'};
-  case 'monitor-live':return {state:'LIVE',hint:'Gunakan BLACKOUT ketika perlu memadamkan output.',tone:'live',action:'Lihat Output LIVE',kind:'live'};
+  case 'monitor-live':return {state:input.playback?'Playback aktif':'LIVE',hint:'Gunakan BLACKOUT ketika perlu memadamkan output.',tone:'live',action:input.playback?'Lihat Playback':'Lihat Output LIVE',kind:'live'};
  }
 }
 export function routeChangeRequiresBlackout(previous:PerformOutputRouteMode,next:PerformOutputRouteMode){

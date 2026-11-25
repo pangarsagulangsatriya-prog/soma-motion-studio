@@ -144,3 +144,17 @@ test('Direct LIVE is only reported after an acknowledged artwork frame',()=>{
  assert.match(session,/reportedMode=awaitingFrame\?'blackout':mode/);
  assert.match(receiver,/type:'frame-ack'/);
 });
+
+
+test('V7.3: MP4 and 3D activate explicit mapped playback without fabricating camera QA',()=>{
+ for(const source of ['video','simulator'] as const){
+  const input={hardwareEnabled:true,source,cameraOk:true,identityOk:true,floorOk:true,
+   floorDevice:blackoutDevice,bodyDevice:offlineDevice,floorQaOk:false,bodyQaOk:false,operatorConfirm:false};
+  const ready=evaluatePerformOutputSummary(input);
+  assert.equal(ready.primaryAction.kind,'arm-playback');
+  assert.equal(ready.primaryAction.surface,'floor');
+  assert.equal(evaluatePerformOutputSummary({...input,cameraOk:false}).primaryAction.kind,'fix-setup');
+  assert.equal(evaluatePerformOutputSummary({...input,hardwareEnabled:false}).primaryAction.kind,'build-locked');
+  assert.equal(evaluatePerformOutputSummary({...input,source:'phone'}).primaryAction.kind,'run-qa');
+ }
+});

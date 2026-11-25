@@ -12,7 +12,7 @@ import {detectResolumeHostPlatform,getResolumeBridgeRecipe,RESOLUME_BRIDGE_DOCS}
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
- STAGE_HARDWARE_ENABLED,armDualSurfaceLiveFromPerform,blackoutAllDualSurfaces,
+ STAGE_HARDWARE_ENABLED,armDualSurfaceLiveFromPerform,armDualSurfacePlaybackFromPerform,blackoutAllDualSurfaces,
  closeDualSurfaceOutputWindow,getDualSurfaceState,openDualSurfaceOutputWindow,
  subscribeDualSurface
 } from '../../footprints/stage-optics/DualSurfaceSessionStore.ts';
@@ -75,8 +75,9 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  const hostPlatform=detectResolumeHostPlatform(typeof navigator==='undefined'?'':navigator.userAgent);
  const bridge=getResolumeBridgeRecipe(hostPlatform);
  const sourceReady=!!sourceKind&&cameraOk;
+ const playback=sourceKind==='video'||sourceKind==='simulator';
  const destination=presentPerformDestination({
-  route:outputRouteMode,primary:summary.primaryAction,sourceReady,
+  route:outputRouteMode,primary:summary.primaryAction,sourceReady,playback,
   floor:summary.floorBadge,body:summary.bodyBadge
  });
  const feedFrameReady=summary.floorBadge.tone==='feed'||summary.bodyBadge.tone==='feed';
@@ -87,8 +88,8 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   {label:'Resolume',done:false,detail:'Pilih sender '+bridge.transport+' pada clip'}
  ]:[
   {label:'Track',done:sourceReady&&identityOk,detail:'Sumber gerak siap'},
-  {label:'Output fisik',done:floorQaOk||bodyQaOk,detail:'Izin output fisik'},
-  {label:'LIVE',done:directLive,detail:'Proyektor menerima perintah LIVE'}
+  {label:playback?'Jendela':'Output fisik',done:playback?summary.floorBadge.connected||summary.bodyBadge.connected:floorQaOk||bodyQaOk,detail:playback?'Jendela output tersambung':'Izin output fisik'},
+  {label:playback?'Playback':'LIVE',done:directLive,detail:'Proyektor menerima frame visual'}
  ];
  const routePurpose=isTouchDesigner?'Gerak kaki A/B · WebSocket lokal':
   isResolume?'Visual · lewat OBS '+bridge.transport:'Visual · langsung ke proyektor';
@@ -98,7 +99,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   isResolume?'Periksa gambar di OBS dan Resolume':
   destination.kind==='info'?'Periksa pengaturan output':
   destination.kind==='qa'?'SOMA Direct terkunci · Feed Resolume tersedia':
-  destination.kind==='arm'?'Output siap · konfirmasi LIVE':destination.hint;
+  destination.kind==='arm'?(playback?'Periksa bidang cahaya · aktifkan Playback':'Output siap · konfirmasi LIVE'):destination.hint;
  const handleRouteChange=(next:PerformOutputRouteMode)=>{
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
   // Switching destinations cannot silently leave prior output illuminating the stage.
@@ -134,6 +135,12 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   setOutputNotice(`Output ${surface==='floor'?'FLOOR':'BODY'} ditutup (Blackout).`);
  };
 
+ const handlePlayback=(surface:StageSurface)=>{
+  if(held){if(canResume)onResume();setOutputNotice('Lanjutkan visual, lalu klik Aktifkan Playback kembali.');return;}
+  const res=armDualSurfacePlaybackFromPerform(surface);
+  setOutputNotice(res.message);
+ };
+
  const handlePrimaryAction=()=>{
   if(destination.kind==='qa'&&outputRouteMode==='soma'){
    handleRouteChange('resolume');return;
@@ -147,6 +154,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
   if(act.kind==='open-output'||act.kind==='monitor-live'){
    handleOpenSurface(act.surface);return;
   }
+  if(act.kind==='arm-playback'){handlePlayback(act.surface);return;}
   if(act.kind==='arm-live'){
    const res=armDualSurfaceLiveFromPerform(act.surface);
    setOutputNotice(res.message);return;
@@ -274,6 +282,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
             onClick={()=>handleOpenSurface(surface)}>
             <ExternalLink size={11}/>{isResolume?(badge.opened?'Lihat / Aktifkan':'Buka Feed'):(badge.opened?'Lihat':'Buka')}
            </button>
+           {!isResolume&&playback&&badge.connected&&badge.status!=='LIVE'&&summary.canOpenOutput&&sourceReady&&<button type="button" onClick={()=>handlePlayback(surface)}>Aktifkan Playback {badge.label}</button>}
            {badge.opened&&<button type="button"
             aria-label={`Tutup output ${badge.label}`}
             onClick={()=>handleCloseSurface(surface)}><X size={11}/></button>}
@@ -281,7 +290,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
          </div>;
         })}
        </div>
-       {!isResolume&&unreadyReason&&<div className="ops-r1-recovery">
+       {!isResolume&&unreadyReason&&!playback&&<div className="ops-r1-recovery">
         <span><ShieldAlert size={13}/>{unreadyReason}</span>
         <button type="button" onClick={onRecovery}>Buka Map</button>
        </div>}

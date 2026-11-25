@@ -29,7 +29,7 @@ export function buildResolumeFeedUrl(
 }
 
 export type PerformPrimaryAction={
- kind:'build-locked'|'preview-only'|'fix-setup'|'open-output'|'run-qa'|'arm-live'|'monitor-live';
+ kind:'build-locked'|'preview-only'|'fix-setup'|'open-output'|'run-qa'|'arm-live'|'arm-playback'|'monitor-live';
  label:string;
  detail:string;
  surface:StageSurface;
@@ -79,6 +79,7 @@ export function evaluatePerformOutputSummary(input:PerformOutputSummaryInput):{
  const floorReadyForLive=floorBadge.connected&&input.floorQaOk;
  const bodyReadyForLive=bodyBadge.connected&&input.bodyQaOk;
  const anyReadyForLive=floorReadyForLive||bodyReadyForLive;
+ const playback=input.source==='video'||input.source==='simulator';
  const targetSurface:StageSurface=floorReadyForLive||!bodyBadge.connected?'floor':'body';
 
  // Report the actual missing input first. A build flag never makes an
@@ -139,6 +140,13 @@ export function evaluatePerformOutputSummary(input:PerformOutputSummaryInput):{
     surface:floorBadge.tone==='live'?'floor':'body'
    }
   };
+ }
+
+ if(playback){
+  const surface:StageSurface=floorBadge.connected?'floor':'body';
+  return {globalStatus:{label:'Output siap',tone:'ready'},floorBadge,bodyBadge,canOpenOutput:true,
+   primaryAction:{kind:'arm-playback',label:'Aktifkan Playback '+surface.toUpperCase(),
+    detail:'Proyeksi visual MP4/3D pada bidang statis. Periksa posisi jendela dan cahaya fisik sebelum aktivasi. QA tracking tidak diberikan.',surface}};
  }
 
  if(!anyReadyForLive){

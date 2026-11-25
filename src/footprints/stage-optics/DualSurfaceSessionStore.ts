@@ -8,6 +8,7 @@ import {claimDualOutputStatus,reportDualOutputStatus} from './DualSurfaceTelemet
 import {stageHardwareAvailable} from './StageHardwareGate.ts';
 import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygModel.ts';
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
+import {canPlayDirectVisual} from './DirectVisualPlayback.ts';
 import {defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceState,
  assessSurfaceProof,outputSurfaceDecision,cleanFeedSurfaceState,
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext}
@@ -86,6 +87,8 @@ let blackoutBound=false;
 export type SurfaceOutputMode='soma'|'resolume';
 const outputMode:Record<StageSurface,SurfaceOutputMode>={body:'soma',floor:'soma'};
 const feedEnabled:Record<StageSurface,boolean>={body:false,floor:false};
+// Explicit, per-window, per-source authorization for flat MP4/3D artwork only.
+const playbackPermit:Record<StageSurface,{signature:string;armedAt:number}|null>={body:null,floor:null};
 /** Capture feed uses composed pixels, separate from QA-gated physical projection. */
 export const canStreamCleanFeed=(input:{
  requested:boolean;connected:boolean;sourceFresh:boolean;
@@ -154,7 +157,7 @@ export function hasActiveDualSurfacePorts():boolean{
 }
 
 export function urgentBlackoutDualSurface(id:StageSurface){
- feedEnabled[id]=false;
+ feedEnabled[id]=false;playbackPermit[id]=null;
  const links=ensurePorts();
  state={
   ...state,
@@ -308,6 +311,40 @@ export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;messa
  return {ok:true,message:state.message};
 }
 
+/** MP4/3D artwork playback uses the saved output warp, not live body registration.
+ * This never creates physical tracking QA, and never arms a camera source.
+ * The operator must position the window and check spill before clicking. */
+export function armDualSurfacePlaybackFromPerform(id:StageSurface):{ok:boolean;message:string}{
+ const link=ensurePorts()[id],stage=sources.frameRef?.current??null;
+ const plan=state.plans[id],now=performance.now(),output=link.outputInfo;
+ const raster=(id==='body'?sources.bodyCanvas:sources.floorCanvas)?.current??null;
+ const viewport=output?{width:output.viewportWidth,height:output.viewportHeight,dpr:output.dpr}:null;
+ const signature=stageSurfaceSignature(plan,{
+  cameraBinding:stage?.cameraKey??null,floorContext:stage?.floorKey??null,
+  windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]:'',viewport
+ });
+ const fresh=!!stage&&stage.frameAtMs>0&&stage.computedAtMs>0&&
+  now>=stage.frameAtMs&&now-stage.frameAtMs<450&&
+  now>=stage.computedAtMs&&now-stage.computedAtMs<300;
+ const visualReady=id==='body'?!!stage?.bodyMediaReady:!!stage?.bridgeSafe;
+ if(!canPlayDirectVisual({
+  hardwareEnabled:STAGE_HARDWARE_ENABLED,experiment:sources.experimentLocked&&stage?.mode==='simulation',
+  direct:outputMode[id]==='soma',connected:link.connected,fresh,
+  sourceReady:!!stage?.cameraSafe,visualReady,canvasReady:!!raster&&raster.width>=16&&raster.height>=16,
+  signature,authorizedSignature:signature
+ })||!signature){
+  urgentBlackoutDualSurface(id);
+  return {ok:false,message:'Playback belum siap. Pastikan MP4/3D aktif, visual dilanjutkan, dan jendela proyektor sudah tersambung.'};
+ }
+ // Discard old frame receipts. No automatic resume after a lost binding.
+ link.lastFrameAckAt=0;
+ playbackPermit[id]={signature,armedAt:now};
+ state={...state,requested:{...state.requested,[id]:'live'},armed:{...state.armed,[id]:true},
+  message:'Playback '+id.toUpperCase()+' diperintahkan. Periksa cahaya; tekan Blackout untuk memadamkan.'};
+ emit();
+ return {ok:true,message:state.message};
+}
+
 function sendTick(now:number){
  if(!ports)return;
  const stage=sources.frameRef?.current??null;
@@ -329,10 +366,19 @@ function sendTick(now:number){
    STAGE_HARDWARE_ENABLED,sources.experimentLocked,state.operatorConfirm
   )&&!!stage&&stage.cameraSafe&&fresh;
   const sourceSafe=id==='body'?!!stage?.bodyMediaReady:!!stage?.bridgeSafe;
+  const permit=playbackPermit[id];
+  const playbackRaster=(id==='body'?sources.bodyCanvas:sources.floorCanvas)?.current??null;
+  const playbackSafe=!!permit&&state.armed[id]&&canPlayDirectVisual({
+   hardwareEnabled:STAGE_HARDWARE_ENABLED,experiment:sources.experimentLocked&&stage?.mode==='simulation',
+   direct:outputMode[id]==='soma',connected:link.connected,fresh,sourceReady:!!stage?.cameraSafe,
+   visualReady:sourceSafe,canvasReady:!!playbackRaster&&playbackRaster.width>=16&&playbackRaster.height>=16,
+   signature:key,authorizedSignature:permit.signature
+  })&&(link.lastFrameAckAt>0?now-link.lastFrameAckAt<2400:now-permit.armedAt<5000);
   if(shouldLatchProjectionBlackout({
    requested:state.requested[id],connected:link.connected,
-   stageSafe:safe,sourceSafe
+   stageSafe:permit?playbackSafe:safe,sourceSafe
   })){
+   playbackPermit[id]=null;
    state={
     ...state,
     requested:{...state.requested,[id]:'blackout'},
@@ -366,10 +412,13 @@ let canvas:HTMLCanvasElement|null=null;
      !link.connected?'Jendela Clean Feed belum terhubung.':
      'Visual sumber belum siap atau sedang HOLD. Klik Lanjutkan Visual.';
    }
-  }else if(decision.mode==='live'){
+  }else if(permit&&playbackSafe&&state.requested[id]==='live'){
+   canvas=playbackRaster;mode='live';
+   reason='Visual Playback · raster MP4/3D terkirim; QA tracking fisik tidak diberikan.';
+  }else if(!permit&&decision.mode==='live'){
    canvas=(id==='body'?sources.bodyCanvas:sources.floorCanvas)?.current??null;
   }
-  if(outputMode[id]!=='resolume'&&decision.mode==='test'&&testCanvases){
+  if(outputMode[id]!=='resolume'&&!permit&&decision.mode==='test'&&testCanvases){
    canvas=testCanvases[id];
    const ok=drawSurfaceTestPattern(canvas,id,
     state.target[id]||(id==='body'?'B1':'F1'),
@@ -453,6 +502,7 @@ export function resetDualSurfaceSessionForTest(){
  testCanvases=null;
  outputMode.body='soma';outputMode.floor='soma';
  feedEnabled.body=false;feedEnabled.floor=false;
+ playbackPermit.body=null;playbackPermit.floor=null;
  state=initialState();
  emit();
 }
