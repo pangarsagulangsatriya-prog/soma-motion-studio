@@ -83,7 +83,7 @@ test('phone disconnect clears all live raster and event sources while keeping se
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  assert.match(stage,/sourceStatus\.phase==='ready'\)return/);
  assert.match(stage,/\[sourceStatus\.selection,sourceStatus\.phase\]/);
- assert.match(stage,/\[interactionSource,experimentClip,sourceStatus\.phase\]/);
+ assert.match(stage,/\[interactionSource,experimentClip,sourceStatus\.phase,tracker\.sessionEpoch\]/);
  const phone=read('../src/App.tsx');
  assert.match(phone,/function stopPhoneCamera\(\)/);
  assert.match(phone,/multiPoseRouter\.reset\(\);setLiveFloorApproval\(null\);stopCamera\(\)/);

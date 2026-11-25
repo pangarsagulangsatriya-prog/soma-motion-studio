@@ -76,7 +76,9 @@ test('separate A and B tracks can produce contacts at same time without mixing s
  const saved=floorEngine.session!;
  assert.equal(saved.events.length,2);
  assert.notEqual(saved.events[0].id,saved.events[1].id);
- assert.ok(saved.events[0].timestampMs<saved.events[1].timestampMs);
+ // A/B contacts captured in the same frame must keep the same capture time.
+ assert.equal(saved.events[0].timestampMs,110);
+ assert.equal(saved.events[1].timestampMs,110);
  floorEngine.losePerformer('A');
  const suppressed=floorEngine.ingest(sample(0,130,.3),0,16/9,camera,'A');
  assert.equal(suppressed.length,0);

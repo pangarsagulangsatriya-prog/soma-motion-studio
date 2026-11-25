@@ -24,8 +24,9 @@ const contact=(source:'camera'|'simulation',id:string,performerId:string,atMs:nu
  positionBasis:source==='simulation'?'simulated':'calibrated-estimate',confidence:.9
 });
 const liveTracker=(events:FootstepEvent[],confirmed=true):LiveFloorTrackingEngine=>{
- return {isConfirmed:confirmed,calibrationData:null,floor,
-  session:createFloorSession(floor,events)} as unknown as LiveFloorTrackingEngine;
+ const session=createFloorSession(floor,events);
+ return {isConfirmed:confirmed,calibrationData:null,floor,sessionEpoch:1,session,
+  recentEventsSince:(sinceMs:number)=>session.events.filter(e=>e.timestampMs>=sinceMs)} as unknown as LiveFloorTrackingEngine;
 };
 const identity=(ambiguous=false)=>({
  mode:2 as const,visible:ambiguous?[]:['A','B'],
