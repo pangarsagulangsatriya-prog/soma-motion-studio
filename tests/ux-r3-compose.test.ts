@@ -22,7 +22,7 @@ test('RESET-00: original Stage embeds one Composer with no gallery or parallel s
  const composer=read('../src/studio/v3/SurfaceComposer.tsx');
  assert.match(stage,/<SurfaceComposer embedded mapMode=\{mappingOpen&&!operatorMode\}/);
  assert.match(stage,/className="fp-stage-overview" ref=\{composeLayout\.overview\}/);
- assert.match(stage,/hidden=\{view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
+ assert.match(stage,/hidden=\{operatorMode\|\|view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
  assert.doesNotMatch(composer,/SceneEffectBrowser|ARTISTIC_CATALOG|HydraEffectInspector|FlagshipInspector/);
  assert.ok(!composer.includes('getUserMedia('));
 });

@@ -11,7 +11,7 @@ async function choose(page,label,id){
 
 test('Camera E2E: Mac device and phone are separate input routes',async({page,context})=>{
  await context.grantPermissions(['camera'],{origin:'http://127.0.0.1:4173'});
- await page.goto('/');
+ await page.goto('./');
  await expect(sourceMenu(page)).toBeVisible();
  await choose(page,'Kamera lain','webcam');
  await expect(page.locator('.soma-track-mac-camera')).toBeVisible();
@@ -29,7 +29,7 @@ test('Camera E2E: Mac device and phone are separate input routes',async({page,co
 });
 
 test('Camera E2E: wireless route exposes code fallback on static-compatible UI',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await choose(page,'Kamera HP','phone');
  await page.getByRole('button',{name:'Kamera HP nirkabel'}).click();
  await expect(page.locator('.soma-auto-pair')).toBeVisible();
@@ -43,7 +43,7 @@ test('Camera E2E: wireless route exposes code fallback on static-compatible UI',
 });
 
 test('Source E2E: MP4 and simulator enter Perform with source-specific QA',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await choose(page,'Video MP4','video');
  await expect(stage(page)).toHaveAttribute('data-experimental','true');
  await openStageMap(page);
@@ -63,7 +63,7 @@ test('Source E2E: MP4 and simulator enter Perform with source-specific QA',async
 });
 
 test('Stage E2E: four workspaces keep one camera source and one session',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await expect(page.locator('.soma-stage-module-nav .soma-stage-module-tab')).toHaveCount(4);
  for(const name of ['Track','Compose','Map','Perform'])
   await expect(page.getByRole('button',{name:name+' workspace'})).toBeVisible();
@@ -85,13 +85,13 @@ test('Stage E2E: four workspaces keep one camera source and one session',async({
 });
 
 test('Resolume Clean Feed opens the proper receiver, never silently reuses SOMA Direct',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await choose(page,'Simulasi 3D','simulator');
  await page.getByRole('button',{name:'Langkah kiri'}).click();
  await page.getByRole('button',{name:'Perform workspace'}).click();
- await expect(page.getByRole('group',{name:'Jalur Output Perform'}).getByRole('button')).toHaveCount(2);
+ await expect(page.getByRole('group',{name:'Jalur Output Perform'}).getByRole('button')).toHaveCount(3);
  await page.getByRole('button',{name:'Resolume',exact:true}).click();
- await expect(page.getByText(/SOMA Clean Feed → OBS → Syphon\/Spout → Resolume/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Buka Feed FLOOR'})).toBeVisible();
  await expect(page.locator('.ops-r1-bridge-guide')).toBeVisible();
  await page.locator('.ops-r1-bridge-guide summary').click();
  await expect(page.locator('.ops-r1-bridge-steps')).toBeVisible();

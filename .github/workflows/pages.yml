@@ -5,16 +5,18 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
-  group: soma-pages-preview
+  group: soma-pages-preview-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
+    env:
+      SOMA_E2E_PAGES: '1'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -58,6 +60,8 @@ jobs:
           name: direct-playback-browser-qa-failure
           path: e2e/test-results/
           if-no-files-found: ignore
+      - name: Required source and readiness browser gate
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 source-flow.spec.mjs soma-direct-readiness.spec.mjs
       - name: Required Perform V8 browser gate
         run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 perform-final-preview.spec.mjs perform-three-routes.spec.mjs
       - if: failure()
@@ -93,11 +97,17 @@ jobs:
           test -s dist/gpu02-lab.html
           printf '%s\n' '2ee8ee3064df8f00042d34ad6e4c64d142119344' > dist/mat03-commit.txt
       # Publish only after the build and required browser gate pass.
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     timeout-minutes: 10
     needs: build
     runs-on: ubuntu-latest

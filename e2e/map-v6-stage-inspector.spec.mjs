@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 test('Map V7 uses a single primary viewport with a persistent projector preview',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const grid=map.locator('.soma-map-v7-grid');
@@ -24,7 +24,7 @@ test('Map V7 uses a single primary viewport with a persistent projector preview'
 });
 
 test('Map V7.1 has one set of view controls and actionable empty room',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const room=map.locator('.soma-map-v7-room');
@@ -41,7 +41,7 @@ test('Map V7.1 has one set of view controls and actionable empty room',async({pa
 });
 
 test('Map V7.2 locks the selected surface while editing and releases it on cancel',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const body=page.getByRole('group',{name:'Pilih bidang kalibrasi'}).getByRole('button',{name:'Tubuh'});

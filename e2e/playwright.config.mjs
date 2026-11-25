@@ -1,4 +1,7 @@
+import {fileURLToPath} from 'node:url';
 import {defineConfig} from '@playwright/test';
+const production=process.env.SOMA_E2E_PAGES==='1';
+const baseURL='http://127.0.0.1:4173'+(production?'/soma-motion-studio/':'/');
 const viewports={
  'wide-1440':{width:1440,height:900},
  'laptop-1366':{width:1366,height:768},
@@ -16,7 +19,7 @@ export default defineConfig({
  reporter:[['list'],['json',{outputFile:'qa-result.json'}],['html',{outputFolder:'playwright-report',open:'never'}]],
  outputDir:'test-results',
  use:{
-  baseURL:'http://127.0.0.1:4173',
+  baseURL,
   browserName:'chromium',headless:true,
   screenshot:'only-on-failure',
   trace:'retain-on-failure',
@@ -28,9 +31,10 @@ export default defineConfig({
   name,use:{viewport}
  })),
  webServer:{
-  command:'npm run dev -- --host 127.0.0.1',
-  url:'http://127.0.0.1:4173/',
-  reuseExistingServer:!process.env.CI,
+  cwd:fileURLToPath(new URL('..',import.meta.url)),
+  command:production?'npm exec -- vite preview --mode githubpages --host 127.0.0.1 --port 4173 --strictPort':'npm run dev -- --host 127.0.0.1',
+  url:baseURL,
+  reuseExistingServer:!production&&!process.env.CI,
   timeout:120_000
  }
 });

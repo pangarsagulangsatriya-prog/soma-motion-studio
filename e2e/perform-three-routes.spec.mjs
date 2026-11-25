@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 test('Perform shows three primary outputs and only one route-specific connection flow',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Perform workspace'}).click();
  const output=page.getByRole('region',{name:'Tujuan output'});
  const choices=output.getByRole('group',{name:'Jalur Output Perform'});
@@ -36,7 +36,7 @@ test('Perform shows three primary outputs and only one route-specific connection
 });
 
 test('Three destinations fit inside the Perform card on desktop and mobile',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Perform workspace'}).click();
  const measured=await page.locator('.ops-r1-route-toggle').evaluate(node=>{
   const tabs=[...node.querySelectorAll('button')].map(x=>x.getBoundingClientRect());

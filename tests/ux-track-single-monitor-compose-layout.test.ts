@@ -53,7 +53,7 @@ test('Compose prioritizes Stage Monitor and keeps Media, Layers, Timeline and In
 test('Compose exposes original three monitors only when editor is active',()=>{
  const stage=read('../src/studio/v3/FootprintsStageWorkspace.tsx');
  const css=read('../src/studio/v3/ia-r1-four-workspaces.css');
- assert.match(stage,/hidden=\{view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
+ assert.match(stage,/hidden=\{operatorMode\|\|view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
  assert.match(css,/data-workspace=compose\] \.fp-stage-overview > \.fp-stage-side-previews:not\(\[hidden\]\)/);
  for(const cls of ['fp-preview-floor','fp-preview-body','fp-stage-video']){
   assert.match(css,new RegExp('data-workspace=compose\\] \\.'+cls));

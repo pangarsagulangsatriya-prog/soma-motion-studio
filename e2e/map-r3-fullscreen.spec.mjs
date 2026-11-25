@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 test('MAP-V2: active camera view and output preview stay visible in fullscreen',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  await expect(map).toBeVisible();
@@ -29,7 +29,7 @@ test('MAP-V2: active camera view and output preview stay visible in fullscreen',
 });
 
 test('MAP-V5: Map uses Track-standard top CTA and has no projector testing panel',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const nav=page.locator('.soma-stage-module-nav');
  const map=page.locator('.stage-dual.map-r2-shell');
@@ -44,7 +44,7 @@ test('MAP-V5: Map uses Track-standard top CTA and has no projector testing panel
 });
  
 test('MAP-V3: idle state offers simulation and real Track/Compose navigation',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  await map.getByRole('button',{name:'Kamera',exact:true}).click();
@@ -60,7 +60,7 @@ test('MAP-V3: idle state offers simulation and real Track/Compose navigation',as
 });
 
 test('MAP-V3: simulation can pause and resume without reconnecting a camera',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  await map.getByRole('button',{name:'Coba simulasi'}).click();

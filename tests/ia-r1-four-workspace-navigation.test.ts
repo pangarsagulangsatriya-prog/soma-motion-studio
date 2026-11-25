@@ -61,7 +61,7 @@ test('IA-R1: shared stage source does not reinitialize on each destination',()=>
  assert.match(app,/setStageNavigation\(last=>\(\{id:\(last\?\.id\?\?0\)\+1,tool:'tracking'\}\)\)/);
  assert.match(stage,/const \[experimentClip,setExperimentClip\]=useState/);
  assert.match(stage,/key=\{experimentalKind\} kind=\{experimentalKind\}/);
- assert.match(stage,/hidden=\{view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
+ assert.match(stage,/hidden=\{operatorMode\|\|view!=='stage'\|\|\(composerOpen&&mappingOpen\)\}/);
  assert.equal((stage.match(/new FloorInteractionEngine\(/g)||[]).length,1);
 });
 

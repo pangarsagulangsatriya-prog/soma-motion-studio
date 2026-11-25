@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 test('MAP-V2: room size is a compact control and does not obscure the monitor',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.stage-dual.map-r2-shell');
  const room=map.locator('.soma-map-v2-room');
@@ -17,7 +17,7 @@ test('MAP-V2: room size is a compact control and does not obscure the monitor',a
 });
 
 test('MAP-V2: projector edit is contextual and no UV technical editor remains',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const output=map.locator('.soma-map-wysiwyg-pane').last();
@@ -34,7 +34,7 @@ test('MAP-V2: projector edit is contextual and no UV technical editor remains',a
 });
 
 test('MAP-V5: compact footer retains only inline status and top navigation owns Perform',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const dock=map.locator('.soma-map-wysiwyg-bottom');

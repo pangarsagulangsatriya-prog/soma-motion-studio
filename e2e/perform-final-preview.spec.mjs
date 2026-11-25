@@ -2,11 +2,11 @@ import {test,expect} from '@playwright/test';
 import {selectStageSource} from './ia-ux-helpers.mjs';
 
 test('Perform uses completed Compose output instead of the Track skeleton monitor',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Compose workspace'}).click();
  await expect(page.locator('#soma-compose-monitor')).toBeVisible();
  await page.getByRole('button',{name:'Map workspace'}).click();
- await expect(page.locator('.map-r2-monitor')).toBeVisible();
+ await expect(page.getByRole('region',{name:'Kalibrasi Map langsung'})).toBeVisible();
  await page.getByRole('button',{name:'Perform workspace'}).click();
  await expect(page.locator('.fp-stage-workspace')).toHaveAttribute('data-utility','none');
  const preview=page.getByRole('region',{name:'Perform Final Preview'});
@@ -27,7 +27,7 @@ test('Perform uses completed Compose output instead of the Track skeleton monito
 });
 
 test('Final Preview fullscreen contains only the output image, no panels or camera',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Perform workspace'}).click();
  const preview=page.getByRole('region',{name:'Perform Final Preview'});
  await preview.getByRole('button',{name:'Fullscreen Final Preview'}).click();
@@ -47,7 +47,7 @@ test('Final Preview fullscreen contains only the output image, no panels or came
 });
 
 test('Compose visual recipe remains mounted after visiting Perform',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Compose workspace'}).click();
  const compose=page.locator('#soma-compose-monitor');
  await expect(compose).toBeVisible();
@@ -60,7 +60,7 @@ test('Compose visual recipe remains mounted after visiting Perform',async({page}
 });
 
 test('Perform V8: one optional input monitor, hidden Track panels, and collapsed output diagnostics',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Perform workspace'}).click();
  const preview=page.getByRole('region',{name:'Perform Final Preview'});
  await preview.getByRole('button',{name:'Pilih sumber'}).click();
