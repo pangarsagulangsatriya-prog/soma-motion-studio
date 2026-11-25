@@ -6,9 +6,9 @@ test('MCA V1: Tes tapak synthesizes clearly labeled markers in both Map preview 
  const map=page.locator('.soma-map-wysiwyg');
  const controls=map.getByRole('group',{name:'Bantuan kalibrasi tapak'});
  await expect(controls.getByRole('button',{name:'Tes tapak'})).toBeVisible();
- await expect(controls.getByRole('button',{name:'Auto aktif'})).toBeVisible();
+ await expect(controls.getByRole('button',{name:'Jejak otomatis aktif'})).toBeHidden();
  const panes=map.locator('.soma-map-wysiwyg-pane');
- await expect(panes.first().locator('canvas.soma-map-assist-overlay')).toHaveCount(1);
+ await expect(map.locator('.soma-map-v7-camera canvas.soma-map-assist-overlay')).toHaveCount(1);
  await expect(panes.last().locator('canvas.soma-map-assist-overlay')).toHaveCount(1);
  await controls.getByRole('button',{name:'Tes tapak'}).click();
  await expect(controls.getByRole('status')).toContainText('SIMULASI');
@@ -36,8 +36,8 @@ test('MCA V1: Auto/replay/freeze/clear controls are responsive while physical ou
  await expect(controls.getByRole('button',{name:'Lanjut jejak'})).toBeVisible();
  await controls.getByRole('button',{name:'Lanjut jejak'}).click();
  await controls.getByRole('button',{name:'Stop replay'}).click();
- await controls.getByRole('button',{name:'Auto aktif'}).click();
- await expect(controls.getByRole('button',{name:'Auto mati'})).toBeVisible();
+ await controls.getByRole('button',{name:'Jejak otomatis aktif'}).click();
+ await expect(controls.getByRole('button',{name:'Jejak otomatis mati'})).toBeVisible();
  await controls.getByRole('button',{name:'Bersihkan'}).click();
  await expect(controls.getByRole('status')).toContainText('dibersihkan');
  await expect(page.getByRole('button',{name:'Kirim perintah blackout SOMA'})).toHaveCount(1);

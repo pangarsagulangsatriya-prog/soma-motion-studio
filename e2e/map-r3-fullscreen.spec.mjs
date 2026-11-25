@@ -1,16 +1,18 @@
 import {test,expect} from '@playwright/test';
 
-test('MAP-V2: source and projected result stay side by side in fullscreen',async({page})=>{
+test('MAP-V2: active camera view and output preview stay visible in fullscreen',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  await expect(map).toBeVisible();
+ await map.getByRole('button',{name:'Kamera',exact:true}).click();
  await expect(map.locator('canvas[aria-label="Gambar input kamera atau video"]')).toBeVisible();
  await expect(map.locator('canvas[aria-label="Hasil visual Compose dengan perspektif proyeksi"]')).toBeVisible();
  await expect(map.getByRole('button',{name:'Coba simulasi'})).toBeVisible();
  await map.getByRole('button',{name:'Coba simulasi'}).click();
- await expect(map.locator('.soma-map-wysiwyg-pane').first().getByText('SIMULASI',{exact:true})).toBeVisible();
- await expect(map.locator('.soma-map-wysiwyg-pane').last().getByText('SIMULASI',{exact:true})).toBeVisible();
+ await map.getByRole('button',{name:'Kamera',exact:true}).click();
+ await expect(map.locator('.soma-map-v7-camera').getByText('SIMULASI',{exact:true})).toBeVisible();
+ await expect(map.locator('.soma-map-v7-output').getByText('VIRTUAL',{exact:true})).toBeVisible();
  await expect(map.locator('.soma-map-v3-empty')).toHaveCount(0);
  const left=map.locator('canvas[aria-label="Gambar input kamera atau video"]');
  await expect.poll(()=>left.evaluate(el=>{
@@ -45,6 +47,7 @@ test('MAP-V3: idle state offers simulation and real Track/Compose navigation',as
  await page.goto('/');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
+ await map.getByRole('button',{name:'Kamera',exact:true}).click();
  await expect(map.locator('.soma-map-v3-empty')).toBeVisible();
  await expect(map.locator('.soma-map-v3-result-empty')).toBeVisible();
  await expect(map.getByRole('button',{name:'Sesuaikan proyektor'})).toHaveCount(0);
