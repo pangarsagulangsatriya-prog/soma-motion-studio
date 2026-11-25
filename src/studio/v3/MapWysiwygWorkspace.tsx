@@ -235,7 +235,7 @@ export function MapWysiwygWorkspace({
    raf=requestAnimationFrame(paint);if(now-last<46)return;last=now;
    const c=outputCanvas.current,ctx=c?.getContext('2d');if(!c||!ctx)return;
    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
-   ctx.fillStyle='#090e0a';ctx.fillRect(0,0,W,H);
+   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
    const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
    if(ready&&hasLiveSource){
