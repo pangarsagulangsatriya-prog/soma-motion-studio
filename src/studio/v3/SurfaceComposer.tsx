@@ -877,7 +877,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      :experiment==='simulator'&&experimentFrame?.kind==='simulator'?JSON.stringify(['puppet',performerRef.current,experimentFrame.generation,experimentFrame.session.floor]):null;
     const cameraKey=experiment?experimentKey:floorRef.current.boundCamera;
     const floorKey=experiment?(experimentKey?JSON.stringify([experimentKey,performerRef.current]):null):
-     floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,performerRef.current]):null;
+     floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,floorRef.current.sessionEpoch,performerRef.current]):null;
     const bodyMedia=experiment?experimentSafe:
      masks.safe&&readyMedia('BODY A')&&(performerRef.current===1||readyMedia('BODY B'));
     const defaultFloor=floorCanvas.current;

@@ -98,8 +98,6 @@ jobs:
           printf '%s\n' '2ee8ee3064df8f00042d34ad6e4c64d142119344' > dist/mat03-commit.txt
       # Publish only after the build and required browser gate pass.
       - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: actions/configure-pages@v5
-      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -115,5 +113,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4
