@@ -485,7 +485,7 @@ export function FootprintsStageWorkspace({
     result.status==='stale'?'Frame terlambat':'Landmark kaki belum lengkap';
    if(label!==lastStatus){lastStatus=label;setMaskStatus(label);}
    const pad=floorCanvas.current;
-   if(pad&&!previewHoldRef.current&&(lastFloorRevision!==tracker.eventRevision||floorRaster.current.needsRebuild(pad,tracker.sessionEpoch))){
+   if(pad&&!previewHoldRef.current&&(lastFloorRevision!==tracker.eventRevision||(tracker.isCalibrated&&floorRaster.current.needsRebuild(pad,tracker.sessionEpoch)))){
     const raster=floorRaster.current;
     try{
      if(raster.needsRebuild(pad,tracker.sessionEpoch))raster.invalidate();
