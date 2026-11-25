@@ -335,6 +335,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  useEffect(()=>{if(previewResumeRevision>0&&!previewBlackout){setBlackout(false);setPreviewLive(true);}},[previewResumeRevision,previewBlackout]);
  const activeMotionSession=useRef<string|null>(null);
  const surfaceBuffers=useRef(new Map<string,HTMLCanvasElement>());
+ const polygonScratch=useRef<{clip:HTMLCanvasElement;blur:HTMLCanvasElement}|null>(null);
  const previewLayerAlpha=useRef(new Map<string,number>());
  const ownBodyOutput=useRef<HTMLCanvasElement>(null);
  const ownFloorOutput=useRef<HTMLCanvasElement>(null);
@@ -401,6 +402,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const popup=useRef<Window|null>(null);
  const selectedRef=useRef(selected),compositionRef=useRef(composition);
  selectedRef.current=selected;compositionRef.current=composition;
+ useEffect(()=>{
+  const active=new Set(Object.entries(composition).flatMap(([surface,layers])=>layers.map(l=>surface+':'+l.id)));
+  for(const [id,buffer] of surfaceBuffers.current){
+   if(!active.has(id)){buffer.width=0;buffer.height=0;surfaceBuffers.current.delete(id);previewLayerAlpha.current.delete(id);}
+  }
+ },[composition]);
  const layers=composition[selected],layer=layers[selectedLayer]||layers[0];
  const patch=(p:Partial<Layer>)=>setComposition(c=>({...c,[selected]:c[selected].map((l,i)=>i===selectedLayer?{...l,...p}:l)}));
  useEffect(()=>{
@@ -592,15 +599,24 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
    if(clipNeeded){
     let clip:HTMLCanvasElement|null=null;
     if(layer.mask==='polygon'&&layer.points.length>=3){
-     clip=document.createElement('canvas');clip.width=w;clip.height=h;
+     const scratch=polygonScratch.current??(polygonScratch.current={clip:document.createElement('canvas'),blur:document.createElement('canvas')});
+     clip=scratch.clip;
+     if(clip.width!==w)clip.width=w;if(clip.height!==h)clip.height=h;
      const c=clip.getContext('2d');
-     if(c){c.fillStyle='#fff';c.beginPath();
+     if(!c||c.isContextLost?.())continue;
+     c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;c.clearRect(0,0,w,h);
+     {c.fillStyle='#fff';c.beginPath();
       layer.points.forEach(([x,y],i)=>i?c.lineTo(x*w,y*h):c.moveTo(x*w,y*h));
       c.closePath();c.fill();
       if(layer.feather>0){
-       const blurred=document.createElement('canvas');blurred.width=w;blurred.height=h;
+       const blurred=scratch.blur;
+       if(blurred.width!==w)blurred.width=w;if(blurred.height!==h)blurred.height=h;
        const blur=blurred.getContext('2d');
-       if(blur){blur.filter='blur('+Math.min(35,Math.max(0,layer.feather))+'px)';blur.drawImage(clip,0,0);clip=blurred;}
+       if(!blur||blur.isContextLost?.())continue;
+       blur.setTransform(1,0,0,1,0,0);blur.globalCompositeOperation='source-over';blur.globalAlpha=1;
+       blur.filter='none';blur.clearRect(0,0,w,h);
+       blur.filter='blur('+Math.min(35,Math.max(0,layer.feather))+'px)';
+       try{blur.drawImage(clip,0,0);clip=blurred;}finally{blur.filter='none';}
       }
      }
     }
