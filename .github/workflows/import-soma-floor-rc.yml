@@ -1,0 +1,62 @@
+name: Import verified SOMA FLOOR candidate fd0af5ed
+on:
+  push:
+    branches:
+      - release/floor-fd0af5ed-pages
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: soma-floor-fd0af5ed-import
+  cancel-in-progress: true
+jobs:
+  verify-and-stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: "1"
+      SOMA_E2E_PAGES: "1"
+      VITE_SOMA_STAGE_OUTPUTS: enabled
+      VITE_SOMA_BUILD_ID: fd0af5ed073e3967286b2926e67d415cd84e56c5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reassemble and verify exact release Git bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat releases/floor-fd0af5ed/part*.b64 | tr -d '\r\n' | base64 --decode > /tmp/soma-floor-candidate.bundle
+          echo "1bd3a1627d855bc9123797ab4b7ec6fb6cad6b086688575aebd70aa92cd89239  /tmp/soma-floor-candidate.bundle" | sha256sum --check
+          test "$(git merge-base HEAD 1e5d4833ed447115387327943e1ad98f3f9d6328)" = 1e5d4833ed447115387327943e1ad98f3f9d6328
+          git bundle verify /tmp/soma-floor-candidate.bundle
+          git fetch /tmp/soma-floor-candidate.bundle refs/heads/fix/floor-production-e2e:refs/remotes/imported/floor
+          test "$(git rev-parse refs/remotes/imported/floor)" = fd0af5ed073e3967286b2926e67d415cd84e56c5
+          test "$(git rev-parse fd0af5ed073e3967286b2926e67d415cd84e56c5^5)" = 1e5d4833ed447115387327943e1ad98f3f9d6328
+          git checkout --detach fd0af5ed073e3967286b2926e67d415cd84e56c5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: All unit regression tests
+        run: npm test
+      - name: Build GitHub Pages production assets
+        run: npm run build -- --mode githubpages
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Map desktop/mobile browser QA
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 map-r3-fullscreen.spec.mjs map-r4-compact.spec.mjs map-v6-stage-inspector.spec.mjs map-calibration-assist.spec.mjs
+      - name: Perform desktop/mobile browser QA
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 perform-final-preview.spec.mjs perform-three-routes.spec.mjs
+      - name: Live source and Direct readiness QA
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 source-flow.spec.mjs soma-direct-readiness.spec.mjs direct-visual-playback.spec.mjs
+      - name: Stage validated candidate as remote branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = 1e5d4833ed447115387327943e1ad98f3f9d6328
+          git push origin fd0af5ed073e3967286b2926e67d415cd84e56c5:refs/heads/release/floor-candidate-fd0af5ed
