@@ -81,6 +81,12 @@ export class LiveFloorTrackingEngine{
   while(start>0&&this.events[start-1].timestampMs>=sinceMs)start--;
   return this.events.slice(start);
  }
+ /** Only internally generated append-only events, never imported session data. */
+ rasterBatch(epoch:number,cursor:number){
+  if(!this.calibration)return null;
+  const start=epoch===this.sessionSerial&&Number.isInteger(cursor)&&cursor>=0&&cursor<=this.events.length?cursor:0;
+  return {epoch:this.sessionSerial,floor:this.calibration.floor,start,total:this.events.length,events:this.events.slice(start)};
+ }
  get status():LiveFloorStatus{
   return {calibrated:!!this.calibration,confirmed:this.confirmed,cameraMatched:!!this.bindingKey,
    tracking:this.confirmed&&this.received.size>0,contacts:this.contactCount,events:this.events.length,

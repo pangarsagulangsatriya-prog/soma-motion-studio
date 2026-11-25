@@ -64,12 +64,18 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
    const y=i/s.floor.depthM*h;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
   }
  }
- const path=solePath(),last=new Map<string,{x:number;y:number}>();
- const size=Math.min(w/s.floor.widthM,h/s.floor.depthM)*.3;
- for(const e of s.events){
-  if(e.timestampMs>(options.maxTimeMs??Infinity))break;
+ paintFloorEvents(ctx,s.floor,s.events,new Map(),solePath(),options.maxTimeMs??Infinity);
+}
+type LastPoints=Map<string,{x:number;y:number}>;
+/** Shared painter: live incremental and full replay use exactly the same glyphs. */
+function paintFloorEvents(ctx:CanvasRenderingContext2D,floor:FloorSpace,
+ events:readonly FootstepEvent[],last:LastPoints,path:Path2D|null,maxTimeMs=Infinity){
+ const w=FLOOR_RASTER.width,h=FLOOR_RASTER.height;
+ const size=Math.min(w/floor.widthM,h/floor.depthM)*.3;
+ for(const e of events){
+  if(e.timestampMs>(maxTimeMs))break;
   if(e.kind!=='contact'&&e.kind!=='move'&&e.kind!=='prediction')continue;
-  const pt=floorRasterPoint(s.floor,e.positionM),k=e.performerId+':'+e.foot,c=color(e);
+  const pt=floorRasterPoint(floor,e.positionM),k=e.performerId+':'+e.foot,c=color(e);
   const previous=last.get(k);
   if(e.kind==='move'&&previous&&e.joinPrevious!==false){
    ctx.strokeStyle=c;ctx.globalAlpha=.65;ctx.lineWidth=2.5;
@@ -91,5 +97,40 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
     .08-i*.007,.11-i*.012,0,0,Math.PI*2);ctx.fill();
   }
   ctx.restore();
+ }
+}
+
+/** Trusted append-only live engine batch. Imported/replayed sessions still use
+ * paintFloorCanvas and full schema validation. Cursor advances only on success. */
+export type LiveFloorRasterBatch={epoch:number;floor:FloorSpace;start:number;total:number;events:readonly FootstepEvent[]};
+export class IncrementalFloorRaster{
+ private canvas:HTMLCanvasElement|null=null;
+ private epoch=-1;
+ private index=0;
+ private last:LastPoints=new Map();
+ private path:Path2D|null=null;
+ private invalid=true;
+ get cursor(){return this.invalid?0:this.index;}
+ get sessionEpoch(){return this.invalid?-1:this.epoch;}
+ invalidate(){this.invalid=true;this.index=0;this.last.clear();}
+ paint(canvas:HTMLCanvasElement,batch:LiveFloorRasterBatch){
+  const resized=canvas.width!==FLOOR_RASTER.width||canvas.height!==FLOOR_RASTER.height;
+  const rebuild=this.invalid||this.canvas!==canvas||this.epoch!==batch.epoch||resized;
+  if(batch.start!==(rebuild?0:this.index)||batch.total!==batch.start+batch.events.length){
+   this.invalidate();throw Error('Cursor raster lantai tidak cocok; perlu rebuild.');
+  }
+  if(resized){canvas.width=FLOOR_RASTER.width;canvas.height=FLOOR_RASTER.height;}
+  const ctx=canvas.getContext('2d');
+  if(!ctx||ctx.isContextLost?.()){this.invalidate();throw Error('Canvas lantai belum tersedia.');}
+  try{
+   ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+   if(rebuild){this.last.clear();ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);this.path=solePath();}
+   paintFloorEvents(ctx,batch.floor,batch.events,this.last,this.path);
+   this.canvas=canvas;this.epoch=batch.epoch;this.index=batch.total;this.invalid=false;
+  }catch(error){this.invalidate();throw error;}
+ }
+ needsRebuild(canvas:HTMLCanvasElement,epoch:number){
+  return this.invalid||this.canvas!==canvas||this.epoch!==epoch||
+   canvas.width!==FLOOR_RASTER.width||canvas.height!==FLOOR_RASTER.height;
  }
 }
