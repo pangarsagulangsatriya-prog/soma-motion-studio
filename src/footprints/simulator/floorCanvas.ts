@@ -1,4 +1,4 @@
-import {sole} from '../pattern.ts';
+import {paintAuthenticFootprint,METRIC_SOLE_SCALE} from '../scenes/authenticFootGeometry.ts';
 import type {CalibrationQATarget} from '../validation/CalibrationQA.ts';
 import {floorToUV,type FloorSpace} from '../spatial/coordinates.ts';
 import {validateFloorSession,type FloorSession,type FootstepEvent} from '../spatial/events.ts';
@@ -10,10 +10,16 @@ export function floorRasterPoint(floor:FloorSpace,point:FootstepEvent['positionM
  const uv=floorToUV(floor,point);
  return {x:uv.x*width,y:uv.y*height};
 }
-const solePath=()=>{
- if(typeof Path2D!=='undefined')return new Path2D(sole);
- return null;
-};
+export function paintMetricSole(ctx:CanvasRenderingContext2D,floor:FloorSpace,
+ event:FootstepEvent,w:number,h:number,color:string,alpha:number,sizeFactor=1){
+ const uv=floorToUV(floor,event.positionM);
+ ctx.save();ctx.translate(uv.x*w,uv.y*h);
+ ctx.scale(w/floor.widthM,h/floor.depthM);
+ paintAuthenticFootprint(ctx,{x:0,y:0,side:event.foot,
+  headingRad:Math.PI/2-event.headingRad,widthPx:METRIC_SOLE_SCALE.widthM*sizeFactor,lengthPx:METRIC_SOLE_SCALE.lengthM*sizeFactor,
+  phase:event.kind==='prediction'?'prediction':'contact',color,alpha});
+ ctx.restore();
+}
 const color=(e:FootstepEvent)=>e.performerId==='B'?
  (e.foot==='left'?'#A5D4D1':'#7FB0CB'):
  (e.foot==='left'?'#E6EBD9':'#D2DD8E');
@@ -64,8 +70,7 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
    const y=i/s.floor.depthM*h;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
   }
  }
- const path=solePath(),last=new Map<string,{x:number;y:number}>();
- const size=Math.min(w/s.floor.widthM,h/s.floor.depthM)*.3;
+ const last=new Map<string,{x:number;y:number}>();
  for(const e of s.events){
   if(e.timestampMs>(options.maxTimeMs??Infinity))break;
   if(e.kind!=='contact'&&e.kind!=='move'&&e.kind!=='prediction')continue;
@@ -77,19 +82,6 @@ export function paintFloorCanvas(canvas:HTMLCanvasElement,session:FloorSession,o
   }
   if(e.kind==='move'||e.kind==='contact')last.set(k,pt);
   if(e.kind!=='contact'&&e.kind!=='prediction')continue;
-  ctx.save();ctx.translate(pt.x,pt.y);ctx.rotate(Math.PI/2-e.headingRad);
-  ctx.scale(size,size);ctx.globalAlpha=e.kind==='prediction'?.25:.94;
-  if(e.kind==='prediction'){
-   ctx.globalAlpha=.8;ctx.strokeStyle=c;ctx.lineWidth=.045;
-   ctx.setLineDash([.14,.12]);ctx.beginPath();ctx.ellipse(0,-.1,.23,.53,0,0,Math.PI*2);ctx.stroke();
-   ctx.setLineDash([]);ctx.restore();continue;
-  }
-  ctx.fillStyle=c;
-  if(path)ctx.fill(path);
-  for(let i=0;i<5;i++){
-   ctx.beginPath();ctx.ellipse(-.23+i*.14,-.75+(i/4)**2*.26,
-    .08-i*.007,.11-i*.012,0,0,Math.PI*2);ctx.fill();
-  }
-  ctx.restore();
+  paintMetricSole(ctx,s.floor,e,w,h,c,e.kind==='prediction'?.6:.94);
  }
 }

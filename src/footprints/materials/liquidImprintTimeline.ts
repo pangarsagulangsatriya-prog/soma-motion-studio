@@ -15,7 +15,7 @@ import {deformationAt,type FootDeformation,type FootVisualMotion}
 export const LIQUID_LIMIT=32;
 export const LIQUID_LIFE_MS=9000;
 export type LiquidImprint={
- id:string;actorId:string;foot:'left'|'right';source:LiquidInputEvent['source'];
+ id:string;actorId:string;foot:'left'|'right';source:LiquidInputEvent['source'];basis?:LiquidInputEvent['basis'];
  x:number;y:number;headingRad:number;orientationKnown:boolean;
  createdMs:number;ageMs:number;opacity:number;seed:number;
  /** Last confirmed release signal; preserves draining ink beyond toe-off. */
@@ -61,7 +61,7 @@ export function collectLiquidImprints(
  return Array.from(stamps.entries()).slice(-limit).map(([id,{contact,motion}]):LiquidImprint=>{
   const ageMs=Math.max(0,nowMs-contact.atMs);
   return {
-   id,actorId:contact.actorId,foot:contact.foot!,source:contact.source,
+   id,actorId:contact.actorId,foot:contact.foot!,source:contact.source,basis:contact.basis,
    x:contact.x,y:contact.y,headingRad:finite(contact.headingRad)?contact.headingRad:0,
    orientationKnown:finite(contact.headingRad),
    createdMs:contact.atMs,ageMs,opacity:Math.pow(clamp(1-ageMs/lifeMs,0,1),1.15),

@@ -4,9 +4,9 @@ import type {PuppetPerformer,OrbitCamera} from '../../footprints/simulator/scene
 
 export type ExperimentInputKind='video'|'simulator';
 export type ExperimentalFrame=
- |{kind:'video';snapshot:ReplayAnalysisSnapshot|null;previousSnapshot?:ReplayAnalysisSnapshot|null;
-   video:HTMLVideoElement|null;timeMs:number;ready:boolean;name:string;clip?:File|null}
- |{kind:'simulator';session:FloorSession;performers:PuppetPerformer[];
+ |{kind:'video';generation?:number;snapshot:ReplayAnalysisSnapshot|null;previousSnapshot?:ReplayAnalysisSnapshot|null;
+   decoded?:{atMs:number;mediaTime:number};video:HTMLVideoElement|null;timeMs:number;ready:boolean;name:string;clip?:File|null}
+ |{kind:'simulator';generation?:number;session:FloorSession;performers:PuppetPerformer[];
    orbit:OrbitCamera;timeMs:number;name:string};
 export function activeExperimentKind(choice:string|null):ExperimentInputKind|null{
  return choice==='video'||choice==='simulator'?choice:null;
@@ -29,6 +29,14 @@ export function currentExperimentFrameForClip(
  const selected=currentExperimentFrame(kind,frame);
  if(selected?.kind==='video'&&(!clip||selected.clip!==clip))return null;
  return selected;
+}
+/** Only the Direct playback permit needs a recent advancing decoder clock.
+ * A paused, decoded frame is valid still artwork until the next seek or clip. */
+export function canOutputVideoFrame(frame:ExperimentalFrame|null,now:number):boolean{
+ if(frame?.kind!=='video'||!canPaintVideoFrame(frame)||frame.video?.error)return false;
+ if(frame.video?.paused)return true;
+ const stamp=frame.decoded?.atMs;
+ return stamp!==undefined&&Number.isFinite(stamp)&&now>=stamp&&now-stamp<1200;
 }
 /** Metadata alone is insufficient: a decoded image must be available before painting. */
 export function canPaintVideoFrame(frame:ExperimentalFrame|null):boolean{

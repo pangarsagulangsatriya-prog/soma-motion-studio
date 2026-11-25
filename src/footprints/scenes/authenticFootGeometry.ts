@@ -7,6 +7,9 @@ export type FootSide='left'|'right';
 export type SolePoint=readonly [number,number];
 export const FOOT_LENGTH_M=0.26;
 export const FOOT_WIDTH_M=0.095;
+// The undeformed Bézier sole plus toe ellipses occupy ~0.919 of the nominal
+// x-axis and ~0.988 of the two-unit y-axis, excluding transparent padding.
+export const METRIC_SOLE_SCALE={widthM:FOOT_WIDTH_M/.919,lengthM:FOOT_LENGTH_M/.988};
 /** Closed outer perimeter, from medial ball along toes to lateral heel. */
 export const RIGHT_SOLE:readonly SolePoint[]=[
  // Wide forefoot, a genuine medial arch cut-in, narrow heel and five toes.

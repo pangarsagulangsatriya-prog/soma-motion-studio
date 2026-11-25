@@ -1,6 +1,6 @@
 import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import type {FootprintConfig} from '../../footprints/StudioFootprints.tsx';
-import {floorRasterPoint} from '../../footprints/simulator/floorCanvas.ts';
+import {floorRasterPoint,paintMetricSole} from '../../footprints/simulator/floorCanvas.ts';
 import {drawPuppetScene} from '../../footprints/simulator/draw3d.ts';
 import {drawSkeletonBodies,replaySkeletonDiagnosticPreview} from '../../stage/fullBodySkeleton.ts';
 import type {MotionVisualFrame} from '../../stage/actorMotionStateBuffer.ts';
@@ -186,9 +186,7 @@ export function paintExperimentFloor(canvas:HTMLCanvasElement,frame:Experimental
  config:Pick<FootprintConfig,'style'|'size'|'colors'|'life'>){
  const w=1280,h=720,ctx=context(canvas,w,h);if(!ctx)return;
  // The video frame has image-relative coordinates; no metric floor conversion is claimed.
- ctx.strokeStyle='rgba(177,208,171,.10)';ctx.lineWidth=1;
- for(let i=1;i<10;i++){ctx.beginPath();ctx.moveTo(w*i/10,0);ctx.lineTo(w*i/10,h);ctx.stroke();}
- for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(0,h*i/6);ctx.lineTo(w,h*i/6);ctx.stroke();}
+ ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
  const isVideo=frame.kind==='video';
  const events=isVideo?frame.snapshot?.events??[]:frame.session.events;
  const lifeMs=Math.max(900,Math.min(60000,config.life*1000));
@@ -197,7 +195,7 @@ export function paintExperimentFloor(canvas:HTMLCanvasElement,frame:Experimental
   const at=isVideo?(event as {atMs:number}).atMs:
    (event as {timestampMs:number}).timestampMs;
   if(at>frame.timeMs||!Number.isFinite(at))continue;
-  if(isVideo&&frame.timeMs-at>lifeMs)continue;
+  if(frame.timeMs-at>lifeMs)continue;
   const id=isVideo?(event as {performer:string}).performer:
    (event as {performerId:string}).performerId;
   const foot=event.foot;
@@ -207,8 +205,8 @@ export function paintExperimentFloor(canvas:HTMLCanvasElement,frame:Experimental
     (event as {positionM:{xM:number;yM:number}}).positionM,w,h);
   if(!Number.isFinite(pt.x)||!Number.isFinite(pt.y)||pt.x<0||pt.y<0||pt.x>w||pt.y>h)continue;
   const isContact=event.kind==='contact';
-  const alpha=isVideo?Math.max(.1,1-(frame.timeMs-at)/lifeMs):.95;
-  const color=foot==='left'?config.colors.left:config.colors.right;
+  const alpha=.95*Math.max(0,1-(frame.timeMs-at)/lifeMs);
+  const color=id==='B'?config.colors.right:config.colors.left;
   const lastPt=last.get(key);
   if(config.style==='Garis'&&lastPt){
    ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=Math.max(1,config.size/7);
@@ -217,6 +215,9 @@ export function paintExperimentFloor(canvas:HTMLCanvasElement,frame:Experimental
   if(event.kind==='swing'||event.kind==='release')continue;
   last.set(key,pt);
   if(!isContact&&config.style!=='Garis')continue;
+  if(frame.kind==='simulator'&&isContact&&config.style!=='Garis'&&config.style!=='Titik'&&'positionM' in event){
+   paintMetricSole(ctx,frame.session.floor,event,w,h,color,alpha,config.size/32);continue;
+  }
   ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.strokeStyle=color;
   ctx.translate(pt.x,pt.y);
   const theta=Number.isFinite(event.headingRad)?event.headingRad:0;

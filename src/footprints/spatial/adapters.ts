@@ -26,7 +26,13 @@ export function calibratedGaitContact(sample:GaitSample,videoAspect:number,
   y:sample.y+Math.sin(sample.heading)*d/720
  },videoAspect);
  const next=offset?cameraGroundToFloor(c,{cameraUV:offset,phase:'stance',confidence:sample.confidence}):null;
- const heading=next?Math.atan2(next.yM-positionM.yM,next.xM-positionM.xM):-sample.heading;
+ const heading=next?Math.atan2(next.yM-positionM.yM,next.xM-positionM.xM):(()=>{
+  const behind=stageUVToRawCamera({x:sample.x-Math.cos(sample.heading)*d/1280,
+   y:sample.y-Math.sin(sample.heading)*d/720},videoAspect);
+  const prev=behind&&cameraGroundToFloor(c,{cameraUV:behind,phase:'stance',confidence:sample.confidence});
+  return prev?Math.atan2(positionM.yM-prev.yM,positionM.xM-prev.xM):null;
+ })();
+ if(heading===null)return null;
  return validateFootstepEvent({
   id:`camera-contact-${performerId}-${sample.side}-${sample.t}`,
   performerId,foot:sample.side===0?'left':'right',kind:'contact',

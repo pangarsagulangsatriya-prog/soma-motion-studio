@@ -2,8 +2,8 @@
  * ONE Pixi Application / WebGL2 renderer owns every sole mask and steerable
  * visual style filter. Track / Map / Perform / projector safety are never modified.
  */
-import {Application,CanvasSource,Filter,Sprite,Texture} from 'pixi.js';
-import {paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
+import {Application,CanvasSource,Filter,Matrix,Sprite,Texture} from 'pixi.js';
+import {METRIC_SOLE_SCALE,paintAuthenticFootprint} from '../scenes/authenticFootGeometry.ts';
 import {liquidMaterialResponse} from './liquidMaterialResponse.ts';
 import {MATERIAL03_GLSL} from './liquidMaterialShader.ts';
 import {collectLiquidImprints,LIQUID_LIMIT,type LiquidImprint,type LiquidTimelineOptions,type LiquidInputEvent}
@@ -11,7 +11,7 @@ import {collectLiquidImprints,LIQUID_LIMIT,type LiquidImprint,type LiquidTimelin
 import {DEFAULT_COMPOSE_STEERING,getComposeVisualStyle,type ComposeVisualStyleId}
  from './composeVisualStyles.ts';
 
-const WIDTH=160,HEIGHT=320;
+const WIDTH=160,HEIGHT=320,MASK_WIDTH=112,MASK_LENGTH=250;
 const clamp=(v:number,min:number,max:number)=>Math.min(max,Math.max(min,v));
 const safe=(v:number,base:number)=>Number.isFinite(v)?v:base;
 const PIXI_MATERIAL_FRAGMENT=`
@@ -92,6 +92,7 @@ void main(void){
  });
 }
 export class PixiLiquidImprintCompositor{
+ private readonly soleMatrix=new Matrix();
  readonly canvas:HTMLCanvasElement;
  private readonly app:Application;
  private readonly masks=new Map<string,RecordEntry>();
@@ -149,7 +150,7 @@ export class PixiLiquidImprintCompositor{
  render(events:readonly LiquidInputEvent[],timeMs:number,options:LiquidTimelineOptions&{
   styleId?:ComposeVisualStyleId;
   flow?:number;turbulence?:number;glow?:number;hueShift?:number;pulseRate?:number;
-  widthPx?:number;lengthPx?:number;
+  widthPx?:number;lengthPx?:number;metricFloor?:{widthM:number;depthM:number}|null;sizeFactor?:number;
   /** QA only: freeze anatomy to compare shader material at one identical mask. */
   materialOnlyQA?:boolean
  }={}):PixiLiquidStats{
@@ -177,15 +178,26 @@ export class PixiLiquidImprintCompositor{
     entry.ctx.setTransform(1,0,0,1,0,0);
     entry.ctx.clearRect(0,0,WIDTH,HEIGHT);
     paintAuthenticFootprint(entry.ctx,{
-     x:WIDTH/2,y:HEIGHT/2,widthPx:112,lengthPx:250,
+     x:WIDTH/2,y:HEIGHT/2,widthPx:MASK_WIDTH,lengthPx:MASK_LENGTH,
      color:'#ffffff',side:imprint.foot,deformation:d
     });
     entry.source.update();
    }
    const sprite=entry.sprite;
-   sprite.position.set(imprint.x*this.canvas.width,imprint.y*this.canvas.height);
-   sprite.width=width;sprite.height=height;
-   sprite.rotation=imprint.orientationKnown?Math.PI/2-imprint.headingRad:0;
+   const x=imprint.x*this.canvas.width,y=imprint.y*this.canvas.height;
+   const angle=imprint.orientationKnown?Math.PI/2-imprint.headingRad:0;
+   const floor=options.metricFloor;
+   if(floor&&floor.widthM>0&&floor.depthM>0&&
+      (imprint.basis==='calibrated-estimate'||imprint.basis==='simulated')){
+    const px=this.canvas.width/floor.widthM,py=this.canvas.height/floor.depthM;
+    const factor=clamp(safe(options.sizeFactor??1,1),.25,3);
+    const sx=METRIC_SOLE_SCALE.widthM*factor/MASK_WIDTH,sy=METRIC_SOLE_SCALE.lengthM*factor/MASK_LENGTH;
+    const c=Math.cos(angle),s=Math.sin(angle);
+    sprite.setFromMatrix(this.soleMatrix.set(px*c*sx,py*s*sx,-px*s*sy,py*c*sy,x,y));
+   }else{
+    sprite.position.set(x,y);sprite.skew.set(0,0);
+    sprite.width=width;sprite.height=height;sprite.rotation=angle;
+   }
    sprite.alpha=response.opacity*.95;
    const uniforms=entry.filter.resources.liquidUniforms.uniforms;
    uniforms.uAge=imprint.ageMs/1000;

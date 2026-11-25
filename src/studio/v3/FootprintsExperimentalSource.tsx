@@ -21,6 +21,8 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const video=useRef<HTMLVideoElement>(null);
  const videoEngine=useRef<VideoPoseGaitEngine|null>(null);
  const generation=useRef(0);
+ const [seekGeneration,setSeekGeneration]=useState(0);
+ const decoded=useRef({atMs:Number.NEGATIVE_INFINITY,mediaTime:-1});
  const userPaused=useRef(false);
  const showTechnicalLab=typeof window!=='undefined'&&new URLSearchParams(window.location.search).has('lab');
  const [url,setUrl]=useState<string|null>(null);
@@ -34,6 +36,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const previousSnapshot=useRef<ReplayAnalysisSnapshot|null>(null);
  const sessionRef=useRef(model);
  const [revision,setRevision]=useState(0);
+ const [performerId,setPerformerId]=useState('A');
  const [foot,setFoot]=useState<FootSide>('left');
  const [status,setStatus]=useState('Pilih sumber gerak untuk eksperimen.');
  const origin=useRef(performance.now());
@@ -41,7 +44,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  const [simTime,setSimTime]=useState(0);
  const renderSimulation=useCallback(()=>{
   const model=sessionRef.current;
-  onFrame({kind:'simulator',session:model.session,
+  onFrame({kind:'simulator',generation:model.generation,session:model.session,
    performers:model.performers.map(p=>({...p,left:{...p.left,positionM:{...p.left.positionM}},
     right:{...p.right,positionM:{...p.right.positionM}}})),
    orbit:orbit.current,timeMs:model.durationMs,name:'Direct Puppet'});
@@ -52,6 +55,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  },[kind,revision,externalRevision,renderSimulation]);
  useEffect(()=>{
   if(kind!=='video'||!clip){setUrl(null);setVideoReady(false);setSnapshot(null);return;}
+  decoded.current={atMs:Number.NEGATIVE_INFINITY,mediaTime:-1};
   const objectUrl=URL.createObjectURL(clip);setUrl(objectUrl);
   setVideoReady(false);setDuration(0);setPosition(0);setScrubPosition(null);setPlaying(false);setSnapshot(null);
   lastSnapshot.current=null;previousSnapshot.current=null;userPaused.current=false;
@@ -99,6 +103,10 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
   if(kind!=='video'||!videoReady)return;
   const el=video.current;if(!el)return;
   return subscribeReplayFrames(el,(mediaTime,presentedFrames)=>{
+   if(mediaTime!==decoded.current.mediaTime){
+    decoded.current.mediaTime=mediaTime;
+    decoded.current.atMs=performance.now();
+   }
    videoEngine.current?.recordPresentedFrame(presentedFrames);
    videoEngine.current?.process(el,mediaTime,18);
   });
@@ -106,11 +114,11 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
  useEffect(()=>{
   if(kind!=='video')return;
   const el=video.current;
-  onFrame({kind:'video',snapshot:previousSnapshot.current!==snapshot&&lastSnapshot.current!==snapshot?
+  onFrame({kind:'video',generation:seekGeneration,snapshot:previousSnapshot.current!==snapshot&&lastSnapshot.current!==snapshot?
     null:snapshot,previousSnapshot:previousSnapshot.current,
-   video:el,timeMs:(el?.currentTime??position)*1000,
+   decoded:decoded.current,video:el,timeMs:(el?.currentTime??position)*1000,
    ready:videoReady,name:clip?.name??'Belum ada video',clip});
- },[kind,snapshot,clip,position,videoReady,onFrame]);
+ },[kind,snapshot,clip,position,videoReady,seekGeneration,onFrame]);
  useEffect(()=>{
   if(kind!=='video')return;
   const el=video.current;
@@ -151,7 +159,7 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    String(Math.floor(safe%60)).padStart(2,'0');
  };
  const step=(dx:number)=>{
-  const model=sessionRef.current,which={performerId:'A',foot};
+  const model=sessionRef.current,which={performerId,foot};
   const v=model.getFoot(which);if(!v)return;
   const time=performance.now()-origin.current;
   model.lift(which,time);
@@ -178,12 +186,18 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    </label>
    <video ref={video} src={url??undefined} playsInline muted loop preload="metadata"
     aria-label="Pemutar MP4 untuk Footprints" className="fp-experiment-hidden-video"
+    onLoadedData={e=>{
+     decoded.current.atMs=performance.now();decoded.current.mediaTime=e.currentTarget.currentTime;
+    }}
     onLoadedMetadata={e=>{const el=e.currentTarget;setDuration(Number.isFinite(el.duration)?el.duration:0);setVideoReady(true);}}
     onSeeking={()=>{
+     decoded.current.atMs=Number.NEGATIVE_INFINITY;decoded.current.mediaTime=-1;
+     onFrame(null);
      lastSnapshot.current=null;previousSnapshot.current=null;setSnapshot(null);
      videoEngine.current?.reset('Timeline diubah: identitas dan peristiwa diulang.');
     }}
     onSeeked={e=>{
+     setSeekGeneration(value=>value+1);
      const el=e.currentTarget;
      setPosition(el.currentTime);
      previousSnapshot.current=null;lastSnapshot.current=null;setSnapshot(null);
@@ -274,9 +288,12 @@ export function FootprintsExperimentalSource({kind,clip,onClip,model,onFrame,ext
    </details>}
 
   </div>:<div className="fp-experiment-controls">
+   <label>Performer <select aria-label="Performer simulasi aktif" value={performerId}
+    onChange={e=>setPerformerId(e.target.value)}>{model.performers.map(p=>
+     <option key={p.id} value={p.id}>{p.id}</option>)}</select></label>
    <label>Pilih kaki <select aria-label="Kaki simulasi aktif" value={foot}
     onChange={e=>setFoot(e.target.value as FootSide)}>
-    <option value="left">Kiri · A</option><option value="right">Kanan · A</option>
+    <option value="left">Kiri</option><option value="right">Kanan</option>
    </select></label>
    <button type="button" onClick={()=>step(-.14)}>
     <Footprints size={15}/> Langkah kiri</button>

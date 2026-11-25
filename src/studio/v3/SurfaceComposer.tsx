@@ -44,7 +44,7 @@ import {
 import {renderLowerBodyStageMonitor} from './composeLowerBodyRenderer.ts';
 import {composeInspectorVisible} from './composeLowerBodyModel.ts';
 import {paintComposeSkeletonMonitor,type ComposeSkeletonBackdrop} from './composeSkeletonMonitor.ts';
-import {canPaintVideoFrame,type ExperimentalFrame} from './experimentSourceModel.ts';
+import {canOutputVideoFrame,type ExperimentalFrame} from './experimentSourceModel.ts';
 import {directPlaybackFileKey} from '../../footprints/stage-optics/DirectVisualPlayback.ts';
 import {LowerBodyQuickInspector} from './LowerBodyQuickInspector.tsx';
 import {FootLineTrailEngine} from '../../footprints/lines/FootLineTrailEngine.ts';
@@ -388,6 +388,7 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
  const frameRefLive=useRef(frameRef);frameRefLive.current=frameRef;
  const videoRefLive=useRef(videoRef);videoRefLive.current=videoRef;
  const routerRef=useRef(router);routerRef.current=router;
+ const videoCalibrationRef=useRef(activeVideoFloor);videoCalibrationRef.current=activeVideoFloor;
  const floorRef=useRef(floorTracker);floorRef.current=floorTracker;
  const cameraOnRef=useRef(cameraOn);cameraOnRef.current=cameraOn;
  const lineSourceRef=useRef(lineSource);lineSourceRef.current=lineSource;
@@ -671,7 +672,11 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
      composerLiquidTrackEvents(timelineCaptureRef.current,artTime,
       timelineModeRef.current==='replay'?'replay':'live',lifeMs);
     try{
+     const frame=experimentFrameRef?.current;
+     const metricFloor=demo?null:frame?.kind==='simulator'?frame.session.floor:
+      frame?.kind==='video'?videoCalibrationRef.current?.floor:floorRef.current.floor;
      liquidRenderer.current.render(events,artTime,{
+      metricFloor,sizeFactor:(fp?.size??32)/32,
       styleId:st.styleId,flow:st.flow,turbulence:st.turbulence,
       glow:st.glow,hueShift:st.hueShift,pulseRate:st.pulseRate,
       widthPx:dims.widthPx,lengthPx:dims.lengthPx,lifeMs
@@ -864,12 +869,12 @@ export function SurfaceComposer({footprint,updateFootprint,sharedAssets,onImport
     const experiment=experimentSourceRef.current;
     const experimentFrame=experimentFrameRef?.current??null;
     const experimentSafe=!!(experiment&&experimentReadyRef.current&&live&&!footprintRef.current?.hold&&
-     (experiment==='video'?canPaintVideoFrame(experimentFrame):experimentFrame?.kind==='simulator'));
+     (experiment==='video'?canOutputVideoFrame(experimentFrame,performance.now()):experimentFrame?.kind==='simulator'));
     // A clip or virtual rig has a stable QA binding across playback frames.
     // The binding changes when the file, resolution or performer count changes.
     const experimentKey=experiment==='video'&&experimentFrame?.kind==='video'
-     ?'mp4:'+directPlaybackFileKey(experimentFrame.clip??experimentFrame.video)+':'+experimentFrame.name+':'+(experimentFrame.video?.videoWidth??0)+'x'+(experimentFrame.video?.videoHeight??0)
-     :experiment==='simulator'?'puppet:2d:'+performerRef.current:null;
+     ?'mp4:'+directPlaybackFileKey(experimentFrame.clip??experimentFrame.video)+':'+experimentFrame.name+':'+(experimentFrame.video?.videoWidth??0)+'x'+(experimentFrame.video?.videoHeight??0)+':'+(experimentFrame.generation??0)
+     :experiment==='simulator'&&experimentFrame?.kind==='simulator'?JSON.stringify(['puppet',performerRef.current,experimentFrame.generation,experimentFrame.session.floor]):null;
     const cameraKey=experiment?experimentKey:floorRef.current.boundCamera;
     const floorKey=experiment?(experimentKey?JSON.stringify([experimentKey,performerRef.current]):null):
      floorReadyRef.current?JSON.stringify([floorRef.current.calibrationData,cameraKey,performerRef.current]):null;

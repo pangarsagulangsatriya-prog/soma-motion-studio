@@ -9,6 +9,7 @@ export class DirectPuppetSession{
  performers:PuppetPerformer[];
  events:FootstepEvent[]=[];
  engine:FootstepEventEngine;
+ generation=0;
  private serial=0;
  private clock=0;
  private firstMotionAt:number|null=null;
@@ -90,12 +91,12 @@ export class DirectPuppetSession{
   this.engine.loseTracking(which.performerId,which.foot);
   // The lift was observed; no contact is added after an interrupted drag.
  }
- clear(){this.engine.reset();this.serial=0;this.clock=0;this.firstMotionAt=null;this.events=[];this.performers=initialPerformers(this.floor);}
+ clear(){this.generation++;this.engine.reset();this.serial=0;this.clock=0;this.firstMotionAt=null;this.events=[];this.performers=initialPerformers(this.floor);}
  setFloor(floor:FloorSpace){this.floor=validateFloorSpace(floor);this.engine=new FootstepEventEngine(this.floor);this.clear();}
  importSession(raw:unknown){
   const s=validateFloorSession(raw);
   // Import replaces the working session; it never guesses physical calibration.
-  this.floor=s.floor;this.events=clone(s.events);
+  this.generation++;this.floor=s.floor;this.events=clone(s.events);
   this.performers=initialPerformers(this.floor);
   this.engine=new FootstepEventEngine(this.floor);
   this.clock=this.durationMs;this.firstMotionAt=null;

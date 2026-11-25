@@ -92,7 +92,7 @@ test('floor canvas draws only four corner alignment markers until permitted to s
  const log:string[]=[];
  const ctx={
   setTransform:()=>{},fillRect:()=>log.push('background'),beginPath:()=>{},moveTo:()=>{},
-  lineTo:()=>{},stroke:()=>log.push('stroke'),strokeRect:()=>log.push('outline'),
+  quadraticCurveTo:()=>{},closePath:()=>{},lineTo:()=>{},stroke:()=>log.push('stroke'),strokeRect:()=>log.push('outline'),
   fillText:(str:string)=>log.push('label-'+str),save:()=>{},restore:()=>{},
   translate:()=>{},rotate:()=>{},scale:()=>{},fill:()=>{},ellipse:()=>log.push('toe')
  };
