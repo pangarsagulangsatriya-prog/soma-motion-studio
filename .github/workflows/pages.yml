@@ -1,5 +1,5 @@
 name: Preview SOMA on GitHub Pages
-# Fast, independent GitHub Pages release. Heavy browser suites run in separate QA workflows.
+# GitHub Pages release requires the Map desktop/mobile browser gate in addition to unit tests.
 # A one-time Settings → Pages → Source: GitHub Actions is required if not enabled.
 on:
   push:
@@ -38,6 +38,18 @@ jobs:
         env:
           VITE_SOMA_STAGE_OUTPUTS: enabled
           VITE_SOMA_BUILD_ID: ${{ github.sha }}
+      - name: Install Map browser QA runtime
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Required Map desktop and mobile browser gate
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 map-r3-fullscreen.spec.mjs map-r4-compact.spec.mjs map-v6-stage-inspector.spec.mjs map-calibration-assist.spec.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-map-browser-qa-failure
+          path: e2e/test-results/
+          if-no-files-found: ignore
       # Publish only the self-contained MAT-03 research lab from a pinned,
       # tested feature commit. The main Studio app and projector output
       # continue to come from main and are not replaced by the draft PR.
@@ -64,7 +76,7 @@ jobs:
           test -s dist/index.html
           test -s dist/gpu02-lab.html
           printf '%s\n' '2ee8ee3064df8f00042d34ad6e4c64d142119344' > dist/mat03-commit.txt
-      # Publish after tests and build. Extended browser visual QA is separate.
+      # Publish only after the build and required browser gate pass.
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

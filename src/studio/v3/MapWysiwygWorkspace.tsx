@@ -248,7 +248,7 @@ export function MapWysiwygWorkspace({
    ctx.stroke();
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[selected,plan.sourceQuad,plan.projectorQuad,hasLiveSource,simState,sourceKind,cameraDirty,cameraDraft,motionFrameRef,floorCanvas,bodyCanvas]);
+ },[selected,plan.sourceQuad,hasLiveSource,floorCanvas,bodyCanvas]);
  const currentBox=sourceBox;
  const projectorBox={x:0,y:0,width:W,height:H};
  const overlayQuad=(where:'source'|'output')=>where==='source'?cameraDraft:outputDraft;

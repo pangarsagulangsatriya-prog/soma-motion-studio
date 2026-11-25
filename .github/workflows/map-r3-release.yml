@@ -1,17 +1,10 @@
 name: Map R3/R4 Calibration UX QA
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'src/studio/v3/MapWysiwygWorkspace.tsx'
-      - 'src/studio/v3/useMapCalibrationAssist.ts'
-      - 'src/studio/v3/mapCalibrationAssist.ts'
-      - 'src/footprints/stage-optics/DualSurfaceRoutingPanel.tsx'
-      - 'e2e/map-v6-stage-inspector.spec.mjs'
-      - '.github/workflows/map-r3-release.yml'
   pull_request:
     paths:
+      - 'src/studio/v3/map-wysiwyg.css'
+      - 'e2e/map-calibration-assist.spec.mjs'
       - 'src/studio/v3/MapWysiwygWorkspace.tsx'
       - 'src/studio/v3/useMapCalibrationAssist.ts'
       - 'src/studio/v3/mapCalibrationAssist.ts'

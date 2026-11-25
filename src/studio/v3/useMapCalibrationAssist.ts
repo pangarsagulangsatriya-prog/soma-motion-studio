@@ -49,14 +49,19 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
  const frozenTime=useRef(0);
  const lastKey=useRef('');
  const lastMessage=useRef('');
+ const clearNoticeUntil=useRef(0);
  const setMessage=(message:string)=>{
   if(lastMessage.current!==message){lastMessage.current=message;setStatus(message);}
  };
  const clear=()=>{
   buffer.current=[];forced.current=[];latest.current=[];replayFrames.current=[];
+  control.current.replay=false;control.current.frozen=false;
+  replayStarted.current=0;frozenTime.current=0;
+  clearNoticeUntil.current=performance.now()+3000;
   setReplay(false);setFrozen(false);setMessage('Jejak bantu dibersihkan');
  };
  const test=()=>{
+  clearNoticeUntil.current=0;
   const now=performance.now();
   const seen=latest.current.filter(e=>now-e.atMs<650);
   forced.current=seen.length?seen.map((e,i)=>({...e,id:e.id+':test:'+now+':'+i,atMs:now})):
@@ -66,6 +71,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
   control.current.replay=false;control.current.frozen=false;setReplay(false);setFrozen(false);
  };
  const toggleReplay=()=>{
+  clearNoticeUntil.current=0;
   if(!replay){
    replayFrames.current=[...buffer.current,...forced.current];
    if(!replayFrames.current.length){
@@ -141,7 +147,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
     }
    }
    if(key!==lastKey.current){
-    lastKey.current=key;buffer.current=[];forced.current=[];latest.current=[];
+    lastKey.current=key;buffer.current=[];forced.current=[];latest.current=[];clearNoticeUntil.current=0;
     replayFrames.current=[];replayStarted.current=0;frozenTime.current=0;
     control.current.replay=false;control.current.frozen=false;setReplay(false);setFrozen(false);
    }
@@ -220,7 +226,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
        'MP4 terkalibrasi · posisi kaki perkiraan':
        'Estimasi 2D · posisi kaki perkiraan':
      p.sourceKind==='camera'&&inputMessage?inputMessage:'Tidak ada kaki terdeteksi';
-    setMessage(msg);
+    if(now>=clearNoticeUntil.current)setMessage(msg);
    }else if(synthetic)setMessage('SIMULASI · lima titik contoh, bukan deteksi kamera');
   };
   raf=requestAnimationFrame(draw);
