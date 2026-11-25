@@ -10,7 +10,7 @@ import {dualPhysicalOutputAllowed,type PreviewView} from './projectorWysiwygMode
 import {shouldLatchProjectionBlackout} from '../../studio/v3/safeProjectionPreflight.ts';
 import {canPlayDirectVisual} from './DirectVisualPlayback.ts';
 import {defaultStageSurfacePlan,stageSurfaceSignature,stageSurfaceState,
- assessSurfaceProof,outputSurfaceDecision,cleanFeedSurfaceState,
+ SURFACE_TARGETS,assessSurfaceProof,outputSurfaceDecision,cleanFeedSurfaceState,
  type StageSurface,type StageSurfacePlan,type SurfaceProof,type StageOutputContext}
  from './DualSurfaceCalibration.ts';
 
@@ -31,10 +31,11 @@ export type StageRouteInput={
 
 export type SurfaceDeviceState={
  connected:boolean;opened:boolean;viewport:StageOutputContext['viewport'];
- mode:string;reason:string;
+ mode:string;reason:string;qaSignature?:string|null;playbackReady?:boolean;
 };
 
 export type DualSurfaceSessionState={
+ roomDimensions:{widthM:number;depthM:number}|null;
  plans:Record<StageSurface,StageSurfacePlan>;
  proofs:Record<StageSurface,SurfaceProof|null>;
  requested:Record<StageSurface,RequestedMode>;
@@ -64,6 +65,7 @@ const initialDevices=():Record<StageSurface,SurfaceDeviceState>=>({
 });
 
 const initialState=():DualSurfaceSessionState=>({
+ roomDimensions:null,
  plans:{body:defaultStageSurfacePlan('body'),floor:defaultStageSurfacePlan('floor')},
  proofs:{body:null,floor:null},
  requested:{body:'blackout',floor:'blackout'},
@@ -86,6 +88,9 @@ let lastUI=0;
 let blackoutBound=false;
 export type SurfaceOutputMode='soma'|'resolume';
 const outputMode:Record<StageSurface,SurfaceOutputMode>={body:'soma',floor:'soma'};
+type Permit={signature:string;armedAt:number};
+const livePermit:Record<StageSurface,Permit|null>={body:null,floor:null};
+const testPermit:Record<StageSurface,Permit|null>={body:null,floor:null};
 const feedEnabled:Record<StageSurface,boolean>={body:false,floor:false};
 // Explicit, per-window, per-source authorization for flat MP4/3D artwork only.
 const playbackPermit:Record<StageSurface,{signature:string;armedAt:number}|null>={body:null,floor:null};
@@ -108,7 +113,8 @@ function emit(){
 
 function ensurePorts():Record<StageSurface,ProjectionLink>{
  if(!ports){
-  ports={body:new ProjectionLink(),floor:new ProjectionLink()};
+  const blackout=()=>window.dispatchEvent(new Event(STAGE_BLACKOUT_EVENT));
+  ports={body:new ProjectionLink(blackout),floor:new ProjectionLink(blackout)};
   telemetryOwner=ports.body.id+':'+ports.floor.id;
   claimDualOutputStatus(telemetryOwner);
   DUAL_SURFACE_IDS.forEach(id=>ports![id].start());
@@ -157,7 +163,7 @@ export function hasActiveDualSurfacePorts():boolean{
 }
 
 export function urgentBlackoutDualSurface(id:StageSurface){
- feedEnabled[id]=false;playbackPermit[id]=null;
+ feedEnabled[id]=false;playbackPermit[id]=null;livePermit[id]=null;testPermit[id]=null;
  const links=ensurePorts();
  state={
   ...state,
@@ -175,7 +181,7 @@ export function urgentBlackoutDualSurface(id:StageSurface){
    stageSurfaceSignature(state.plans[id],{
     cameraBinding:stage?.cameraKey??null,
     floorContext:stage?.floorKey??null,
-    windowSession:state.epoch[id]>0?links[id].id+':'+state.epoch[id]:'',
+    windowSession:state.epoch[id]>0?links[id].id+':'+state.epoch[id]+':'+links[id].receiverEpoch:'',
     viewport:links[id].outputInfo?{
      width:links[id].outputInfo.viewportWidth,
      height:links[id].outputInfo.viewportHeight,
@@ -265,6 +271,39 @@ export function closeDualSurfaceOutputWindow(id:StageSurface){
  patchDualSurfaceState({message:`Output ${surfaceLabel} ditutup.`});
 }
 
+/** Recheck the binding at the time of the operator action, even between UI ticks. */
+export function currentQaSignature(id:StageSurface):string|null{
+ const link=ports?.[id],stage=sources.frameRef?.current,out=link?.outputInfo;
+ const now=performance.now();
+ if(!STAGE_HARDWARE_ENABLED||outputMode[id]!=='soma'||!link?.connected||!out||
+    sources.experimentLocked||stage?.mode!=='live'||!stage.cameraSafe||
+    !(id==='body'?stage.bodyMediaReady:stage.bridgeSafe)||!Number.isFinite(stage.frameAtMs)||!Number.isFinite(stage.computedAtMs)||
+    stage.frameAtMs<=0||stage.computedAtMs<=0||now-stage.frameAtMs<0||now-stage.frameAtMs>=450||
+    now-stage.computedAtMs<0||now-stage.computedAtMs>=300)return null;
+ return stageSurfaceSignature(state.plans[id],{
+  cameraBinding:stage.cameraKey,floorContext:stage.floorKey,
+  windowSession:link.id+':'+state.epoch[id]+':'+link.receiverEpoch,
+  viewport:{width:out.viewportWidth,height:out.viewportHeight,dpr:out.dpr}
+ });
+}
+
+export function showMeasuredTarget(id:StageSurface,target:string,signature:string){
+ if(currentQaSignature(id)!==signature||!SURFACE_TARGETS[id].some(t=>t.id===target))return false;
+ urgentBlackoutDualSurface(id);
+ testPermit[id]={signature,armedAt:performance.now()};
+ patchDualSurfaceState({target:{...state.target,[id]:target},operatorConfirm:true,
+  requested:{...state.requested,[id]:'test'}});
+ return true;
+}
+
+export function storeOperatorProof(id:StageSurface,proof:SurfaceProof){
+ if(proof.surface!==id||currentQaSignature(id)!==proof.signature||
+    assessSurfaceProof(state.plans[id],proof.signature,proof).status!=='within-provisional-target')return false;
+ urgentBlackoutDualSurface(id);
+ patchDualSurfaceState({proofs:{...state.proofs,[id]:proof}});
+ return true;
+}
+
 /** Explicit LIVE authorization from Perform; enforces every single hardware/safety/QA gate fail-closed. */
 export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;message:string}{
  const surfaceLabel=id==='floor'?'FLOOR':'BODY';
@@ -283,7 +322,7 @@ export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;messa
  const fresh=!!stage&&(stage.mode==='live'||stage.mode==='simulation')&&stage.frameAtMs>0&&
   stage.computedAtMs>0&&now-stage.frameAtMs>=0&&now-stage.frameAtMs<450&&
   now-stage.computedAtMs>=0&&now-stage.computedAtMs<300;
- if(!stage||!stage.cameraSafe||!fresh){
+ if(!stage||stage.mode!=='live'||sources.experimentLocked||!stage.cameraSafe||!fresh){
   urgentBlackoutDualSurface(id);
   return {ok:false,message:'Sumber kamera live belum valid atau frame kedaluwarsa. Output tetap Blackout.'};
  }
@@ -292,14 +331,17 @@ export function armDualSurfaceLiveFromPerform(id:StageSurface):{ok:boolean;messa
  const key=stageSurfaceSignature(state.plans[id],{
   cameraBinding:stage.cameraKey??null,
   floorContext:stage.floorKey??null,
-  windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]:'',
+  windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]+':'+link.receiverEpoch:'',
   viewport
  });
  const qa=assessSurfaceProof(state.plans[id],key,state.proofs[id]);
  if(qa.status!=='within-provisional-target'){
   urgentBlackoutDualSurface(id);
-  return {ok:false,message:`QA fisik 5 titik ${surfaceLabel} belum lulus atau perlu diulang di Map.`};
+  return {ok:false,message:`QA fisik 5 titik ${surfaceLabel} belum lulus atau perlu diulang di Perform.`};
  }
+ if(!key||currentQaSignature(id)!==key)return {ok:false,message:'Binding berubah. Periksa kembali QA.'};
+ urgentBlackoutDualSurface(id);
+ livePermit[id]={signature:key,armedAt:now};
  state={
   ...state,
   operatorConfirm:true,
@@ -321,7 +363,7 @@ export function armDualSurfacePlaybackFromPerform(id:StageSurface):{ok:boolean;m
  const viewport=output?{width:output.viewportWidth,height:output.viewportHeight,dpr:output.dpr}:null;
  const signature=stageSurfaceSignature(plan,{
   cameraBinding:stage?.cameraKey??null,floorContext:stage?.floorKey??null,
-  windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]:'',viewport
+  windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]+':'+link.receiverEpoch:'',viewport
  });
  const fresh=!!stage&&stage.frameAtMs>0&&stage.computedAtMs>0&&
   now>=stage.frameAtMs&&now-stage.frameAtMs<450&&
@@ -356,7 +398,7 @@ function sendTick(now:number){
    width:output.viewportWidth,height:output.viewportHeight,dpr:output.dpr}:null;
   const key=stageSurfaceSignature(plan,{
    cameraBinding:stage?.cameraKey??null,floorContext:stage?.floorKey??null,
-   windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]:'',
+   windowSession:state.epoch[id]>0?link.id+':'+state.epoch[id]+':'+link.receiverEpoch:'',
    viewport
   });
   const fresh=!!stage&&(stage.mode==='live'||stage.mode==='simulation')&&stage.frameAtMs>0&&
@@ -374,16 +416,27 @@ function sendTick(now:number){
    visualReady:sourceSafe,canvasReady:!!playbackRaster&&playbackRaster.width>=16&&playbackRaster.height>=16,
    signature:key,authorizedSignature:permit.signature
   })&&(link.lastFrameAckAt>0?now-link.lastFrameAckAt<2400:now-permit.armedAt<5000);
+  const qaSignature=currentQaSignature(id);
+  const live=livePermit[id],test=testPermit[id];
+  const liveSafe=safe&&!!live&&live.signature===qaSignature&&
+   (link.lastFrameAckAt>0?now-link.lastFrameAckAt<2400:now-live.armedAt<5000);
+  if(state.requested[id]==='test'&&(!test||test.signature!==qaSignature||
+     now-test.armedAt>=15000||!sourceSafe)){
+   urgentBlackoutDualSurface(id);
+  }
   if(shouldLatchProjectionBlackout({
    requested:state.requested[id],connected:link.connected,
-   stageSafe:permit?playbackSafe:safe,sourceSafe
+   stageSafe:permit?playbackSafe:liveSafe,sourceSafe
   })){
-   playbackPermit[id]=null;
+   const cause=!link.connected?'Jendela putus':!fresh?'Frame sumber kedaluwarsa':
+    !sourceSafe||!stage?.cameraSafe?'Sumber atau visual belum siap':
+    (permit??live)?.signature!==key?'Binding sumber, jendela atau geometri berubah':'Tanda terima frame kedaluwarsa';
+   urgentBlackoutDualSurface(id);
    state={
     ...state,
     requested:{...state.requested,[id]:'blackout'},
     armed:{...state.armed,[id]:false},
-    message:'LIVE '+id+' terputus. BLACKOUT terkunci; periksa sumber dan tekan Perform ulang.'
+    message:cause+' · LIVE '+id+' terputus. BLACKOUT terkunci; periksa sumber dan tekan Perform ulang.'
    };
    changed=true;
   }
@@ -448,12 +501,13 @@ let canvas:HTMLCanvasElement|null=null;
     sampledAtMs:now,reason:reportedReason
    });
    const next:SurfaceDeviceState={
+    qaSignature,playbackReady:!!(viewport&&key&&fresh&&sourceSafe&&stage?.cameraSafe&&sources.experimentLocked&&playbackRaster&&playbackRaster.width>=16&&playbackRaster.height>=16),
     connected:link.connected,opened:link.opened,viewport,
     mode:canvas&&link.connected?reportedMode:'blackout',
     reason:reportedReason
    };
    const prior=state.devices[id];
-   if(prior.connected!==next.connected||prior.opened!==next.opened||
+   if(prior.qaSignature!==next.qaSignature||prior.playbackReady!==next.playbackReady||prior.connected!==next.connected||prior.opened!==next.opened||
     prior.mode!==next.mode||prior.reason!==next.reason||
     JSON.stringify(prior.viewport)!==JSON.stringify(next.viewport)){
     nextDevices[id]=next;
@@ -503,6 +557,7 @@ export function resetDualSurfaceSessionForTest(){
  outputMode.body='soma';outputMode.floor='soma';
  feedEnabled.body=false;feedEnabled.floor=false;
  playbackPermit.body=null;playbackPermit.floor=null;
+ livePermit.body=livePermit.floor=null;testPermit.body=testPermit.floor=null;
  state=initialState();
  emit();
 }

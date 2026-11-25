@@ -9,6 +9,7 @@ import {PERFORM_VIEWS,type PerformCueGrid,type PerformSceneId,type PerformView} 
 import {evaluatePerformOutputSummary,type PerformOutputRouteMode} from './performOutputModel.ts';
 import {PRIMARY_PERFORM_DESTINATIONS,presentPerformDestination,performCueScope,routeChangeRequiresBlackout} from './performDestinationModel.ts';
 import {detectResolumeHostPlatform,getResolumeBridgeRecipe,RESOLUME_BRIDGE_DOCS} from './resolumeBridgeModel.ts';
+import {PerformPhysicalQA} from './PerformPhysicalQA.tsx';
 import {TouchDesignerPerformPanel} from './TouchDesignerPerformPanel.tsx';
 import type {TdSnapshot} from './touchDesignerProtocol.ts';
 import {
@@ -33,6 +34,7 @@ type Props={
  onRecovery:()=>void;canResume:boolean;
  sourceKind?:'webcam'|'phone'|'video'|'simulator'|null;
  cameraOk?:boolean;identityOk?:boolean;floorOk?:boolean;
+ physicalFloor?:{widthM:number;depthM:number}|null;
  floorQaOk?:boolean;bodyQaOk?:boolean;
  onGoTrack?:()=>void;onGoMap?:()=>void;getTouchDesignerSnapshot:()=>TdSnapshot;
 };
@@ -43,9 +45,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  onSaveCue,onResetCues,cueMessage,previewStatus,sourceLabel,
  unreadyReason,onRecovery,canResume,
  sourceKind=null,cameraOk=false,identityOk=false,floorOk=false,
- floorQaOk=false,bodyQaOk=false,onGoTrack,onGoMap,getTouchDesignerSnapshot}:Props){
+ physicalFloor=null,floorQaOk=false,bodyQaOk=false,onGoTrack,onGoMap,getTouchDesignerSnapshot}:Props){
  const dualSession=useSyncExternalStore(subscribeDualSurface,getDualSurfaceState,getDualSurfaceState);
  const [outputRouteMode,setOutputRouteMode]=useState<PerformOutputRouteMode>('soma');
+ const [qaDraft,setQaDraft]=useState<{surface:StageSurface;signature:string}|null>(null);
  const [outputNotice,setOutputNotice]=useState('');
  const [popupBlocked,setPopupBlocked]=useState(false);
  const [outputDetailsOpen,setOutputDetailsOpen]=useState(false);
@@ -93,15 +96,19 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
  ];
  const routePurpose=isTouchDesigner?'Gerak kaki A/B · WebSocket lokal':
   isResolume?'Visual · lewat OBS '+bridge.transport:'Visual · langsung ke proyektor';
+ const waitingForPlayback=summary.primaryAction.kind==='arm-playback'&&(held||
+  !dualSession.devices[summary.primaryAction.surface].playbackReady);
  const shortStatus=!sourceReady?'Pilih sumber di Track':
   !identityOk?'Periksa aktor A/B di Track':
   outputRouteMode==='soma'&&!floorOk?'Periksa kalibrasi Map':
   isResolume?'Periksa gambar di OBS dan Resolume':
   destination.kind==='info'?'Periksa pengaturan output':
-  destination.kind==='qa'?'SOMA Direct terkunci · Feed Resolume tersedia':
+  destination.kind==='qa'?'Ukur lima target pada bidang yang dipilih':
+  waitingForPlayback?'Menunggu binding dan frame output':
   destination.kind==='arm'?(playback?'Periksa bidang cahaya · aktifkan Playback':'Output siap · konfirmasi LIVE'):destination.hint;
  const handleRouteChange=(next:PerformOutputRouteMode)=>{
   if(!routeChangeRequiresBlackout(outputRouteMode,next))return;
+  setQaDraft(null);
   // Switching destinations cannot silently leave prior output illuminating the stage.
   blackoutAllDualSurfaces('Tujuan output diganti; verifikasi sebelum membuka ulang.');
   closeDualSurfaceOutputWindow('floor');
@@ -143,7 +150,10 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
 
  const handlePrimaryAction=()=>{
   if(destination.kind==='qa'&&outputRouteMode==='soma'){
-   handleRouteChange('resolume');return;
+   const surface=summary.primaryAction.surface,signature=dualSession.devices[surface].qaSignature;
+   if(signature)setQaDraft({surface,signature});
+   else setOutputNotice('Menunggu kamera, kalibrasi lantai dan ukuran jendela output yang valid.');
+   return;
   }
   if(destination.kind==='info'){setOutputDetailsOpen(true);return;}
   if(isResolume){
@@ -227,9 +237,14 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
         onClick={onResume}>Lanjutkan Visual</button>}
        {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
        data-kind={isResolume?'resolume-feed':summary.primaryAction.kind}
-       onClick={handlePrimaryAction}>
+       disabled={!isResolume&&waitingForPlayback} onClick={handlePrimaryAction}>
        <Tv size={14}/>{destination.kind==='setup'?(!cameraOk||!identityOk?'Buka Track':'Buka Map'):destination.action}
       </button>}
+      {qaDraft&&!isResolume&&!isTouchDesigner&&
+       <PerformPhysicalQA floor={physicalFloor} key={qaDraft.signature} surface={qaDraft.surface}
+        signature={qaDraft.signature} prior={dualSession.proofs[qaDraft.surface]}
+        ready={dualSession.devices[qaDraft.surface].qaSignature===qaDraft.signature}
+        plan={dualSession.plans[qaDraft.surface]} onClose={()=>setQaDraft(null)}/>}
       {isResolume&&<details className="ops-r1-bridge-guide" aria-label="Cara hubungkan Resolume">
        <summary><span>Cara sambungkan · {bridge.transport}</span><ChevronDown size={14}/></summary>
        <div className="ops-r1-bridge-steps">
@@ -251,7 +266,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
        </details>}
       {(popupBlocked||outputNotice)&&<div className={popupBlocked?'ops-r1-recovery':'ops-r1-notice'}
        role={popupBlocked?'alert':'status'}>
-       <span>{outputNotice}</span>
+       <span>{dualSession.message.includes('terputus. BLACKOUT')?dualSession.message:outputNotice}</span>
        {popupBlocked&&<button type="button" onClick={()=>handleOpenSurface('floor')}>Coba lagi</button>}
       </div>}
       <details className="ops-r1-output-details" open={outputDetailsOpen}
@@ -282,7 +297,7 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
             onClick={()=>handleOpenSurface(surface)}>
             <ExternalLink size={11}/>{isResolume?(badge.opened?'Lihat / Aktifkan':'Buka Feed'):(badge.opened?'Lihat':'Buka')}
            </button>
-           {!isResolume&&playback&&badge.connected&&badge.status!=='LIVE'&&summary.canOpenOutput&&sourceReady&&<button type="button" onClick={()=>handlePlayback(surface)}>Aktifkan Playback {badge.label}</button>}
+           {!isResolume&&playback&&badge.connected&&badge.status!=='LIVE'&&summary.canOpenOutput&&sourceReady&&<button type="button" disabled={held||!dualSession.devices[surface].playbackReady} onClick={()=>handlePlayback(surface)}>Aktifkan Playback {badge.label}</button>}
            {badge.opened&&<button type="button"
             aria-label={`Tutup output ${badge.label}`}
             onClick={()=>handleCloseSurface(surface)}><X size={11}/></button>}

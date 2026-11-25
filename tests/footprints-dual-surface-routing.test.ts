@@ -145,3 +145,14 @@ test('Clean Feed stays unwarped 16:9 and avoids physical mapping state',()=>{
  assert.deepEqual(s.config.quad,identityQuad());
  assert.equal(s.config.placement.scale,1);
 });
+
+test('unsigned, incomplete or incorrectly typed checklist cannot authorize the FLOOR permit',()=>{
+ const example=proof('floor');
+ for(const checklist of [{},{fixedOptics:true,blackoutObserved:true},
+  {fixedOptics:true,blackoutObserved:'false',noUnsafeSpill:true}]){
+  const record={...example.proof,checklist} as typeof example.proof;
+  assert.equal(assessSurfaceProof(example.plan,example.signature,record).status,'incomplete');
+ }
+ const unsigned={...example.proof,completedAt:null};
+ assert.equal(assessSurfaceProof(example.plan,example.signature,unsigned).status,'incomplete');
+});

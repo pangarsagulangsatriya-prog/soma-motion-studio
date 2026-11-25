@@ -3,7 +3,7 @@
 import type {PerformOutputRouteMode,PerformPrimaryAction,PerformSurfaceBadge} from './performOutputModel.ts';
 
 export const PERFORM_DESTINATIONS=[
- {id:'soma',label:'SOMA Direct',medium:'Visual · Proyektor',description:'Visual FLOOR/BODY → fullscreen proyektor. LIVE perlu izin build dan QA Map.'},
+ {id:'soma',label:'SOMA Direct',medium:'Visual · Proyektor',description:'Visual FLOOR/BODY → fullscreen proyektor. LIVE perlu izin build dan QA fisik di Perform.'},
  {id:'resolume',label:'Resolume',medium:'Visual · Clean Feed',description:'Jendela 16:9 → OBS → Syphon/Spout → Resolume. Feed terbuka belum membuktikan penerimaan di Resolume.'},
  {id:'touchdesigner',label:'TouchDesigner',medium:'Data · Kaki A/B',description:'Posisi kaki, kontak, slide, pivot dan cue melalui WebSocket lokal. Visual dan izin proyektor dikelola di TouchDesigner.'}
 ] as const satisfies ReadonlyArray<{id:PerformOutputRouteMode;label:string;medium:string;description:string}>;
@@ -55,7 +55,7 @@ export function presentPerformDestination(input:{
   case 'preview-only':return {state:'Terkunci · latihan',hint:'MP4/3D hanya untuk pratinjau.',tone:'locked',action:'Lihat syarat output',kind:'info'};
   case 'fix-setup':return {state:'Perlu setup',hint:primary.detail,tone:'attention',action:'Perbaiki setup',kind:'setup'};
   case 'open-output':return {state:'Siap dibuka',hint:'Jendela baru dimulai Blackout.',tone:'idle',action:'Buka Output',kind:'open'};
-  case 'run-qa':return {state:'Terbuka · Blackout',hint:'Output fisik SOMA Direct masih terkunci oleh pemeriksaan perangkat. Feed Resolume tersedia untuk latihan.',tone:'open',action:'Pilih Feed Resolume',kind:'qa'};
+  case 'run-qa':return {state:'Terbuka · Blackout',hint:'Ukur lima target, periksa Blackout dan catat hasil pada bidang aktif.',tone:'open',action:'Uji dan ukur proyektor',kind:'qa'};
   case 'arm-playback':return {state:'Terbuka · Blackout',hint:primary.detail,tone:'open',action:primary.label,kind:'arm'};
   case 'arm-live':return {state:'Terbuka · siap diuji',hint:'Hanya setelah QA dan konfirmasi operator.',tone:'open',action:primary.label,kind:'arm'};
   case 'monitor-live':return {state:input.playback?'Playback aktif':'LIVE',hint:'Gunakan BLACKOUT ketika perlu memadamkan output.',tone:'live',action:input.playback?'Lihat Playback':'Lihat Output LIVE',kind:'live'};

@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 test('MCA V1: Tes tapak synthesizes clearly labeled markers in both Map preview canvases',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const controls=map.getByRole('group',{name:'Bantuan kalibrasi tapak'});
@@ -24,7 +24,7 @@ test('MCA V1: Tes tapak synthesizes clearly labeled markers in both Map preview 
 });
 
 test('MCA V1: Auto/replay/freeze/clear controls are responsive while physical output remains locked',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  const controls=map.getByRole('group',{name:'Bantuan kalibrasi tapak'});
@@ -44,7 +44,7 @@ test('MCA V1: Auto/replay/freeze/clear controls are responsive while physical ou
 });
 
 test('MCA V1: calibration overlays remain attached in fullscreen Map',async({page})=>{
- await page.goto('/');
+ await page.goto('./');
  await page.getByRole('button',{name:'Map workspace'}).click();
  const map=page.locator('.soma-map-wysiwyg');
  await map.getByRole('button',{name:'Layar penuh Map'}).click();
@@ -52,4 +52,16 @@ test('MCA V1: calibration overlays remain attached in fullscreen Map',async({pag
  await expect(map.getByRole('button',{name:'Tes tapak'})).toBeVisible();
  await expect(map.locator('canvas.soma-map-assist-overlay')).toHaveCount(2);
  await map.getByRole('button',{name:'Tutup layar penuh'}).click();
+});
+
+test('ukuran lantai tetap 3 × 2 m setelah Map → Perform → Map',async({page})=>{
+ await page.goto('./');
+ const nav=name=>page.getByRole('button',{name:name+' workspace'}).click();
+ await nav('Map');
+ const room=page.locator('details.soma-map-v2-room');
+ await room.locator('summary').click();
+ await room.getByRole('button',{name:/3\s*×\s*2/}).click();
+ await expect(room.locator('summary')).toContainText(/3\s*×\s*2/);
+ await nav('Perform');await nav('Map');
+ await expect(room.locator('summary')).toContainText(/3\s*×\s*2/);
 });

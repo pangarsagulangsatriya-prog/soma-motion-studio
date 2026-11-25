@@ -590,3 +590,8 @@
 .ops-r1-build-meta{
  margin:5px 0;color:#9db1a2;font:500 10px/1.5 ui-monospace,monospace;
 }
+
+.soma-physical-qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:.55rem;align-items:end;margin-block:.8rem;text-align:left}
+.soma-physical-qa h3,.soma-physical-qa p,.soma-physical-qa ul{grid-column:1/-1;margin:0}
+.soma-physical-qa label{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+.soma-physical-qa input:not([type=checkbox]),.soma-physical-qa select{color:inherit;background:#14221b;border:1px solid #697c6c;border-radius:4px;max-width:100%;min-width:0;padding:.4rem}

@@ -867,9 +867,9 @@ export function FootprintsStageWorkspace({
    cameraOn&&bodySelected&&frameFresh&&!previewIdentity.ambiguous&&
     (performerCount===1?!!frameRef.current.tracked:
      previewIdentity.visible.length>0&&previewIdentity.observedFrameTime===frameRef.current.time),
-  composeRasterReady,outputQuadSaved:savedOutputQuads.floor||savedOutputQuads.body,
-  outputQaValid:dual.floor.qa==='within-provisional-target'||dual.body.qa==='within-provisional-target',
-  physicalLiveCommanded:dual.floor.mode==='live'||dual.body.mode==='live'
+  composeRasterReady,outputQuadSaved:savedOutputQuads.floor,
+  outputQaValid:dual.floor.qa==='within-provisional-target',
+  physicalLiveCommanded:dual.floor.mode==='live'&&!experimentalKind
  });
  const trackingFeedbackRef=useRef(feedback);
  trackingFeedbackRef.current=feedback;
@@ -906,7 +906,7 @@ export function FootprintsStageWorkspace({
      }}/>
    </div>}
   {operatorMode?
-   <OperatorStageConsole index={operatorCue} onPrevious={previousCue} onNext={nextCue}
+   <OperatorStageConsole physicalFloor={tracker.floor} index={operatorCue} onPrevious={previousCue} onNext={nextCue}
     onExit={onExitOperator} onBlackout={operatorBlackout}
     held={footprint.hold||performBlackout} onHold={()=>updateFootprint({hold:true})}
     onResume={()=>{if(performUnsafeRef.current)return;setPerformBlackout(false);updateFootprint({hold:false});onResumeSoftwarePreview();setPreviewResumeRevision(v=>v+1);}}
@@ -1061,7 +1061,7 @@ export function FootprintsStageWorkspace({
      sourceReady={experimentalKind?Boolean(selectedExperimentFrame&&
       (selectedExperimentFrame.kind==='simulator'||canPaintVideoFrame(selectedExperimentFrame))):
       cameraOn&&sourceStatus.phase==='ready'}
-     mapReady={dual.floor.qa==='within-provisional-target'&&dual.body.qa==='within-provisional-target'}
+     mapReady={dual.floor.qa==='within-provisional-target'}
      skeletonVisible={skeletonVisible} onSkeletonChange={setSkeletonVisible}
      cueView={performGrid.slots[activePerformSlot]?.view??'floor'}
      cueIndex={activePerformSlot} onChooseSource={()=>onNavigateStageWorkspace('track')}/>}

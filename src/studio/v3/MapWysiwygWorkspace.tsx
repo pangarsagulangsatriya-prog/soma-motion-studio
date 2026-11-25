@@ -238,7 +238,11 @@ export function MapWysiwygWorkspace({
    ctx.fillStyle='#090e0a';ctx.fillRect(0,0,W,H);
    const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
-   if(ready&&hasLiveSource)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
+   if(ready&&hasLiveSource){
+    ctx.save();ctx.globalAlpha=plan.brightness;
+    paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
+    ctx.restore();
+   }
    // Map Calibration Assist owns observed foot overlays on separate local canvases.
    // Projector and Compose raster paths remain untouched.
    // Virtual Map footprints are rendered once, by the diagnostic assist canvas.
@@ -248,7 +252,7 @@ export function MapWysiwygWorkspace({
    ctx.stroke();
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[selected,plan.sourceQuad,hasLiveSource,floorCanvas,bodyCanvas]);
+ },[selected,plan.sourceQuad,plan.brightness,hasLiveSource,floorCanvas,bodyCanvas]);
  const currentBox=sourceBox;
  const projectorBox={x:0,y:0,width:W,height:H};
  const overlayQuad=(where:'source'|'output')=>where==='source'?cameraDraft:outputDraft;
@@ -291,8 +295,7 @@ export function MapWysiwygWorkspace({
    if(where==='source'){
     const previous=floorTracker?.calibrationData?.cameraQuad;
     setCameraDraft(previous??initialCameraQuad());setCameraDirty(false);
-    if(previous){const result=onCommitCameraQuad(previous);setStatus(result.message);}
-    else setStatus('Perubahan dibatalkan.');
+    setStatus('Draf kamera dibatalkan. Periksa binding sebelum mengaktifkan pelacakan.');
    }else{
     setOutputDraft(plan.projectorQuad);setOutputDirty(false);
     setStatus('Posisi proyektor dikembalikan.');
@@ -328,7 +331,7 @@ export function MapWysiwygWorkspace({
   else{
    const previous=floorTracker?.calibrationData?.cameraQuad;
    setCameraDraft(previous??initialCameraQuad());setCameraDirty(false);
-   if(previous){const restore=onCommitCameraQuad(previous);setStatus(restore.message);}
+   setStatus('Draf kamera dibatalkan. Periksa binding sebelum mengaktifkan pelacakan.');
   }
   setResetArmed(false);
   if(projectorEdit)setStatus('Posisi proyektor dikembalikan ke yang tersimpan.');

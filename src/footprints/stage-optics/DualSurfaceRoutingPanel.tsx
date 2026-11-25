@@ -93,7 +93,7 @@ export function DualSurfaceRoutingPanel({
  const setMessage=(next:string)=>patchDualSurfaceState({message:next});
 
  // Map only edits geometry; direct physical output keeps its independent safety interlock.
- const [stageDimensions,setStageDimensions]=useState<MapStageDimensions>(()=>floorTracker?.floor?{widthM:floorTracker.floor.widthM,depthM:floorTracker.floor.depthM}:DEFAULT_STAGE_DIMENSIONS);
+ const stageDimensions=session.roomDimensions??floorTracker?.floor??DEFAULT_STAGE_DIMENSIONS;
  const [simState,setSimState]=useState<MapSimState>(createDefaultMapSim);
  const hasLiveSource=Boolean(cameraOn||experimentSource);
  const sourceKind:'camera'|'video'|'simulator'|'demo-sim'|'none'=
@@ -145,7 +145,7 @@ export function DualSurfaceRoutingPanel({
   setArmed({body:false,floor:false});
   if(floorTracker?.isCalibrated)floorTracker.revoke('Ukuran lantai berubah di Map. Tandai ulang lantai pada gambar kamera.');
   onMapOutputInvalidated?.();
-  setStageDimensions(next);
+  patchDualSurfaceState({roomDimensions:next});
   setMessage('Ukuran lantai diubah. Tandai ulang bidang kamera.');
  };
  const commitMonitorQuad=(quad:Quad):{ok:boolean;message:string}=>{

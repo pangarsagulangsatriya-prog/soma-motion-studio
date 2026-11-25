@@ -14,7 +14,9 @@ export function correspondence(source:Quad,destination:Quad):number[]{
 }
 export const homography=(q:Quad)=>correspondence(identityQuad(),q);
 export function inverse3(m:number[]):number[]{const [a,b,c,d,e,f,g,h,i]=m;const out=[e*i-f*h,c*h-b*i,b*f-c*e,f*g-d*i,a*i-c*g,c*d-a*f,d*h-e*g,b*g-a*h,a*e-b*d];const det=a*out[0]+b*out[3]+c*out[6];if(!Number.isFinite(det)||Math.abs(det)<1e-10)throw Error('Kalibrasi tidak bisa dipetakan.');return out.map(v=>v/det);}
-export function transform(m:number[],p:Point):Point{const z=m[6]*p.x+m[7]*p.y+m[8];return {x:(m[0]*p.x+m[1]*p.y+m[2])/z,y:(m[3]*p.x+m[4]*p.y+m[5])/z};}
+export function transform(m:number[],p:Point):Point{const z=m[6]*p.x+m[7]*p.y+m[8];const magnitude=Math.abs(m[6]*p.x)+Math.abs(m[7]*p.y)+Math.abs(m[8]);
+ if(!Number.isFinite(z)||Math.abs(z)<=1e-12*magnitude)return {x:NaN,y:NaN};
+ return {x:(m[0]*p.x+m[1]*p.y+m[2])/z,y:(m[3]*p.x+m[4]*p.y+m[5])/z};}
 export function multiply(a:number[],b:number[]):number[]{return Array.from({length:9},(_,i)=>{const row=Math.floor(i/3),col=i%3;return a[row*3]*b[col]+a[row*3+1]*b[3+col]+a[row*3+2]*b[6+col];});}
 export const translation=(x:number,y:number)=>[1,0,x,0,1,y,0,0,1];
 export const scaling=(x:number,y:number)=>[x,0,0,0,y,0,0,0,1];

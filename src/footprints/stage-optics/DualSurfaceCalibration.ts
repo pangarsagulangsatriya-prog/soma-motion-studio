@@ -98,7 +98,7 @@ export function assessSurfaceProof(plan:StageSurfacePlan,signature:string|null,
   missing.push('Uji fisik sebelumnya tidak cocok dengan output/perangkat/kalibrasi aktif.');
  const valid=proof&&proof.signature===signature&&proof.surface===plan.surface?
   proof.samples.filter(s=>SURFACE_TARGETS[plan.surface].some(t=>t.id===s.id)&&
-   finite(s.dxCm)&&finite(s.dyCm)):[];
+   s.method==='physical-markers-and-observed-image'&&finite(s.dxCm)&&finite(s.dyCm)):[];
  const byId=new Map(valid.map(s=>[s.id,s]));
  const errors=[...byId.values()].map(s=>Math.hypot(s.dxCm,s.dyCm));
  const count=byId.size,required=SURFACE_TARGETS[plan.surface].length;
@@ -107,7 +107,7 @@ export function assessSurfaceProof(plan:StageSurfacePlan,signature:string|null,
  if(count<required)missing.push('Lima pengukuran fisik independen belum lengkap.');
  if(!proof?.reviewer.trim()||!proof.completedAt)
   missing.push('Pemeriksa belum menutup dan menandatangani uji fisik.');
- if(!proof||!Object.values(proof.checklist).every(Boolean))
+ if(!proof||proof.checklist?.fixedOptics!==true||proof.checklist.blackoutObserved!==true||proof.checklist.noUnsafeSpill!==true)
   missing.push('Optik tetap, Blackout fisik dan kebocoran cahaya belum semuanya diperiksa.');
  const status=missing.length?'incomplete':
   (rmse! <= (plan.surface==='body'?12:8)&&p95! <= (plan.surface==='body'?20:15))?
