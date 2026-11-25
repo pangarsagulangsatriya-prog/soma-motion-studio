@@ -58,6 +58,14 @@ jobs:
           name: direct-playback-browser-qa-failure
           path: e2e/test-results/
           if-no-files-found: ignore
+      - name: Required Perform V8 browser gate
+        run: npx playwright test -c e2e/playwright.config.mjs --project=wide-1440 --project=mobile-390 perform-final-preview.spec.mjs perform-three-routes.spec.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perform-v8-browser-qa-failure
+          path: e2e/test-results/
+          if-no-files-found: ignore
       # Publish only the self-contained MAT-03 research lab from a pinned,
       # tested feature commit. The main Studio app and projector output
       # continue to come from main and are not replaced by the draft PR.

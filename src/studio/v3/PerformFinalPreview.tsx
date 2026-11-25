@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
-import {Maximize2,Minimize2} from 'lucide-react';
+import {Maximize2,Minimize2,Video,VideoOff} from 'lucide-react';
 import {cueToFinalSurface,type FinalPreviewSurface} from './performFinalPreviewModel.ts';
 import type {PerformView} from './performCueModel.ts';
 import './perform-final-preview.css';
@@ -11,12 +11,14 @@ type Props={
  sourceLabel:string;sourceReady:boolean;mapReady:boolean;
  skeletonVisible:boolean;onSkeletonChange:(visible:boolean)=>void;
  cueView:PerformView;cueIndex:number;
+ onChooseSource:()=>void;
 };
 
 export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLabel,
- sourceReady,mapReady,skeletonVisible,onSkeletonChange,cueView,cueIndex}:Props){
+ sourceReady,mapReady,skeletonVisible,onSkeletonChange,cueView,cueIndex,onChooseSource}:Props){
  const [surface,setSurface]=useState<FinalPreviewSurface>(()=>cueToFinalSurface(cueView));
  const [full,setFull]=useState(false);
+ const [showCamera,setShowCamera]=useState(true);
  const [fullscreenError,setFullscreenError]=useState('');
  const viewport=useRef<HTMLDivElement>(null);
  const output=useRef<HTMLCanvasElement>(null);
@@ -74,7 +76,7 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
      }else paint(surface==='body'?bodyRaster.current:floorRaster.current,0,main.width);
     }
    }
-   if(cg&&cam){
+   if(showCamera&&sourceReady&&cg&&cam){
     cg.setTransform(1,0,0,1,0,0);cg.globalAlpha=1;cg.globalCompositeOperation='source-over';
     cg.fillStyle='#000';cg.fillRect(0,0,cam.width,cam.height);
     const src=inputRaster.current;
@@ -87,12 +89,12 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
   };
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
- },[surface,sourceReady,floorRaster,bodyRaster,inputRaster]);
+ },[surface,sourceReady,floorRaster,bodyRaster,inputRaster,showCamera]);
 
  return <section className="pf-final" aria-label="Perform Final Preview">
   <header className="pf-final-top">
    <div className="pf-final-title"><strong>Final Preview</strong>
-    <span>{sourceReady?mapReady?'Visual Compose · bidang Map tersimpan':'Visual Compose · kalibrasi Map belum lengkap':'Menunggu sumber Track'}</span>
+    <span>{sourceReady?mapReady?'Visual Compose · Map siap':'Visual Compose · QA fisik belum lengkap':'Menunggu sumber'}</span>
    </div>
    <div className="pf-final-tools">
     <div className="pf-final-tabs" role="group" aria-label="Pilih visual final">
@@ -100,6 +102,9 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
       <button type="button" key={id} aria-pressed={surface===id}
        onClick={()=>setSurface(id)}>{label}</button>)}
     </div>
+    <button type="button" className="pf-final-camera-toggle" aria-label={showCamera?'Sembunyikan monitor kamera':'Tampilkan monitor kamera'} aria-pressed={showCamera} disabled={!sourceReady} onClick={()=>setShowCamera(v=>!v)} title="Monitor input operator">
+     {showCamera?<Video size={16}/>:<VideoOff size={16}/>}
+    </button>
     <button type="button" className="pf-final-fullscreen"
      onClick={fullscreen}
      aria-label={full?'Keluar fullscreen Final Preview':'Fullscreen Final Preview'}
@@ -109,26 +114,32 @@ export function PerformFinalPreview({floorRaster,bodyRaster,inputRaster,sourceLa
     </button>
    </div>
   </header>
-  <div ref={viewport} className="pf-final-viewport" aria-label="Bidang Fullscreen Final Preview">
-   <canvas ref={output} width={1280} height={720}
-    aria-label="Visual final hasil komposisi FLOOR dan BODY"
-    data-final-surface={surface}/>
+  <div className="pf-v8-monitor">
+   <div ref={viewport} className="pf-final-viewport" aria-label="Bidang Fullscreen Final Preview">
+    <canvas ref={output} width={1280} height={720}
+     aria-label="Visual final hasil komposisi FLOOR dan BODY"
+     data-final-surface={surface}/>
+   </div>
+   {!sourceReady&&<div className="pf-v8-empty">
+    <strong>Belum ada sumber visual</strong>
+    <span>Hubungkan kamera atau pilih MP4 / 3D.</span>
+    <button type="button" onClick={onChooseSource}>Pilih sumber</button>
+   </div>}
+   {showCamera&&sourceReady&&<div className="pf-final-input-strip pf-v8-camera" aria-label="Monitor input operator">
+    <div className="pf-final-camera-image">
+     <canvas ref={camera} width={480} height={270}
+      aria-label="Monitor kamera asli dari sumber Track"/>
+    </div>
+    <div className="pf-final-camera-controls">
+     <small title={sourceLabel}>{sourceLabel}</small>
+     <button type="button" aria-pressed={skeletonVisible}
+      aria-label="Tampilkan Skeleton di kamera Perform"
+      onClick={()=>onSkeletonChange(!skeletonVisible)}>
+      Skeleton <span>{skeletonVisible?'ON':'OFF'}</span>
+     </button>
+    </div>
+   </div>}
   </div>
   {fullscreenError&&<p className="pf-final-error" role="status">{fullscreenError}</p>}
-  <div className="pf-final-input-strip">
-   <div className="pf-final-camera-image">
-    <canvas ref={camera} width={480} height={270}
-     aria-label="Monitor kamera asli dari sumber Track"/>
-   </div>
-   <div className="pf-final-camera-controls">
-    <strong>Kamera asli</strong>
-    <small>{sourceLabel} · {sourceReady?'Input aktif':'Belum terhubung'}</small>
-    <button type="button" aria-pressed={skeletonVisible}
-     aria-label="Tampilkan Skeleton di kamera Perform"
-     onClick={()=>onSkeletonChange(!skeletonVisible)}>
-     Skeleton <span>{skeletonVisible?'ON':'OFF'}</span>
-    </button>
-   </div>
-  </div>
  </section>;
 }

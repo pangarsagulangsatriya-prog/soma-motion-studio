@@ -223,14 +223,6 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
          <Info size={15} aria-hidden="true"/>
         </button>
        </div>
-       <div className="ops-r1-route-steps" role="list"
-        aria-label={isResolume?'Alur menyambungkan Resolume':'Persiapan output proyektor'}>
-        {routeSteps.map((step,i)=><div key={step.label} className="ops-r1-route-step"
-         role="listitem" data-complete={step.done} title={step.detail}>
-         <span className="ops-r1-step-marker">{step.done?<Check size={12} aria-hidden="true"/>:String(i+1)}</span>
-         <span>{step.label}</span>
-        </div>)}
-       </div>
       {held&&canResume&&<button type="button" className="ops-r1-preview-resume"
         onClick={onResume}>Lanjutkan Visual</button>}
        {destination.kind!=='info'&&<button type="button" className="ops-r1-primary-cta"
@@ -264,9 +256,17 @@ export function OperatorStageConsole({index,onPrevious,onNext,onExit,
       </div>}
       <details className="ops-r1-output-details" open={outputDetailsOpen}
        onToggle={event=>setOutputDetailsOpen(event.currentTarget.open)}>
-       <summary><span>Pengaturan</span><ChevronDown size={14} aria-hidden="true"/></summary>
+       <summary><span>Pengaturan output</span><ChevronDown size={14} aria-hidden="true"/></summary>
        <div className="ops-r1-detail-content">
        <p className="ops-r1-destination-explain">{destination.hint}</p>
+       <div className="ops-r1-route-steps" role="list"
+        aria-label={isResolume?'Alur menyambungkan Resolume':'Persiapan output proyektor'}>
+        {routeSteps.map((step,i)=><div key={step.label} className="ops-r1-route-step"
+         role="listitem" data-complete={step.done} title={step.detail}>
+         <span className="ops-r1-step-marker">{step.done?<Check size={12} aria-hidden="true"/>:String(i+1)}</span>
+         <span>{step.label}</span>
+        </div>)}
+       </div>
        {!isResolume&&<p className="ops-r1-build-meta">Build: {STAGE_HARDWARE_ENABLED?'output tersedia, QA wajib':'proyektor terkunci'} · {import.meta.env.VITE_SOMA_BUILD_ID?.slice(0,8)||'lokal'}</p>}
        <div className="ops-r1-channel-row" role="group" aria-label="Channel output proyektor">
         {(['floor','body'] as const).map(surface=>{

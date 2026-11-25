@@ -133,3 +133,13 @@
 @media(prefers-reduced-motion:reduce){
  .fp-operator-mode .ops-r1-monitor-summary>svg{transition:none!important}
 }
+
+/* V8 keeps the status + next action in view; diagnostic steps are in details. */
+.fp-operator-mode .ops-r1-output-card{gap:8px}
+.fp-operator-mode .ops-r1-output-top{min-height:22px}
+.fp-operator-mode .ops-r1-output-card .ops-r1-route-toggle button{min-height:48px!important}
+.fp-operator-mode .ops-r1-output-card .ops-r1-compact-state{min-height:48px!important;padding:7px 9px!important}
+.fp-operator-mode .ops-r1-monitor-presets:not([open]){background:transparent;border:0;border-top:1px solid #304638;border-radius:0}
+.fp-operator-mode .ops-r1-monitor-presets:not([open])>.ops-r1-monitor-summary{min-height:36px;padding-block:5px}
+.fp-operator-mode .ops-r1-output-details:not([open])>.ops-r1-detail-content{display:none!important}
+.fp-operator-mode .ops-r1-preview-resume{align-self:center;background:transparent!important;border:0!important;text-decoration:underline;text-underline-offset:3px;min-height:30px;padding:3px 8px;color:#d2e6c8;cursor:pointer}

@@ -1064,8 +1064,8 @@ export function FootprintsStageWorkspace({
      mapReady={dual.floor.qa==='within-provisional-target'&&dual.body.qa==='within-provisional-target'}
      skeletonVisible={skeletonVisible} onSkeletonChange={setSkeletonVisible}
      cueView={performGrid.slots[activePerformSlot]?.view??'floor'}
-     cueIndex={activePerformSlot}/>}
-    <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={view!=='stage'||(composerOpen&&mappingOpen)}>
+     cueIndex={activePerformSlot} onChooseSource={()=>onNavigateStageWorkspace('track')}/>}
+    <div className="fp-stage-overview" ref={composeLayout.overview} data-dragging={composeLayout.dragging??'none'} style={composerOpen&&!mappingOpen?composeLayout.style:undefined} hidden={operatorMode||view!=='stage'||(composerOpen&&mappingOpen)} aria-hidden={operatorMode||view!=='stage'||(composerOpen&&mappingOpen)}>
      <aside className="soma-track-source-panel" data-camera-setup={sourceStatus.selection==='phone'&&phonePanelOpen?'open':'closed'} hidden={composerOpen||operatorMode}
       aria-label="Pilih sumber dan lihat status tracking">
       <div className="soma-track-source-heading"><strong>Sumber</strong></div>
