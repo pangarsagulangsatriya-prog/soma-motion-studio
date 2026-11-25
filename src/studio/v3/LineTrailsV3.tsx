@@ -459,7 +459,7 @@ export function LineTrailsV3Stage(props:StageProps){
      if(unknown.length){
       ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';
       ctx.globalAlpha=.9;ctx.strokeStyle='#c4cac6';ctx.lineWidth=2;
-      for(const foot of unknown){ctx.beginPath();ctx.arc(foot.x*c.width,foot.y*c.height,7,0,Math.PI*2);ctx.stroke();}
+      for(const foot of unknown){ctx.beginPath();ctx.arc(foot.x*ctx.canvas.width,foot.y*ctx.canvas.height,7,0,Math.PI*2);ctx.stroke();}
       ctx.fillStyle='#c4cac6';ctx.font='13px system-ui,sans-serif';
       ctx.fillText('POSISI KAKI 2D · A/B BELUM PASTI',16,24);ctx.restore();
      }
