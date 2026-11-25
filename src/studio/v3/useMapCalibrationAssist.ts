@@ -7,7 +7,7 @@ import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/Mu
 import {cameraBinding,cameraBindingKey,type LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import {normalizeTrajectoryInput} from '../../footprints/lines/v3/SourceFrameNormalizer.ts';
 import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
-import type {MapSimState} from './mapStageModel.ts';
+import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
 import {assistFromTrajectory,projectAssistEvent,syntheticAssistTest,mergeAssistBuffer,
  assistColors,type FootAssistEvent,type AssistTransform} from './mapCalibrationAssist.ts';
 
@@ -23,7 +23,7 @@ export type MapAssistOptions={
  floorTracker?:LiveFloorTrackingEngine;
  motionSession?:()=>string;
  liveSourceKind:'camera'|'phone';performerCount:1|2;cameraOn:boolean;
- simState:MapSimState;simCameraQuad:Quad;
+ simState:MapSimState;simCameraQuad:Quad;stageDimensions:MapStageDimensions;
  videoFloorCalibration?:CameraFloorCalibration|null;
 };
 const W=640,H=360;
@@ -34,6 +34,7 @@ const closeTo=(a:number,b:number)=>Math.abs(a-b)<=1e-7;
 export function useMapCalibrationAssist(options:MapAssistOptions){
  const sourceCanvas=useRef<HTMLCanvasElement|null>(null);
  const outputCanvas=useRef<HTMLCanvasElement|null>(null);
+ const stageCanvas=useRef<HTMLCanvasElement|null>(null);
  const state=useRef(options);state.current=options;
  const [auto,setAuto]=useState(true);
  const [replay,setReplay]=useState(false);
@@ -92,7 +93,21 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
    if(!a||!b)return;
    a.setTransform(1,0,0,1,0,0);a.clearRect(0,0,W,H);
    b.setTransform(1,0,0,1,0,0);b.clearRect(0,0,W,H);
-   if(p.selected!=='floor')return;
+   const stage=stageCanvas.current?.getContext('2d');
+   if(p.selected!=='floor'){stage?.clearRect(0,0,W,H);return;}
+   const {widthM,depthM}=p.stageDimensions;
+   const scale=Math.min((W-100)/Math.max(1,widthM),(H-72)/Math.max(1,depthM));
+   const sw=widthM*scale,sh=depthM*scale,sx=(W-sw)/2,sy=(H-sh)/2;
+   if(stage){
+    stage.clearRect(0,0,W,H);stage.fillStyle='#101b14';stage.fillRect(0,0,W,H);
+    stage.fillStyle='#203528';stage.fillRect(sx,sy,sw,sh);
+    stage.strokeStyle='#3a5441';stage.lineWidth=.7;
+    for(let m=1;m<widthM;m++){stage.beginPath();stage.moveTo(sx+m*scale,sy);stage.lineTo(sx+m*scale,sy+sh);stage.stroke();}
+    for(let m=1;m<depthM;m++){stage.beginPath();stage.moveTo(sx,sy+m*scale);stage.lineTo(sx+sw,sy+m*scale);stage.stroke();}
+    stage.strokeStyle='#a6c49b';stage.lineWidth=1.5;stage.strokeRect(sx,sy,sw,sh);
+    stage.fillStyle='#b8d0b7';stage.font='12px system-ui';stage.textAlign='center';stage.fillText(`${widthM} m`,W/2,sy-12);
+    stage.save();stage.translate(sx-18,H/2);stage.rotate(-Math.PI/2);stage.fillText(`${depthM} m`,0,0);stage.restore();
+   }
    const frame=p.experimentFrameRef?.current??null;
    const video=p.sourceKind==='video'&&frame?.kind==='video'?frame.video:p.videoRef?.current;
    const aspect=video?.videoWidth&&video.videoHeight?
@@ -176,9 +191,21 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
      paint(a,box.x+projected.sourceUV.x*box.width,
       box.y+projected.sourceUV.y*box.height,e.headingRad);
     }
+    if(stage){
+     const uv=projected.floorUV;
+     stage.save();stage.beginPath();stage.rect(sx,sy,sw,sh);stage.clip();
+     paint(stage,sx+uv.x*sw,sy+uv.y*sh,e.headingRad);stage.restore();
+    }
     const out=projected.outputUV;
     paint(b,out.x*W,out.y*H,e.headingRad);
     drawn++;
+   }
+   if(stage&&p.sourceKind==='demo-sim'&&p.simState.active){
+    for(const person of p.simState.performers){
+     const x=sx+person.x*sw,y=sy+person.y*sh;
+     stage.fillStyle=person.id==='A'?'#e69c80':'#8ad8e2';stage.beginPath();stage.arc(x,y,8,0,Math.PI*2);stage.fill();
+     stage.fillStyle='#142019';stage.font='bold 10px system-ui';stage.textAlign='center';stage.fillText(person.id,x,y+3.5);
+    }
    }
    if(!ctl.replay&&!ctl.frozen&&!forced.current.length){
     const msg=p.sourceKind==='none'?'Belum ada sumber · Tes tapak untuk simulasi':
@@ -196,6 +223,6 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
   raf=requestAnimationFrame(draw);
   return()=>cancelAnimationFrame(raf);
  },[]);
- return {sourceCanvas,outputCanvas,auto,replay,frozen,status,
+ return {sourceCanvas,outputCanvas,stageCanvas,auto,replay,frozen,status,
   setAuto,toggleReplay,toggleFreeze,clear,test};
 }

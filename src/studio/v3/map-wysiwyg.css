@@ -204,3 +204,31 @@
 @media(prefers-reduced-motion:reduce){
  .soma-map-wysiwyg-bottom button{transition:none}
 }
+
+
+/* MAP-V6 · Denah fisik terpisah dari gambar sumber dan raster proyektor. */
+.soma-map-wysiwyg .soma-map-wysiwyg-grid{grid-template-columns:minmax(0,1fr) minmax(280px,340px);align-items:start;gap:12px}
+.soma-map-v6-stage,.soma-map-v6-inspector{padding:14px;gap:12px}
+.soma-map-v6-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.soma-map-v6-section-head>div{display:flex;flex-direction:column;gap:3px}
+.soma-map-v6-section-head b{font-size:14px;color:#e8f1e5}
+.soma-map-v6-section-head small{font-size:11px;color:#9fb6a4}
+.soma-map-v6-section-head>span{font:600 10px system-ui;color:#c9e3b5;border:1px solid #405b44;padding:4px 7px;border-radius:5px}
+.soma-map-v6-stage-view{border:1px solid #304939;border-radius:8px;overflow:hidden;background:#101b14}
+.soma-map-v6-stage-view canvas{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.soma-map-v6-source{display:flex;flex-direction:column;gap:7px}
+.soma-map-v6-source[hidden]{display:none!important}
+.soma-map-v6-source-toggle{align-self:flex-start;border:1px solid #42604a;border-radius:7px;background:#193023;color:#d6e7d2;padding:8px 12px;cursor:pointer;font:600 12px system-ui}
+.soma-map-v6-checklist{display:grid;gap:0;border:1px solid #304639;border-radius:8px;padding:3px 10px;background:#132018}
+.soma-map-v6-checklist>div{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:33px;border-bottom:1px solid #2b4032;font:11px/1.35 system-ui;color:#a6b9a9}
+.soma-map-v6-checklist>div:last-child{border-bottom:0}
+.soma-map-v6-checklist b{font-weight:600;color:#e1efdc;text-align:right}
+.soma-map-v6-checklist b.soma-map-v6-warning{color:#e0c58d}
+.soma-map-v6-inspector .soma-map-assist-controls{display:flex;gap:6px;padding:8px}
+.soma-map-v6-inspector .soma-map-assist-heading,.soma-map-v6-inspector .soma-map-assist-status{flex:1 1 100%;margin-left:0}
+.soma-map-v6-inspector .soma-map-wysiwyg-controls>button:first-child{flex:1;background:#294c34;border-color:#8eae84;min-height:38px}
+.soma-map-v6-preview-head{padding-top:8px;border-top:1px solid #304639}
+.soma-map-v6-inspector .soma-map-assist-more-panel{left:auto;right:0}
+.soma-map-v6-inspector .soma-map-wysiwyg-caption{min-height:2.5em}
+.soma-map-wysiwyg:fullscreen{justify-content:flex-start}
+@media(max-width:900px){.soma-map-wysiwyg .soma-map-wysiwyg-grid{grid-template-columns:minmax(0,1fr)}}
