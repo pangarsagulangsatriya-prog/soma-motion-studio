@@ -32,7 +32,7 @@ jobs:
           git bundle verify /tmp/soma-floor-candidate.bundle
           git fetch /tmp/soma-floor-candidate.bundle refs/heads/fix/floor-production-e2e:refs/remotes/imported/floor
           test "$(git rev-parse refs/remotes/imported/floor)" = fd0af5ed073e3967286b2926e67d415cd84e56c5
-          test "$(git rev-parse fd0af5ed073e3967286b2926e67d415cd84e56c5^5)" = 1e5d4833ed447115387327943e1ad98f3f9d6328
+          test "$(git rev-parse fd0af5ed073e3967286b2926e67d415cd84e56c5~5)" = 1e5d4833ed447115387327943e1ad98f3f9d6328
           git checkout --detach fd0af5ed073e3967286b2926e67d415cd84e56c5
       - uses: actions/setup-node@v4
         with:
