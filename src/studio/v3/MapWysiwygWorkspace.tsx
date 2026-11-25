@@ -376,7 +376,7 @@ export function MapWysiwygWorkspace({
  const waitingForSource=sourceKind!=='none'&&!simulating&&!sourceAvailable;
  const idleMessage=sourceInterrupted?'Sumber terputus. Periksa sambungan di Track.':
   simulating?'SIMULASI · Dua performer dan jejak kaki aktif.':
-  !visibleSource?'Coba simulasi atau sambungkan kamera.':
+  !visibleSource?'Output fisik terkunci.':
   outputDirty?'Bidang output belum disimpan.':
   mapOutputSaved?'Bidang output tersimpan · QA proyektor perlu diperiksa.':
   'Buka Proyektor untuk mengatur bidang output.';
@@ -385,6 +385,9 @@ export function MapWysiwygWorkspace({
   waitingForSource?'Menunggu gambar sumber':
   'Hasil muncul setelah simulasi atau input aktif';
  const view=selected==='body'&&mapView==='room'?'projector':mapView;
+ const syntheticTest=!visibleSource&&assist.status.startsWith('SIMULASI');
+ const roomEmpty=view==='room'&&!visibleSource&&!syntheticTest;
+ const startSimulation=()=>{onStartSim();setMapView(selected==='floor'?'room':'projector');};
  const chooseView=(next:'room'|'camera'|'projector')=>{
   // A dirty draft must stay visible until explicitly saved or cancelled.
   if(((outputDirty||projectorEdit)&&next!=='projector')||(cameraDirty&&next!=='camera')){
@@ -416,10 +419,10 @@ export function MapWysiwygWorkspace({
     <button type="button" aria-pressed={view==='projector'} onClick={()=>chooseView('projector')}>Proyektor</button>
    </div>
    <div className="soma-map-v7-tools">
-    {!visibleSource&&!waitingForSource&&!sourceInterrupted&&<button type="button" onClick={()=>{onStartSim();setMapView(selected==='floor'?'room':'projector');}}><Play size={14}/> Coba simulasi</button>}
+    {!roomEmpty&&!visibleSource&&!waitingForSource&&!sourceInterrupted&&<button type="button" onClick={startSimulation}><Play size={14}/> Coba simulasi</button>}
     {simulating&&<><button type="button" onClick={onToggleSimPlay}>{simState.playing?<Pause size={14}/>:<Play size={14}/>} {simState.playing?'Jeda':'Lanjutkan'}</button>
      <button type="button" onClick={onStopSim} disabled={outputDirty||cameraDirty}>Hentikan</button></>}
-    <button type="button" onClick={onOpenTrack} disabled={outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':visibleSource?'Ganti sumber':'Pilih kamera di Track'}</button>
+    {!roomEmpty&&<button type="button" onClick={onOpenTrack} disabled={outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':visibleSource?'Ganti sumber':'Pilih kamera di Track'}</button>}
     <button type="button" onClick={changeFullscreen} aria-label={fullScreen?'Tutup layar penuh':'Layar penuh Map'}>
      {fullScreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
     </button>
@@ -427,9 +430,14 @@ export function MapWysiwygWorkspace({
   </div>
   <div className="soma-map-wysiwyg-grid soma-map-v7-grid" data-view={view}>
    <div className="soma-map-wysiwyg-pane soma-map-v7-room" hidden={view!=='room'}>
-    <div className="soma-map-wysiwyg-pane-head"><b>Ruang panggung</b><small>{stageDimensions.widthM} × {stageDimensions.depthM} m · {simulating?'SIMULASI':calibrated?'ESTIMASI TERKALIBRASI':visibleSource?'ESTIMASI':'BELUM ADA SUMBER'}</small></div>
-    <div className="soma-map-v6-stage-view"><canvas ref={assist.stageCanvas} width={W} height={H} aria-label="Denah lantai berskala meter dan estimasi posisi tapak"/></div>
-    <p className="soma-map-wysiwyg-caption">{simulating?'Posisi virtual A/B · output fisik tetap Blackout.':calibrated?'Posisi kaki diperkirakan dari kalibrasi sumber.':'Grid 1 meter · posisi belum diverifikasi terhadap lantai fisik.'}</p>
+    <div className="soma-map-v6-stage-view"><canvas ref={assist.stageCanvas} width={W} height={H} aria-label="Denah lantai berskala meter dan estimasi posisi tapak"/>
+     {roomEmpty&&<div className="soma-map-v71-empty" role="group" aria-label="Sumber gerak">
+      <strong>{sourceInterrupted?'Sumber terputus':waitingForSource?'Menunggu sumber':'Belum ada sumber'}</strong>
+      <button type="button" onClick={onOpenTrack} disabled={outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':'Pilih kamera di Track'}</button>
+      {!waitingForSource&&!sourceInterrupted&&<button type="button" className="soma-map-v71-secondary" onClick={startSimulation}><Play size={13}/> Coba simulasi</button>}
+     </div>}
+    </div>
+    <p className="soma-map-wysiwyg-caption">{syntheticTest?'Tes virtual · lima titik contoh.':simulating?'Simulasi A/B · grid 1 meter':calibrated?'Estimasi posisi · grid 1 meter':'Grid 1 meter · belum diverifikasi secara fisik'}</p>
    </div>
    <div className="soma-map-wysiwyg-pane soma-map-v6-source soma-map-v7-camera" hidden={view!=='camera'}>
     <div className="soma-map-wysiwyg-pane-head"><b>{sourceLabel}</b><small data-live={visibleSource}>{simulating?'SIMULASI':sourceInterrupted?'TERPUTUS':sourceAvailable?(frozen?'DIBEKUKAN':'INPUT AKTIF'):'Belum ada sumber'}</small></div>
@@ -450,11 +458,11 @@ export function MapWysiwygWorkspace({
     <p className="soma-map-wysiwyg-caption">{simulating?'Sumber virtual · kalibrasi fisik tidak berlaku.':calibrated?'Bidang sumber terkalibrasi (estimasi).':'Bidang sumber · estimasi 2D.'}</p>
    </div>
    <aside className="soma-map-v7-inspector" aria-label="Pengaturan Map">
-    <div className="soma-map-v6-section-head"><div><b>{view==='room'?'Pengaturan ruang':view==='camera'?'Kalibrasi kamera':'Kalibrasi output'}</b><small>{view==='room'?'Pilih bidang yang ingin diperiksa':view==='camera'?'Input terhadap lantai':'Empat titik proyektor'}</small></div></div>
+    <div className="soma-map-v6-section-head"><div><b>{view==='room'?'Kalibrasi':view==='camera'?'Kalibrasi kamera':'Kalibrasi output'}</b></div></div>
     <div className="soma-map-v7-actions">
      {view==='room'&&<>
-      <button type="button" onClick={()=>chooseView('camera')}><span>Kamera<small>{simulating?'Virtual':calibrated?'Tersimpan':sourceAvailable?'Belum dikalibrasi':'Belum terhubung'}</small></span><span aria-hidden="true">›</span></button>
-      <button type="button" onClick={()=>chooseView('projector')}><span>Proyektor<small>{outputDirty?'Draf':mapOutputSaved?'Bidang tersimpan':'Atur empat titik'}</small></span><span aria-hidden="true">›</span></button>
+      <div className="soma-map-v71-state"><span>Kamera</span><span data-ready={calibrated||simulating}>{simulating?'Virtual':calibrated?'Tersimpan':sourceAvailable?'Belum dikalibrasi':'Belum terhubung'}</span></div>
+      <div className="soma-map-v71-state"><span>Proyektor</span><span data-ready={mapOutputSaved&&!outputDirty}>{outputDirty?'Draf':mapOutputSaved?'Tersimpan':'Belum disimpan'}</span></div>
      </>}
      {view==='camera'&&<><p>{simulating?'Simulasi memakai koordinat virtual.':calibrated?'Kalibrasi kamera tersimpan.':'Kalibrasikan kamera terhadap lantai fisik.'}</p>
       <button type="button" onClick={onOpenTrack} disabled={cameraDirty||outputDirty}><span>Ubah bidang kamera di Track</span><span aria-hidden="true">›</span></button></>}
@@ -463,7 +471,7 @@ export function MapWysiwygWorkspace({
     {selected==='floor'&&<div className="soma-map-assist-controls" role="group" aria-label="Bantuan kalibrasi tapak">
      <button type="button" onClick={assist.test}>Tes tapak</button>
      <details className="soma-map-assist-more">
-      <summary>Opsi jejak</summary>
+      <summary>Opsi lanjutan</summary>
       <div className="soma-map-assist-more-panel">
        <button type="button" aria-pressed={assist.auto} onClick={()=>assist.setAuto(v=>!v)}>Jejak otomatis {assist.auto?'aktif':'mati'}</button>
        <button type="button" aria-pressed={assist.replay} onClick={assist.toggleReplay}>{assist.replay?'Stop replay':'Replay 5 detik'}</button>
@@ -471,18 +479,18 @@ export function MapWysiwygWorkspace({
        <button type="button" onClick={assist.clear}>Bersihkan</button>
       </div>
      </details>
-     <span className="soma-map-assist-status" role="status" aria-live="polite">{assist.status}</span>
+     <span className="soma-map-assist-status" role="status" aria-live="polite" data-idle={!visibleSource&&!syntheticTest&&assist.status.startsWith('Belum ada sumber')}>{assist.status}</span>
     </div>}
     <p className="soma-map-v7-physical"><span aria-hidden="true">●</span> Uji fisik di Perform</p>
    </aside>
    <div className="soma-map-wysiwyg-pane soma-map-v7-output">
-    <div className="soma-map-wysiwyg-pane-head"><b>{view==='projector'?'Bidang proyektor':'Preview output'}</b><small data-live={visibleSource}>{simulating?'VIRTUAL':visibleSource?'DRAF 16:9':'Belum ada hasil'}</small></div>
+    <div className="soma-map-wysiwyg-pane-head"><b>{view==='projector'?'Bidang proyektor':'Preview output'}</b><small data-live={visibleSource}>{syntheticTest?'TES VIRTUAL':simulating?'VIRTUAL':visibleSource?'DRAF 16:9':''}</small></div>
     <div className="soma-map-wysiwyg-image">
      <canvas ref={outputCanvas} width={W} height={H} aria-label="Hasil visual Compose dengan perspektif proyeksi"/>
      <canvas className="soma-map-assist-overlay" ref={assist.outputCanvas} width={W} height={H} aria-hidden="true"/>
      {visibleSource&&mapOverlay('output')}
-     {!visibleSource&&<div className="soma-map-v3-result-empty" role="status">
-      <span>{resultText}</span>
+     {!visibleSource&&!syntheticTest&&<div className="soma-map-v3-result-empty" role="status">
+      <span>{sourceInterrupted||waitingForSource?resultText:'Belum ada sinyal'}</span>
       {!sourceInterrupted&&!waitingForSource&&<button type="button" className="soma-map-v3-link" onClick={onOpenCompose}>Buka Compose</button>}
      </div>}
     </div>

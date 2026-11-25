@@ -22,3 +22,20 @@ test('Map V7 uses a single primary viewport with a persistent projector preview'
  await expect(map.locator('.soma-map-v7-output .soma-map-wysiwyg-handle')).toHaveCount(0);
  await expect(map.getByText('Uji fisik di Perform')).toBeVisible();
 });
+
+test('Map V7.1 has one set of view controls and actionable empty room',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Map workspace'}).click();
+ const map=page.locator('.soma-map-wysiwyg');
+ const room=map.locator('.soma-map-v7-room');
+ await expect(map.getByRole('button',{name:'Kamera',exact:true})).toHaveCount(1);
+ await expect(map.getByRole('button',{name:'Proyektor',exact:true})).toHaveCount(1);
+ await expect(room.getByRole('button',{name:'Pilih kamera di Track'})).toBeVisible();
+ await expect(room.getByRole('button',{name:'Coba simulasi'})).toBeVisible();
+ await expect(map.getByRole('button',{name:'Coba simulasi'})).toHaveCount(1);
+ await map.getByRole('button',{name:'Tes tapak'}).click();
+ await expect(room.locator('.soma-map-v71-empty')).toHaveCount(0);
+ await expect(map.locator('.soma-map-v7-output')).toContainText('TES VIRTUAL');
+ await map.getByRole('button',{name:'Coba simulasi'}).click();
+ await expect(room.locator('.soma-map-v71-empty')).toHaveCount(0);
+});

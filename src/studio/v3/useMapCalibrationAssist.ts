@@ -96,7 +96,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
    const stage=stageCanvas.current?.getContext('2d');
    if(p.selected!=='floor'){stage?.clearRect(0,0,W,H);return;}
    const {widthM,depthM}=p.stageDimensions;
-   const scale=Math.min((W-100)/Math.max(1,widthM),(H-72)/Math.max(1,depthM));
+   const scale=Math.min((W-64)/Math.max(1,widthM),(H-48)/Math.max(1,depthM));
    const sw=widthM*scale,sh=depthM*scale,sx=(W-sw)/2,sy=(H-sh)/2;
    if(stage){
     stage.clearRect(0,0,W,H);stage.fillStyle='#101b14';stage.fillRect(0,0,W,H);
