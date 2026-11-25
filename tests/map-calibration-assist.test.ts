@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {identityQuad,type Quad} from '../src/projection/geometry.ts';
-import {assistFromTrajectory,projectAssistEvent,syntheticAssistTest,mergeAssistBuffer,
+import {assistFromTrajectory,projectAssistEvent,syntheticAssistTest,mergeAssistBuffer,metricAssistFootSize,
  type FootAssistEvent} from '../src/studio/v3/mapCalibrationAssist.ts';
 import type {V3Input} from '../src/footprints/lines/v3/SourceFrameNormalizer.ts';
 const rect=identityQuad();
@@ -86,4 +86,12 @@ test('MCA-04: assist has separate canvases and no projected output/write permiss
  const hook=readFileSync('src/studio/v3/useMapCalibrationAssist.ts','utf8');
  assert.ok(!/syncDualSurfaceRuntime|patchDualSurfaceState|requestFullscreen\(/.test(hook));
  assert.ok(!/outputFloorRaster|StageRouteInput/.test(hook));
+});
+
+test('V7.2: nominal sole scales in meters, not in fixed screen pixels',()=>{
+ const small=metricAssistFootSize(50),large=metricAssistFootSize(100);
+ assert.equal(large.lengthPx,26);
+ assert.equal(large.widthPx,9.5);
+ assert.equal(large.lengthPx,small.lengthPx*2);
+ assert.deepEqual(metricAssistFootSize(NaN),{widthPx:0,lengthPx:0});
 });

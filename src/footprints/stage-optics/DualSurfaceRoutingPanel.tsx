@@ -88,7 +88,8 @@ export function DualSurfaceRoutingPanel({
   const next=typeof updater==='function'?updater(getDualSurfaceState().armed):updater;
   patchDualSurfaceState({armed:next});
  };
- const setSelected=(next:StageSurface)=>patchDualSurfaceState({selected:next});
+ const [editLocked,setEditLocked]=useState(false);
+ const setSelected=(next:StageSurface)=>{if(!editLocked)patchDualSurfaceState({selected:next});};
  const setMessage=(next:string)=>patchDualSurfaceState({message:next});
 
  // Map only edits geometry; direct physical output keeps its independent safety interlock.
@@ -135,6 +136,7 @@ export function DualSurfaceRoutingPanel({
  };
 
  const changeRoomSize=(size:MapStageDimensions)=>{
+  if(editLocked)return;
   const next=clampStageDimensions(size);
   if(next.widthM===stageDimensions.widthM&&next.depthM===stageDimensions.depthM)return;
   allBlackout();
@@ -146,11 +148,14 @@ export function DualSurfaceRoutingPanel({
   setStageDimensions(next);
   setMessage('Ukuran lantai diubah. Tandai ulang bidang kamera.');
  };
- const commitMonitorQuad=(quad:Quad)=>{
+ const commitMonitorQuad=(quad:Quad):{ok:boolean;message:string}=>{
   try{
+   if(getDualSurfaceState().selected!==selected)throw Error('Bidang berubah. Buka kembali editor.');
    validateStageSurfacePlan({...getDualSurfaceState().plans[selected],projectorQuad:quad});
-   if(editPlan(selected,p=>({...p,projectorQuad:quad})))onMapOutputSaved?.(selected);
-  }catch(e){setMessage(e instanceof Error?e.message:'Quad tidak valid.');}
+   if(!editPlan(selected,p=>({...p,projectorQuad:quad})))throw Error('Bidang output tidak berhasil disimpan.');
+   onMapOutputSaved?.(selected);
+   return {ok:true,message:'Bidang output disimpan. Proyektor perlu uji ulang.'};
+  }catch(e){const message=e instanceof Error?e.message:'Quad tidak valid.';setMessage(message);return {ok:false,message};}
  };
 
  const allBlackout=()=>{
@@ -185,19 +190,19 @@ export function DualSurfaceRoutingPanel({
   <summary>{stageDimensions.widthM} × {stageDimensions.depthM} m</summary>
   <div className="soma-map-v2-room-options">
    {STAGE_DIMENSION_PRESETS.map(preset=><button type="button" key={preset.id}
-    aria-pressed={stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM}
+    disabled={editLocked} aria-pressed={stageDimensions.widthM===preset.widthM&&stageDimensions.depthM===preset.depthM}
     onClick={()=>changeRoomSize({widthM:preset.widthM,depthM:preset.depthM})}>{preset.label}</button>)}
-   <label>Lebar (m)<input type="number" min={1} max={20} step={.5}
+   <label>Lebar (m)<input type="number" disabled={editLocked} min={1} max={20} step={.5}
     value={stageDimensions.widthM}
     onChange={e=>changeRoomSize({...stageDimensions,widthM:Number(e.target.value)})}/></label>
-   <label>Dalam (m)<input type="number" min={1} max={20} step={.5}
+   <label>Dalam (m)<input type="number" disabled={editLocked} min={1} max={20} step={.5}
     value={stageDimensions.depthM}
     onChange={e=>changeRoomSize({...stageDimensions,depthM:Number(e.target.value)})}/></label>
   </div>
  </details>
     <div className="stage-dual-surface-tabs" role="group" aria-label="Pilih bidang kalibrasi">
-     <button type="button" aria-pressed={selected==='floor'} onClick={()=>setSelected('floor')}>Lantai</button>
-     <button type="button" aria-pressed={selected==='body'}
+     <button type="button" aria-pressed={selected==='floor'} disabled={editLocked} onClick={()=>setSelected('floor')}>Lantai</button>
+     <button type="button" aria-pressed={selected==='body'} disabled={editLocked}
       title="Satu output BODY mencakup mask tubuh bawah Performer A dan B."
       onClick={()=>setSelected('body')}>Tubuh</button>
     </div>
@@ -205,7 +210,8 @@ export function DualSurfaceRoutingPanel({
   </header>
 
   <main className="soma-map-v2-main">
- <MapWysiwygWorkspace selected={selected} stageDimensions={stageDimensions} plan={activePlan}
+ <MapWysiwygWorkspace key={selected} selected={selected} stageDimensions={stageDimensions} plan={activePlan}
+  onEditLockChange={setEditLocked}
   sourceKind={sourceKind} hasLiveSource={hasLiveSource}
   videoRef={videoRef} motionFrameRef={motionFrameRef} experimentInputCanvas={experimentInputCanvas} floorTracker={floorTracker}
   router={router} experimentFrameRef={experimentFrameRef} motionSession={motionSession} liveSourceKind={liveSourceKind}
@@ -214,7 +220,7 @@ export function DualSurfaceRoutingPanel({
   performerCount={performerCount} cameraOn={cameraOn}
   floorCanvas={floorCanvas} bodyCanvas={bodyCanvas} liquidCanvas={liquidCanvas}
   simState={simState}
-  onStartSim={()=>{setSimState(prev=>({...prev,active:true,playing:true}));setMessage('Simulasi jejak berjalan di Map.');}}
+  onStartSim={()=>{setSimState({...createDefaultMapSim(),active:true,playing:true});setMessage('Simulasi jejak berjalan di Map.');}}
   onStopSim={()=>{setSimState(prev=>({...prev,active:false,playing:false}));setMessage('Simulasi berhenti.');}}
   onToggleSimPlay={()=>setSimState(prev=>({...prev,playing:!prev.playing}))}
   onBeginCameraEdit={()=>{

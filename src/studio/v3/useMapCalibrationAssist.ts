@@ -9,7 +9,7 @@ import {normalizeTrajectoryInput} from '../../footprints/lines/v3/SourceFrameNor
 import {paintAuthenticFootprint} from '../../footprints/scenes/authenticFootGeometry.ts';
 import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
 import {assistFromTrajectory,projectAssistEvent,syntheticAssistTest,mergeAssistBuffer,
- assistColors,type FootAssistEvent,type AssistTransform} from './mapCalibrationAssist.ts';
+ assistColors,metricAssistFootSize,type FootAssistEvent,type AssistTransform} from './mapCalibrationAssist.ts';
 
 type Mode='camera'|'video'|'simulator'|'demo-sim'|'none';
 export type MapAssistOptions={
@@ -63,7 +63,7 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
    syntheticAssistTest(now,'synthetic:'+state.current.sourceKind);
   setMessage(seen.length?'Tes tapak dari '+seen.length+' posisi terdeteksi (perkiraan)':
    'SIMULASI · lima titik contoh, belum terdeteksi');
-  setReplay(false);
+  control.current.replay=false;control.current.frozen=false;setReplay(false);setFrozen(false);
  };
  const toggleReplay=()=>{
   if(!replay){
@@ -142,7 +142,8 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
    }
    if(key!==lastKey.current){
     lastKey.current=key;buffer.current=[];forced.current=[];latest.current=[];
-    replayFrames.current=[];control.current.replay=false;setReplay(false);
+    replayFrames.current=[];replayStarted.current=0;frozenTime.current=0;
+    control.current.replay=false;control.current.frozen=false;setReplay(false);setFrozen(false);
    }
    if(!ctl.replay&&!ctl.frozen){
     if(batch.length)latest.current=batch;
@@ -175,14 +176,14 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
     synthetic ||=e.origin==='synthetic-test';
     const opacity=0.87*Math.max(.18,1-age/5000)*Math.max(.45,e.confidence);
     const predicted=e.phase==='position-estimate';
-    const paint=(ctx:CanvasRenderingContext2D,x:number,y:number,angle:number)=>{
+    const paint=(ctx:CanvasRenderingContext2D,x:number,y:number,angle:number,widthPx=11,lengthPx=25)=>{
      // Charcoal soles need a subtle light ring over dark calibration footage.
      if(e.actorId==='B'&&e.origin!=='synthetic-test'){
       ctx.save();ctx.strokeStyle='rgba(240,244,233,0.68)';ctx.lineWidth=1;
-      ctx.globalAlpha=opacity;ctx.beginPath();ctx.arc(x,y,13,0,Math.PI*2);
+      ctx.globalAlpha=opacity;ctx.beginPath();ctx.arc(x,y,Math.max(4,lengthPx*.52),0,Math.PI*2);
       ctx.stroke();ctx.restore();
      }
-     paintAuthenticFootprint(ctx,{x,y,side:e.foot,widthPx:11,lengthPx:25,
+     paintAuthenticFootprint(ctx,{x,y,side:e.foot,widthPx,lengthPx,
       headingRad:angle,color:e.origin==='synthetic-test'?'#e1b85e':assistColors[e.actorId],
       alpha:opacity,phase:predicted?'prediction':undefined});
     };
@@ -194,10 +195,12 @@ export function useMapCalibrationAssist(options:MapAssistOptions){
     if(stage){
      const uv=projected.floorUV;
      stage.save();stage.beginPath();stage.rect(sx,sy,sw,sh);stage.clip();
-     paint(stage,sx+uv.x*sw,sy+uv.y*sh,e.headingRad);stage.restore();
+     const size=metricAssistFootSize(scale);
+     const angle=p.sourceKind==='demo-sim'?e.headingRad-Math.PI/2:e.headingRad;
+     paint(stage,sx+uv.x*sw,sy+uv.y*sh,angle,size.widthPx,size.lengthPx);stage.restore();
     }
     const out=projected.outputUV;
-    paint(b,out.x*W,out.y*H,e.headingRad);
+    paint(b,out.x*W,out.y*H,p.sourceKind==='demo-sim'?e.headingRad-Math.PI/2:e.headingRad);
     drawn++;
    }
    if(stage&&p.sourceKind==='demo-sim'&&p.simState.active){

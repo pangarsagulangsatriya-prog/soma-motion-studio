@@ -39,3 +39,20 @@ test('Map V7.1 has one set of view controls and actionable empty room',async({pa
  await map.getByRole('button',{name:'Coba simulasi'}).click();
  await expect(room.locator('.soma-map-v71-empty')).toHaveCount(0);
 });
+
+test('Map V7.2 locks the selected surface while editing and releases it on cancel',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Map workspace'}).click();
+ const map=page.locator('.soma-map-wysiwyg');
+ const body=page.getByRole('group',{name:'Pilih bidang kalibrasi'}).getByRole('button',{name:'Tubuh'});
+ await map.getByRole('button',{name:'Coba simulasi'}).click();
+ await map.getByRole('button',{name:'Sesuaikan proyektor'}).click();
+ await expect(body).toBeDisabled();
+ const quad=map.getByRole('group',{name:'Empat sudut proyeksi'});
+ await quad.focus();await quad.press('ArrowRight');
+ await expect(body).toBeDisabled();
+ await map.getByRole('button',{name:'Batalkan'}).click();
+ await expect(body).toBeEnabled();
+ await body.click();
+ await expect(map.locator('.soma-map-v7-grid')).toHaveAttribute('data-view','projector');
+});

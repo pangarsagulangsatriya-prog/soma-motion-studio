@@ -7,7 +7,8 @@ import type {ExperimentalFrame} from './experimentSourceModel.ts';
 import type {MultiPoseGaitRouter} from '../../footprints/live/MultiPoseGaitRouter.ts';
 import {useMapCalibrationAssist} from './useMapCalibrationAssist.ts';
 import {identityQuad,transform,homography} from '../../projection/geometry.ts';
-import type {LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
+import {cameraBinding,cameraBindingKey,type LiveFloorTrackingEngine} from '../../footprints/live/LiveFloorTrackingEngine.ts';
+import {CameraLiveness} from '../../engine/cameraLiveness.ts';
 import type {CameraFloorCalibration} from '../../footprints/spatial/coordinates.ts';
 import type {StageSurface,StageSurfacePlan} from '../../footprints/stage-optics/DualSurfaceCalibration.ts';
 import type {MapSimState,MapStageDimensions} from './mapStageModel.ts';
@@ -43,7 +44,8 @@ type Props={
  onCommitCameraQuad:(quad:Quad)=>{ok:boolean;message:string};
  onBeginCameraEdit:()=>void;
  onBeginProjectorEdit:()=>void;
- onCommitProjectorQuad:(quad:Quad)=>void;
+ onCommitProjectorQuad:(quad:Quad)=>{ok:boolean;message:string};
+ onEditLockChange:(locked:boolean)=>void;
  onMessage:(message:string)=>void;
  onOpenTrack:()=>void;
  onOpenCompose:()=>void;
@@ -102,7 +104,7 @@ export function MapWysiwygWorkspace({
  experimentFrameRef,videoFloorCalibration=null,router,motionSession,liveSourceKind='camera',performerCount=2,cameraOn=false,
  floorTracker,floorCanvas,bodyCanvas,liquidCanvas,simState,onStartSim,onStopSim,
  onToggleSimPlay,onCommitCameraQuad,onBeginCameraEdit,onBeginProjectorEdit,
- onCommitProjectorQuad,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice='',
+ onCommitProjectorQuad,onEditLockChange,onMessage,onOpenTrack,onOpenCompose,onSourceLost,externalNotice='',
  mapOutputSaved=false,allowLegacyCameraEditing=false
 }:Props){
  const [cameraDraft,setCameraDraft]=useState<Quad>(()=>floorTracker?.calibrationData?.cameraQuad??initialCameraQuad());
@@ -110,8 +112,10 @@ export function MapWysiwygWorkspace({
  const [cameraDirty,setCameraDirty]=useState(false);
  const [outputDirty,setOutputDirty]=useState(false);
  const [frozen,setFrozen]=useState(false);
+ const frozenRef=useRef(frozen);frozenRef.current=frozen;
  const [projectorEdit,setProjectorEdit]=useState(false);
  const [mapView,setMapView]=useState<'room'|'camera'|'projector'>('room');
+ useEffect(()=>{onEditLockChange(projectorEdit||outputDirty||cameraDirty);return()=>onEditLockChange(false);},[projectorEdit,outputDirty,cameraDirty,onEditLockChange]);
  const [fullScreen,setFullScreen]=useState(false);
  const [resetArmed,setResetArmed]=useState(false);
  const [sourceBox,setSourceBox]=useState({x:0,y:0,width:W,height:H});
@@ -143,17 +147,17 @@ export function MapWysiwygWorkspace({
   videoFloorCalibration,stageDimensions});
  useEffect(()=>{
   const q=sourceKind==='video'?videoFloorCalibration?.cameraQuad:floorTracker?.calibrationData?.cameraQuad;
-  if(q&&!cameraDirty)setCameraDraft(q.map(p=>({...p})) as Quad);
+  if(!cameraDirty)setCameraDraft(q?q.map(p=>({...p})) as Quad:initialCameraQuad());
  },[sourceKind,videoFloorCalibration,floorTracker?.calibrationData,cameraDirty]);
  useEffect(()=>{if(!outputDirty)setOutputDraft(plan.projectorQuad.map(p=>({...p})) as Quad);},[plan.projectorQuad,outputDirty]);
  useEffect(()=>{
+  setFrozen(false);setCameraDirty(false);setPointer(null);setSourceAvailable(false);
   if(sourceKind==='camera')return;
   if(everHadCamera.current&&!lossHandled.current){
-   lossHandled.current=true;onSourceLost();
+   lossHandled.current=true;sourceLoss.current();
   }
-  everHadCamera.current=false;setFrozen(false);setCameraDirty(false);
-  setSourceAvailable(false);
- },[sourceKind,onSourceLost]);
+  everHadCamera.current=false;setSourceInterrupted(false);
+ },[sourceKind]);
  useEffect(()=>()=>{if(invalidTimer.current)clearTimeout(invalidTimer.current);
   if(savedTimer.current)clearTimeout(savedTimer.current);},[]);
  const flagInvalid=(where:'source'|'output')=>{
@@ -176,12 +180,26 @@ export function MapWysiwygWorkspace({
   void op?.catch(()=>setStatus('Browser menolak layar penuh.'));
  };
  useEffect(()=>{
-  let raf=0,last=0,seen=false,oldBox='';
+  let raf=0,last=0,seen=false,oldBox='',bindingKey:string|null=null;
+  let liveness=new CameraLiveness(2000);
   const paint=(now:number)=>{
    raf=requestAnimationFrame(paint);if(now-last<46)return;last=now;
    const c=sourceCanvas.current,ctx=c?.getContext('2d');if(!c||!ctx)return;
-   const src=validSource(sourceKind,videoRef?.current,experimentInputCanvas?.current);
-   if(frozen&&src)return; // keep the previously drawn raster; never clear a frozen image
+   const video=videoRef?.current;
+   let src=validSource(sourceKind,video,experimentInputCanvas?.current);
+   if(sourceKind==='camera'){
+    const nextBinding=cameraBindingKey(cameraBinding(video??null));
+    if(bindingKey!==nextBinding){
+     const replaced=!!bindingKey;
+     bindingKey=nextBinding;liveness=new CameraLiveness(2000);
+     if(replaced){
+      frozenRef.current=false;setFrozen(false);setCameraDirty(false);setPointer(null);
+      if(!lossHandled.current){lossHandled.current=true;sourceLoss.current();}
+     }
+    }
+    if(!nextBinding||!video||liveness.sample(video.currentTime,now,!document.hidden))src=null;
+   }
+   if(frozenRef.current&&src&&seen)return; // still run frame liveness while preview is frozen
    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0a100d';ctx.fillRect(0,0,W,H);
    if(sourceKind==='demo-sim'){
     drawSimulatedSource(ctx,simRef.current);return;
@@ -200,6 +218,7 @@ export function MapWysiwygWorkspace({
      seen=false;setSourceAvailable(false);
      if(sourceKind==='camera'&&everHadCamera.current&&!lossHandled.current){
       lossHandled.current=true;setSourceInterrupted(true);
+      frozenRef.current=false;setFrozen(false);setCameraDirty(false);setPointer(null);
       setStatus('Sumber terputus. Periksa sambungan di Track.');
       sourceLoss.current();
      }
@@ -209,7 +228,7 @@ export function MapWysiwygWorkspace({
    }
   };
   raf=requestAnimationFrame(paint);return()=>cancelAnimationFrame(raf);
- },[sourceKind,videoRef,experimentInputCanvas,frozen]);
+ },[sourceKind,videoRef,experimentInputCanvas]);
  useEffect(()=>{
   let raf=0,last=0;
   const paint=(now:number)=>{
@@ -219,28 +238,10 @@ export function MapWysiwygWorkspace({
    ctx.fillStyle='#090e0a';ctx.fillRect(0,0,W,H);
    const src=selected==='body'?bodyCanvas.current:floorCanvas.current;
    const ready=!!src&&src.width>0&&src.height>0;
-   if(ready)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
+   if(ready&&hasLiveSource)paintMapWarp(ctx,src!,plan.sourceQuad,outputDraftRef.current,W,H,8);
    // Map Calibration Assist owns observed foot overlays on separate local canvases.
    // Projector and Compose raster paths remain untouched.
-   if(!hasLiveSource&&simState.active){
-    const matrix=homography(outputDraftRef.current);
-    const recent=simState.footprints.slice(-28);
-    for(const foot of recent){
-     const p=transform(matrix,{x:foot.x,y:foot.y});
-     const age=Math.max(0,(simState.elapsedMs-foot.atMs)/1000);
-     paintAuthenticFootprint(ctx,{
-      x:p.x*W,y:p.y*H,side:foot.foot,
-      headingRad:foot.headingRad-Math.PI/2,
-      widthPx:10,lengthPx:23,alpha:Math.max(.15,.75-age*.055),
-      color:foot.actorId==='B'?'#8ad8e2':'#cbe9a7'
-     });
-    }
-    for(const person of simState.performers){
-     const p=transform(matrix,{x:person.x,y:person.y});
-     ctx.beginPath();ctx.arc(p.x*W,p.y*H,7,0,2*Math.PI);
-     ctx.fillStyle=person.id==='A'?'#cbe9a7':'#8ad8e2';ctx.fill();
-    }
-   }
+   // Virtual Map footprints are rendered once, by the diagnostic assist canvas.
    const q=outputDraftRef.current.map(numericPoint);
    ctx.strokeStyle=selected==='body'?'#80cfd8':'#cbe9a7';ctx.lineWidth=1.6;
    ctx.beginPath();q.forEach((p,i)=>{if(!i)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.closePath();
@@ -335,7 +336,7 @@ export function MapWysiwygWorkspace({
  const reset=()=>{
   if(!resetArmed){setResetArmed(true);return;}
   if(projectorEdit){
-   onBeginProjectorEdit();setOutputDraft(identityQuad());onCommitProjectorQuad(identityQuad());setOutputDirty(false);
+   onBeginProjectorEdit();setOutputDraft(identityQuad());setOutputDirty(true);
   }else{
    onBeginCameraEdit();setCameraDraft(initialCameraQuad());setCameraDirty(true);
   }
@@ -349,7 +350,7 @@ export function MapWysiwygWorkspace({
    data-invalid={invalidWhere===where} data-dragging={pointer?.target===where}
    data-saved={savedWhere===where}
    tabIndex={canEdit?0:-1}
-   onKeyDown={e=>keyMove(e,where)}
+   onKeyDown={e=>{if(canEdit)keyMove(e,where);}}
    onPointerMove={e=>move(e,where)}
    onPointerUp={e=>stopMove(e,where)}
    onPointerCancel={e=>stopMove(e,where)}>
@@ -396,14 +397,16 @@ export function MapWysiwygWorkspace({
   setMapView(next);
  };
  const startProjectorEdit=()=>{
-  if(!visibleSource)return;
+  if(!visibleSource||cameraDirty)return;
   setMapView('projector');setProjectorEdit(true);setResetArmed(false);
  };
  const finishProjectorEdit=()=>{
   if(outputDirty){
-   onCommitProjectorQuad(outputDraftRef.current);
+   const result=onCommitProjectorQuad(outputDraftRef.current);
+   setStatus(result.message);
+   if(!result.ok)return;
    setOutputDirty(false);flashSaved('output');
-   onMessage('Bidang output disimpan. Proyektor perlu uji ulang.');
+   onMessage(result.message);
   }
   setProjectorEdit(false);setResetArmed(false);setMapView(selected==='floor'?'room':'projector');
  };
@@ -421,8 +424,8 @@ export function MapWysiwygWorkspace({
    <div className="soma-map-v7-tools">
     {!roomEmpty&&!visibleSource&&!waitingForSource&&!sourceInterrupted&&<button type="button" onClick={startSimulation}><Play size={14}/> Coba simulasi</button>}
     {simulating&&<><button type="button" onClick={onToggleSimPlay}>{simState.playing?<Pause size={14}/>:<Play size={14}/>} {simState.playing?'Jeda':'Lanjutkan'}</button>
-     <button type="button" onClick={onStopSim} disabled={outputDirty||cameraDirty}>Hentikan</button></>}
-    {!roomEmpty&&<button type="button" onClick={onOpenTrack} disabled={outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':visibleSource?'Ganti sumber':'Pilih kamera di Track'}</button>}
+     <button type="button" onClick={onStopSim} disabled={projectorEdit||outputDirty||cameraDirty}>Hentikan</button></>}
+    {!roomEmpty&&<button type="button" onClick={onOpenTrack} disabled={projectorEdit||outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':visibleSource?'Ganti sumber':'Pilih kamera di Track'}</button>}
     <button type="button" onClick={changeFullscreen} aria-label={fullScreen?'Tutup layar penuh':'Layar penuh Map'}>
      {fullScreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
     </button>
@@ -433,7 +436,7 @@ export function MapWysiwygWorkspace({
     <div className="soma-map-v6-stage-view"><canvas ref={assist.stageCanvas} width={W} height={H} aria-label="Denah lantai berskala meter dan estimasi posisi tapak"/>
      {roomEmpty&&<div className="soma-map-v71-empty" role="group" aria-label="Sumber gerak">
       <strong>{sourceInterrupted?'Sumber terputus':waitingForSource?'Menunggu sumber':'Belum ada sumber'}</strong>
-      <button type="button" onClick={onOpenTrack} disabled={outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':'Pilih kamera di Track'}</button>
+      <button type="button" onClick={onOpenTrack} disabled={projectorEdit||outputDirty||cameraDirty}>{sourceInterrupted?'Periksa Track':'Pilih kamera di Track'}</button>
       {!waitingForSource&&!sourceInterrupted&&<button type="button" className="soma-map-v71-secondary" onClick={startSimulation}><Play size={13}/> Coba simulasi</button>}
      </div>}
     </div>
@@ -495,7 +498,7 @@ export function MapWysiwygWorkspace({
      </div>}
     </div>
     {(visibleSource||projectorEdit)&&<div className="soma-map-wysiwyg-controls">
-     <button type="button" disabled={!visibleSource} aria-pressed={projectorEdit} onClick={projectorEdit?finishProjectorEdit:startProjectorEdit}><ScanLine size={14}/> {projectorEdit?'Simpan bidang':'Sesuaikan proyektor'}</button>
+     <button type="button" disabled={!visibleSource||cameraDirty} aria-pressed={projectorEdit} onClick={projectorEdit?finishProjectorEdit:startProjectorEdit}><ScanLine size={14}/> {projectorEdit?'Simpan bidang':'Sesuaikan proyektor'}</button>
      {projectorEdit&&<button type="button" onClick={stopEditing}>Batalkan</button>}
     </div>}
     {view==='projector'&&<p className="soma-map-wysiwyg-caption">{projectorEdit?'Geser titik 1–4, lalu simpan. QA fisik perlu diulang.':'Preview software · uji fisik di Perform.'}</p>}

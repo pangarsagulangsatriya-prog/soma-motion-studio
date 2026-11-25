@@ -1,6 +1,7 @@
 import {correspondence,homography,identityQuad,transform,validQuad,type Point,type Quad} from '../../projection/geometry.ts';
 import {stageUVToRawCamera} from '../../footprints/spatial/coordinates.ts';
 import type {V3Input} from '../../footprints/lines/v3/SourceFrameNormalizer.ts';
+import {FOOT_LENGTH_M,FOOT_WIDTH_M} from '../../footprints/scenes/authenticFootGeometry.ts';
 
 export type AssistActor='A'|'B';
 export type AssistOrigin='detected-estimate'|'video-estimate'|'virtual-floor'|'synthetic-test';
@@ -83,4 +84,10 @@ export function mergeAssistBuffer(prev:readonly FootAssistEvent[],next:readonly 
 }
 export function assistSourceReset(previous:string,next:string):boolean{
  return previous!==next;
+}
+
+/** Nominal sole dimensions for the metric stage diagram, not measured shoe size. */
+export function metricAssistFootSize(pixelsPerMeter:number){
+ const scale=Number.isFinite(pixelsPerMeter)&&pixelsPerMeter>0?pixelsPerMeter:0;
+ return {widthPx:FOOT_WIDTH_M*scale,lengthPx:FOOT_LENGTH_M*scale};
 }
