@@ -48,7 +48,7 @@ import type {MotionFrame} from '../../engine/types.ts';
 import type {Projection} from '../../projection/useProjection.ts';
 import type {LiveFloorTrackingEngine,LiveFloorStatus} from '../../footprints/live/LiveFloorTrackingEngine.ts';
 import type {MultiPoseGaitRouter,MultiPoseStatus} from '../../footprints/live/MultiPoseGaitRouter.ts';
-import {paintFloorCanvas} from '../../footprints/simulator/floorCanvas.ts';
+import {IncrementalFloorRaster} from '../../footprints/simulator/floorCanvas.ts';
 import {FloorInteractionEngine,type FloorInteractionSource} from '../../footprints/scenes/FloorInteractionEngine.ts';
 import {floorPointerCoordinates} from '../../footprints/scenes/floorPointerCoordinates.ts';
 import {feedLiveFloorInteractions,feedVideoFloorInteractions,feedSimulatorFloorInteractions,
@@ -134,6 +134,7 @@ export function FootprintsStageWorkspace({
  const [showComposeEvents,setShowComposeEvents]=useState(true);
  const bodyCanvas=useRef<HTMLCanvasElement>(null);
  const floorCanvas=useRef<HTMLCanvasElement>(null);
+ const floorRaster=useRef(new IncrementalFloorRaster());
  const cleanFloorOutput=useRef<HTMLCanvasElement|null>(null);
  const performBodyRaster=useRef<HTMLCanvasElement>(null);
  const performFloorRaster=useRef<HTMLCanvasElement>(null);
@@ -173,6 +174,7 @@ export function FootprintsStageWorkspace({
  // Clear old source pixels before the next browser paint, including BODY/FLOOR
  // buffers consumed by Compose. Source changes may not reuse the prior epoch.
  useLayoutEffect(()=>{
+  floorRaster.current.invalidate();
   experimentFrameRef.current=null;
   setExperimentFrame(null);
   for(const canvas of [cameraCanvas.current,bodyCanvas.current,floorCanvas.current]){
@@ -185,6 +187,7 @@ export function FootprintsStageWorkspace({
  useLayoutEffect(()=>{
   if((sourceStatus.selection!=='webcam'&&sourceStatus.selection!=='phone')||
    sourceStatus.phase==='ready')return;
+  floorRaster.current.invalidate();
   for(const canvas of [cameraCanvas.current,bodyCanvas.current,floorCanvas.current]){
    const ctx=canvas?.getContext('2d');
    if(canvas&&ctx){ctx.fillStyle='#040806';ctx.fillRect(0,0,canvas.width,canvas.height);}
@@ -383,6 +386,14 @@ export function FootprintsStageWorkspace({
   sync();
   return()=>{offFloor();offRouter();window.clearInterval(poll);};
  },[tracker,router]);
+ // Canvas context restoration clears the backing store; replay the current epoch.
+ useEffect(()=>{
+  const pad=floorCanvas.current;if(!pad)return;
+  const invalidate=()=>floorRaster.current.invalidate();
+  pad.addEventListener('contextlost',invalidate);
+  pad.addEventListener('contextrestored',invalidate);
+  return()=>{pad.removeEventListener('contextlost',invalidate);pad.removeEventListener('contextrestored',invalidate);};
+ },[experimentalKind]);
  // Reuses the single SOMA camera frame and calibrated FloorSession V3.
  // No camera acquisition, new gait engine or pad event generation here.
  useEffect(()=>{
@@ -474,16 +485,18 @@ export function FootprintsStageWorkspace({
     result.status==='stale'?'Frame terlambat':'Landmark kaki belum lengkap';
    if(label!==lastStatus){lastStatus=label;setMaskStatus(label);}
    const pad=floorCanvas.current;
-   if(pad&&!previewHoldRef.current&&(lastFloorRevision!==tracker.eventRevision)){
-    lastFloorRevision=tracker.eventRevision;
-    const session=tracker.session;
-    if(session){
-     try{paintFloorCanvas(pad,session,{showGrid:false});setViewError('');}
-     catch(e){setViewError(e instanceof Error?e.message:'Pad tidak dapat dirender.');}
-    }else{
-     const ctx=pad.getContext('2d');
-     if(ctx){ctx.fillStyle='#000';ctx.fillRect(0,0,pad.width,pad.height);}
-    }
+   if(pad&&!previewHoldRef.current&&(lastFloorRevision!==tracker.eventRevision||floorRaster.current.needsRebuild(pad,tracker.sessionEpoch))){
+    const raster=floorRaster.current;
+    try{
+     if(raster.needsRebuild(pad,tracker.sessionEpoch))raster.invalidate();
+     const batch=tracker.rasterBatch(raster.sessionEpoch,raster.cursor);
+     if(batch)raster.paint(pad,batch);
+     else {
+      const ctx=pad.getContext('2d');
+      if(ctx){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,pad.width,pad.height);}
+     }
+     lastFloorRevision=tracker.eventRevision;setViewError('');
+    }catch(e){raster.invalidate();setViewError(e instanceof Error?e.message:'Pad tidak dapat dirender.');}
    }
   };
   raf=requestAnimationFrame(draw);
