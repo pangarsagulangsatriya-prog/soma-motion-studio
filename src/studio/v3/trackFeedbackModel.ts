@@ -93,7 +93,7 @@ export function deriveTrackFeedback(input:{
   return resultFor(actors,ambiguous);
  }
  if(phase!=='ready'||!cameraOn)return waiting('Menunggu kamera');
- if(!frameFresh||!liveFrame||liveFrame.source!=='camera'||!liveFrame.tracked)
+ if(!frameFresh||!liveFrame||liveFrame.source!=='camera'||(performerCount===1&&!liveFrame.tracked))
   return waiting('Mencari tubuh');
  const actorIds:('A'|'B')[]=performerCount===1?['A']:['A','B'];
  if(performerCount===1){
@@ -105,13 +105,6 @@ export function deriveTrackFeedback(input:{
  if(identity?.ambiguous)return resultFor(
   actorIds.map((id):TrackActorFeedback=>({id,state:'unstable',feet:0})),true
  );
- if(identity&&identity.visible.length>0&&identity.visible.length<performerCount){
-  const actors=actorIds.map(id=>identity.visible.includes(id)?
-   ({id,state:'unstable',feet:0} as TrackActorFeedback):missing(id));
-  return {state:'framing',label:`Aktor ${identity.visible.length}/${performerCount}`,
-   hint:'Pastikan kedua aktor masuk bingkai',actors,
-   visibleFeet:0,expectedFeet:performerCount*2};
- }
  if(!identity||identity.observedFrameTime!==liveFrame.time){
   const rawCount=Math.min(liveFrame.poses?.length??0,performerCount);
   return {state:'uncertain',
