@@ -17,14 +17,21 @@ function paintSource(canvas:HTMLCanvasElement,video:HTMLVideoElement|null,pose:F
  if(!ctx)return;
  const w=canvas.width,h=canvas.height;
  ctx.fillStyle='#030705';ctx.fillRect(0,0,w,h);
- if(!video||video.readyState<2||video.videoWidth<=0||video.videoHeight<=0||video.paused)return;
+ const notice=(label:string)=>{
+  ctx.fillStyle='#b6c9b7';ctx.font='500 24px system-ui';ctx.textAlign='center';
+  ctx.fillText(label,w/2,h/2);
+ };
+ if(!video||video.readyState<2||video.videoWidth<=0||video.videoHeight<=0){
+  notice('Menunggu frame kamera');return;
+ }
+ if(video.paused){notice('Video dijeda · sambungkan ulang');return;}
  let sx=0,sy=0,sw=video.videoWidth,sh=video.videoHeight;
  if(crop&&crop.width>0&&crop.height>0&&crop.x>=0&&crop.y>=0&&
   crop.x+crop.width<=sw&&crop.y+crop.height<=sh){
   sx=crop.x;sy=crop.y;sw=crop.width;sh=crop.height;
  }
  const scale=Math.min(w/sw,h/sh),dw=sw*scale,dh=sh*scale,dx=(w-dw)/2,dy=(h-dh)/2;
- try{ctx.drawImage(video,sx,sy,sw,sh,dx,dy,dw,dh);}catch{return;}
+ try{ctx.drawImage(video,sx,sy,sw,sh,dx,dy,dw,dh);}catch{notice('Frame tidak dapat dibaca');return;}
  if(!showSkeleton||!pose||!pose.fresh||pose.pose.length<33||
    performance.now()-pose.timestamp>850)return;
  ctx.save();
