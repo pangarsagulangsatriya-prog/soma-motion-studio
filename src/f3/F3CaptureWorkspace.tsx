@@ -90,6 +90,7 @@ export function F3CaptureWorkspace(){
   session.current.disarm();setArmed(false);setMessage('Rana gestur dikunci.');
  },[]);
  const invalidateMotion=()=>{
+  last.current.lastA=-1;last.current.inference=0;
   disarm();setVerified(false);session.current.setVerified(false);setRehearsal(false);
   framing.current.reset();punch.current.reset();fusion.current.resetFrames();
   motionSnapshot.current=null;motionLastUi.current=0;displayCrop.current=null;
@@ -143,10 +144,10 @@ export function F3CaptureWorkspace(){
    });
   }catch{setStageMode('inline');setMessage('Fullscreen ditolak browser; memakai Stage View inline.');}
  };
- const leaveStage=()=>{
-  if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});
+ const leaveStage=useCallback(()=>{
+  if(document.fullscreenElement===stageHost.current)void document.exitFullscreen().catch(()=>{});
   setStageMode('setup');
- };
+ },[]);
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{
    if(event.key==='Escape'&&stageMode!=='setup'){event.preventDefault();leaveStage();}
@@ -223,7 +224,7 @@ export function F3CaptureWorkspace(){
      former?.sourceId===b.id?now-former.time:0,v.videoWidth,v.videoHeight):target;
    displayCrop.current=bLive?{crop,sourceId:b.id,time:now}:null;
    stageFrame.current=makeF3StageFrame({sourceId:b.id,frameId:b.frameId,timestamp:b.lastFrameAt,crop,
-    slots:archive.current.slots,state:aLive&&bLive?(b.kind==='fixture'?'SIMULATION':'LIVE'):'FREEZE',flashUntil:flash});
+    slots:archive.current.slots,state:aLive&&bLive?(a.kind==='fixture'||b.kind==='fixture'?'SIMULATION':'LIVE'):'FREEZE',flashUntil:flash});
    if(now-last.current.ui>130){last.current.ui=now;refresh();}
   };
   raf=requestAnimationFrame(loop);
@@ -505,10 +506,11 @@ export function F3CaptureWorkspace(){
      hidden={activeStep!=='perform'}>
      <div className="f3-operator-preview-copy">
       <strong>Kamera A · Aktor</strong>
-      <span className="f3-motion-light" data-live={readyA&&motionSummary.body}>
-       <i aria-hidden="true"/>{readyA?(motionSummary.body?'Tubuh terbaca':'Video terhubung'):'Menunggu kamera'}
+      <span className="f3-motion-light" data-live={readyA}>
+       <i aria-hidden="true"/>{readyA?(statuses.A.kind==='fixture'?'SIMULASI':motionSummary.body?'LIVE · Tubuh terbaca':'LIVE · Tubuh belum terbaca'):statuses.A.message}
       </span>
-      <small>Hanya untuk operator. Tidak muncul di layar fullscreen.</small>
+      <small>Kamera A membaca gestur dan menjadi latar Stage View. Kamera B mengisi panel kanan dan empat slot foto.</small>
+      <button type="button" onClick={()=>setActiveStep('input')}>Periksa sumber A/B</button>
      </div>
      {activeStep==='perform'&&<F3VideoMonitor mode="perform" videoA={videoA} videoB={videoB}
       motion={motionSnapshot} stage={stageFrame} showSkeleton={false}/>}
@@ -522,7 +524,7 @@ export function F3CaptureWorkspace(){
       stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
       onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
      <div className="f3-surface-footer f3-setup" role="status">
-      <span>{statuses.B.kind==='fixture'&&readyB?'SIMULASI':readyA&&readyB?'LIVE':'Menunggu dua kamera'}</span>
+      <span>{readyA&&readyB?(statuses.A.kind==='fixture'||statuses.B.kind==='fixture'?'SIMULASI':'LIVE'):'Menunggu dua kamera'}</span>
       <span>Stage View 1600 × 800</span>
      </div>
     </section>
