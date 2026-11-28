@@ -65,7 +65,7 @@ test('F3 session gate: view switching cannot arm; consent revoke, A/B stale and 
  const s=new F3SessionMachine();
  s.setDevices(true,true);
  assert.equal(s.arm(true,true),false);
- s.setVerified(true);s.setConsent(true);
+ s.setConsent(true); // Direct mode: consent, no rehearsal verification.
  assert.equal(s.arm(true,true),true);
  assert.equal(s.begin('impact-1',true,true,true),true);
  assert.equal(s.begin('impact-1',true,true,true),false);
@@ -237,4 +237,14 @@ test('F3 V3.1: smooth ROI approaches target, stays in frame and never jumps on s
  assert.ok(b.width<a.width&&b.width>next.width);
  for(const r of [a,b])assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=1920&&r.y+r.height<=1080);
  assert.deepEqual(f3SmoothCrop(null,next,16,1920,1080),next,'new source bypasses prior crop');
+});
+
+test('F3 direct uppercut works with pose only and no rehearsal',()=>{
+ const engine=new F3PunchEngine('uppercut');
+ const prep={...frame(1,.7,.64),hands:[]};
+ const impact={...frame(2,.7,.42),hands:[]};
+ assert.equal(engine.step(prep,1000,true).kind,'prepared');
+ assert.equal(engine.step(impact,1170,true).kind,'capture');
+ const session=new F3SessionMachine();session.setConsent(true);
+ assert.equal(session.arm(true,true),true);assert.equal(session.begin('direct',true,true,true),true);
 });

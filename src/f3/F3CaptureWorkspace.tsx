@@ -22,9 +22,10 @@ const f3Sources=SOURCE_CHOICES.filter(source=>source.id!=='simulator');
 const startFrame=makeF3StageFrame({sourceId:'',frameId:0,timestamp:0,crop:{x:0,y:0,width:0,height:0},slots:[null,null,null,null],state:'BLACKOUT'});
 export function F3CaptureWorkspace(){
  const registry=useRef(new F3CameraRegistry()),fusion=useRef(new F3MotionFusion());
- const framing=useRef(new F3FramingController()),punch=useRef(new F3PunchEngine());
+ const framing=useRef(new F3FramingController()),punch=useRef(new F3PunchEngine('uppercut'));
  const archive=useRef(new F3PhotoStore()),session=useRef(new F3SessionMachine());
  const videoA=useRef<HTMLVideoElement>(null),videoB=useRef<HTMLVideoElement>(null);
+ const stageActor=useRef<HTMLVideoElement|null>(null),stagePhoto=useRef<HTMLVideoElement|null>(null);
  const stageHost=useRef<HTMLDivElement>(null),stageFrame=useRef<F3StageFrame>(startFrame);
  const [statuses,setStatuses]=useState({A:emptyStatus('A'),B:emptyStatus('B')});
  const [devices,setDevices]=useState<MediaDeviceInfo[]>([]);
@@ -36,9 +37,9 @@ export function F3CaptureWorkspace(){
  const [consent,setConsent]=useState(false),[armed,setArmed]=useState(false);
  const [rehearsal,setRehearsal]=useState(false),[positive,setPositive]=useState(0);
  const [negativeConfirmed,setNegativeConfirmed]=useState(false),[verified,setVerified]=useState(false);
- const [preset,setPreset]=useState<F3PunchPreset>('straight');
+ const [preset,setPreset]=useState<F3PunchPreset>('uppercut');
  const [modelState,setModelState]=useState('Menunggu Kamera A');
- const [zoom,setZoom]=useState(.6),[message,setMessage]=useState('Hubungkan dua kamera untuk mencoba fullscreen.');
+ const [zoom,setZoom]=useState(.6),[message,setMessage]=useState('Hubungkan Kamera A. Kamera B opsional untuk foto kaki.');
  const [busy,setBusy]=useState(false),[flash,setFlash]=useState(0);
  const [activeStep,setActiveStep]=useState<'input'|'motion'|'perform'>('input');
  const [skeletonVisible,setSkeletonVisible]=useState(true);
@@ -98,10 +99,12 @@ export function F3CaptureWorkspace(){
   setZoom(.6);
  };
  const capture=useCallback(async(presetValue:F3PunchPreset|'manual',eventId:string)=>{
-  const b=registry.current.status('B'),now=performance.now(),settings=control.current;
+  const now=performance.now(),settings=control.current;
+  const role:F3Role=registry.current.fresh('B',now)?'B':'A';
+  const b=registry.current.status(role);
   const requestEpoch=shutterEpoch.current;
-  if(!settings.consent||!registry.current.fresh('B',now)){setMessage('Persetujuan penonton dan Kamera B yang live diperlukan.');return;}
-  const v=videoB.current;if(!v)return;
+  if(!settings.consent||!registry.current.fresh(role,now)){setMessage('Centang persetujuan dan sambungkan kamera foto.');return;}
+  const v=role==='B'?videoB.current:videoA.current;if(!v)return;
   if(archive.current.busy)return;
   if(presetValue!=='manual'){
    if(!settings.armed||!registry.current.fresh('A',now))return;
@@ -118,13 +121,13 @@ export function F3CaptureWorkspace(){
    const area=valid?{...shown.crop}:framing.current.crop(v.videoWidth,v.videoHeight,1.36);
    await archive.current.capture({video:v,crop:area,cameraId:b.id,frameId:b.frameId,
     sourceTimestamp:b.lastFrameAt,preset:presetValue,consent:settings.consent,
-    replace:settings.replacement,eventId,fresh:registry.current.fresh('B',performance.now()),
+    replace:settings.replacement,eventId,fresh:registry.current.fresh(role,performance.now()),
     stillValid:()=>shutterEpoch.current===requestEpoch&&control.current.consent&&
-     registry.current.fresh('B',performance.now())&&registry.current.status('B').id===b.id&&
+     registry.current.fresh(role,performance.now())&&registry.current.status(role).id===b.id&&
      (presetValue==='manual'||control.current.armed)});
    const count=archive.current.count;setStageCount(count);setReplacement(null);
    setFlash(performance.now()+220);
-   setMessage('Foto '+count+'/4 tersimpan dari Kamera B.');
+   setMessage('Foto '+count+'/4 tersimpan dari Kamera '+role+'.');
    if(presetValue!=='manual'){session.current.complete(count);if(count<4)session.current.readyAgain();}
    if(count>=4)disarm();
   }catch(e){session.current.failed();setArmed(false);setMessage(e instanceof Error?e.message:'Gagal memotret.');}
@@ -132,7 +135,6 @@ export function F3CaptureWorkspace(){
  },[disarm]);
  const manualShot=()=>{void capture('manual','manual-'+crypto.randomUUID());};
  const enterFullscreen=()=>{
-  if(!registry.current.bothReady(performance.now())){setMessage('Kamera A dan B harus mengirim frame segar.');return;}
   const target=stageHost.current;
   if(!target){setMessage('Stage View belum terpasang.');return;}
   // Call during the user click: never await a camera/model operation before this.
@@ -174,7 +176,7 @@ export function F3CaptureWorkspace(){
   if(result.kind==='capture'){
    if(cfg.rehearsal){setPositive(n=>n+1);setMessage('Pukulan '+preset+' terdeteksi dalam latihan.');}
    else if(cfg.armed&&cfg.consent&&!framing.current.resizing&&
-    registry.current.fresh('B',performance.now())&&result.eventId)void capture(preset,result.eventId);
+    (registry.current.fresh('B',performance.now())||registry.current.fresh('A',performance.now()))&&result.eventId)void capture(preset,result.eventId);
   }
  },[capture,preset]);
  const qaMode=import.meta.env.DEV&&new URL(window.location.href).searchParams.has('f3qa');
@@ -200,31 +202,35 @@ export function F3CaptureWorkspace(){
    registry.current.poll(now);
    const a=registry.current.status('A'),b=registry.current.status('B');
    const aLive=registry.current.fresh('A',now),bLive=registry.current.fresh('B',now);
-   if(!aLive||!bLive){
+   if(!aLive){
     if(control.current.armed){session.current.disarm();setArmed(false);}
    }
-   session.current.setDevices(aLive,bLive);
+   session.current.setDevices(aLive,bLive||aLive);
    if(aLive&&fusion.current.status==='idle'){
     void fusion.current.init().then(()=>{if(!disposed)setModelState('Pose + Hands siap');})
      .catch(e=>{if(!disposed)setModelState('Model gestur gagal: '+String(e));});
    }
-   if(!qaMode&&aLive&&fusion.current.status==='ready'&&now-last.current.inference>=95&&a.frameId!==last.current.lastA){
+   if(!qaMode&&aLive&&fusion.current.status==='ready'&&now-last.current.inference>=60&&a.frameId!==last.current.lastA){
     last.current.inference=now;last.current.lastA=a.frameId;
     try{
      const motion=fusion.current.sample(videoA.current!,a.frameId,now);
      if(motion)processMotion(motion,now);
     }catch(e){fusion.current.dispose();setModelState('Pelacakan berhenti: '+String(e));disarm();}
    }
-   const v=videoB.current;
+   const photo=bLive?b:a;
+   const photoLive=bLive||aLive;
+   stageActor.current=aLive?videoA.current:null;
+   stagePhoto.current=bLive?videoB.current:aLive?videoA.current:null;
+   const v=stagePhoto.current;
    const target=v&&v.videoWidth&&v.videoHeight?framing.current.crop(v.videoWidth,v.videoHeight,1.36):
     {x:0,y:0,width:0,height:0};
    const former=displayCrop.current;
-   const crop=v&&v.videoWidth&&v.videoHeight&&bLive?
-    f3SmoothCrop(former?.sourceId===b.id?former.crop:null,target,
-     former?.sourceId===b.id?now-former.time:0,v.videoWidth,v.videoHeight):target;
-   displayCrop.current=bLive?{crop,sourceId:b.id,time:now}:null;
-   stageFrame.current=makeF3StageFrame({sourceId:b.id,frameId:b.frameId,timestamp:b.lastFrameAt,crop,
-    slots:archive.current.slots,state:aLive&&bLive?(a.kind==='fixture'||b.kind==='fixture'?'SIMULATION':'LIVE'):'FREEZE',flashUntil:flash});
+   const crop=v&&v.videoWidth&&v.videoHeight&&photoLive?
+    f3SmoothCrop(former?.sourceId===photo.id?former.crop:null,target,
+     former?.sourceId===photo.id?now-former.time:0,v.videoWidth,v.videoHeight):target;
+   displayCrop.current=photoLive?{crop,sourceId:photo.id,time:now}:null;
+   stageFrame.current=makeF3StageFrame({sourceId:photo.id,frameId:photo.frameId,timestamp:photo.lastFrameAt,crop,
+    slots:archive.current.slots,state:photoLive?(photo.kind==='fixture'||(aLive&&a.kind==='fixture')?'SIMULATION':'LIVE'):'FREEZE',flashUntil:flash});
    if(now-last.current.ui>130){last.current.ui=now;refresh();}
   };
   raf=requestAnimationFrame(loop);
@@ -236,11 +242,10 @@ export function F3CaptureWorkspace(){
  };
  const arm=()=>{
   const now=performance.now();
-  if(!verified){setMessage('Latih pukulan dan verifikasi contoh negatif terlebih dahulu.');return;}
   if(!consent){setMessage('Minta persetujuan penonton sebelum mengaktifkan rana.');return;}
-  if(!session.current.arm(registry.current.fresh('A',now),registry.current.fresh('B',now))){
-   setMessage('Kamera A/B harus live dan segar.');return;}
-  setArmed(true);setMessage('Rana aktif. Resize tetap mengunci pukulan.');
+  if(!session.current.arm(registry.current.fresh('A',now),registry.current.fresh('B',now)||registry.current.fresh('A',now))){
+   setMessage('Kamera A harus live untuk membaca uppercut.');return;}
+  setArmed(true);setRehearsal(false);setMessage('Gestur aktif. Uppercut langsung mengambil foto.');
  };
  const updatePreset=(value:F3PunchPreset)=>{setPreset(value);punch.current.setPreset(value);setVerified(false);session.current.setVerified(false);disarm();setPositive(0);setNegativeConfirmed(false);};
  const saveZip=async()=>{
@@ -254,7 +259,13 @@ export function F3CaptureWorkspace(){
  const undo=()=>{if(archive.current.undo()){setStageCount(archive.current.count);disarm();}};
  const readyA=statuses.A.state==='live'&&performance.now()-statuses.A.lastFrameAt<850;
  const readyB=statuses.B.state==='live'&&performance.now()-statuses.B.lastFrameAt<850;
+ const photoReady=readyB||readyA;
  const screenActive=stageMode!=='setup';
+ // Consent explicitly enables the direct shutter on entry, without a rehearsal gate.
+ useEffect(()=>{
+  if(activeStep!=='perform'||!consent||!readyA||archive.current.count>=4)return;
+  if(session.current.arm(true,true)){setArmed(true);setRehearsal(false);setMessage('Gestur aktif · '+(readyB?'Foto dari B':'Mode satu kamera · foto dari A'));}
+ },[activeStep,consent,readyA]);
  const status=(role:F3Role)=><span className="f3-pill" data-live={statuses[role].state==='live'}>
   {role==='A'?'A · GESTUR':'B · FOTO'} <b>{statuses[role].kind==='fixture'?'SIMULASI':statuses[role].state==='live'?'LIVE':statuses[role].message}</b>
  </span>;
@@ -367,9 +378,9 @@ export function F3CaptureWorkspace(){
      onClick={()=>setActiveStep('perform')}><span className="f3-step-num">03</span> Perform</button>
    </div>
    {activeStep!=='perform'&&<button type="button" className="f3-next-cta"
-    onClick={()=>setActiveStep(activeStep==='input'?'motion':'perform')}
-    disabled={activeStep==='input'&&!readyA}>
-    Lanjut {activeStep==='input'?'Motion':'Perform'} <ArrowRight size={14}/>
+    onClick={()=>setActiveStep('perform')}
+    disabled={false}>
+    Lanjut Perform <ArrowRight size={14}/>
    </button>}
   </nav>
   <div className="f3-main-layout">
@@ -417,7 +428,7 @@ export function F3CaptureWorkspace(){
        <button type="button" aria-pressed={preset==='uppercut'} onClick={()=>updatePreset('uppercut')}>Uppercut</button>
       </div>
      </div>
-     <p className="f3-panel-description">Rentangkan atau rapatkan dua tangan untuk mengubah crop B. Pukulan diuji tanpa menyimpan foto.</p>
+     <p className="f3-panel-description">Rentangkan atau rapatkan dua tangan untuk mengubah crop B. Uppercut langsung tersedia di Perform. Latihan hanya opsional.</p>
      <div className="f3-motion-test">
       <button type="button" className="f3-primary" onClick={()=>{
        setRehearsal(true);disarm();session.current.startRehearsal();
@@ -451,22 +462,22 @@ export function F3CaptureWorkspace(){
      <div className="f3-readiness-rows f3-perform-health">
       <div><span>Kamera A</span><strong>{readyA?(statuses.A.kind==='fixture'?'SIMULASI':'LIVE'):'Belum siap'}</strong></div>
       <div><span>Kamera B</span><strong>{readyB?(statuses.B.kind==='fixture'?'SIMULASI':'LIVE'):'Belum siap'}</strong></div>
-      <div><span>Motion</span><strong>{verified?'Terverifikasi':'Belum diuji'}</strong></div>
+      <div><span>Motion</span><strong>{motionSummary.body?'Tracking aktif':modelState}</strong></div>
      </div>
      <label className="f3-consent"><input type="checkbox" checked={consent} onChange={e=>markConsent(e.target.checked)}/>
-      Penonton menyetujui pengambilan foto kaki.</label>
+      Penonton menyetujui foto kaki · aktifkan gestur otomatis saat Perform.</label>
      <button type="button" className="f3-primary f3-arm-button"
-      disabled={armed||!verified||!consent||!readyA||!readyB||stageCount>=4}
+      disabled={armed||!consent||!readyA||(stageCount>=4&&replacement===null)}
       onClick={arm}><Hand size={14}/> {armed?'Gestur Aktif':'Aktifkan Gestur'}</button>
      <div className="f3-operator-secondary">
       <button type="button" onClick={disarm} disabled={!armed&&!rehearsal}>Hentikan Gestur</button>
-      <button type="button" onClick={manualShot} disabled={!consent||!readyB||busy||(stageCount>=4&&replacement===null)}>
+      <button type="button" onClick={manualShot} disabled={!consent||!photoReady||busy||(stageCount>=4&&replacement===null)}>
        <Camera size={14}/> Jepret manual
       </button>
      </div>
-     <p className="f3-shutter-state" role="status">{armed?'Rana gestur aktif':rehearsal?'Selesaikan latihan di Motion':'Rana gestur terkunci'}</p>
+     <p className="f3-shutter-state" role="status">{armed?'Rana gestur aktif':'Gestur berhenti'}</p>
      <button type="button" className="f3-primary f3-perform-fullscreen" onClick={enterFullscreen}
-      disabled={!readyA||!readyB}><Maximize2 size={15}/> Buka Fullscreen</button>
+       ><Maximize2 size={15}/> Buka Fullscreen</button>
      <div className="f3-photo-operations">
       <header><strong>Foto tersimpan</strong><span>{stageCount}/4</span></header>
       <div className="f3-photo-ops">
@@ -509,7 +520,7 @@ export function F3CaptureWorkspace(){
       <span className="f3-motion-light" data-live={readyA}>
        <i aria-hidden="true"/>{readyA?(statuses.A.kind==='fixture'?'SIMULASI':motionSummary.body?'LIVE · Tubuh terbaca':'LIVE · Tubuh belum terbaca'):statuses.A.message}
       </span>
-      <small>Kamera A membaca gestur dan menjadi latar Stage View. Kamera B mengisi panel kanan dan empat slot foto.</small>
+      <small>Kamera A membaca uppercut. {readyB?'Foto dari Kamera B.':'Mode satu kamera: foto dari Kamera A.'}</small>
       <button type="button" onClick={()=>setActiveStep('input')}>Periksa sumber A/B</button>
      </div>
      {activeStep==='perform'&&<F3VideoMonitor mode="perform" videoA={videoA} videoB={videoB}
@@ -517,14 +528,14 @@ export function F3CaptureWorkspace(){
     </section>
     <section className="f3-surface-panel" aria-label="Pratinjau Stage View" hidden={activeStep!=='perform'&&!screenActive}>
      <header className="f3-surface-header f3-setup">
-      <div><strong>Stage View</strong><small>Latar aktor A · Empat foto kiri · Live kamera B kanan</small></div>
+      <div><strong>Stage View</strong><small>Latar aktor A · Empat foto kiri · {readyB?'Kamera B':'Kamera A (satu kamera)'} kanan</small></div>
       <span className="f3-ratio-label">2:1</span>
      </header>
-     <F3StageView hostRef={stageHost} frameRef={stageFrame} videoARef={videoA} videoBRef={videoB}
+     <F3StageView hostRef={stageHost} frameRef={stageFrame} videoARef={stageActor} videoBRef={stagePhoto}
       stageActive={screenActive} onExit={leaveStage} onDisarm={disarm}
-      onManualCapture={manualShot} canManual={consent&&readyB&&!busy&&(stageCount<4||replacement!==null)}/>
+      onManualCapture={manualShot} canManual={consent&&photoReady&&!busy&&(stageCount<4||replacement!==null)}/>
      <div className="f3-surface-footer f3-setup" role="status">
-      <span>{readyA&&readyB?(statuses.A.kind==='fixture'||statuses.B.kind==='fixture'?'SIMULASI':'LIVE'):'Menunggu dua kamera'}</span>
+      <span>{photoReady?(readyB?'Foto B · LIVE':'Foto A · mode satu kamera'):'Menunggu kamera'}</span>
       <span>Stage View 1600 × 800</span>
      </div>
     </section>
