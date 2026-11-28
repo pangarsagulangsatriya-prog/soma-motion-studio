@@ -102,6 +102,7 @@ export function F3CaptureWorkspace(){
   const now=performance.now(),settings=control.current;
   const role:F3Role=registry.current.fresh('B',now)?'B':'A';
   const b=registry.current.status(role);
+  if(presetValue!=='manual'&&stageFrame.current.cameraB.sourceId!==b.id)return;
   const requestEpoch=shutterEpoch.current;
   if(!settings.consent||!registry.current.fresh(role,now)){setMessage('Centang persetujuan dan sambungkan kamera foto.');return;}
   const v=role==='B'?videoB.current:videoA.current;if(!v)return;

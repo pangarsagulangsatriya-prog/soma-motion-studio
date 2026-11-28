@@ -29,7 +29,7 @@ export class F3PunchEngine{
   }
   if(frame.frameId<=this.lastFrame)return {kind:'idle'};
   this.lastFrame=frame.frameId;
-  if(frame.hands.some(h=>f3Pinched(h)&&!this.clenched(h))){this.prepared=null;this.previousResizeAt=now;return {kind:'resize'};}
+  if(frame.hands.some(f3Pinched)){this.prepared=null;this.previousResizeAt=now;return {kind:'resize'};}
   if(now-this.previousResizeAt<350){this.prepared=null;return {kind:'resize'};}
   const shoulderL=frame.pose[11],shoulderR=frame.pose[12];
   const leftW=frame.pose[15],rightW=frame.pose[16],leftE=frame.pose[13],rightE=frame.pose[14];
